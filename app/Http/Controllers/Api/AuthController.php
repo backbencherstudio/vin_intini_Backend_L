@@ -53,7 +53,8 @@ class AuthController extends Controller
             'success' => true,
             'user' => [
                 'id' => $user->id,
-                'name' => $user->name,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
                 'email' => $user->email,
                 'roles' => $user->roles->pluck('name')->implode(', '),
                 // 'roles' => $user->roles->pluck('name'),
@@ -98,7 +99,6 @@ class AuthController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
             'mobile'   => 'nullable|string|max:20',
-            // 'department' => 'nullable|string|max:100',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
@@ -119,7 +119,6 @@ class AuthController extends Controller
                 'name'     => $validated['name'],
                 'email'    => $validated['email'],
                 'mobile'   => $validated['mobile'] ?? null,
-                // 'department' => $validated['department'] ?? null,
                 'password' => bcrypt($validated['password']),
             ]);
             // Assign role to user (API guard)
