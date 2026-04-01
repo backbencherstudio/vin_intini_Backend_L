@@ -35,6 +35,7 @@ final class ApiRoutes
         responses: [
             new OA\Response(response: 200, description: 'OK'),
             new OA\Response(response: 401, description: 'Unauthorized'),
+            new OA\Response(response: 403, description: 'Forbidden (email not verified)'),
             new OA\Response(response: 422, description: 'Validation error'),
         ],
     )]
@@ -97,12 +98,88 @@ final class ApiRoutes
         tags: ['Auth'],
         operationId: 'post_api_register',
         summary: 'AuthController@register',
+        description: 'Registers a user and sends a 4-digit OTP to the email for verification.',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['email', 'password'],
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'user@example.com'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', minLength: 6, example: 'secret123'),
+                ],
+            ),
+        ),
         responses: [
-            new OA\Response(response: 200, description: 'OK'),
+            new OA\Response(
+                response: 201,
+                description: 'Created',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'boolean', example: true),
+                        new OA\Property(property: 'message', type: 'string', example: 'Registration successful. OTP sent to your email.'),
+                    ],
+                ),
+            ),
             new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(
+                response: 500,
+                description: 'Server error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'boolean', example: false),
+                        new OA\Property(property: 'message', type: 'string', example: 'Registration failed.'),
+                    ],
+                ),
+            ),
         ],
     )]
     public function postRegister(): void {}
+
+    #[OA\Post(
+        path: '/api/register/verify-otp',
+        tags: ['Auth'],
+        operationId: 'post_api_register_verify_otp',
+        summary: 'AuthController@verifyRegisterOtp',
+        description: 'Verifies the registration OTP and marks the user as verified.',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['email', 'otp'],
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'user@example.com'),
+                    new OA\Property(property: 'otp', type: 'string', description: '4-digit OTP', pattern: '^\\d{4}$', example: '1234'),
+                ],
+            ),
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'OK',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'boolean', example: true),
+                        new OA\Property(property: 'message', type: 'string', example: 'Email verified successfully.'),
+                        new OA\Property(property: 'user', type: 'object'),
+                        new OA\Property(property: 'token', type: 'string', example: 'eyJ0eXAiOiJKV1QiLCJhbGciOi...'),
+                        new OA\Property(property: 'token_type', type: 'string', example: 'bearer'),
+                        new OA\Property(property: 'expires_in', type: 'integer', example: 3600),
+                    ],
+                ),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Invalid or expired OTP',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'boolean', example: false),
+                        new OA\Property(property: 'message', type: 'string', example: 'Invalid OTP'),
+                    ],
+                ),
+            ),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ],
+    )]
+    public function postRegisterVerifyOtp(): void {}
 
     #[OA\Post(
         path: '/api/send-otp',

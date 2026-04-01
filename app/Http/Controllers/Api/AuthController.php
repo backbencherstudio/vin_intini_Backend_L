@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\RegisterOtpMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,8 +30,24 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Attempt login
         $credentials = $validator->validated();
+
+        $user = User::where('email', $credentials['email'])->first();
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials',
+            ], 401);
+        }
+
+        if (! $user->is_verified) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please verify your email with OTP before login.',
+            ], 403);
+        }
+
+        // Attempt login (JWT token)
         if (! $token = auth('api')->attempt($credentials)) {
             return response()->json([
                 'success' => false,
@@ -135,6 +152,68 @@ class AuthController extends Controller
             DB::rollBack();
             return response()->json(['status' => false, 'message' => 'Registration failed.'], 500);
         }
+    }
+
+    public function verifyRegisterOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+            'otp' => 'required|digits:4',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if ($user->is_verified) {
+            $token = auth('api')->login($user);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Email already verified.',
+                'user' => $user,
+                'token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => auth('api')->factory()->getTTL() * 60,
+            ]);
+        }
+
+        if (! $user->otp || (string) $user->otp !== (string) $request->otp) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid OTP',
+            ], 400);
+        }
+
+        if (! $user->otp_expires_at || now()->gt($user->otp_expires_at)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'OTP expired',
+            ], 400);
+        }
+
+        $user->forceFill([
+            'is_verified' => true,
+            'otp' => null,
+            'otp_expires_at' => null,
+        ])->save();
+
+        $token = auth('api')->login($user);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Email verified successfully.',
+            'user' => $user,
+            'token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => auth('api')->factory()->getTTL() * 60,
+        ]);
     }
 
     // public function register(Request $request)
