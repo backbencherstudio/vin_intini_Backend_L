@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -96,55 +98,97 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
-            'mobile'   => 'nullable|string|max:20',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|string|min:6',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Validation failed.',
-                'errors'  => $validator->errors()
-            ], 422);
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $validated = $validator->validated();
-
         DB::beginTransaction();
-
         try {
-            $user = User::create([
-                'name'     => $validated['name'],
-                'email'    => $validated['email'],
-                'mobile'   => $validated['mobile'] ?? null,
-                'password' => bcrypt($validated['password']),
-            ]);
-            // Assign role to user (API guard)
-            $role = Role::where('name', 'user')
-                ->where('guard_name', 'api')
-                ->firstOrFail();
+            $otp = rand(1000, 9999);
 
-            $user->assignRole($role);
+            $user = User::create([
+                'email'          => $request->email,
+                'password'       => Hash::make($request->password),
+                'otp'            => $otp,
+                'otp_expires_at' => now()->addMinutes(10),
+                'is_verified'    => false,
+            ]);
+
+            $role = Role::where('name', 'user')->first();
+            if ($role) {
+                $user->assignRole($role);
+            }
+
+            Mail::to($user->email)->send(new RegisterOtpMail($otp));
+
             DB::commit();
 
             return response()->json([
                 'status'  => true,
-                'message' => 'User registered successfully.',
-                'data'    => [
-                    'id'    => $user->id,
-                    'name'  => $user->name,
-                    'email' => $user->email,
-                    'roles' => $user->getRoleNames(),
-                ]
+                'message' => 'Registration successful. OTP sent to your email.',
             ], 201);
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'status'  => false,
-                'message' => 'User registration failed.',
-            ], 500);
+            return response()->json(['status' => false, 'message' => 'Registration failed.'], 500);
         }
     }
+
+    // public function register(Request $request)
+    // {
+    //     $validator = Validator::make($request->all(), [
+    //         'name'     => 'required|string|max:255',
+    //         'email'    => 'required|email|unique:users,email',
+    //         'mobile'   => 'nullable|string|max:20',
+    //         'password' => 'required|string|min:6|confirmed',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status'  => false,
+    //             'message' => 'Validation failed.',
+    //             'errors'  => $validator->errors()
+    //         ], 422);
+    //     }
+
+    //     $validated = $validator->validated();
+
+    //     DB::beginTransaction();
+
+    //     try {
+    //         $user = User::create([
+    //             'name'     => $validated['name'],
+    //             'email'    => $validated['email'],
+    //             'mobile'   => $validated['mobile'] ?? null,
+    //             'password' => bcrypt($validated['password']),
+    //         ]);
+    //         // Assign role to user (API guard)
+    //         $role = Role::where('name', 'user')
+    //             ->where('guard_name', 'api')
+    //             ->firstOrFail();
+
+    //         $user->assignRole($role);
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status'  => true,
+    //             'message' => 'User registered successfully.',
+    //             'data'    => [
+    //                 'id'    => $user->id,
+    //                 'name'  => $user->name,
+    //                 'email' => $user->email,
+    //                 'roles' => $user->getRoleNames(),
+    //             ]
+    //         ], 201);
+    //     } catch (\Throwable $e) {
+    //         DB::rollBack();
+    //         return response()->json([
+    //             'status'  => false,
+    //             'message' => 'User registration failed.',
+    //         ], 500);
+    //     }
+    // }
 }
