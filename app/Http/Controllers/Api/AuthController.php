@@ -122,7 +122,7 @@ class AuthController extends Controller
                 'password' => bcrypt($validated['password']),
             ]);
             // Assign role to user (API guard)
-            $role = Role::where('name', 'general')
+            $role = Role::where('name', 'user')
                 ->where('guard_name', 'api')
                 ->firstOrFail();
 

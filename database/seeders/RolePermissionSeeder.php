@@ -213,14 +213,19 @@ class RolePermissionSeeder extends Seeder
         //     );
         // }
 
-        $apiAdmin = Role::firstOrCreate([
-            'name'       => 'admin',
-            'guard_name' => 'api',
-        ]);
 
-        $apiAdmin->syncPermissions(
-            Permission::where('guard_name', 'api')->get()
-        );
+        $roles = ['admin', 'user'];
+
+        foreach ($roles as $role) {
+            Role::firstOrCreate([
+                'name'       => $role,
+                'guard_name' => 'api',
+            ]);
+        }
+
+        // $roles->syncPermissions(
+        //     Permission::where('guard_name', 'api')->get()
+        // );
 
         // $permissionGroups = PermissionGroup::firstOrCreate([
         //     'group_name' => 'User Management',
