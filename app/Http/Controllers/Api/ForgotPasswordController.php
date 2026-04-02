@@ -10,6 +10,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Mail\PasswordOtpMail;
+use Illuminate\Support\Facades\Mail;
 
 class ForgotPasswordController extends Controller
 {
@@ -19,7 +21,7 @@ class ForgotPasswordController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|exists:users,email',
         ]);
-        
+
         if ($validator->fails()) {
             return response()->json([
                 'status'  => false,
@@ -41,7 +43,8 @@ class ForgotPasswordController extends Controller
             ]
         );
 
-        SendPasswordOtpMailJob::dispatch($user->email, (string) $otp);
+        // Queue email
+        Mail::to($user->email)->queue(new PasswordOtpMail($otp));
 
         return response()->json([
             'status' => true,

@@ -93,7 +93,7 @@
                 {{ $otp }}
             </div>
 
-            <p class="expiry">This code will expire in 10 minutes.</p>
+            <p class="expiry">This code will expire in 3 minutes.</p>
 
             <p>If you didn't request this, you can safely ignore this email.</p>
         </div>

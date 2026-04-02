@@ -45,7 +45,7 @@
                         </div>
 
                         <p style="font-size:12px; color:#6b7280; margin:0 0 10px;">
-                            This OTP expires in <strong>10 minutes</strong>.
+                            This OTP expires in <strong>3 minutes</strong>.
                         </p>
 
                         <p style="font-size:12px; color:#6b7280; margin:0;">

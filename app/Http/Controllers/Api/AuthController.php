@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendRegisterOtpMailJob;
+use App\Mail\RegisterOtpMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -118,36 +120,42 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         DB::beginTransaction();
-        try {
-            $otp = rand(1000, 9999);
 
-            $existingUser = User::where('email', $request->email)->first();
-            if ($existingUser) {
-                if ($existingUser->is_verified) {
-                    DB::rollBack();
+        try {
+            $otp  = random_int(1000, 9999);
+            $role = Role::where('name', 'user')->first();
+
+            $user = User::where('email', $request->email)->first();
+
+            // ================= EXISTING USER =================
+            if ($user) {
+
+                if ($user->is_verified) {
                     return response()->json([
                         'status' => false,
                         'message' => 'This email is already registered.',
                     ], 409);
                 }
 
-                $existingUser->forceFill([
+                $user->update([
                     'password' => Hash::make($request->password),
                     'otp' => $otp,
-                    'otp_expires_at' => now()->addMinutes(1),
+                    'otp_expires_at' => now()->addMinutes(3),
                     'is_verified' => false,
-                ])->save();
+                ]);
 
-                $role = Role::where('name', 'user')->first();
-                if ($role) {
-                    $existingUser->assignRole($role);
+                if ($role && !$user->hasRole('user')) {
+                    $user->assignRole($role);
                 }
 
-                SendRegisterOtpMailJob::dispatch($existingUser->email, (string) $otp);
+                Mail::to($user->email)->queue(new RegisterOtpMail($otp));
 
                 DB::commit();
 
@@ -157,20 +165,20 @@ class AuthController extends Controller
                 ], 200);
             }
 
+            // ================= NEW USER =================
             $user = User::create([
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'otp' => $otp,
-                'otp_expires_at' => now()->addMinutes(1),
+                'otp_expires_at' => now()->addMinutes(3), // consistent
                 'is_verified' => false,
             ]);
 
-            $role = Role::where('name', 'user')->first();
             if ($role) {
                 $user->assignRole($role);
             }
 
-            SendRegisterOtpMailJob::dispatch($user->email, (string) $otp);
+            Mail::to($user->email)->queue(new RegisterOtpMail($otp));
 
             DB::commit();
 
@@ -180,7 +188,12 @@ class AuthController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['status' => false, 'message' => 'Registration failed.'], 500);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Registration failed.',
+                // 'error' => $e->getMessage(), // enable in local
+            ], 500);
         }
     }
 
@@ -285,7 +298,7 @@ class AuthController extends Controller
                 'is_verified' => false,
             ])->save();
 
-            SendRegisterOtpMailJob::dispatch($user->email, (string) $otp);
+            Mail::to($user->email)->queue(new RegisterOtpMail($otp));
 
             return response()->json([
                 'status' => true,
