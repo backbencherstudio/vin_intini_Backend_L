@@ -21,6 +21,9 @@ Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword']);
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->name('api.register.verify-otp');
+Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])
+    ->middleware('throttle:3,1')
+    ->name('api.register.resend-otp');
 
 
 Route::middleware('auth:api')->group(function () {

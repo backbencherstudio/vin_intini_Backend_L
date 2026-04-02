@@ -115,7 +115,7 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email'    => 'required|email|unique:users,email',
+            'email'    => 'required|email',
             'password' => 'required|string|min:6',
         ]);
 
@@ -127,12 +127,44 @@ class AuthController extends Controller
         try {
             $otp = rand(1000, 9999);
 
+            $existingUser = User::where('email', $request->email)->first();
+            if ($existingUser) {
+                if ($existingUser->is_verified) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'This email is already registered.',
+                    ], 409);
+                }
+
+                $existingUser->forceFill([
+                    'password' => Hash::make($request->password),
+                    'otp' => $otp,
+                    'otp_expires_at' => now()->addMinutes(1),
+                    'is_verified' => false,
+                ])->save();
+
+                $role = Role::where('name', 'user')->first();
+                if ($role) {
+                    $existingUser->assignRole($role);
+                }
+
+                Mail::to($existingUser->email)->send(new RegisterOtpMail($otp));
+
+                DB::commit();
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'OTP resent to your email.',
+                ], 200);
+            }
+
             $user = User::create([
-                'email'          => $request->email,
-                'password'       => Hash::make($request->password),
-                'otp'            => $otp,
-                'otp_expires_at' => now()->addMinutes(10),
-                'is_verified'    => false,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'otp' => $otp,
+                'otp_expires_at' => now()->addMinutes(1),
+                'is_verified' => false,
             ]);
 
             $role = Role::where('name', 'user')->first();
@@ -195,6 +227,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'OTP expired',
+                'can_resend_otp' => true,
             ], 400);
         }
 
@@ -214,6 +247,58 @@ class AuthController extends Controller
             'token_type' => 'bearer',
             'expires_in' => auth('api')->factory()->getTTL() * 60,
         ]);
+    }
+
+    public function resendRegisterOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        if ($user->is_verified) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Email already verified.',
+            ], 200);
+        }
+
+        try {
+            $otp = rand(1000, 9999);
+
+            $user->forceFill([
+                'otp' => $otp,
+                'otp_expires_at' => now()->addMinutes(1),
+                'is_verified' => false,
+            ])->save();
+
+            Mail::to($user->email)->send(new RegisterOtpMail($otp));
+
+            return response()->json([
+                'status' => true,
+                'message' => 'OTP resent to your email.',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to resend OTP.',
+            ], 500);
+        }
     }
 
     // public function register(Request $request)

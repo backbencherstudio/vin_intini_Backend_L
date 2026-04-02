@@ -98,7 +98,7 @@ final class ApiRoutes
         tags: ['Auth'],
         operationId: 'post_api_register',
         summary: 'AuthController@register',
-        description: 'Registers a user and sends a 4-digit OTP to the email for verification.',
+        description: 'Registers a user and sends a 4-digit OTP to the email for verification. If the email already exists but is not verified, it will resend the OTP.',
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
@@ -180,6 +180,29 @@ final class ApiRoutes
         ],
     )]
     public function postRegisterVerifyOtp(): void {}
+
+    #[OA\Post(
+        path: '/api/register/resend-otp',
+        tags: ['Auth'],
+        operationId: 'post_api_register_resend_otp',
+        summary: 'AuthController@resendRegisterOtp',
+        description: 'Resends the registration OTP (use when OTP expired).',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['email'],
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'user@example.com'),
+                ],
+            ),
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'OK'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ],
+    )]
+    public function postRegisterResendOtp(): void {}
 
     #[OA\Post(
         path: '/api/send-otp',
