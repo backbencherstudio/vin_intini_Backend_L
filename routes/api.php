@@ -12,18 +12,19 @@ Route::get('/login', function () {
         'success' => false,
         'message' => 'Please login to continue',
     ], 401);
-})->name('api.login');
+})->name('login');
 
 Route::post('/login', [AuthController::class, 'login']);
 
+//User Forgot Password Routes
 Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword']);
+
+//User Register Routes
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
-Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->name('api.register.verify-otp');
-Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])
-    ->middleware('throttle:3,1')
-    ->name('api.register.resend-otp');
+Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp']);
+Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])->middleware('throttle:3,1');
 
 
 Route::middleware('auth:api')->group(function () {
@@ -36,8 +37,7 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
 
     Route::middleware('auth:api')->post('/update-password', [UserController::class, 'updatePass']);
     Route::middleware('auth:api')->put('/profile-update', [UserController::class, 'profileUpdate']);
-
 });
 
-require __DIR__.'/niaz.php';
-require __DIR__.'/shanto.php';
+require __DIR__ . '/niaz.php';
+require __DIR__ . '/shanto.php';
