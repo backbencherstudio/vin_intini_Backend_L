@@ -289,12 +289,22 @@ class AuthController extends Controller
             ], 200);
         }
 
+        if ($user->otp_expires_at && now()->lt($user->otp_expires_at)) {
+
+            $remainingSeconds = (int) ceil(now()->diffInSeconds($user->otp_expires_at, false));
+
+            return response()->json([
+                'status' => false,
+                'message' => "Please wait {$remainingSeconds} seconds before requesting a new OTP.",
+            ], 429);
+        }
+
         try {
             $otp = rand(1000, 9999);
 
             $user->forceFill([
                 'otp' => $otp,
-                'otp_expires_at' => now()->addMinutes(1),
+                'otp_expires_at' => now()->addMinutes(3),
                 'is_verified' => false,
             ])->save();
 
