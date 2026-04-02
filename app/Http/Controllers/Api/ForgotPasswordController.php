@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendPasswordOtpMailJob;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\PasswordOtpMail;
 use Carbon\Carbon;
-use Illuminate\Support\Str;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -43,8 +41,7 @@ class ForgotPasswordController extends Controller
             ]
         );
 
-        // Queue email
-        Mail::to($user->email)->queue(new PasswordOtpMail($otp));
+        SendPasswordOtpMailJob::dispatch($user->email, (string) $otp);
 
         return response()->json([
             'status' => true,

@@ -3,15 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Mail\RegisterOtpMail;
+use App\Jobs\SendRegisterOtpMailJob;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -149,7 +147,7 @@ class AuthController extends Controller
                     $existingUser->assignRole($role);
                 }
 
-                Mail::to($existingUser->email)->send(new RegisterOtpMail($otp));
+                SendRegisterOtpMailJob::dispatch($existingUser->email, (string) $otp);
 
                 DB::commit();
 
@@ -172,7 +170,7 @@ class AuthController extends Controller
                 $user->assignRole($role);
             }
 
-            Mail::to($user->email)->send(new RegisterOtpMail($otp));
+            SendRegisterOtpMailJob::dispatch($user->email, (string) $otp);
 
             DB::commit();
 
@@ -287,7 +285,7 @@ class AuthController extends Controller
                 'is_verified' => false,
             ])->save();
 
-            Mail::to($user->email)->send(new RegisterOtpMail($otp));
+            SendRegisterOtpMailJob::dispatch($user->email, (string) $otp);
 
             return response()->json([
                 'status' => true,
