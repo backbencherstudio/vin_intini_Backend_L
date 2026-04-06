@@ -17,7 +17,7 @@ return new class extends Migration
             $table->text('description');
             $table->string('logo')->nullable();
             $table->string('cover_photo')->nullable();
-            $table->json('industry'); // Multi-select up to 3
+            $table->json('industry')->nullable(); // Multi-select up to 3
             $table->string('location')->nullable();
             $table->text('rules')->nullable();
 
