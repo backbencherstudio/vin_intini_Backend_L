@@ -14,11 +14,22 @@ return new class extends Migration
         Schema::create('groups', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->text('description')->nullable();
-            $table->foreignId('creator_id')->constrained('users')->onDelete('cascade'); // Group creator_id
+            $table->text('description');
             $table->string('logo')->nullable();
             $table->string('cover_photo')->nullable();
-            $table->boolean('is_private')->default(false);
+            $table->json('industry'); // Multi-select up to 3
+            $table->string('location')->nullable();
+            $table->text('rules')->nullable();
+
+            $table->foreignId('creator_id')->constrained('users')->onDelete('cascade');
+
+            // Group Type & Discoverability (Enums for validation)
+            $table->enum('type', ['public', 'private'])->default('public');
+            $table->enum('discoverability', ['listed', 'unlisted'])->default('listed');
+
+            // Permissions (Boolean checkboxes)
+            $table->boolean('allow_member_invites')->default(true);
+            $table->boolean('require_post_approval')->default(false);
             $table->timestamps();
         });
     }
