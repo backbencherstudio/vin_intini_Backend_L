@@ -18,5 +18,6 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/group-create', [GroupController::class, 'store']);
 
     Route::post('/group/join', [GroupController::class, 'joinGroup']);
+    Route::post('/group/leave', [GroupController::class, 'leaveGroup']);
 
 });

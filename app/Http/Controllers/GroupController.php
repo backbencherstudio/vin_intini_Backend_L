@@ -76,4 +76,36 @@ class GroupController extends Controller
             'group_name' => $group->name
         ], 200);
     }
+
+    public function leaveGroup(Request $request)
+    {
+        $request->validate([
+            'group_id' => 'required|exists:groups,id'
+        ]);
+
+        $group = Group::findOrFail($request->group_id);
+
+        $isMember = $group->members()->where('user_id', auth()->id())->exists();
+
+        if (!$isMember) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not a member of this group'
+            ], 400);
+        }
+
+        if ($group->creator_id === auth()->id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Creator cannot leave the group. You must delete the group or transfer ownership.'
+            ], 403);
+        }
+
+        $group->members()->detach(auth()->id());
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Successfully left the group'
+        ], 200);
+    }
 }
