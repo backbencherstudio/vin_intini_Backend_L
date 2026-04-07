@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Group;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class GroupController extends Controller
 {
@@ -69,18 +70,18 @@ class GroupController extends Controller
 
         if ($group->type === 'private' && !$isMember && !$isAdmin) {
             return response()->json([
-            'status' => 'error',
-            'message' => 'This is a private group. You must be a member to see details.',
-            'data' => [
-                'group' => [
-                    'id' => $group->id,
-                    'name' => $group->name,
-                    'type' => $group->type,
-                    'members_count' => $group->members_count, 
-                ],
-                'is_current_user_member' => false
-            ]
-        ], 403);
+                'status' => 'error',
+                'message' => 'This is a private group. You must be a member to see details.',
+                'data' => [
+                    'group' => [
+                        'id' => $group->id,
+                        'name' => $group->name,
+                        'type' => $group->type,
+                        'members_count' => $group->members_count,
+                    ],
+                    'is_current_user_member' => false
+                ]
+            ], 403);
         }
 
         return response()->json([
@@ -155,15 +156,15 @@ class GroupController extends Controller
 
 
 
-
-    public function joinGroup(Request $request)
+    public function joinGroup(Request $request, $group_id = null)
     {
-        $request->validate([
-            'group_id' => 'required|exists:groups,id'
-        ]);
+        $targetGroupId = $group_id ?? $request->group_id;
 
-        $groupId = $request->group_id;
-        $group = Group::findOrFail($groupId);
+        if (!$targetGroupId) {
+            return response()->json(['status' => 'error', 'message' => 'Group ID is required'], 422);
+        }
+
+        $group = Group::findOrFail($targetGroupId);
 
         if ($group->members()->where('user_id', auth()->id())->exists()) {
             return response()->json([
@@ -180,6 +181,32 @@ class GroupController extends Controller
             'group_name' => $group->name
         ], 200);
     }
+
+
+    // public function joinGroup(Request $request)
+    // {
+    //     $request->validate([
+    //         'group_id' => 'required|exists:groups,id'
+    //     ]);
+
+    //     $groupId = $request->group_id;
+    //     $group = Group::findOrFail($groupId);
+
+    //     if ($group->members()->where('user_id', auth()->id())->exists()) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'You are already a member of this group'
+    //         ], 400);
+    //     }
+
+    //     $group->members()->attach(auth()->id(), ['role' => 'member']);
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Joined successfully!',
+    //         'group_name' => $group->name
+    //     ], 200);
+    // }
 
     public function leaveGroup(Request $request)
     {
@@ -211,5 +238,26 @@ class GroupController extends Controller
             'status' => 'success',
             'message' => 'Successfully left the group'
         ], 200);
+    }
+
+
+    public function generateInviteLink($id)
+    {
+        $group = Group::findOrFail($id);
+
+        if (auth()->id() !== $group->creator_id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $inviteUrl = URL::temporarySignedRoute(
+            'group.invite.join',
+            now()->addDays(7),
+            ['group_id' => $group->id]
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'invite_link' => $inviteUrl
+        ]);
     }
 }
