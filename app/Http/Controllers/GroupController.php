@@ -155,6 +155,44 @@ class GroupController extends Controller
     }
 
 
+    public function myCreatedGroups(Request $request)
+    {
+        $userId = auth()->id();
+
+        $query = Group::where('creator_id', $userId)
+            ->withCount('members');
+
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where('name', 'LIKE', "%{$search}%");
+        }
+
+        $totalCreated = $query->count();
+
+        $groups = $query->latest()->paginate(10);
+
+        if ($groups->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'You haven’t created any groups yet or No groups found matching your search criteria.',
+                'total_created_groups_count' => $totalCreated,
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'total_created_groups_count' => $totalCreated,
+            'data' => $groups
+        ], 200);
+    }
+
+
+
+
+
+
+
 
     public function joinGroup(Request $request, $group_id = null)
     {
@@ -207,6 +245,7 @@ class GroupController extends Controller
     //         'group_name' => $group->name
     //     ], 200);
     // }
+
 
     public function leaveGroup(Request $request)
     {
