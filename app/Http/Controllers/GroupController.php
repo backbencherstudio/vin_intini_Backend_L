@@ -187,7 +187,7 @@ class GroupController extends Controller
         ], 200);
     }
 
-    public function joinedGroups(Request $request)
+    public function myJoinedGroups(Request $request)
     {
         $user = auth()->user();
 
