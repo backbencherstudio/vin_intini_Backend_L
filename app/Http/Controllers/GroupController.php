@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Group;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class GroupController extends Controller
 {
@@ -51,6 +52,70 @@ class GroupController extends Controller
             'data' => $group->load('creator')
         ], 201);
     }
+
+    public function update(Request $request, $id)
+    {
+        $group = Group::findOrFail($id);
+
+        if ($group->creator_id !== auth()->id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized! You can only edit your own groups.'
+            ], 403);
+        }
+
+        $input = $request->all();
+        if (isset($input['industry']) && is_string($input['industry']) && !empty($input['industry'])) {
+            $input['industry'] = array_map('trim', explode(',', $input['industry']));
+        }
+        $request->merge($input);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255|unique:groups,name,' . $id,
+            'description' => 'sometimes|required|string|max:2500',
+            'industry' => 'nullable|array|max:3',
+            'location' => 'nullable|string|max:255',
+            'rules' => 'nullable|string|max:2500',
+            'type' => 'sometimes|required|in:public,private',
+            'discoverability' => 'sometimes|required|in:listed,unlisted',
+            'allow_member_invites' => 'nullable',
+            'require_post_approval' => 'nullable',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'cover_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+        ]);
+
+        if ($request->hasFile('logo')) {
+            if ($group->logo && Storage::disk('public')->exists($group->logo)) {
+                Storage::disk('public')->delete($group->logo);
+            }
+            $validated['logo'] = $request->file('logo')->store('group_logos', 'public');
+        }
+
+        if ($request->hasFile('cover_photo')) {
+            if ($group->cover_photo && Storage::disk('public')->exists($group->cover_photo)) {
+                Storage::disk('public')->delete($group->cover_photo);
+            }
+            $validated['cover_photo'] = $request->file('cover_photo')->store('group_covers', 'public');
+        }
+
+        if ($request->has('allow_member_invites')) {
+            $validated['allow_member_invites'] = filter_var($request->allow_member_invites, FILTER_VALIDATE_BOOLEAN);
+        }
+        if ($request->has('require_post_approval')) {
+            $validated['require_post_approval'] = filter_var($request->require_post_approval, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $group->update($validated);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Group updated successfully!',
+            'data' => $group->fresh()
+        ], 200);
+    }
+
+
+
 
     public function joinGroup(Request $request)
     {
