@@ -53,6 +53,45 @@ class GroupController extends Controller
         ], 201);
     }
 
+    public function show(Request $request, $id)
+    {
+        $group = Group::with(['creator', 'members' => function ($query) {
+            $query->limit(10);
+        }])
+            ->withCount('members')
+            ->findOrFail($id);
+
+        $user = $request->user();
+
+        $isMember = $user ? $group->members()->where('user_id', $user->id)->exists() : false;
+
+        $isAdmin = $user ? ($group->creator_id === $user->id) : false;
+
+        if ($group->type === 'private' && !$isMember && !$isAdmin) {
+            return response()->json([
+            'status' => 'error',
+            'message' => 'This is a private group. You must be a member to see details.',
+            'data' => [
+                'group' => [
+                    'id' => $group->id,
+                    'name' => $group->name,
+                    'type' => $group->type,
+                    'members_count' => $group->members_count, 
+                ],
+                'is_current_user_member' => false
+            ]
+        ], 403);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'group' => $group,
+                'is_current_user_member' => $isMember
+            ]
+        ], 200);
+    }
+
     public function update(Request $request, $id)
     {
         $group = Group::findOrFail($id);
