@@ -187,6 +187,41 @@ class GroupController extends Controller
         ], 200);
     }
 
+    public function joinedGroups(Request $request)
+    {
+        $user = auth()->user();
+
+        $baseQuery = $user->groups()->where('groups.creator_id', '!=', $user->id);
+
+        $totalJoinedEver = (clone $baseQuery)->count();
+
+        $query = $baseQuery
+            ->with(['creator:id,first_name,last_name,email'])
+            ->withCount('members');
+
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where('name', 'LIKE', "%{$search}%");
+        }
+
+        $groups = $query->latest()->paginate(10);
+
+        if ($groups->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => $request->has('search') ? 'No groups match your search.' : 'You haven’t joined any groups yet.',
+                'total_joined_count' => $totalJoinedEver,
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'total_joined_count' => $totalJoinedEver,
+            'data' => $groups
+        ], 200);
+    }
+
 
 
 

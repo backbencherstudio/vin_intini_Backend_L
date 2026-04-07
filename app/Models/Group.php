@@ -12,7 +12,7 @@ class Group extends Model
     protected $fillable = [
         'name',
         'description',
-        'logo', 
+        'logo',
         'cover_photo',
         'industry',
         'location',
@@ -40,4 +40,16 @@ class Group extends Model
     {
         return $this->belongsTo(User::class, 'creator_id');
     }
+
+    // public function getLogoUrlAttribute()
+    // {
+    //     return $this->logo ? asset('storage/' . $this->logo) : null;
+    // }
+
+    // public function getCoverPhotoUrlAttribute()
+    // {
+    //     return $this->cover_photo ? asset('storage/' . $this->cover_photo) : null;
+    // }
+
+    // protected $appends = ['logo_url', 'cover_photo_url'];
 }
