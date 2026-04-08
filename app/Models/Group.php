@@ -32,7 +32,6 @@ class Group extends Model
 
     public function members()
     {
-        // Your existing pivot table: group_users
         return $this->belongsToMany(User::class, 'group_users')->withPivot('role')->withTimestamps();
     }
 

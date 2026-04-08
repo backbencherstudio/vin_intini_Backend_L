@@ -50,15 +50,19 @@ class GroupController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Group created successfully!',
-            'data' => $group->load('creator')
+            'data' => $group->load(['creator:id,first_name,last_name,email'])
         ], 201);
     }
 
+
     public function show(Request $request, $id)
     {
-        $group = Group::with(['creator', 'members' => function ($query) {
-            $query->limit(10);
-        }])
+        $group = Group::with([
+            'creator:id,first_name,last_name,email',
+            'members' => function ($query) {
+                $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
+            }
+        ])
             ->withCount('members')
             ->findOrFail($id);
 
@@ -92,6 +96,7 @@ class GroupController extends Controller
             ]
         ], 200);
     }
+
 
     public function update(Request $request, $id)
     {
@@ -159,33 +164,33 @@ class GroupController extends Controller
     {
         $userId = auth()->id();
 
-        $query = Group::where('creator_id', $userId)
-            ->withCount('members');
+        $totalCreatedEver = Group::where('creator_id', $userId)->count();
+
+        $query = Group::where('creator_id', $userId)->withCount('members');
 
         if ($request->has('search')) {
             $search = $request->input('search');
             $query->where('name', 'LIKE', "%{$search}%");
         }
 
-        $totalCreated = $query->count();
-
         $groups = $query->latest()->paginate(10);
 
         if ($groups->isEmpty()) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'You haven’t created any groups yet or No groups found matching your search criteria.',
-                'total_created_groups_count' => $totalCreated,
+                'message' => $request->has('search') ? 'No groups found matching your search.' : 'You haven’t created any groups yet.',
+                'total_created_groups_count' => $totalCreatedEver,
                 'data' => []
             ], 200);
         }
 
         return response()->json([
             'status' => 'success',
-            'total_created_groups_count' => $totalCreated,
+            'total_created_groups_count' => $totalCreatedEver,
             'data' => $groups
         ], 200);
     }
+
 
     public function myJoinedGroups(Request $request)
     {
@@ -221,12 +226,6 @@ class GroupController extends Controller
             'data' => $groups
         ], 200);
     }
-
-
-
-
-
-
 
 
     public function joinGroup(Request $request, $group_id = null)
