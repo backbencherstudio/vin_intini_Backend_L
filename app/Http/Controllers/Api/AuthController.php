@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 
 class AuthController extends Controller
 {
@@ -94,10 +96,27 @@ class AuthController extends Controller
 
     public function refresh()
     {
-        $token = auth('api')->refresh();
-        $user = auth('api')->user();
+        try {
+            $token = auth('api')->refresh();
 
-        return $this->respondWithToken($token, $user);
+            $user = auth('api')->user();
+
+            return $this->respondWithToken($token, $user);
+
+        } catch (TokenExpiredException $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Refresh token expired. Please login again.'
+            ], 401);
+
+        } catch (JWTException $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Token invalid or not provided'
+            ], 401);
+        }
     }
 
 
