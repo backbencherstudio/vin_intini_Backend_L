@@ -59,4 +59,9 @@ class User extends Authenticatable implements JWTSubject
             ->withPivot('role')
             ->withTimestamps();
     }
+
+    public function socialAccounts()
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
 }

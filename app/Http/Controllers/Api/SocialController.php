@@ -6,13 +6,24 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
+use App\Models\SocialAccount;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SocialController extends Controller
 {
+    private const ALLOWED_PROVIDERS = ['google', 'facebook', 'apple'];
+
     public function redirect($provider)
     {
+        if (!in_array($provider, self::ALLOWED_PROVIDERS, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unsupported social provider',
+            ], 422);
+        }
+
         $url = Socialite::driver($provider)
             ->stateless()
             ->redirect()
@@ -27,50 +38,63 @@ class SocialController extends Controller
     public function callback($provider)
     {
         try {
-            $socialUser = Socialite::driver($provider)->stateless()->user();
-
-            $email = $socialUser->getEmail();
-
-            if (!$email) {
-                $email = $provider . '_' . $socialUser->getId() . '@noemail.com';
+            if (!in_array($provider, self::ALLOWED_PROVIDERS, true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unsupported social provider',
+                ], 422);
             }
 
-            $user = User::where('provider', $provider)
-                ->where('provider_id', $socialUser->getId())
-                ->first();
+            $socialUser = Socialite::driver($provider)->stateless()->user();
+            $providerId = (string) $socialUser->getId();
 
-            if (!$user) {
-                $user = User::where('email', $email)->first();
+            $user = DB::transaction(function () use ($provider, $providerId, $socialUser) {
+                $socialAccount = SocialAccount::with('user')
+                    ->where('provider', $provider)
+                    ->where('provider_id', $providerId)
+                    ->first();
 
-                if ($user) {
-                    $user->update([
-                        'provider' => $provider,
-                        'provider_id' => $socialUser->getId(),
-                    ]);
-                } else {
-                    $name = $socialUser->getName();
+                if ($socialAccount && $socialAccount->user) {
+                    return $socialAccount->user;
+                }
 
-                    $firstName = null;
-                    $lastName = null;
+                $email = $socialUser->getEmail();
+                $user = null;
 
-                    if ($name) {
-                        $parts = explode(' ', $name);
-                        $firstName = $parts[0] ?? null;
-                        $lastName = $parts[1] ?? null;
-                    }
+                if ($email) {
+                    $user = User::where('email', $email)->first();
+                }
+
+                if (!$user) {
+                    $name = trim((string) $socialUser->getName());
+                    $parts = $name !== '' ? preg_split('/\s+/', $name) : [];
 
                     $user = User::create([
-                        'first_name' => $firstName,
-                        'last_name' => $lastName,
-                        'email' => $email,
-                        'is_verified' => 1,
-                        'provider' => $provider,
-                        'provider_id' => $socialUser->getId(),
-                        'profile_image' => $socialUser->getAvatar() ?? null,
-                        'password' => bcrypt(Str::random(16)),
+                        'first_name' => $parts[0] ?? null,
+                        'last_name' => isset($parts[1]) ? implode(' ', array_slice($parts, 1)) : null,
+                        'email' => $email ?: sprintf('%s_%s@noemail.com', $provider, $providerId),
+                        'is_verified' => true,
+                        'profile_image' => $socialUser->getAvatar() ?: null,
+                        'password' => Str::random(32),
+                    ]);
+                } elseif (!$user->profile_image && $socialUser->getAvatar()) {
+                    $user->update([
+                        'profile_image' => $socialUser->getAvatar(),
                     ]);
                 }
-            }
+
+                SocialAccount::updateOrCreate(
+                    [
+                        'provider' => $provider,
+                        'provider_id' => $providerId,
+                    ],
+                    [
+                        'user_id' => $user->id,
+                    ]
+                );
+
+                return $user;
+            });
 
             $token = JWTAuth::fromUser($user);
 
