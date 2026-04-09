@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ForgotPasswordController;
-
+use App\Http\Controllers\Api\SocialController;
 
 Route::get('/login', function () {
     return response()->json([
@@ -25,6 +25,9 @@ Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword'
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp']);
 Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])->middleware('throttle:3,1');
+// Social Authentication Routes
+Route::get('/auth/{provider}', [SocialController::class, 'redirect']);
+Route::get('/auth/{provider}/callback', [SocialController::class, 'callback']);
 
 
 Route::middleware('auth:api')->group(function () {
