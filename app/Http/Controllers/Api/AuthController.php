@@ -66,9 +66,7 @@ class AuthController extends Controller
     {
         $user = auth('api')->user();
 
-        $user->load('roles');
-
-        // $permissions = $user->getAllPermissions()->pluck('name');
+        $user->load(['roles', 'profile']);
 
         return response()->json([
             'success' => true,
@@ -76,13 +74,50 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
+                'title' => $user->title,
                 'email' => $user->email,
+                'profile_image_url' => $user->profile_image ? asset('storage/' . $user->profile_image) : null,
                 'roles' => $user->roles->pluck('name')->implode(', '),
-                // 'roles' => $user->roles->pluck('name'),
-                // 'permissions' => $permissions,
+
+                'profile' => $user->profile ? [
+                    'country'           => $user->profile->country,
+                    'postal_code'       => $user->profile->postal_code,
+                    'profession'        => $user->profile->profession,
+                    'highest_degree'    => $user->profile->highest_degree,
+                    'study_category'    => $user->profile->study_category,
+                    'study_subcategory' => $user->profile->study_subcategory,
+                    'institution'       => $user->profile->institution,
+                    'graduation_year'   => $user->profile->graduation_year,
+                    'interests'         => $user->profile->interests,
+                    'about'             => $user->profile->about,
+                ] : null, 
             ],
         ]);
     }
+
+    // public function me()
+    // {
+    //     $user = auth('api')->user();
+
+    //     $user->load('roles');
+
+    //     // $permissions = $user->getAllPermissions()->pluck('name');
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'user' => [
+    //             'id' => $user->id,
+    //             'first_name' => $user->first_name,
+    //             'last_name' => $user->last_name,
+    //             'title' => $user->title,
+    //             'email' => $user->email,
+    //             'profile_image_url' => asset('storage/' . $user->profile_image),
+    //             'roles' => $user->roles->pluck('name')->implode(', '),
+    //             // 'roles' => $user->roles->pluck('name'),
+    //             // 'permissions' => $permissions,
+    //         ],
+    //     ]);
+    // }
 
     public function logout()
     {
@@ -102,14 +137,12 @@ class AuthController extends Controller
             $user = auth('api')->user();
 
             return $this->respondWithToken($token, $user);
-
         } catch (TokenExpiredException $e) {
 
             return response()->json([
                 'success' => false,
                 'message' => 'Refresh token expired. Please login again.'
             ], 401);
-
         } catch (JWTException $e) {
 
             return response()->json([
