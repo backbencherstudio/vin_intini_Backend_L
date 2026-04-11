@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\SocialController;
+use App\Http\Controllers\Api\UserProfileController;
 
 Route::get('/login', function () {
     return response()->json([
@@ -34,13 +35,17 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
+
+    Route::post('/setup-profile', [UserProfileController::class, 'setupProfile'])
+        ->middleware('verified_user');
+
+    Route::middleware('profile_completed')->group(function () {
+        Route::middleware(['role:admin'])->group(function () {
+            Route::post('/update-password', [UserController::class, 'updatePass']);
+            Route::put('/profile-update', [UserController::class, 'profileUpdate']);
+        });
+
+        require __DIR__ . '/niaz.php';
+        require __DIR__ . '/shanto.php';
+    });
 });
-
-Route::middleware(['auth:api', 'role:admin'])->group(function () {
-
-    Route::middleware('auth:api')->post('/update-password', [UserController::class, 'updatePass']);
-    Route::middleware('auth:api')->put('/profile-update', [UserController::class, 'profileUpdate']);
-});
-
-require __DIR__ . '/niaz.php';
-require __DIR__ . '/shanto.php';

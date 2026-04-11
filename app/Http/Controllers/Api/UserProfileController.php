@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class UserProfileController extends Controller
 {
@@ -28,7 +27,7 @@ class UserProfileController extends Controller
             'about' => 'nullable|string|max:250',
         ]);
 
-        $user = Auth::user();
+        $user = $request->user();
 
         $professionArray = array_map('trim', explode(',', $request->profession));
         $interestsArray = array_map('trim', explode(',', $request->interests));

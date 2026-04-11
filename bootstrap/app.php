@@ -9,6 +9,8 @@ use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 use Illuminate\Http\Middleware\HandleCors;
+use App\Http\Middleware\EnsureProfileCompleted;
+use App\Http\Middleware\EnsureVerifiedUser;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'profile_completed' => EnsureProfileCompleted::class,
+            'verified_user' => EnsureVerifiedUser::class,
         ]);
     })
 

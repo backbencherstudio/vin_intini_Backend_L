@@ -10,6 +10,7 @@ use App\Models\SocialAccount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\ProfileImageService;
+use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SocialController extends Controller
@@ -81,6 +82,11 @@ class SocialController extends Controller
                     ]);
                 } elseif (!$user->profile_image && $avatarUrl !== '') {
                     $user->update(['profile_image' => $avatarUrl]);
+                }
+
+                $role = Role::where('name', 'user')->where('guard_name', 'api')->first();
+                if ($role && !$user->hasRole('user')) {
+                    $user->assignRole($role);
                 }
 
                 SocialAccount::updateOrCreate(
