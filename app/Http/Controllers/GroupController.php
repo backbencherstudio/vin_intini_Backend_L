@@ -201,7 +201,7 @@ class GroupController extends Controller
         $totalJoinedEver = (clone $baseQuery)->count();
 
         $query = $baseQuery
-            ->with(['creator:id,first_name,last_name,email'])
+            ->with(['creator:id,first_name,last_name,email,profile_image'])
             ->withCount('members');
 
         if ($request->has('search')) {
