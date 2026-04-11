@@ -23,5 +23,10 @@ class UserProfile extends Model
     protected $casts = [
         'profession' => 'array',
         'interests' => 'array',
-    ];
+];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

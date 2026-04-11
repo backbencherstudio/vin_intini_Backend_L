@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
 use Illuminate\Support\Facades\Route;
 
@@ -9,6 +10,11 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {});
 
 
 Route::middleware(['auth:api', 'role:user'])->group(function () {
+
+    //profile update route
+    Route::post('/setup-profile', [UserProfileController::class, 'setupProfile']);
+
+
 
     //group routes
     Route::get('/groups', [GroupController::class, 'index']);
