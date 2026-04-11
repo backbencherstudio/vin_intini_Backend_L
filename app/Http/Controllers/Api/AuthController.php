@@ -76,7 +76,7 @@ class AuthController extends Controller
                 'last_name' => $user->last_name,
                 'title' => $user->title,
                 'email' => $user->email,
-                'profile_image_url' => $user->profile_image ? asset('storage/' . $user->profile_image) : null,
+                'profile_image_url' => $user->profile_image_url,
                 'roles' => $user->roles->pluck('name')->implode(', '),
 
                 'profile' => $user->profile ? [
@@ -90,34 +90,11 @@ class AuthController extends Controller
                     'graduation_year'   => $user->profile->graduation_year,
                     'interests'         => $user->profile->interests,
                     'about'             => $user->profile->about,
-                ] : null, 
+                ] : null,
             ],
         ]);
     }
 
-    // public function me()
-    // {
-    //     $user = auth('api')->user();
-
-    //     $user->load('roles');
-
-    //     // $permissions = $user->getAllPermissions()->pluck('name');
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'user' => [
-    //             'id' => $user->id,
-    //             'first_name' => $user->first_name,
-    //             'last_name' => $user->last_name,
-    //             'title' => $user->title,
-    //             'email' => $user->email,
-    //             'profile_image_url' => asset('storage/' . $user->profile_image),
-    //             'roles' => $user->roles->pluck('name')->implode(', '),
-    //             // 'roles' => $user->roles->pluck('name'),
-    //             // 'permissions' => $permissions,
-    //         ],
-    //     ]);
-    // }
 
     public function logout()
     {

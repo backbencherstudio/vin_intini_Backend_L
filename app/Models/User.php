@@ -14,6 +14,10 @@ class User extends Authenticatable implements JWTSubject
 
     use HasFactory, Notifiable, HasRoles;
 
+    protected $appends = [
+        'profile_image_url',
+    ];
+
     protected $fillable = [
         'first_name',
         'last_name',
@@ -67,5 +71,19 @@ class User extends Authenticatable implements JWTSubject
     public function profile()
     {
         return $this->hasOne(UserProfile::class);
+    }
+
+    public function getProfileImageUrlAttribute(): ?string
+    {
+        $value = $this->profile_image;
+        if (!$value) {
+            return null;
+        }
+
+        if (preg_match('/^https?:\\/\\//i', $value) === 1) {
+            return $value;
+        }
+
+        return asset('storage/' . ltrim($value, '/'));
     }
 }

@@ -9,8 +9,7 @@ use Throwable;
 use App\Models\Settings;
 use App\Http\Requests\Settings\UpdatePlatformSettingsRequest;
 use App\Models\User;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use App\Services\ProfileImageService;
 
 class SettingsController extends Controller
 {
@@ -26,9 +25,7 @@ class SettingsController extends Controller
                         'first_name'    => $user->first_name,
                         'last_name'     => $user->last_name,
                         'email'         => $user->email,
-                        'profile_image' => $user->profile_image
-                            ? asset('storage/' . $user->profile_image)
-                            : null, // null safe
+                        'profile_image' => $user->profile_image_url,
                         'new_order_e_notification' => $user->new_order_e_notification ?? false,
                     ],
                 ]
@@ -42,7 +39,7 @@ class SettingsController extends Controller
         }
     }
 
-    public function updateSettings(Request $request): JsonResponse
+    public function updateSettings(Request $request, ProfileImageService $profileImageService): JsonResponse
     {
         try {
             $user = $request->user();
@@ -57,28 +54,16 @@ class SettingsController extends Controller
             ]);
 
             if ($request->boolean('remove_image')) {
-                if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
-                    Storage::disk('public')->delete($user->profile_image);
-                }
+                $profileImageService->deleteIfLocal($user->profile_image);
 
                 $validated['profile_image'] = null;
             }
 
             if ($request->hasFile('profile_image')) {
-
-                if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
-                    Storage::disk('public')->delete($user->profile_image);
-                }
-
-                $filename = Str::uuid() . '.' . $request->file('profile_image')->extension();
-
-                $path = $request->file('profile_image')->storeAs(
-                    'uploads/admin',
-                    $filename,
-                    'public'
+                $validated['profile_image'] = $profileImageService->storeUploaded(
+                    $request->file('profile_image'),
+                    $user->profile_image,
                 );
-
-                $validated['profile_image'] = $path;
             }
 
             $user->update($validated);
@@ -91,9 +76,7 @@ class SettingsController extends Controller
                     'last_name' => $user->last_name,
                     'email' => $user->email,
                     'mobile' => $user->mobile,
-                    'profile_image' => $user->profile_image
-                        ? asset('storage/' . $user->profile_image)
-                        : null
+                    'profile_image' => $user->profile_image_url,
                 ]
             ], 200);
         } catch (Throwable $e) {

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Services\ProfileImageService;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SocialController extends Controller
@@ -35,7 +36,7 @@ class SocialController extends Controller
         ]);
     }
 
-    public function callback($provider)
+    public function callback($provider, ProfileImageService $profileImageService)
     {
         try {
             if (!in_array($provider, self::ALLOWED_PROVIDERS, true)) {
@@ -47,8 +48,9 @@ class SocialController extends Controller
 
             $socialUser = Socialite::driver($provider)->stateless()->user();
             $providerId = (string) $socialUser->getId();
+            $avatarUrl = (string) ($socialUser->getAvatar() ?: '');
 
-            $user = DB::transaction(function () use ($provider, $providerId, $socialUser) {
+            $user = DB::transaction(function () use ($provider, $providerId, $socialUser, $avatarUrl) {
                 $socialAccount = SocialAccount::with('user')
                     ->where('provider', $provider)
                     ->where('provider_id', $providerId)
@@ -74,13 +76,11 @@ class SocialController extends Controller
                         'last_name' => isset($parts[1]) ? implode(' ', array_slice($parts, 1)) : null,
                         'email' => $email ?: sprintf('%s_%s@noemail.com', $provider, $providerId),
                         'is_verified' => true,
-                        'profile_image' => $socialUser->getAvatar() ?: null,
+                        'profile_image' => $avatarUrl !== '' ? $avatarUrl : null,
                         'password' => Str::random(32),
                     ]);
-                } elseif (!$user->profile_image && $socialUser->getAvatar()) {
-                    $user->update([
-                        'profile_image' => $socialUser->getAvatar(),
-                    ]);
+                } elseif (!$user->profile_image && $avatarUrl !== '') {
+                    $user->update(['profile_image' => $avatarUrl]);
                 }
 
                 SocialAccount::updateOrCreate(
@@ -95,6 +95,14 @@ class SocialController extends Controller
 
                 return $user;
             });
+
+            if ($avatarUrl !== '' && (!$user->profile_image || preg_match('/^https?:\\/\\//i', (string) $user->profile_image) === 1)) {
+                $storedAvatarPath = $profileImageService->storeFromUrl($avatarUrl, $user->profile_image);
+                if ($storedAvatarPath) {
+                    $user->update(['profile_image' => $storedAvatarPath]);
+                    $user->refresh();
+                }
+            }
 
             $token = JWTAuth::fromUser($user);
 

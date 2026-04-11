@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 
 class UserProfileController extends Controller
 {
-    public function setupProfile(Request $request)
+    public function setupProfile(Request $request, ProfileImageService $profileImageService)
     {
         $request->validate([
             'first_name' => 'required|string',
@@ -35,7 +35,10 @@ class UserProfileController extends Controller
 
         $imagePath = $user->profile_image;
         if ($request->hasFile('profile_image')) {
-            $imagePath = $request->file('profile_image')->store('profile_photos', 'public');
+            $imagePath = $profileImageService->storeUploaded(
+                $request->file('profile_image'),
+                $user->profile_image,
+            );
         }
 
         $user->update([
