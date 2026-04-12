@@ -167,4 +167,130 @@ class UserExperienceController extends Controller
             'data' => $experience->load('company'),
         ], 201);
     }
+
+    public function edit(Request $request, $id)
+    {
+        $experience = Experience::query()
+            ->where('user_id', $request->user()->id)
+            ->with('company')
+            ->find($id);
+
+        if (! $experience) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Experience not found',
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                ...$experience->toArray(),
+                'company_name' => $experience->company?->name,
+                'start_month' => $experience->start_date?->format('F'),
+                'start_year' => $experience->start_date?->format('Y'),
+                'end_month' => $experience->end_date?->format('F'),
+                'end_year' => $experience->end_date?->format('Y'),
+            ],
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $experience = Experience::query()
+            ->where('user_id', $request->user()->id)
+            ->find($id);
+
+        if (! $experience) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Experience not found',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'title' => 'sometimes|required|string',
+            'company_name' => 'sometimes|required|string',
+            'employment_type' => 'nullable|string',
+            'location' => 'nullable|string',
+            'location_type' => 'nullable|string',
+            'start_month' => 'sometimes|required|string',
+            'start_year' => 'sometimes|required|digits:4',
+            'end_month' => 'nullable|string',
+            'end_year' => 'nullable|digits:4',
+            'is_current' => 'nullable|boolean',
+            'description' => 'nullable|string',
+            'skills' => 'nullable|array',
+            'skills.*' => 'string',
+        ]);
+
+        $updateData = [
+            'title' => $validated['title'] ?? $experience->title,
+            'employment_type' => $validated['employment_type'] ?? $experience->employment_type,
+            'location' => $validated['location'] ?? $experience->location,
+            'location_type' => $validated['location_type'] ?? $experience->location_type,
+            'description' => $validated['description'] ?? $experience->description,
+        ];
+
+        if (array_key_exists('company_name', $validated)) {
+            $company = Company::firstOrCreate(['name' => trim($validated['company_name'])]);
+            $updateData['company_id'] = $company->id;
+        }
+
+        if (array_key_exists('start_month', $validated) && array_key_exists('start_year', $validated)) {
+            $updateData['start_date'] = Carbon::parse($validated['start_month'] . ' ' . $validated['start_year'])->startOfMonth();
+        }
+
+        $isCurrent = array_key_exists('is_current', $validated)
+            ? (bool) $validated['is_current']
+            : $experience->is_current;
+
+        $updateData['is_current'] = $isCurrent;
+
+        if ($isCurrent) {
+            $updateData['end_date'] = null;
+        } elseif (array_key_exists('end_month', $validated) && array_key_exists('end_year', $validated)) {
+            $updateData['end_date'] = Carbon::parse($validated['end_month'] . ' ' . $validated['end_year'])->startOfMonth();
+        }
+
+        if (array_key_exists('skills', $validated)) {
+            $skillIds = [];
+
+            foreach ($validated['skills'] as $skillName) {
+                $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+                $skillIds[] = $skill->id;
+            }
+
+            $updateData['skills_id'] = $skillIds;
+        }
+
+        $experience->update($updateData);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Experience updated successfully',
+            'data' => $experience->fresh()->load('company'),
+        ]);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $experience = Experience::query()
+            ->where('user_id', $request->user()->id)
+            ->find($id);
+
+        if (! $experience) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Experience not found',
+            ], 404);
+        }
+
+        $experience->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Experience deleted successfully',
+        ]);
+    }
 }
