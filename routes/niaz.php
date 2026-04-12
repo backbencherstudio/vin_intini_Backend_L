@@ -1,4 +1,6 @@
 <?php
+
+use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\GroupController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,4 +32,11 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/group/join/invite/{group_id}', [GroupController::class, 'joinGroup'])
         ->name('group.invite.join')
         ->middleware('signed');
+
+
+    //user experience add
+    Route::post('/experience/add', [UserExperienceController::class, 'store']);
+    //user experience list
+    Route::get('/experience/list', [UserExperienceController::class, 'index']);
+
 });

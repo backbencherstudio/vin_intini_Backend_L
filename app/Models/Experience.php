@@ -27,4 +27,15 @@ class Experience extends Model
     }
 
     protected $appends = ['skills_data'];
+
+    public function getFormattedStartDateAttribute()
+    {
+        return $this->start_date ? $this->start_date->format('M Y') : null;
+    }
+
+    public function getFormattedEndDateAttribute()
+    {
+        if ($this->is_current) return 'Present';
+        return $this->end_date ? $this->end_date->format('M Y') : null;
+    }
 }
