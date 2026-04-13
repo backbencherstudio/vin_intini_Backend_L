@@ -121,6 +121,56 @@ class UserExperienceController extends Controller
         return implode(' ', $parts);
     }
 
+    public function companySuggestions(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:100',
+            'limit' => 'nullable|integer|min:1|max:20',
+        ]);
+
+        $search = trim((string) ($validated['search'] ?? ''));
+        $limit = $validated['limit'] ?? 10;
+
+        $companies = Company::query()
+            ->select(['id', 'name'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $companies,
+        ]);
+    }
+
+    public function skillSuggestions(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:100',
+            'limit' => 'nullable|integer|min:1|max:20',
+        ]);
+
+        $search = trim((string) ($validated['search'] ?? ''));
+        $limit = $validated['limit'] ?? 10;
+
+        $skills = Skill::query()
+            ->select(['id', 'name'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $skills,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([

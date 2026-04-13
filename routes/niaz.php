@@ -30,10 +30,15 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
         ->name('group.invite.join')
         ->middleware('signed');
 
-    // user experience add
-    Route::post('/experience/add', [UserExperienceController::class, 'store']);
+
     // user experience list
     Route::get('/experience/list', [UserExperienceController::class, 'index']);
+    // user experience add
+    Route::post('/experience/add', [UserExperienceController::class, 'store']);
+    // company suggestions for dropdown
+    Route::get('/experience/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
+    // skill suggestions for dropdown
+    Route::get('/experience/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
     // user experience edit
     Route::get('/experience/edit/{id}', [UserExperienceController::class, 'edit']);
     // user experience update

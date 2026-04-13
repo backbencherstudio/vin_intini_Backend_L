@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Company;
 use App\Models\Experience;
+use App\Models\Skill;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,6 +15,100 @@ use Tests\TestCase;
 class UserExperienceCrudTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_user_can_get_default_company_suggestions(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        UserProfile::create(['user_id' => $user->id]);
+
+        Company::factory()->create(['name' => 'Acme Corp']);
+        Company::factory()->create(['name' => 'Bongo Labs']);
+        Company::factory()->create(['name' => 'Zen Tech']);
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/experience/company-suggestions');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.name', 'Acme Corp')
+            ->assertJsonPath('data.1.name', 'Bongo Labs')
+            ->assertJsonPath('data.2.name', 'Zen Tech');
+    }
+
+    public function test_user_can_search_company_suggestions(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        UserProfile::create(['user_id' => $user->id]);
+
+        Company::factory()->create(['name' => 'Softvence Delta']);
+        Company::factory()->create(['name' => 'Softvence Studio']);
+        Company::factory()->create(['name' => 'Beta Works']);
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/experience/company-suggestions?search=softv');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.name', 'Softvence Delta')
+            ->assertJsonPath('data.1.name', 'Softvence Studio');
+    }
+
+    public function test_user_can_get_default_and_search_skill_suggestions(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        UserProfile::create(['user_id' => $user->id]);
+
+        Skill::create(['name' => 'JavaScript']);
+        Skill::create(['name' => 'Laravel']);
+        Skill::create(['name' => 'PHP']);
+
+        $defaultResponse = $this->actingAs($user, 'api')->getJson('/api/experience/skill-suggestions');
+
+        $defaultResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.name', 'JavaScript')
+            ->assertJsonPath('data.1.name', 'Laravel')
+            ->assertJsonPath('data.2.name', 'PHP');
+
+        $searchResponse = $this->actingAs($user, 'api')->getJson('/api/experience/skill-suggestions?search=lar');
+
+        $searchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Laravel');
+    }
 
     public function test_user_can_get_single_experience_for_edit(): void
     {
