@@ -66,7 +66,7 @@ class AuthController extends Controller
     {
         $user = auth('api')->user();
 
-        $user->load(['roles', 'profile']);
+        $user->load(['roles', 'profile.currentPosition.company']);
 
         return response()->json([
             'success' => true,
@@ -95,6 +95,12 @@ class AuthController extends Controller
                         ->orderBy('name')
                         ->pluck('name')
                         ->values(),
+                    'current_position_id' => $user->profile->current_position_id,
+                    'current_position' => $user->profile->currentPosition ? [
+                        'id' => $user->profile->currentPosition->id,
+                        'title' => $user->profile->currentPosition->title,
+                        'company_name' => $user->profile->currentPosition->company?->name,
+                    ] : null,
                     'about' => $user->profile->about,
                 ] : null,
             ],

@@ -3,21 +3,25 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Experience;
 use App\Models\Skill;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class UserProfileController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user()->load('profile');
+        $user = $request->user()->load(['profile.currentPosition.company']);
 
         $skills = Skill::query()
             ->select(['id', 'name'])
             ->whereIn('id', $user->profile?->skills_id ?? [])
             ->orderBy('name')
             ->get();
+
+        $currentPosition = $user->profile?->currentPosition;
 
         return response()->json([
             'status' => 'success',
@@ -26,6 +30,12 @@ class UserProfileController extends Controller
                 'last_name' => $user->last_name,
                 'title' => $user->title,
                 'country' => $user->profile?->country,
+                'current_position_id' => $user->profile?->current_position_id,
+                'current_position' => $currentPosition ? [
+                    'id' => $currentPosition->id,
+                    'title' => $currentPosition->title,
+                    'company_name' => $currentPosition->company?->name,
+                ] : null,
                 'skills' => $skills,
             ],
         ], 200);
@@ -50,6 +60,7 @@ class UserProfileController extends Controller
             'about' => 'nullable|string|max:250',
             'skills' => 'nullable|array',
             'skills.*' => 'string',
+            'current_position_id' => 'nullable|integer|exists:experiences,id',
         ]);
 
         $user = $request->user();
@@ -64,6 +75,8 @@ class UserProfileController extends Controller
                 $skillIds[] = $skill->id;
             }
         }
+
+        $currentPositionId = $this->resolveCurrentPositionId($request, $validated['current_position_id'] ?? null);
 
         $imagePath = $user->profile_image;
         if ($request->hasFile('profile_image')) {
@@ -93,6 +106,7 @@ class UserProfileController extends Controller
                 'graduation_year' => $request->graduation_year,
                 'interests' => $interestsArray,
                 'skills_id' => $skillIds,
+                'current_position_id' => $currentPositionId,
                 'about' => $request->about,
             ]
         );
@@ -113,6 +127,7 @@ class UserProfileController extends Controller
             'country' => 'sometimes|required|string',
             'skills' => 'nullable|array',
             'skills.*' => 'string',
+            'current_position_id' => 'nullable|integer|exists:experiences,id',
         ]);
 
         $user = $request->user();
@@ -153,6 +168,13 @@ class UserProfileController extends Controller
             $profileData['skills_id'] = $skillIds;
         }
 
+        if (array_key_exists('current_position_id', $validated)) {
+            $profileData['current_position_id'] = $this->resolveCurrentPositionId(
+                $request,
+                $validated['current_position_id'],
+            );
+        }
+
         if ($profileData !== []) {
             $profile->update($profileData);
         }
@@ -162,5 +184,25 @@ class UserProfileController extends Controller
             'message' => 'Profile updated successfully!',
             'data' => $user->fresh()->load('profile'),
         ], 200);
+    }
+
+    private function resolveCurrentPositionId(Request $request, mixed $currentPositionId): ?int
+    {
+        if (! $currentPositionId) {
+            return null;
+        }
+
+        $experienceExists = Experience::query()
+            ->whereKey($currentPositionId)
+            ->where('user_id', $request->user()->id)
+            ->exists();
+
+        if (! $experienceExists) {
+            throw ValidationException::withMessages([
+                'current_position_id' => ['The selected current position is invalid.'],
+            ]);
+        }
+
+        return (int) $currentPositionId;
     }
 }

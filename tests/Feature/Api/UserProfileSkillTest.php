@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Company;
+use App\Models\Experience;
 use App\Models\Skill;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -33,11 +35,18 @@ class UserProfileSkillTest extends TestCase
 
         $skillLaravel = Skill::create(['name' => 'Laravel']);
         $skillPhp = Skill::create(['name' => 'PHP']);
+        $company = Company::factory()->create(['name' => 'Softvence Delta']);
+        $currentPosition = Experience::factory()->create([
+            'user_id' => $user->id,
+            'company_id' => $company->id,
+            'title' => 'Senior Designer',
+        ]);
 
         UserProfile::create([
             'user_id' => $user->id,
             'country' => 'Bangladesh',
             'skills_id' => [$skillLaravel->id, $skillPhp->id],
+            'current_position_id' => $currentPosition->id,
         ]);
 
         $response = $this->actingAs($user, 'api')->getJson('/api/profile');
@@ -49,9 +58,56 @@ class UserProfileSkillTest extends TestCase
             ->assertJsonPath('data.last_name', 'Ahmed')
             ->assertJsonPath('data.title', 'Designer')
             ->assertJsonPath('data.country', 'Bangladesh')
+            ->assertJsonPath('data.current_position_id', $currentPosition->id)
+            ->assertJsonPath('data.current_position.title', 'Senior Designer')
+            ->assertJsonPath('data.current_position.company_name', 'Softvence Delta')
             ->assertJsonCount(2, 'data.skills')
             ->assertJsonPath('data.skills.0.name', 'Laravel')
             ->assertJsonPath('data.skills.1.name', 'PHP');
+    }
+
+    public function test_user_can_update_current_position_in_profile(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create([
+            'is_verified' => true,
+        ]);
+        $user->assignRole($role);
+
+        $company = Company::factory()->create(['name' => 'Acme Corp']);
+        $experience = Experience::factory()->create([
+            'user_id' => $user->id,
+            'company_id' => $company->id,
+            'title' => 'Lead Engineer',
+        ]);
+
+        UserProfile::create([
+            'user_id' => $user->id,
+            'country' => 'Bangladesh',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->putJson('/api/profile/update', [
+            'current_position_id' => $experience->id,
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.profile.current_position_id', $experience->id);
+
+        $showResponse = $this->actingAs($user, 'api')->getJson('/api/profile');
+
+        $showResponse
+            ->assertOk()
+            ->assertJsonPath('data.current_position_id', $experience->id)
+            ->assertJsonPath('data.current_position.title', 'Lead Engineer')
+            ->assertJsonPath('data.current_position.company_name', 'Acme Corp');
     }
 
     public function test_setup_profile_stores_skill_ids_from_skills_table(): void

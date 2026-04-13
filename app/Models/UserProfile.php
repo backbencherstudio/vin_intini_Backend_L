@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserProfile extends Model
 {
@@ -18,6 +19,7 @@ class UserProfile extends Model
         'graduation_year',
         'interests',
         'skills_id',
+        'current_position_id',
         'about',
     ];
 
@@ -27,8 +29,13 @@ class UserProfile extends Model
         'skills_id' => 'array',
     ];
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function currentPosition(): BelongsTo
+    {
+        return $this->belongsTo(Experience::class, 'current_position_id');
     }
 }
