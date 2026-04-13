@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\UserExperienceController;
+use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,39 +11,35 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
 
     // group routes
     Route::get('/groups', [GroupController::class, 'index']);
-
     Route::post('/group-create', [GroupController::class, 'store']);
     Route::get('/group-show/{id}', [GroupController::class, 'show']);
     Route::post('/group-update/{id}', [GroupController::class, 'update']);
-
     // my group routes
     Route::get('/my-created-groups', [GroupController::class, 'myCreatedGroups']);
     // my joined group routes
     Route::get('/my-joined-groups', [GroupController::class, 'myJoinedGroups']);
-
     // group member join and leave routes
     Route::post('/group/join', [GroupController::class, 'joinGroup']);
     Route::post('/group/leave', [GroupController::class, 'leaveGroup']);
-
     // group invite routes
     Route::get('/group-invite-link/{id}', [GroupController::class, 'generateInviteLink']);
     Route::get('/group/join/invite/{group_id}', [GroupController::class, 'joinGroup'])
         ->name('group.invite.join')
         ->middleware('signed');
 
-
-    // user experience list
-    Route::get('/experience/list', [UserExperienceController::class, 'index']);
-    // user experience add
-    Route::post('/experience/add', [UserExperienceController::class, 'store']);
     // company suggestions for dropdown
-    Route::get('/experience/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
+    Route::get('/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
     // skill suggestions for dropdown
-    Route::get('/experience/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
-    // user experience edit
+    Route::get('/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
+
+    // user profile routes
+    Route::get('/profile', [UserProfileController::class, 'show']);
+    Route::post('/profile/update', [UserProfileController::class, 'update']);
+
+    // user experience routes
+    Route::get('/experience/list', [UserExperienceController::class, 'index']);
+    Route::post('/experience/add', [UserExperienceController::class, 'store']);
     Route::get('/experience/edit/{id}', [UserExperienceController::class, 'edit']);
-    // user experience update
     Route::post('/experience/update/{id}', [UserExperienceController::class, 'update']);
-    // user experience delete
     Route::delete('/experience/delete/{id}', [UserExperienceController::class, 'destroy']);
 });

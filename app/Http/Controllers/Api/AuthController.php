@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\SendRegisterOtpMailJob;
 use App\Mail\RegisterOtpMail;
+use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
+use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 
@@ -20,7 +20,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string|min:6',
         ]);
 
@@ -28,7 +28,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -80,21 +80,26 @@ class AuthController extends Controller
                 'roles' => $user->roles->pluck('name')->implode(', '),
 
                 'profile' => $user->profile ? [
-                    'country'           => $user->profile->country,
-                    'postal_code'       => $user->profile->postal_code,
-                    'profession'        => $user->profile->profession,
-                    'highest_degree'    => $user->profile->highest_degree,
-                    'study_category'    => $user->profile->study_category,
+                    'country' => $user->profile->country,
+                    'postal_code' => $user->profile->postal_code,
+                    'profession' => $user->profile->profession,
+                    'highest_degree' => $user->profile->highest_degree,
+                    'study_category' => $user->profile->study_category,
                     'study_subcategory' => $user->profile->study_subcategory,
-                    'institution'       => $user->profile->institution,
-                    'graduation_year'   => $user->profile->graduation_year,
-                    'interests'         => $user->profile->interests,
-                    'about'             => $user->profile->about,
+                    'institution' => $user->profile->institution,
+                    'graduation_year' => $user->profile->graduation_year,
+                    'interests' => $user->profile->interests,
+                    'skills_id' => $user->profile->skills_id,
+                    'skills' => Skill::query()
+                        ->whereIn('id', $user->profile->skills_id ?? [])
+                        ->orderBy('name')
+                        ->pluck('name')
+                        ->values(),
+                    'about' => $user->profile->about,
                 ] : null,
             ],
         ]);
     }
-
 
     public function logout()
     {
@@ -118,17 +123,16 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Refresh token expired. Please login again.'
+                'message' => 'Refresh token expired. Please login again.',
             ], 401);
         } catch (JWTException $e) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Token invalid or not provided'
+                'message' => 'Token invalid or not provided',
             ], 401);
         }
     }
-
 
     protected function respondWithToken($token, $user)
     {
@@ -144,21 +148,21 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string|min:6',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         DB::beginTransaction();
 
         try {
-            $otp  = random_int(1000, 9999);
+            $otp = random_int(1000, 9999);
             $role = Role::where('name', 'user')->first();
 
             $user = User::where('email', $request->email)->first();
@@ -180,7 +184,7 @@ class AuthController extends Controller
                     'is_verified' => false,
                 ]);
 
-                if ($role && !$user->hasRole('user')) {
+                if ($role && ! $user->hasRole('user')) {
                     $user->assignRole($role);
                 }
 
@@ -212,7 +216,7 @@ class AuthController extends Controller
             DB::commit();
 
             return response()->json([
-                'status'  => true,
+                'status' => true,
                 'message' => 'Registration successful. OTP sent to your email.',
             ], 201);
         } catch (\Exception $e) {

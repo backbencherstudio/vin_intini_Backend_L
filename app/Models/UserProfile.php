@@ -17,13 +17,15 @@ class UserProfile extends Model
         'institution',
         'graduation_year',
         'interests',
-        'about'
+        'skills_id',
+        'about',
     ];
 
     protected $casts = [
         'profession' => 'array',
         'interests' => 'array',
-];
+        'skills_id' => 'array',
+    ];
 
     public function user()
     {

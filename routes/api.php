@@ -1,12 +1,11 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\SocialController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserProfileController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/login', function () {
     return response()->json([
@@ -17,19 +16,18 @@ Route::get('/login', function () {
 
 Route::post('/login', [AuthController::class, 'login']);
 
-//User Forgot Password Routes
+// User Forgot Password Routes
 Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword']);
 
-//User Register Routes
+// User Register Routes
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp']);
 Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])->middleware('throttle:3,1');
 // Social Authentication Routes
 Route::get('/auth/{provider}', [SocialController::class, 'redirect']);
 Route::get('/auth/{provider}/callback', [SocialController::class, 'callback']);
-
 
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -45,7 +43,7 @@ Route::middleware('auth:api')->group(function () {
             Route::put('/profile-update', [UserController::class, 'profileUpdate']);
         });
 
-        require __DIR__ . '/niaz.php';
-        require __DIR__ . '/shanto.php';
+        require __DIR__.'/niaz.php';
+        require __DIR__.'/shanto.php';
     });
 });

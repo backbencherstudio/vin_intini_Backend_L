@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('graduation_year')->nullable();
             $table->json('interests')->nullable(); // Multi-select array data
             $table->text('about')->nullable();
+            $table->json('skills_id')->nullable();
             $table->timestamps();
         });
     }

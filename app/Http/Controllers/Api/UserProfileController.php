@@ -3,11 +3,34 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Skill;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 
 class UserProfileController extends Controller
 {
+    public function show(Request $request)
+    {
+        $user = $request->user()->load('profile');
+
+        $skills = Skill::query()
+            ->select(['id', 'name'])
+            ->whereIn('id', $user->profile?->skills_id ?? [])
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'title' => $user->title,
+                'country' => $user->profile?->country,
+                'skills' => $skills,
+            ],
+        ], 200);
+    }
+
     public function setupProfile(Request $request, ProfileImageService $profileImageService)
     {
         $request->validate([
@@ -25,12 +48,22 @@ class UserProfileController extends Controller
             'institution' => 'nullable|string',
             'graduation_year' => 'nullable|string',
             'about' => 'nullable|string|max:250',
+            'skills' => 'nullable|array',
+            'skills.*' => 'string',
         ]);
 
         $user = $request->user();
 
         $professionArray = array_map('trim', explode(',', $request->profession));
         $interestsArray = array_map('trim', explode(',', $request->interests));
+        $skillIds = [];
+
+        if ($request->has('skills')) {
+            foreach ($request->skills as $skillName) {
+                $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+                $skillIds[] = $skill->id;
+            }
+        }
 
         $imagePath = $user->profile_image;
         if ($request->hasFile('profile_image')) {
@@ -58,7 +91,8 @@ class UserProfileController extends Controller
                 'study_subcategory' => $request->study_subcategory,
                 'institution' => $request->institution,
                 'graduation_year' => $request->graduation_year,
-                'interests' => $interestsArray,  
+                'interests' => $interestsArray,
+                'skills_id' => $skillIds,
                 'about' => $request->about,
             ]
         );
@@ -66,7 +100,7 @@ class UserProfileController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Profile completed successfully!',
-            'data' => $user->load('profile')
+            'data' => $user->load('profile'),
         ], 200);
     }
 }
