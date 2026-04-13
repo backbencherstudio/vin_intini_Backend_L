@@ -40,6 +40,7 @@ class UserExperienceController extends Controller
 
                 return [
                     'company' => $company,
+                    'company_name' => $company?->name,
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
@@ -58,6 +59,7 @@ class UserExperienceController extends Controller
 
     private function formatExperience(Experience $experience): array
     {
+        $companyName = $experience->company?->name;
         $experience->unsetRelation('company');
 
         $endDate = $experience->is_current ? now() : $experience->end_date;
@@ -70,6 +72,8 @@ class UserExperienceController extends Controller
 
         return [
             ...$experience->toArray(),
+            'experience_title' => $experience->title,
+            'company_name' => $companyName,
             'start_date' => $startingDate,
             'starting_date' => $startingDate,
             'end_date' => $endingDate,

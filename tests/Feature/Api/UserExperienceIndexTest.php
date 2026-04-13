@@ -38,6 +38,7 @@ class UserExperienceIndexTest extends TestCase
         Experience::factory()->create([
             'user_id' => $user->id,
             'company_id' => $oldCompany->id,
+            'title' => 'UI Designer',
             'employment_type' => 'Full-time',
             'start_date' => Carbon::parse('2023-03-01'),
             'end_date' => Carbon::parse('2024-03-01'),
@@ -47,6 +48,7 @@ class UserExperienceIndexTest extends TestCase
         Experience::factory()->create([
             'user_id' => $user->id,
             'company_id' => $newCompany->id,
+            'title' => 'Web Developer',
             'employment_type' => 'Full-time',
             'start_date' => Carbon::parse('2025-03-01'),
             'end_date' => null,
@@ -70,6 +72,8 @@ class UserExperienceIndexTest extends TestCase
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.company.id', $newCompany->id)
             ->assertJsonPath('data.1.company.id', $oldCompany->id)
+            ->assertJsonPath('data.0.company_name', $newCompany->name)
+            ->assertJsonPath('data.1.company_name', $oldCompany->name)
             ->assertJsonPath('data.0.job_type', 'Full-time')
             ->assertJsonPath('data.0.period', '1 year 1 month')
             ->assertJsonPath('data.0.summary', 'Full-time • 1 year 1 month')
@@ -79,6 +83,8 @@ class UserExperienceIndexTest extends TestCase
             ->assertJsonMissingPath('data.1.experiences.0.company')
 
             ->assertJsonPath('data.0.experiences.0.company_id', $newCompany->id)
+            ->assertJsonPath('data.0.experiences.0.company_name', $newCompany->name)
+            ->assertJsonPath('data.0.experiences.0.experience_title', 'Web Developer')
             ->assertJsonPath('data.0.experiences.0.start_date', 'Mar 2025')
             ->assertJsonPath('data.0.experiences.0.starting_date', 'Mar 2025')
             ->assertJsonPath('data.0.experiences.0.end_date', 'Present')
@@ -90,6 +96,8 @@ class UserExperienceIndexTest extends TestCase
             ->assertJsonPath('data.0.experiences.0.timeline', 'Mar 2025 • Still working • 1 year 1 month')
 
             ->assertJsonPath('data.1.experiences.0.company_id', $oldCompany->id)
+            ->assertJsonPath('data.1.experiences.0.company_name', $oldCompany->name)
+            ->assertJsonPath('data.1.experiences.0.experience_title', 'UI Designer')
             ->assertJsonPath('data.1.experiences.0.start_date', 'Mar 2023')
             ->assertJsonPath('data.1.experiences.0.end_date', 'Mar 2024')
             ->assertJsonPath('data.1.experiences.0.status', 'Ended')

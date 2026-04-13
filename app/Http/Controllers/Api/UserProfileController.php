@@ -103,4 +103,64 @@ class UserProfileController extends Controller
             'data' => $user->load('profile'),
         ], 200);
     }
+
+    public function update(Request $request, ProfileImageService $profileImageService)
+    {
+        $validated = $request->validate([
+            'first_name' => 'sometimes|required|string',
+            'last_name' => 'sometimes|required|string',
+            'title' => 'sometimes|required|string|max:120',
+            'country' => 'sometimes|required|string',
+            'skills' => 'nullable|array',
+            'skills.*' => 'string',
+        ]);
+
+        $user = $request->user();
+
+        $userData = [];
+
+        if (array_key_exists('first_name', $validated)) {
+            $userData['first_name'] = $validated['first_name'];
+        }
+
+        if (array_key_exists('last_name', $validated)) {
+            $userData['last_name'] = $validated['last_name'];
+        }
+
+        if (array_key_exists('title', $validated)) {
+            $userData['title'] = $validated['title'];
+        }
+
+        if ($userData !== []) {
+            $user->update($userData);
+        }
+
+        $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
+        $profileData = [];
+
+        if (array_key_exists('country', $validated)) {
+            $profileData['country'] = $validated['country'];
+        }
+
+        if (array_key_exists('skills', $validated)) {
+            $skillIds = [];
+
+            foreach ($validated['skills'] as $skillName) {
+                $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+                $skillIds[] = $skill->id;
+            }
+
+            $profileData['skills_id'] = $skillIds;
+        }
+
+        if ($profileData !== []) {
+            $profile->update($profileData);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profile updated successfully!',
+            'data' => $user->fresh()->load('profile'),
+        ], 200);
+    }
 }

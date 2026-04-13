@@ -34,7 +34,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
 
     // user profile routes
     Route::get('/profile', [UserProfileController::class, 'show']);
-    Route::post('/profile/update', [UserProfileController::class, 'update']);
+    Route::put('/profile/update', [UserProfileController::class, 'update']);
 
     // user experience routes
     Route::get('/experience/list', [UserExperienceController::class, 'index']);
