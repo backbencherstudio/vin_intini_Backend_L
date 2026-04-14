@@ -3,19 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\SendPasswordOtpMailJob;
-use Illuminate\Http\Request;
-use Carbon\Carbon;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use App\Mail\PasswordOtpMail;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 
 class ForgotPasswordController extends Controller
 {
-
     public function sendOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -24,9 +22,9 @@ class ForgotPasswordController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Validation failed',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -39,6 +37,7 @@ class ForgotPasswordController extends Controller
             [
                 'otp' => $otp,
                 'expires_at' => Carbon::now()->addMinutes(3),
+                'verified_at' => null,
                 'updated_at' => Carbon::now(),
             ]
         );
@@ -48,7 +47,7 @@ class ForgotPasswordController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'OTP sent to your email'
+            'message' => 'OTP sent to your email',
         ]);
     }
 
@@ -61,35 +60,42 @@ class ForgotPasswordController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Validation failed',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $user = User::where('email', $request->email)->first();
 
         $otpRecord = DB::table('password_otps')
-                        ->where('user_id', $user->id)
-                        ->first();
+            ->where('user_id', $user->id)
+            ->first();
 
         if (! $otpRecord || $otpRecord->otp != $request->otp) {
             return response()->json([
                 'status' => false,
-                'message' => 'Invalid OTP'
+                'message' => 'Invalid OTP',
             ], 400);
         }
 
         if (Carbon::now()->gt(Carbon::parse($otpRecord->expires_at))) {
             return response()->json([
                 'status' => false,
-                'message' => 'OTP expired'
+                'message' => 'OTP expired',
             ], 400);
         }
 
+        DB::table('password_otps')
+            ->where('user_id', $user->id)
+            ->update([
+                'verified_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]);
+
         return response()->json([
             'status' => true,
-            'message' => 'OTP verified successfully'
+            'message' => 'OTP verified successfully',
         ]);
     }
 
@@ -97,28 +103,27 @@ class ForgotPasswordController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|exists:users,email',
-            'otp' => 'required|digits:4',
             'new_password' => 'required|string|min:6|confirmed',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Validation failed',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $user = User::where('email', $request->email)->first();
 
         $otpRecord = DB::table('password_otps')
-                        ->where('user_id', $user->id)
-                        ->first();
+            ->where('user_id', $user->id)
+            ->first();
 
-        if (! $otpRecord || $otpRecord->otp != $request->otp || Carbon::now()->gt(Carbon::parse($otpRecord->expires_at))) {
+        if (! $otpRecord || ! $otpRecord->verified_at || Carbon::now()->gt(Carbon::parse($otpRecord->expires_at))) {
             return response()->json([
                 'status' => false,
-                'message' => 'Invalid or expired OTP'
+                'message' => 'OTP verification required or expired',
             ], 400);
         }
 
@@ -129,8 +134,7 @@ class ForgotPasswordController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Password reset successfully'
+            'message' => 'Password reset successfully',
         ]);
     }
-
 }
