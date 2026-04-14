@@ -77,6 +77,7 @@ class AuthController extends Controller
                 'title' => $user->title,
                 'email' => $user->email,
                 'profile_image_url' => $user->profile_image_url,
+                'cover_image_url' => $user->cover_image_url,
                 'roles' => $user->roles->pluck('name')->implode(', '),
 
                 'profile' => $user->profile ? [
