@@ -14,7 +14,7 @@ class UserProfileController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user()->load(['profile.currentPosition.company', 'profile.currentInstitute', 'educations.institution']);
+        $user = $request->user()->load(['profile.currentPosition.company', 'profile.currentInstitute', 'educations.institution', 'experiences.company']);
 
         $skills = Skill::query()
             ->select(['id', 'name'])
@@ -48,6 +48,28 @@ class UserProfileController extends Controller
                     'website' => $currentInstitute->website,
                 ] : null,
                 'skills' => $skills,
+                'experiences' => $user->experiences->map(function ($experience) {
+                    return [
+                        'id' => $experience->id,
+                        'company_id' => $experience->company_id,
+                        'company' => [
+                            'id' => $experience->company?->id,
+                            'name' => $experience->company?->name,
+                            'logo' => $experience->company?->logo,
+                            'location' => $experience->company?->location,
+                            'industry' => $experience->company?->industry,
+                            'website' => $experience->company?->website,
+                        ],
+                        'title' => $experience->title,
+                        'start_date' => $experience->start_date,
+                        'end_date' => $experience->end_date,
+                        'is_current' => $experience->is_current,
+                        'status' => $experience->formatted_end_date_attribute,
+                        'description' => $experience->description,
+                        'skills_id' => $experience->skills_id,
+                        'skills' => $experience->skills_data,
+                    ];
+                })->values(),
                 'educations' => $user->educations->map(function ($education) {
                     return [
                         'id' => $education->id,

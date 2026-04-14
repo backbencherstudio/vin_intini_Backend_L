@@ -80,6 +80,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Education::class);
     }
 
+    public function experiences(): HasMany
+    {
+        return $this->hasMany(Experience::class);
+    }
+
     public function getProfileImageUrlAttribute(): ?string
     {
         $value = $this->profile_image;
@@ -91,7 +96,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/'.ltrim($value, '/'));
+        return asset('storage/' . ltrim($value, '/'));
     }
 
     public function getCoverImageUrlAttribute(): ?string
@@ -105,6 +110,6 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/'.ltrim($value, '/'));
+        return asset('storage/' . ltrim($value, '/'));
     }
 }
