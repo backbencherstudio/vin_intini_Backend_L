@@ -128,6 +128,7 @@ class UserProfileController extends Controller
             'skills' => 'nullable|array|max:5',
             'skills.*' => 'string',
             'current_position_id' => 'nullable|integer|exists:experiences,id',
+            'about' => 'sometimes|required|string',
         ]);
 
         $user = $request->user();
@@ -173,6 +174,10 @@ class UserProfileController extends Controller
                 $request,
                 $validated['current_position_id'],
             );
+        }
+
+        if (array_key_exists('about', $validated)) {
+            $profileData['about'] = $validated['about'];
         }
 
         if ($profileData !== []) {
