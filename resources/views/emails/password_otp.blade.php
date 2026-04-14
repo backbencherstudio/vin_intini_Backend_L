@@ -14,8 +14,8 @@
 
                 <!-- Header -->
                 <tr>
-                    <td style="background:#2563eb; padding:18px; text-align:center;">
-                        <h1 style="color:#ffffff; margin:0; font-size:18px;">TrustHaus Inc</h1>
+                    <td style="background:#00c2cb; padding:18px; text-align:center;">
+                        <h1 style="color:#ffffff; margin:0; font-size:18px;">MindUnite</h1>
                         <p style="color:#e0e7ff; margin:4px 0 0; font-size:12px;">Password Reset Verification</p>
                     </td>
                 </tr>
@@ -58,7 +58,7 @@
                 <tr>
                     <td style="background:#f9fafb; padding:14px; text-align:center;">
                         <p style="font-size:11px; color:#4b4b4b; margin:0;">
-                            © {{ date('Y') }} TrustHaus Inc
+                            © {{ date('Y') }} MindUnite
                         </p>
                     </td>
                 </tr>
