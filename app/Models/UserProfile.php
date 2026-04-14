@@ -20,6 +20,7 @@ class UserProfile extends Model
         'interests',
         'skills_id',
         'current_position_id',
+        'current_institute_id',
         'about',
     ];
 
@@ -37,5 +38,10 @@ class UserProfile extends Model
     public function currentPosition(): BelongsTo
     {
         return $this->belongsTo(Experience::class, 'current_position_id');
+    }
+
+    public function currentInstitute(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class, 'current_institute_id');
     }
 }

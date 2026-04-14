@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Education;
 use App\Models\Experience;
 use App\Models\Skill;
 use App\Services\ProfileImageService;
@@ -13,7 +14,7 @@ class UserProfileController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user()->load(['profile.currentPosition.company', 'educations.institution']);
+        $user = $request->user()->load(['profile.currentPosition.company', 'profile.currentInstitute', 'educations.institution']);
 
         $skills = Skill::query()
             ->select(['id', 'name'])
@@ -22,6 +23,7 @@ class UserProfileController extends Controller
             ->get();
 
         $currentPosition = $user->profile?->currentPosition;
+        $currentInstitute = $user->profile?->currentInstitute;
 
         return response()->json([
             'status' => 'success',
@@ -31,10 +33,19 @@ class UserProfileController extends Controller
                 'title' => $user->title,
                 'country' => $user->profile?->country,
                 'current_position_id' => $user->profile?->current_position_id,
+                'current_institute_id' => $user->profile?->current_institute_id,
                 'current_position' => $currentPosition ? [
                     'id' => $currentPosition->id,
                     'title' => $currentPosition->title,
                     'company_name' => $currentPosition->company?->name,
+                ] : null,
+                'current_institute' => $currentInstitute ? [
+                    'id' => $currentInstitute->id,
+                    'name' => $currentInstitute->name,
+                    'logo' => $currentInstitute->logo,
+                    'type' => $currentInstitute->type,
+                    'country' => $currentInstitute->country,
+                    'website' => $currentInstitute->website,
                 ] : null,
                 'skills' => $skills,
                 'educations' => $user->educations->map(function ($education) {
@@ -88,6 +99,7 @@ class UserProfileController extends Controller
             'skills' => 'nullable|array',
             'skills.*' => 'string',
             'current_position_id' => 'nullable|integer|exists:experiences,id',
+            'current_institute_id' => 'nullable|integer|exists:institutions,id',
         ]);
 
         $user = $request->user();
@@ -104,6 +116,7 @@ class UserProfileController extends Controller
         }
 
         $currentPositionId = $this->resolveCurrentPositionId($request, $validated['current_position_id'] ?? null);
+        $currentInstituteId = $this->resolveCurrentInstituteId($request, $validated['current_institute_id'] ?? null);
 
         $imagePath = $user->profile_image;
         if ($request->hasFile('profile_image')) {
@@ -134,6 +147,7 @@ class UserProfileController extends Controller
                 'interests' => $interestsArray,
                 'skills_id' => $skillIds,
                 'current_position_id' => $currentPositionId,
+                'current_institute_id' => $currentInstituteId,
                 'about' => $request->about,
             ]
         );
@@ -155,6 +169,7 @@ class UserProfileController extends Controller
             'skills' => 'nullable|array|max:5',
             'skills.*' => 'string',
             'current_position_id' => 'nullable|integer|exists:experiences,id',
+            'current_institute_id' => 'nullable|integer|exists:institutions,id',
             'about' => 'sometimes|required|string',
         ]);
 
@@ -200,6 +215,13 @@ class UserProfileController extends Controller
             $profileData['current_position_id'] = $this->resolveCurrentPositionId(
                 $request,
                 $validated['current_position_id'],
+            );
+        }
+
+        if (array_key_exists('current_institute_id', $validated)) {
+            $profileData['current_institute_id'] = $this->resolveCurrentInstituteId(
+                $request,
+                $validated['current_institute_id'],
             );
         }
 
@@ -290,5 +312,25 @@ class UserProfileController extends Controller
         }
 
         return (int) $currentPositionId;
+    }
+
+    private function resolveCurrentInstituteId(Request $request, mixed $currentInstituteId): ?int
+    {
+        if (! $currentInstituteId) {
+            return null;
+        }
+
+        $instituteExistsForUser = Education::query()
+            ->where('user_id', $request->user()->id)
+            ->where('institution_id', $currentInstituteId)
+            ->exists();
+
+        if (! $instituteExistsForUser) {
+            throw ValidationException::withMessages([
+                'current_institute_id' => ['The selected current institute is invalid.'],
+            ]);
+        }
+
+        return (int) $currentInstituteId;
     }
 }

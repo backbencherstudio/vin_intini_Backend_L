@@ -3,7 +3,9 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Company;
+use App\Models\Education;
 use App\Models\Experience;
+use App\Models\Institution;
 use App\Models\Skill;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -110,6 +112,65 @@ class UserProfileSkillTest extends TestCase
             ->assertJsonPath('data.current_position_id', $experience->id)
             ->assertJsonPath('data.current_position.title', 'Lead Engineer')
             ->assertJsonPath('data.current_position.company_name', 'Acme Corp');
+    }
+
+    public function test_user_can_update_current_institute_in_profile(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create([
+            'is_verified' => true,
+        ]);
+        $user->assignRole($role);
+
+        $institution = Institution::create([
+            'name' => 'Daffodil International University',
+            'type' => 'University',
+            'country' => 'Bangladesh',
+            'website' => 'https://daffodilvarsity.edu.bd',
+        ]);
+
+        Education::create([
+            'user_id' => $user->id,
+            'institution_id' => $institution->id,
+            'degree' => 'BSc',
+            'field_study' => 'Computer Science',
+            'start_month' => 'January',
+            'start_year' => '2022',
+            'end_month' => null,
+            'end_year' => null,
+            'grade' => null,
+            'description' => null,
+            'activities' => null,
+            'is_current' => true,
+            'skills_id' => [],
+        ]);
+
+        UserProfile::create([
+            'user_id' => $user->id,
+            'country' => 'Bangladesh',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->putJson('/api/profile/update', [
+            'current_institute_id' => $institution->id,
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.profile.current_institute_id', $institution->id);
+
+        $showResponse = $this->actingAs($user, 'api')->getJson('/api/profile');
+
+        $showResponse
+            ->assertOk()
+            ->assertJsonPath('data.current_institute_id', $institution->id)
+            ->assertJsonPath('data.current_institute.name', 'Daffodil International University');
     }
 
     public function test_user_can_update_profile_with_up_to_five_skills(): void
