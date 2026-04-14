@@ -11,11 +11,11 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
-
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     protected $appends = [
         'profile_image_url',
+        'cover_image_url',
     ];
 
     protected $fillable = [
@@ -26,6 +26,7 @@ class User extends Authenticatable implements JWTSubject
         'mobile',
         'password',
         'profile_image',
+        'cover_image',
         'otp',
         'otp_expires_at',
         'is_verified',
@@ -76,11 +77,25 @@ class User extends Authenticatable implements JWTSubject
     public function getProfileImageUrlAttribute(): ?string
     {
         $value = $this->profile_image;
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
         if (preg_match('/^https?:\\/\\//i', $value) === 1) {
+            return $value;
+        }
+
+        return asset('storage/' . ltrim($value, '/'));
+    }
+
+    public function getCoverImageUrlAttribute(): ?string
+    {
+        $value = $this->cover_image;
+        if (! $value) {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $value) === 1) {
             return $value;
         }
 

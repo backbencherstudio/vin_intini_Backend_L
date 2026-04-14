@@ -125,7 +125,7 @@ class UserProfileController extends Controller
             'last_name' => 'sometimes|required|string',
             'title' => 'sometimes|required|string|max:120',
             'country' => 'sometimes|required|string',
-            'skills' => 'nullable|array',
+            'skills' => 'nullable|array|max:5',
             'skills.*' => 'string',
             'current_position_id' => 'nullable|integer|exists:experiences,id',
         ]);
@@ -183,6 +183,60 @@ class UserProfileController extends Controller
             'status' => 'success',
             'message' => 'Profile updated successfully!',
             'data' => $user->fresh()->load('profile'),
+        ], 200);
+    }
+
+    public function updateImages(Request $request, ProfileImageService $profileImageService)
+    {
+        $request->validate([
+            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ]);
+
+        if (! $request->hasFile('profile_image') && ! $request->hasFile('cover_image')) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'At least one image file is required.',
+                'errors' => [
+                    'images' => ['Please provide profile_image or cover_image.'],
+                ],
+            ], 422);
+        }
+
+        $user = $request->user();
+        $updateData = [];
+
+        if ($request->hasFile('profile_image')) {
+            $updateData['profile_image'] = $profileImageService->storeUploaded(
+                $request->file('profile_image'),
+                $user->profile_image,
+                'profile_photos',
+            );
+        }
+
+        if ($request->hasFile('cover_image')) {
+            $updateData['cover_image'] = $profileImageService->storeUploaded(
+                $request->file('cover_image'),
+                $user->cover_image,
+                'cover_photos',
+            );
+        }
+
+        if ($updateData !== []) {
+            $user->update($updateData);
+        }
+
+        $user = $user->fresh();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profile images updated successfully!',
+            'data' => [
+                'profile_image' => $user->profile_image,
+                'profile_image_url' => $user->profile_image_url,
+                'cover_image' => $user->cover_image,
+                'cover_image_url' => $user->cover_image_url,
+            ],
         ], 200);
     }
 

@@ -8,6 +8,8 @@ use App\Models\Skill;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -110,6 +112,63 @@ class UserProfileSkillTest extends TestCase
             ->assertJsonPath('data.current_position.company_name', 'Acme Corp');
     }
 
+    public function test_user_can_update_profile_with_up_to_five_skills(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create([
+            'is_verified' => true,
+        ]);
+        $user->assignRole($role);
+
+        UserProfile::create([
+            'user_id' => $user->id,
+            'country' => 'Bangladesh',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->putJson('/api/profile/update', [
+            'skills' => ['Laravel', 'PHP', 'Vue', 'MySQL', 'Docker'],
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(5, 'data.profile.skills_id');
+    }
+
+    public function test_user_cannot_update_profile_with_more_than_five_skills(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create([
+            'is_verified' => true,
+        ]);
+        $user->assignRole($role);
+
+        UserProfile::create([
+            'user_id' => $user->id,
+            'country' => 'Bangladesh',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->putJson('/api/profile/update', [
+            'skills' => ['Laravel', 'PHP', 'Vue', 'MySQL', 'Docker', 'Redis'],
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['skills']);
+    }
+
     public function test_setup_profile_stores_skill_ids_from_skills_table(): void
     {
         $user = User::factory()->create([
@@ -197,5 +256,85 @@ class UserProfileSkillTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'Laravel');
+    }
+
+    public function test_user_can_update_profile_and_cover_images(): void
+    {
+        Storage::fake('public');
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create([
+            'is_verified' => true,
+            'profile_image' => 'profile_photos/old-profile.jpg',
+            'cover_image' => 'cover_photos/old-cover.jpg',
+        ]);
+        $user->assignRole($role);
+
+        UserProfile::create([
+            'user_id' => $user->id,
+            'country' => 'Bangladesh',
+        ]);
+
+        Storage::disk('public')->put('profile_photos/old-profile.jpg', 'old-image');
+        Storage::disk('public')->put('cover_photos/old-cover.jpg', 'old-image');
+
+        $response = $this->actingAs($user, 'api')->post('/api/profile/images', [
+            'profile_image' => UploadedFile::fake()->image('profile.jpg', 600, 600),
+            'cover_image' => UploadedFile::fake()->image('cover.jpg', 1280, 720),
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Profile images updated successfully!');
+
+        $user->refresh();
+
+        $this->assertNotNull($user->profile_image);
+        $this->assertNotNull($user->cover_image);
+        $this->assertStringStartsWith('profile_photos/', $user->profile_image);
+        $this->assertStringStartsWith('cover_photos/', $user->cover_image);
+        $this->assertNotSame('profile_photos/old-profile.jpg', $user->profile_image);
+        $this->assertNotSame('cover_photos/old-cover.jpg', $user->cover_image);
+
+        $this->assertFalse(Storage::disk('public')->exists('profile_photos/old-profile.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('cover_photos/old-cover.jpg'));
+        $this->assertTrue(Storage::disk('public')->exists($user->profile_image));
+        $this->assertTrue(Storage::disk('public')->exists($user->cover_image));
+    }
+
+    public function test_user_cannot_update_images_without_any_image_file(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::create([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create([
+            'is_verified' => true,
+        ]);
+        $user->assignRole($role);
+
+        UserProfile::create([
+            'user_id' => $user->id,
+            'country' => 'Bangladesh',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->postJson('/api/profile/images', []);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonPath('status', 'error')
+            ->assertJsonPath('message', 'At least one image file is required.');
     }
 }
