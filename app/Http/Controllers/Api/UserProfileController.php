@@ -13,7 +13,7 @@ class UserProfileController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user()->load(['profile.currentPosition.company']);
+        $user = $request->user()->load(['profile.currentPosition.company', 'educations.institution']);
 
         $skills = Skill::query()
             ->select(['id', 'name'])
@@ -37,13 +37,40 @@ class UserProfileController extends Controller
                     'company_name' => $currentPosition->company?->name,
                 ] : null,
                 'skills' => $skills,
+                'educations' => $user->educations->map(function ($education) {
+                    return [
+                        'id' => $education->id,
+                        'institution_id' => $education->institution_id,
+                        'institution' => [
+                            'id' => $education->institution?->id,
+                            'name' => $education->institution?->name,
+                            'logo' => $education->institution?->logo,
+                            'type' => $education->institution?->type,
+                            'country' => $education->institution?->country,
+                            'website' => $education->institution?->website,
+                        ],
+                        'degree' => $education->degree,
+                        'field_study' => $education->field_study,
+                        'start_month' => $education->start_month,
+                        'start_year' => $education->start_year,
+                        'end_month' => $education->end_month,
+                        'end_year' => $education->end_year,
+                        'grade' => $education->grade,
+                        'description' => $education->description,
+                        'activities' => $education->activities,
+                        'is_current' => $education->is_current,
+                        'status' => $education->status,
+                        'skills_id' => $education->skills_id,
+                        'skills' => $education->skills_data,
+                    ];
+                })->values(),
             ],
         ], 200);
     }
 
     public function setupProfile(Request $request, ProfileImageService $profileImageService)
     {
-        $request->validate([
+        $validated = $request->validate([
             'first_name' => 'required|string',
             'last_name' => 'required|string',
             'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',

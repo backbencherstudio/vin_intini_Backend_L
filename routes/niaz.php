@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
@@ -31,11 +32,13 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
     // skill suggestions for dropdown
     Route::get('/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
+    // institution suggestions for dropdown (Education)
+    Route::get('/institution-suggestions', [UserEducationController::class, 'institutionSuggestions']);
 
     // user profile routes
     Route::get('/profile', [UserProfileController::class, 'show']);
     Route::put('/profile/update', [UserProfileController::class, 'update']);
-    Route::post('/profile/images', [UserProfileController::class, 'updateImages']);
+    Route::post('/profile/images-update', [UserProfileController::class, 'updateImages']);
 
     // user experience routes
     Route::get('/experience/list', [UserExperienceController::class, 'index']);
@@ -43,4 +46,11 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/experience/edit/{id}', [UserExperienceController::class, 'edit']);
     Route::post('/experience/update/{id}', [UserExperienceController::class, 'update']);
     Route::delete('/experience/delete/{id}', [UserExperienceController::class, 'destroy']);
+
+    // user education routes
+    Route::get('/education/list', [UserEducationController::class, 'index']);
+    Route::post('/education/add', [UserEducationController::class, 'store']);
+    Route::get('/education/edit/{id}', [UserEducationController::class, 'edit']);
+    Route::post('/education/update/{id}', [UserEducationController::class, 'update']);
+    Route::delete('/education/delete/{id}', [UserEducationController::class, 'destroy']);
 });
