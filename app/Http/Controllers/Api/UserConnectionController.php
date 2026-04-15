@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserFollow;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +18,10 @@ class UserConnectionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $currentUser = $request->user();
+        $search = trim((string) $request->query('search', ''));
+        $sort = strtolower(trim((string) $request->query('sort', 'recent')));
+        $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
+        $page = max(1, (int) $request->integer('page', 1));
 
         $connections = ConnectionRequest::query()
             ->accepted()
@@ -38,15 +43,71 @@ class UserConnectionController extends Controller
             ->unique()
             ->values();
 
+        $items = $connections->map(function (ConnectionRequest $connectionRequest) use ($currentUser) {
+            $counterpart = $connectionRequest->sender_id === $currentUser->id
+                ? $connectionRequest->receiver
+                : $connectionRequest->sender;
+
+            return [
+                'payload' => $this->formatConnectionRequest($connectionRequest, $currentUser->id, []),
+                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+                'connected_at' => $connectionRequest->responded_at?->timestamp ?? $connectionRequest->created_at?->timestamp ?? 0,
+            ];
+        });
+
+        if ($search !== '') {
+            $normalizedSearch = mb_strtolower($search);
+
+            $items = $items->filter(function (array $item) use ($normalizedSearch) {
+                return str_contains(mb_strtolower($item['search_name']), $normalizedSearch);
+            });
+        }
+
+        $items = (match ($sort) {
+            'old', 'oldest' => $items->sortBy('connected_at'),
+            'az', 'a-z', 'name' => $items->sortBy('search_name', SORT_NATURAL | SORT_FLAG_CASE),
+            default => $items->sortByDesc('connected_at'),
+        })->values();
+
+        $paginatedItems = $items
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->values();
+
+        $paginator = new LengthAwarePaginator(
+            $paginatedItems,
+            $items->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
+
+        $connectionData = $paginator->getCollection()->map(function (array $item) use ($mutualConnections) {
+            $connection = $item['payload'];
+            $counterpartId = $connection['user']['id'];
+
+            $connection['mutual_connections_count'] = $mutualConnections[$counterpartId]['count'] ?? 0;
+            $connection['mutual_connections'] = $mutualConnections[$counterpartId]['preview'] ?? [];
+
+            return $connection;
+        })->values();
 
         return response()->json([
             'status' => 'success',
-            'data' => $connections
-                ->map(function (ConnectionRequest $connectionRequest) use ($currentUser, $mutualConnections) {
-                    return $this->formatConnectionRequest($connectionRequest, $currentUser->id, $mutualConnections);
-                })
-                ->values(),
+            'data' => $connectionData,
+            'meta' => [
+                'total_connections' => $connections->count(),
+                'filtered_connections' => $items->count(),
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+                'search' => $search !== '' ? $search : null,
+                'sort' => $sort,
+            ],
         ], 200);
     }
 

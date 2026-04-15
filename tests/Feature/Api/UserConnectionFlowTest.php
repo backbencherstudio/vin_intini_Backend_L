@@ -263,7 +263,78 @@ class UserConnectionFlowTest extends TestCase
         ]);
     }
 
-    private function makeUser(): User
+    public function test_user_connections_index_supports_search_sort_and_default_pagination(): void
+    {
+        $currentUser = $this->makeUser('Current', 'User');
+
+        $connections = [
+            ['first_name' => 'Zoe', 'last_name' => 'Zenith'],
+            ['first_name' => 'Ben', 'last_name' => 'Beta'],
+            ['first_name' => 'Clara', 'last_name' => 'Clark'],
+            ['first_name' => 'Dan', 'last_name' => 'Delta'],
+            ['first_name' => 'Eva', 'last_name' => 'Echo'],
+            ['first_name' => 'Finn', 'last_name' => 'Fox'],
+            ['first_name' => 'Gina', 'last_name' => 'Green'],
+            ['first_name' => 'Hana', 'last_name' => 'Hart'],
+            ['first_name' => 'Ivy', 'last_name' => 'Indigo'],
+            ['first_name' => 'Jack', 'last_name' => 'Jones'],
+            ['first_name' => 'Amy', 'last_name' => 'Alpha'],
+            ['first_name' => 'Mike', 'last_name' => 'Moon'],
+        ];
+
+        foreach ($connections as $index => $connectionUserData) {
+            $connectionUser = $this->makeUser($connectionUserData['first_name'], $connectionUserData['last_name']);
+
+            ConnectionRequest::create([
+                'sender_id' => $currentUser->id,
+                'receiver_id' => $connectionUser->id,
+                'status' => ConnectionRequest::STATUS_ACCEPTED,
+                'responded_at' => now()->subDays(11 - $index),
+            ]);
+        }
+
+        $defaultResponse = $this->actingAs($currentUser, 'api')->getJson('/api/connections');
+
+        $defaultResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('data.0.user.name', 'Mike Moon')
+            ->assertJsonPath('meta.total_connections', 12)
+            ->assertJsonPath('meta.filtered_connections', 12)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.per_page', 10)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonPath('meta.sort', 'recent');
+
+        $searchResponse = $this->actingAs($currentUser, 'api')->getJson('/api/connections?search=amy');
+
+        $searchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.user.name', 'Amy Alpha')
+            ->assertJsonPath('meta.filtered_connections', 1)
+            ->assertJsonPath('meta.search', 'amy');
+
+        $oldResponse = $this->actingAs($currentUser, 'api')->getJson('/api/connections?sort=old');
+
+        $oldResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.0.user.name', 'Zoe Zenith')
+            ->assertJsonPath('meta.sort', 'old');
+
+        $azResponse = $this->actingAs($currentUser, 'api')->getJson('/api/connections?sort=az');
+
+        $azResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.0.user.name', 'Amy Alpha')
+            ->assertJsonPath('meta.sort', 'az');
+    }
+
+    private function makeUser(?string $firstName = null, ?string $lastName = null): User
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
@@ -274,8 +345,8 @@ class UserConnectionFlowTest extends TestCase
 
         $user = User::factory()->create([
             'is_verified' => true,
-            'first_name' => fake()->firstName(),
-            'last_name' => fake()->lastName(),
+            'first_name' => $firstName ?? fake()->firstName(),
+            'last_name' => $lastName ?? fake()->lastName(),
             'title' => fake()->jobTitle(),
         ]);
 
