@@ -284,14 +284,6 @@ class UserConnectionController extends Controller
 
         $this->ensureReceiverCanAct($connectionRequest, $currentUser->id);
 
-        if ($connectionRequest->status === ConnectionRequest::STATUS_IGNORED) {
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Connection request already ignored.',
-                'data' => $this->formatConnectionRequest($connectionRequest->loadMissing(['sender', 'receiver']), $currentUser->id, []),
-            ], 200);
-        }
-
         if ($connectionRequest->status !== ConnectionRequest::STATUS_PENDING) {
             return response()->json([
                 'status' => 'error',
@@ -299,15 +291,14 @@ class UserConnectionController extends Controller
             ], 422);
         }
 
-        $connectionRequest->update([
-            'status' => ConnectionRequest::STATUS_IGNORED,
-            'responded_at' => now(),
-        ]);
+        $connectionRequest->delete();
 
         return response()->json([
             'status' => 'success',
             'message' => 'Connection request ignored successfully.',
-            'data' => $this->formatConnectionRequest($connectionRequest->fresh()->loadMissing(['sender', 'receiver']), $currentUser->id, []),
+            'data' => [
+                'message' => 'The user can now send you a new connection request if they wish.',
+            ],
         ], 200);
     }
 

@@ -91,19 +91,26 @@ class UserConnectionFlowTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('status', 'success')
-            ->assertJsonPath('message', 'Connection request ignored successfully.')
-            ->assertJsonPath('data.status', ConnectionRequest::STATUS_IGNORED)
-            ->assertJsonPath('data.can_accept', false)
-            ->assertJsonPath('data.can_ignore', false);
+            ->assertJsonPath('message', 'Connection request ignored successfully.');
 
-        $this->assertDatabaseHas('connection_requests', [
+        $this->assertDatabaseMissing('connection_requests', [
             'id' => $connectionRequest->id,
-            'status' => ConnectionRequest::STATUS_IGNORED,
         ]);
 
-        $this->assertDatabaseMissing('user_follows', [
-            'follower_id' => $sender->id,
-            'following_id' => $receiver->id,
+        // User can send a new request after ignoring the previous one
+        $newResponse = $this->actingAs($sender, 'api')->postJson('/api/connections/request', [
+            'user_id' => $receiver->id,
+        ]);
+
+        $newResponse
+            ->assertCreated()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Connection request sent successfully.');
+
+        $this->assertDatabaseHas('connection_requests', [
+            'sender_id' => $sender->id,
+            'receiver_id' => $receiver->id,
+            'status' => ConnectionRequest::STATUS_PENDING,
         ]);
     }
 
@@ -180,7 +187,6 @@ class UserConnectionFlowTest extends TestCase
         $sender = $this->makeUser();
         $receiver = $this->makeUser();
         $acceptedSender = $this->makeUser();
-        $ignoredSender = $this->makeUser();
 
         ConnectionRequest::create([
             'sender_id' => $sender->id,
@@ -195,13 +201,6 @@ class UserConnectionFlowTest extends TestCase
             'responded_at' => now(),
         ]);
 
-        ConnectionRequest::create([
-            'sender_id' => $ignoredSender->id,
-            'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_IGNORED,
-            'responded_at' => now(),
-        ]);
-
         $response = $this->actingAs($receiver, 'api')->getJson('/api/connections/requests');
 
         $response
@@ -213,7 +212,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('data.0.can_accept', true)
             ->assertJsonPath('data.0.can_ignore', true);
 
-        $this->assertDatabaseCount('connection_requests', 3);
+        $this->assertDatabaseCount('connection_requests', 2);
     }
 
     public function test_user_can_remove_connection_and_it_removes_mutual_follows(): void
