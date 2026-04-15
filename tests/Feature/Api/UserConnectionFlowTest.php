@@ -50,7 +50,7 @@ class UserConnectionFlowTest extends TestCase
             'status' => ConnectionRequest::STATUS_PENDING,
         ]);
 
-        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/' . $connectionRequest->id . '/accept');
+        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/'.$connectionRequest->id.'/accept');
 
         $response
             ->assertOk()
@@ -86,7 +86,7 @@ class UserConnectionFlowTest extends TestCase
             'status' => ConnectionRequest::STATUS_PENDING,
         ]);
 
-        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/' . $connectionRequest->id . '/ignore');
+        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/'.$connectionRequest->id.'/ignore');
 
         $response
             ->assertOk()
@@ -147,7 +147,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('data.0.user.id', $secondUser->id)
             ->assertJsonPath('data.0.is_followed_back', true);
 
-        $unfollowResponse = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/' . $secondUser->id . '/unfollow');
+        $unfollowResponse = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/'.$secondUser->id.'/unfollow');
 
         $unfollowResponse
             ->assertOk()
@@ -160,7 +160,7 @@ class UserConnectionFlowTest extends TestCase
             'following_id' => $secondUser->id,
         ]);
 
-        $refollowResponse = $this->actingAs($firstUser, 'api')->postJson('/api/connections/' . $secondUser->id . '/follow');
+        $refollowResponse = $this->actingAs($firstUser, 'api')->postJson('/api/connections/'.$secondUser->id.'/follow');
 
         $refollowResponse
             ->assertCreated()
@@ -193,9 +193,56 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.status', ConnectionRequest::STATUS_PENDING)
-            ->assertJsonPath('data.0.message', $sender->first_name . ' ' . $sender->last_name . ' sent you a connection request')
+            ->assertJsonPath('data.0.message', $sender->first_name.' '.$sender->last_name.' sent you a connection request')
             ->assertJsonPath('data.0.can_accept', true)
             ->assertJsonPath('data.0.can_ignore', true);
+    }
+
+    public function test_user_can_remove_connection_and_it_removes_mutual_follows(): void
+    {
+        $firstUser = $this->makeUser();
+        $secondUser = $this->makeUser();
+
+        $connectionRequest = ConnectionRequest::create([
+            'sender_id' => $firstUser->id,
+            'receiver_id' => $secondUser->id,
+            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'responded_at' => now(),
+        ]);
+
+        UserFollow::create([
+            'follower_id' => $firstUser->id,
+            'following_id' => $secondUser->id,
+        ]);
+
+        UserFollow::create([
+            'follower_id' => $secondUser->id,
+            'following_id' => $firstUser->id,
+        ]);
+
+        $response = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/'.$secondUser->id.'/remove');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Connection removed successfully.')
+            ->assertJsonPath('data.user.id', $secondUser->id)
+            ->assertJsonPath('data.is_connected', false)
+            ->assertJsonPath('data.is_following', false);
+
+        $this->assertDatabaseMissing('connection_requests', [
+            'id' => $connectionRequest->id,
+        ]);
+
+        $this->assertDatabaseMissing('user_follows', [
+            'follower_id' => $firstUser->id,
+            'following_id' => $secondUser->id,
+        ]);
+
+        $this->assertDatabaseMissing('user_follows', [
+            'follower_id' => $secondUser->id,
+            'following_id' => $firstUser->id,
+        ]);
     }
 
     private function makeUser(): User

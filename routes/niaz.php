@@ -44,6 +44,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     // user connection routes
     Route::get('/connections', [UserConnectionController::class, 'index']);
     Route::get('/connections/requests', [UserConnectionController::class, 'requests']);
+    Route::delete('/connections/{user}/remove', [UserConnectionController::class, 'removeConnection']);
     Route::post('/connections/{user}/follow', [UserConnectionController::class, 'follow']);
     Route::post('/connections/request', [UserConnectionController::class, 'sendRequest']);
     Route::post('/connections/requests/{connectionRequest}/accept', [UserConnectionController::class, 'accept']);

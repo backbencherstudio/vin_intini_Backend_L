@@ -349,6 +349,51 @@ class UserConnectionController extends Controller
         ], $follow->wasRecentlyCreated ? 201 : 200);
     }
 
+    public function removeConnection(Request $request, User $user): JsonResponse
+    {
+        $currentUser = $request->user();
+
+        if ($currentUser->id === $user->id) {
+            throw ValidationException::withMessages([
+                'user_id' => ['You cannot remove connection with yourself.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($currentUser, $user) {
+            ConnectionRequest::query()
+                ->where(function ($query) use ($currentUser, $user) {
+                    $query->where('sender_id', $currentUser->id)
+                        ->where('receiver_id', $user->id)
+                        ->orWhere(function ($query) use ($currentUser, $user) {
+                            $query->where('sender_id', $user->id)
+                                ->where('receiver_id', $currentUser->id);
+                        });
+                })
+                ->delete();
+
+            UserFollow::query()
+                ->where(function ($query) use ($currentUser, $user) {
+                    $query->where('follower_id', $currentUser->id)
+                        ->where('following_id', $user->id)
+                        ->orWhere(function ($query) use ($currentUser, $user) {
+                            $query->where('follower_id', $user->id)
+                                ->where('following_id', $currentUser->id);
+                        });
+                })
+                ->delete();
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Connection removed successfully.',
+            'data' => [
+                'user' => $this->formatUser($user),
+                'is_connected' => false,
+                'is_following' => false,
+            ],
+        ], 200);
+    }
+
     private function ensureReceiverCanAct(ConnectionRequest $connectionRequest, int $userId): void
     {
         if ($connectionRequest->receiver_id !== $userId) {
@@ -501,20 +546,20 @@ class UserConnectionController extends Controller
 
         if ($connectionRequest->status === ConnectionRequest::STATUS_IGNORED) {
             return $connectionRequest->receiver_id === $currentUserId
-                ? 'You ignored ' . $counterpartName . '\'s invitation'
-                : $counterpartName . ' ignored your invitation';
+                ? 'You ignored '.$counterpartName.'\'s invitation'
+                : $counterpartName.' ignored your invitation';
         }
 
         return $connectionRequest->sender_id === $currentUserId
             ? 'Connection request sent'
-            : $counterpartName . ' sent you a connection request';
+            : $counterpartName.' sent you a connection request';
     }
 
     private function formatUser(User $user): array
     {
         return [
             'id' => $user->id,
-            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'title' => $user->title,
