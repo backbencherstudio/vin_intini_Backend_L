@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -83,6 +84,28 @@ class User extends Authenticatable implements JWTSubject
     public function experiences(): HasMany
     {
         return $this->hasMany(Experience::class);
+    }
+
+    public function connectionRequestsSent(): HasMany
+    {
+        return $this->hasMany(ConnectionRequest::class, 'sender_id');
+    }
+
+    public function connectionRequestsReceived(): HasMany
+    {
+        return $this->hasMany(ConnectionRequest::class, 'receiver_id');
+    }
+
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_follows', 'following_id', 'follower_id')
+            ->withTimestamps();
+    }
+
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_follows', 'follower_id', 'following_id')
+            ->withTimestamps();
     }
 
     public function getProfileImageUrlAttribute(): ?string

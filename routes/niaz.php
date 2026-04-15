@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\UserConnectionController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
@@ -39,6 +40,17 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/profile', [UserProfileController::class, 'show']);
     Route::put('/profile/update', [UserProfileController::class, 'update']);
     Route::post('/profile/images', [UserProfileController::class, 'updateImages']);
+
+    // user connection routes
+    Route::get('/connections', [UserConnectionController::class, 'index']);
+    Route::get('/connections/requests', [UserConnectionController::class, 'requests']);
+    Route::post('/connections/{user}/follow', [UserConnectionController::class, 'follow']);
+    Route::post('/connections/request', [UserConnectionController::class, 'sendRequest']);
+    Route::post('/connections/requests/{connectionRequest}/accept', [UserConnectionController::class, 'accept']);
+    Route::post('/connections/requests/{connectionRequest}/ignore', [UserConnectionController::class, 'ignore']);
+    Route::get('/connections/followers', [UserConnectionController::class, 'followers']);
+    Route::get('/connections/following', [UserConnectionController::class, 'following']);
+    Route::delete('/connections/{user}/unfollow', [UserConnectionController::class, 'unfollow']);
 
     // user experience routes
     Route::get('/experience/list', [UserExperienceController::class, 'index']);

@@ -44,7 +44,7 @@ class UserExperienceController extends Controller
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
-                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
                         : null,
                     'experiences' => $experiences,
                 ];
@@ -84,8 +84,8 @@ class UserExperienceController extends Controller
             'total_time' => $totalTime,
             'timeline' => $startingDate && $totalTime
                 ? $experience->is_current
-                ? $startingDate . ' • ' . $statusLabel . ' • ' . $totalTime
-                : $startingDate . ' • ' . $endingDate . ' • ' . $totalTime
+                ? $startingDate.' • '.$statusLabel.' • '.$totalTime
+                : $startingDate.' • '.$endingDate.' • '.$totalTime
                 : null,
         ];
     }
@@ -111,11 +111,11 @@ class UserExperienceController extends Controller
         $parts = [];
 
         if ($years > 0) {
-            $parts[] = $years . ' year' . ($years === 1 ? '' : 's');
+            $parts[] = $years.' year'.($years === 1 ? '' : 's');
         }
 
         if ($remainingMonths > 0) {
-            $parts[] = $remainingMonths . ' month' . ($remainingMonths === 1 ? '' : 's');
+            $parts[] = $remainingMonths.' month'.($remainingMonths === 1 ? '' : 's');
         }
 
         if ($parts === []) {
@@ -185,10 +185,10 @@ class UserExperienceController extends Controller
             'skills' => 'array',         // e.g., ["PHP", "Laravel"]
         ]);
 
-        $startDate = Carbon::parse($request->start_month . ' ' . $request->start_year)->startOfMonth();
+        $startDate = Carbon::parse($request->start_month.' '.$request->start_year)->startOfMonth();
         $endDate = null;
         if (! $request->is_current && $request->end_month && $request->end_year) {
-            $endDate = Carbon::parse($request->end_month . ' ' . $request->end_year)->startOfMonth();
+            $endDate = Carbon::parse($request->end_month.' '.$request->end_year)->startOfMonth();
         }
 
         $company = Company::firstOrCreate(['name' => trim($request->company_name)]);
@@ -292,7 +292,7 @@ class UserExperienceController extends Controller
         }
 
         if (array_key_exists('start_month', $validated) && array_key_exists('start_year', $validated)) {
-            $updateData['start_date'] = Carbon::parse($validated['start_month'] . ' ' . $validated['start_year'])->startOfMonth();
+            $updateData['start_date'] = Carbon::parse($validated['start_month'].' '.$validated['start_year'])->startOfMonth();
         }
 
         $isCurrent = array_key_exists('is_current', $validated)
@@ -304,7 +304,7 @@ class UserExperienceController extends Controller
         if ($isCurrent) {
             $updateData['end_date'] = null;
         } elseif (array_key_exists('end_month', $validated) && array_key_exists('end_year', $validated)) {
-            $updateData['end_date'] = Carbon::parse($validated['end_month'] . ' ' . $validated['end_year'])->startOfMonth();
+            $updateData['end_date'] = Carbon::parse($validated['end_month'].' '.$validated['end_year'])->startOfMonth();
         }
 
         if (array_key_exists('skills', $validated)) {
