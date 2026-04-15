@@ -55,6 +55,7 @@ class UserConnectionController extends Controller
         $currentUser = $request->user();
 
         $requests = ConnectionRequest::query()
+            ->pending()
             ->forUser($currentUser->id)
             ->with([
                 'sender:id,first_name,last_name,title,profile_image',
@@ -546,20 +547,20 @@ class UserConnectionController extends Controller
 
         if ($connectionRequest->status === ConnectionRequest::STATUS_IGNORED) {
             return $connectionRequest->receiver_id === $currentUserId
-                ? 'You ignored '.$counterpartName.'\'s invitation'
-                : $counterpartName.' ignored your invitation';
+                ? 'You ignored ' . $counterpartName . '\'s invitation'
+                : $counterpartName . ' ignored your invitation';
         }
 
         return $connectionRequest->sender_id === $currentUserId
             ? 'Connection request sent'
-            : $counterpartName.' sent you a connection request';
+            : $counterpartName . ' sent you a connection request';
     }
 
     private function formatUser(User $user): array
     {
         return [
             'id' => $user->id,
-            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
+            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'title' => $user->title,

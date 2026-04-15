@@ -50,7 +50,7 @@ class UserConnectionFlowTest extends TestCase
             'status' => ConnectionRequest::STATUS_PENDING,
         ]);
 
-        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/'.$connectionRequest->id.'/accept');
+        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/' . $connectionRequest->id . '/accept');
 
         $response
             ->assertOk()
@@ -86,7 +86,7 @@ class UserConnectionFlowTest extends TestCase
             'status' => ConnectionRequest::STATUS_PENDING,
         ]);
 
-        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/'.$connectionRequest->id.'/ignore');
+        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/' . $connectionRequest->id . '/ignore');
 
         $response
             ->assertOk()
@@ -147,7 +147,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('data.0.user.id', $secondUser->id)
             ->assertJsonPath('data.0.is_followed_back', true);
 
-        $unfollowResponse = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/'.$secondUser->id.'/unfollow');
+        $unfollowResponse = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/' . $secondUser->id . '/unfollow');
 
         $unfollowResponse
             ->assertOk()
@@ -160,7 +160,7 @@ class UserConnectionFlowTest extends TestCase
             'following_id' => $secondUser->id,
         ]);
 
-        $refollowResponse = $this->actingAs($firstUser, 'api')->postJson('/api/connections/'.$secondUser->id.'/follow');
+        $refollowResponse = $this->actingAs($firstUser, 'api')->postJson('/api/connections/' . $secondUser->id . '/follow');
 
         $refollowResponse
             ->assertCreated()
@@ -179,11 +179,27 @@ class UserConnectionFlowTest extends TestCase
     {
         $sender = $this->makeUser();
         $receiver = $this->makeUser();
+        $acceptedSender = $this->makeUser();
+        $ignoredSender = $this->makeUser();
 
         ConnectionRequest::create([
             'sender_id' => $sender->id,
             'receiver_id' => $receiver->id,
             'status' => ConnectionRequest::STATUS_PENDING,
+        ]);
+
+        ConnectionRequest::create([
+            'sender_id' => $acceptedSender->id,
+            'receiver_id' => $receiver->id,
+            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'responded_at' => now(),
+        ]);
+
+        ConnectionRequest::create([
+            'sender_id' => $ignoredSender->id,
+            'receiver_id' => $receiver->id,
+            'status' => ConnectionRequest::STATUS_IGNORED,
+            'responded_at' => now(),
         ]);
 
         $response = $this->actingAs($receiver, 'api')->getJson('/api/connections/requests');
@@ -193,9 +209,11 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.status', ConnectionRequest::STATUS_PENDING)
-            ->assertJsonPath('data.0.message', $sender->first_name.' '.$sender->last_name.' sent you a connection request')
+            ->assertJsonPath('data.0.message', $sender->first_name . ' ' . $sender->last_name . ' sent you a connection request')
             ->assertJsonPath('data.0.can_accept', true)
             ->assertJsonPath('data.0.can_ignore', true);
+
+        $this->assertDatabaseCount('connection_requests', 3);
     }
 
     public function test_user_can_remove_connection_and_it_removes_mutual_follows(): void
@@ -220,7 +238,7 @@ class UserConnectionFlowTest extends TestCase
             'following_id' => $firstUser->id,
         ]);
 
-        $response = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/'.$secondUser->id.'/remove');
+        $response = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/' . $secondUser->id . '/remove');
 
         $response
             ->assertOk()
