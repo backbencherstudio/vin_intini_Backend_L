@@ -268,6 +268,13 @@ class UserProfileSkillTest extends TestCase
         $this->assertNotNull($profile);
         $this->assertSame([$existingSkill->id, $newSkillId], $profile->skills_id);
 
+        $profile->update([
+            'highest_degree' => 'MBA',
+            'study_subcategory' => 'Business',
+            'institution' => 'Different Institute',
+            'graduation_year' => '2030',
+        ]);
+
         $institution = Institution::query()->where('name', 'ABC University')->first();
 
         $this->assertNotNull($institution);
@@ -284,6 +291,10 @@ class UserProfileSkillTest extends TestCase
         $meResponse
             ->assertOk()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('user.profile.highest_degree', 'BSc')
+            ->assertJsonPath('user.profile.study_subcategory', 'Software')
+            ->assertJsonPath('user.profile.institution', 'ABC University')
+            ->assertJsonPath('user.profile.graduation_year', '2024')
             ->assertJsonPath('user.profile.skills.0', 'Figma')
             ->assertJsonPath('user.profile.skills.1', 'Laravel');
     }

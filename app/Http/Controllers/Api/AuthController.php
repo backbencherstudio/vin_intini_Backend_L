@@ -66,7 +66,8 @@ class AuthController extends Controller
     {
         $user = auth('api')->user();
 
-        $user->load(['roles', 'profile.currentPosition.company']);
+        $user->load(['roles', 'profile.currentPosition.company', 'educations.institution']);
+        $latestEducation = $user->educations->sortByDesc('id')->first();
 
         return response()->json([
             'success' => true,
@@ -84,11 +85,13 @@ class AuthController extends Controller
                     'country' => $user->profile->country,
                     'postal_code' => $user->profile->postal_code,
                     'profession' => $user->profile->profession,
-                    'highest_degree' => $user->profile->highest_degree,
-                    'study_category' => $user->profile->study_category,
-                    'study_subcategory' => $user->profile->study_subcategory,
-                    'institution' => $user->profile->institution,
-                    'graduation_year' => $user->profile->graduation_year,
+                    'degree' => $latestEducation?->degree,
+                    // 'study_category' => $user->profile->study_category,
+                    // 'study_subcategory' => $user->profile->study_subcategory,
+                    // 'institution' => $user->profile->institution,
+                    'field_study' => $latestEducation?->field_study,
+                    'institution' => $latestEducation?->institution?->name,
+                    'graduation_year' => $latestEducation?->end_year,
                     'interests' => $user->profile->interests,
                     'skills_id' => $user->profile->skills_id,
                     'skills' => Skill::query()
