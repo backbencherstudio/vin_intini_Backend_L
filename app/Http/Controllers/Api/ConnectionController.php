@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class UserConnectionController extends Controller
+class ConnectionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
@@ -425,106 +425,6 @@ class UserConnectionController extends Controller
                 'message' => 'The user can now send you a new connection request if they wish.',
             ],
         ], 200);
-    }
-
-    public function followers(Request $request): JsonResponse
-    {
-        $currentUser = $request->user();
-        $followingIds = UserFollow::query()
-            ->where('follower_id', $currentUser->id)
-            ->pluck('following_id')
-            ->all();
-
-        $followers = UserFollow::query()
-            ->where('following_id', $currentUser->id)
-            ->with('follower:id,first_name,last_name,title,profile_image')
-            ->latest('id')
-            ->get();
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $followers->map(function (UserFollow $follow) use ($followingIds) {
-                return [
-                    'id' => $follow->id,
-                    'user' => $this->formatUser($follow->follower),
-                    'is_following_back' => in_array($follow->follower_id, $followingIds, true),
-                    'followed_at' => optional($follow->created_at)?->toDateTimeString(),
-                ];
-            })->values(),
-        ], 200);
-    }
-
-    public function following(Request $request): JsonResponse
-    {
-        $currentUser = $request->user();
-        $followerIds = UserFollow::query()
-            ->where('following_id', $currentUser->id)
-            ->pluck('follower_id')
-            ->all();
-
-        $following = UserFollow::query()
-            ->where('follower_id', $currentUser->id)
-            ->with('following:id,first_name,last_name,title,profile_image')
-            ->latest('id')
-            ->get();
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $following->map(function (UserFollow $follow) use ($followerIds) {
-                return [
-                    'id' => $follow->id,
-                    'user' => $this->formatUser($follow->following),
-                    'is_followed_back' => in_array($follow->following_id, $followerIds, true),
-                    'followed_at' => optional($follow->created_at)?->toDateTimeString(),
-                ];
-            })->values(),
-        ], 200);
-    }
-
-    public function unfollow(Request $request, User $user): JsonResponse
-    {
-        $currentUser = $request->user();
-
-        UserFollow::query()
-            ->where('follower_id', $currentUser->id)
-            ->where('following_id', $user->id)
-            ->delete();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Unfollowed successfully.',
-            'data' => [
-                'user' => $this->formatUser($user),
-                'is_following' => false,
-            ],
-        ], 200);
-    }
-
-    public function follow(Request $request, User $user): JsonResponse
-    {
-        $currentUser = $request->user();
-
-        if ($currentUser->id === $user->id) {
-            throw ValidationException::withMessages([
-                'user_id' => ['You cannot follow yourself.'],
-            ]);
-        }
-
-        $follow = UserFollow::query()->firstOrCreate([
-            'follower_id' => $currentUser->id,
-            'following_id' => $user->id,
-        ]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => $follow->wasRecentlyCreated
-                ? 'Followed successfully.'
-                : 'You are already following this user.',
-            'data' => [
-                'user' => $this->formatUser($user),
-                'is_following' => true,
-            ],
-        ], $follow->wasRecentlyCreated ? 201 : 200);
     }
 
     public function removeConnection(Request $request, User $user): JsonResponse

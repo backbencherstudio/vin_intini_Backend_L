@@ -1,6 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\UserConnectionController;
+use App\Http\Controllers\Api\ConnectionController;
+use App\Http\Controllers\Api\FollowController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
@@ -54,17 +55,17 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/education/delete/{id}', [UserEducationController::class, 'destroy']);
 
     // user connection routes
-    Route::get('/connections', [UserConnectionController::class, 'index']);
-    Route::get('/connections/suggestions', [UserConnectionController::class, 'suggestions']);
-    Route::get('/connections/requests', [UserConnectionController::class, 'requests']);
-    Route::delete('/connections/{user}/remove', [UserConnectionController::class, 'removeConnection']);
-    Route::post('/connections/{user}/follow', [UserConnectionController::class, 'follow']);
-    Route::post('/connections/request', [UserConnectionController::class, 'sendRequest']);
-    Route::post('/connections/requests/{connectionRequest}/accept', [UserConnectionController::class, 'accept']);
-    Route::post('/connections/requests/{connectionRequest}/ignore', [UserConnectionController::class, 'ignore']);
+    Route::get('/connections', [ConnectionController::class, 'index']);
+    Route::get('/connections/suggestions', [ConnectionController::class, 'suggestions']);
+    Route::get('/connections/requests', [ConnectionController::class, 'requests']);
+    Route::delete('/connections/{user}/remove', [ConnectionController::class, 'removeConnection']);
+    Route::post('/connections/request', [ConnectionController::class, 'sendRequest']);
+    Route::post('/connections/requests/{connectionRequest}/accept', [ConnectionController::class, 'accept']);
+    Route::post('/connections/requests/{connectionRequest}/ignore', [ConnectionController::class, 'ignore']);
 
     // followers and following routes
-    Route::get('/connections/followers', [UserConnectionController::class, 'followers']);
-    Route::get('/connections/following', [UserConnectionController::class, 'following']);
-    Route::delete('/connections/{user}/unfollow', [UserConnectionController::class, 'unfollow']);
+    Route::get('/connections/followers', [FollowController::class, 'followers']);
+    Route::get('/connections/following', [FollowController::class, 'following']);
+    Route::post('/connections/{user}/follow', [FollowController::class, 'follow']);
+    Route::delete('/connections/{user}/unfollow', [FollowController::class, 'unfollow']);
 });

@@ -518,7 +518,7 @@ final class ApiRoutes
         path: '/api/connections',
         tags: ['Connections'],
         operationId: 'get_api_connections',
-        summary: 'UserConnectionController@index',
+        summary: 'ConnectionController@index',
         security: [['bearerAuth' => []]],
         responses: [new OA\Response(response: 200, description: 'OK')],
     )]
@@ -528,7 +528,7 @@ final class ApiRoutes
         path: '/api/connections/suggestions',
         tags: ['Connections'],
         operationId: 'get_api_connections_suggestions',
-        summary: 'UserConnectionController@suggestions',
+        summary: 'ConnectionController@suggestions',
         security: [['bearerAuth' => []]],
         parameters: [
             new OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string', example: 'vin')),
@@ -543,7 +543,7 @@ final class ApiRoutes
         path: '/api/connections/requests',
         tags: ['Connections'],
         operationId: 'get_api_connections_requests',
-        summary: 'UserConnectionController@requests',
+        summary: 'ConnectionController@requests',
         security: [['bearerAuth' => []]],
         responses: [new OA\Response(response: 200, description: 'OK')],
     )]
@@ -553,7 +553,7 @@ final class ApiRoutes
         path: '/api/connections/{user}/remove',
         tags: ['Connections'],
         operationId: 'delete_api_connections_user_remove',
-        summary: 'UserConnectionController@removeConnection',
+        summary: 'ConnectionController@removeConnection',
         security: [['bearerAuth' => []]],
         parameters: [new OA\Parameter(name: 'user', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 2))],
         responses: [new OA\Response(response: 200, description: 'OK')],
@@ -564,7 +564,7 @@ final class ApiRoutes
         path: '/api/connections/{user}/follow',
         tags: ['Connections'],
         operationId: 'post_api_connections_user_follow',
-        summary: 'UserConnectionController@follow',
+        summary: 'FollowController@follow',
         security: [['bearerAuth' => []]],
         parameters: [new OA\Parameter(name: 'user', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 2))],
         responses: [new OA\Response(response: 200, description: 'OK')],
@@ -575,7 +575,7 @@ final class ApiRoutes
         path: '/api/connections/request',
         tags: ['Connections'],
         operationId: 'post_api_connections_request',
-        summary: 'UserConnectionController@sendRequest',
+        summary: 'ConnectionController@sendRequest',
         security: [['bearerAuth' => []]],
         requestBody: new OA\RequestBody(
             required: true,
@@ -595,7 +595,7 @@ final class ApiRoutes
         path: '/api/connections/requests/{connectionRequest}/accept',
         tags: ['Connections'],
         operationId: 'post_api_connections_requests_accept',
-        summary: 'UserConnectionController@accept',
+        summary: 'ConnectionController@accept',
         security: [['bearerAuth' => []]],
         parameters: [
             new OA\Parameter(name: 'connectionRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 1)),
@@ -608,7 +608,7 @@ final class ApiRoutes
         path: '/api/connections/requests/{connectionRequest}/ignore',
         tags: ['Connections'],
         operationId: 'post_api_connections_requests_ignore',
-        summary: 'UserConnectionController@ignore',
+        summary: 'ConnectionController@ignore',
         security: [['bearerAuth' => []]],
         parameters: [
             new OA\Parameter(name: 'connectionRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 1)),
@@ -621,7 +621,7 @@ final class ApiRoutes
         path: '/api/connections/followers',
         tags: ['Connections'],
         operationId: 'get_api_connections_followers',
-        summary: 'UserConnectionController@followers',
+        summary: 'FollowController@followers',
         security: [['bearerAuth' => []]],
         responses: [new OA\Response(response: 200, description: 'OK')],
     )]
@@ -631,7 +631,7 @@ final class ApiRoutes
         path: '/api/connections/following',
         tags: ['Connections'],
         operationId: 'get_api_connections_following',
-        summary: 'UserConnectionController@following',
+        summary: 'FollowController@following',
         security: [['bearerAuth' => []]],
         responses: [new OA\Response(response: 200, description: 'OK')],
     )]
@@ -641,7 +641,7 @@ final class ApiRoutes
         path: '/api/connections/{user}/unfollow',
         tags: ['Connections'],
         operationId: 'delete_api_connections_user_unfollow',
-        summary: 'UserConnectionController@unfollow',
+        summary: 'FollowController@unfollow',
         security: [['bearerAuth' => []]],
         parameters: [new OA\Parameter(name: 'user', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 2))],
         responses: [new OA\Response(response: 200, description: 'OK')],
