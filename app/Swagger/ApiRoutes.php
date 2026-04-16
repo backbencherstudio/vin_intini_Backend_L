@@ -525,6 +525,21 @@ final class ApiRoutes
     public function getConnections(): void {}
 
     #[OA\Get(
+        path: '/api/connections/suggestions',
+        tags: ['Connections'],
+        operationId: 'get_api_connections_suggestions',
+        summary: 'UserConnectionController@suggestions',
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string', example: 'vin')),
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', example: 12)),
+            new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', example: 1)),
+        ],
+        responses: [new OA\Response(response: 200, description: 'OK')],
+    )]
+    public function getConnectionSuggestions(): void {}
+
+    #[OA\Get(
         path: '/api/connections/requests',
         tags: ['Connections'],
         operationId: 'get_api_connections_requests',

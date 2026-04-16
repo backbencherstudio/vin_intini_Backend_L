@@ -333,6 +333,72 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('meta.sort', 'az');
     }
 
+    public function test_user_can_view_connection_suggestions_with_pending_states(): void
+    {
+        $currentUser = $this->makeUser('Current', 'User');
+        $connectedUser = $this->makeUser('Connected', 'Person');
+        $pendingSentUser = $this->makeUser('Pending', 'Sent');
+        $pendingReceivedUser = $this->makeUser('Pending', 'Received');
+        $newSuggestionUser = $this->makeUser('New', 'Suggestion');
+        $unverifiedUser = User::factory()->create([
+            'is_verified' => false,
+            'first_name' => 'Unverified',
+            'last_name' => 'Candidate',
+            'title' => 'Hidden User',
+        ]);
+
+        ConnectionRequest::create([
+            'sender_id' => $currentUser->id,
+            'receiver_id' => $connectedUser->id,
+            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'responded_at' => now(),
+        ]);
+
+        $pendingSentRequest = ConnectionRequest::create([
+            'sender_id' => $currentUser->id,
+            'receiver_id' => $pendingSentUser->id,
+            'status' => ConnectionRequest::STATUS_PENDING,
+        ]);
+
+        $pendingReceivedRequest = ConnectionRequest::create([
+            'sender_id' => $pendingReceivedUser->id,
+            'receiver_id' => $currentUser->id,
+            'status' => ConnectionRequest::STATUS_PENDING,
+        ]);
+
+        $response = $this->actingAs($currentUser, 'api')->getJson('/api/connections/suggestions');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success');
+
+        $suggestions = collect($response->json('data'));
+
+        $this->assertFalse($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $connectedUser->id));
+        $this->assertFalse($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $unverifiedUser->id));
+
+        $pendingSentItem = $suggestions->first(fn(array $item) => (int) $item['user']['id'] === $pendingSentUser->id);
+        $this->assertNotNull($pendingSentItem);
+        $this->assertSame('pending_sent', $pendingSentItem['state']);
+        $this->assertSame('Pending', $pendingSentItem['action_label']);
+        $this->assertSame($pendingSentRequest->id, $pendingSentItem['pending_request_id']);
+        $this->assertFalse($pendingSentItem['is_connectable']);
+
+        $pendingReceivedItem = $suggestions->first(fn(array $item) => (int) $item['user']['id'] === $pendingReceivedUser->id);
+        $this->assertNotNull($pendingReceivedItem);
+        $this->assertSame('pending_received', $pendingReceivedItem['state']);
+        $this->assertSame('Accept', $pendingReceivedItem['action_label']);
+        $this->assertSame($pendingReceivedRequest->id, $pendingReceivedItem['pending_request_id']);
+        $this->assertFalse($pendingReceivedItem['is_connectable']);
+
+        $newSuggestionItem = $suggestions->first(fn(array $item) => (int) $item['user']['id'] === $newSuggestionUser->id);
+        $this->assertNotNull($newSuggestionItem);
+        $this->assertSame('not_connected', $newSuggestionItem['state']);
+        $this->assertSame('Connect', $newSuggestionItem['action_label']);
+        $this->assertNull($newSuggestionItem['pending_request_id']);
+        $this->assertTrue($newSuggestionItem['is_connectable']);
+    }
+
     private function makeUser(?string $firstName = null, ?string $lastName = null): User
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();

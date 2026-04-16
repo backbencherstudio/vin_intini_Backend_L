@@ -1014,6 +1014,54 @@
                 ]
             }
         },
+        "/api/connections/suggestions": {
+            "get": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@suggestions",
+                "operationId": "get_api_connections_suggestions",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "vin"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 12
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/connections/requests": {
             "get": {
                 "tags": [
