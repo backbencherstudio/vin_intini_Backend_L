@@ -165,7 +165,7 @@
                     "Auth"
                 ],
                 "summary": "AuthController@register",
-                "description": "Registers a user and sends a 4-digit OTP to the email for verification.",
+                "description": "Registers a user and sends a 4-digit OTP to the email for verification. If the email already exists but is not verified, it will resend the OTP.",
                 "operationId": "post_api_register",
                 "requestBody": {
                     "required": true,
@@ -338,6 +338,47 @@
                 }
             }
         },
+        "/api/register/resend-otp": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "AuthController@resendRegisterOtp",
+                "description": "Resends the registration OTP (use when OTP expired).",
+                "operationId": "post_api_register_resend_otp",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "user@example.com"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                }
+            }
+        },
         "/api/send-otp": {
             "post": {
                 "tags": [
@@ -371,6 +412,1163 @@
                     }
                 }
             }
+        },
+        "/api/auth/{provider}": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "SocialController@redirect",
+                "operationId": "get_api_auth_provider",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "google"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "302": {
+                        "description": "Redirect"
+                    }
+                }
+            }
+        },
+        "/api/auth/{provider}/callback": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "SocialController@callback",
+                "operationId": "get_api_auth_provider_callback",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "google"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/setup-profile": {
+            "post": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "UserProfileController@setupProfile",
+                "operationId": "post_api_setup_profile",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/update-password": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "UserController@updatePass",
+                "operationId": "post_api_update_password",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "old_password",
+                                    "new_password"
+                                ],
+                                "properties": {
+                                    "old_password": {
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "new_password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "minLength": 6
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/groups": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@index",
+                "operationId": "get_api_groups",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/group-create": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@store",
+                "operationId": "post_api_group_create",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/group-show/{id}": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@show",
+                "operationId": "get_api_group_show",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/group-update/{id}": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@update",
+                "operationId": "post_api_group_update",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/my-created-groups": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@myCreatedGroups",
+                "operationId": "get_api_my_created_groups",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/my-joined-groups": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@myJoinedGroups",
+                "operationId": "get_api_my_joined_groups",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/group/join": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@joinGroup",
+                "operationId": "post_api_group_join",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "group_id"
+                                ],
+                                "properties": {
+                                    "group_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/group/leave": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@leaveGroup",
+                "operationId": "post_api_group_leave",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "group_id"
+                                ],
+                                "properties": {
+                                    "group_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/group-invite-link/{id}": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@generateInviteLink",
+                "operationId": "get_api_group_invite_link",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/group/join/invite/{group_id}": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@joinGroup (signed invite link)",
+                "operationId": "get_api_group_join_invite",
+                "parameters": [
+                    {
+                        "name": "group_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/company-suggestions": {
+            "get": {
+                "tags": [
+                    "Suggestions"
+                ],
+                "summary": "UserExperienceController@companySuggestions",
+                "operationId": "get_api_company_suggestions",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/skill-suggestions": {
+            "get": {
+                "tags": [
+                    "Suggestions"
+                ],
+                "summary": "UserExperienceController@skillSuggestions",
+                "operationId": "get_api_skill_suggestions",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/institution-suggestions": {
+            "get": {
+                "tags": [
+                    "Suggestions"
+                ],
+                "summary": "UserEducationController@institutionSuggestions",
+                "operationId": "get_api_institution_suggestions",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/profile": {
+            "get": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "UserProfileController@show",
+                "operationId": "get_api_profile",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/profile/update": {
+            "put": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "UserProfileController@update",
+                "operationId": "put_api_profile_update_self",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/profile/images": {
+            "post": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "UserProfileController@updateImages",
+                "operationId": "post_api_profile_images",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections": {
+            "get": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@index",
+                "operationId": "get_api_connections",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/requests": {
+            "get": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@requests",
+                "operationId": "get_api_connections_requests",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/{user}/remove": {
+            "delete": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@removeConnection",
+                "operationId": "delete_api_connections_user_remove",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/{user}/follow": {
+            "post": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@follow",
+                "operationId": "post_api_connections_user_follow",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/request": {
+            "post": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@sendRequest",
+                "operationId": "post_api_connections_request",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "user_id"
+                                ],
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/requests/{connectionRequest}/accept": {
+            "post": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@accept",
+                "operationId": "post_api_connections_requests_accept",
+                "parameters": [
+                    {
+                        "name": "connectionRequest",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/requests/{connectionRequest}/ignore": {
+            "post": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@ignore",
+                "operationId": "post_api_connections_requests_ignore",
+                "parameters": [
+                    {
+                        "name": "connectionRequest",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/followers": {
+            "get": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@followers",
+                "operationId": "get_api_connections_followers",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/following": {
+            "get": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@following",
+                "operationId": "get_api_connections_following",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/connections/{user}/unfollow": {
+            "delete": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "UserConnectionController@unfollow",
+                "operationId": "delete_api_connections_user_unfollow",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/experience/list": {
+            "get": {
+                "tags": [
+                    "Experience"
+                ],
+                "summary": "UserExperienceController@index",
+                "operationId": "get_api_experience_list",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/experience/add": {
+            "post": {
+                "tags": [
+                    "Experience"
+                ],
+                "summary": "UserExperienceController@store",
+                "operationId": "post_api_experience_add",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/experience/edit/{id}": {
+            "get": {
+                "tags": [
+                    "Experience"
+                ],
+                "summary": "UserExperienceController@edit",
+                "operationId": "get_api_experience_edit",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/experience/update/{id}": {
+            "post": {
+                "tags": [
+                    "Experience"
+                ],
+                "summary": "UserExperienceController@update",
+                "operationId": "post_api_experience_update",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/experience/delete/{id}": {
+            "delete": {
+                "tags": [
+                    "Experience"
+                ],
+                "summary": "UserExperienceController@destroy",
+                "operationId": "delete_api_experience_delete",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/education/list": {
+            "get": {
+                "tags": [
+                    "Education"
+                ],
+                "summary": "UserEducationController@index",
+                "operationId": "get_api_education_list",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/education/add": {
+            "post": {
+                "tags": [
+                    "Education"
+                ],
+                "summary": "UserEducationController@store",
+                "operationId": "post_api_education_add",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/education/edit/{id}": {
+            "get": {
+                "tags": [
+                    "Education"
+                ],
+                "summary": "UserEducationController@edit",
+                "operationId": "get_api_education_edit",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/education/update/{id}": {
+            "post": {
+                "tags": [
+                    "Education"
+                ],
+                "summary": "UserEducationController@update",
+                "operationId": "post_api_education_update",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/education/delete/{id}": {
+            "delete": {
+                "tags": [
+                    "Education"
+                ],
+                "summary": "UserEducationController@destroy",
+                "operationId": "delete_api_education_delete",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -394,6 +1592,30 @@
         {
             "name": "Admin",
             "description": "Admin"
+        },
+        {
+            "name": "Profile",
+            "description": "Profile"
+        },
+        {
+            "name": "Groups",
+            "description": "Groups"
+        },
+        {
+            "name": "Suggestions",
+            "description": "Suggestions"
+        },
+        {
+            "name": "Connections",
+            "description": "Connections"
+        },
+        {
+            "name": "Experience",
+            "description": "Experience"
+        },
+        {
+            "name": "Education",
+            "description": "Education"
         }
     ]
 }
