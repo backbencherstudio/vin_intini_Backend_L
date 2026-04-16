@@ -34,6 +34,22 @@ class UserConnectionController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        if($connections->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'No accepted connection found.',
+                'data' => [],
+                'meta' => [
+                    'total' => 0,
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'last_page' => 0,
+                    'search' => $search !== '' ? $search : null,
+                    'sort' => $sort,
+                ],
+            ], 200);
+        }
+
         $counterpartIds = $connections
             ->map(function (ConnectionRequest $connectionRequest) use ($currentUser) {
                 return $connectionRequest->sender_id === $currentUser->id
