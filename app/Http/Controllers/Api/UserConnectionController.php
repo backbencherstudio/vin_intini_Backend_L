@@ -127,6 +127,14 @@ class UserConnectionController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        if ($requests->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'No pending connection requests found.',
+                'data' => [],
+            ], 200);
+        }
+
         $counterpartIds = $requests
             ->map(function (ConnectionRequest $connectionRequest) use ($currentUser) {
                 return $connectionRequest->sender_id === $currentUser->id
