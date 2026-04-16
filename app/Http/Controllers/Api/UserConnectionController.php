@@ -34,7 +34,7 @@ class UserConnectionController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        if($connections->isEmpty()) {
+        if ($connections->isEmpty()) {
             return response()->json([
                 'status' => 'success',
                 'message' => 'No accepted connection found.',
@@ -195,7 +195,7 @@ class UserConnectionController extends Controller
 
         $suggestionsQuery = User::query()
             ->whereKeyNot($currentUser->id)
-            ->where('is_verified', 1)
+            ->whereHas('profile')
             ->when($acceptedCounterpartIds->isNotEmpty(), function ($query) use ($acceptedCounterpartIds) {
                 $query->whereNotIn('id', $acceptedCounterpartIds->all());
             })

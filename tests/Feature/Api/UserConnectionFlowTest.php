@@ -340,11 +340,21 @@ class UserConnectionFlowTest extends TestCase
         $pendingSentUser = $this->makeUser('Pending', 'Sent');
         $pendingReceivedUser = $this->makeUser('Pending', 'Received');
         $newSuggestionUser = $this->makeUser('New', 'Suggestion');
-        $unverifiedUser = User::factory()->create([
-            'is_verified' => false,
-            'first_name' => 'Unverified',
+        $userWithoutProfile = User::factory()->create([
+            'first_name' => 'NoProfile',
             'last_name' => 'Candidate',
             'title' => 'Hidden User',
+        ]);
+
+        $unverifiedWithProfile = User::factory()->create([
+            'is_verified' => false,
+            'first_name' => 'Unverified',
+            'last_name' => 'WithProfile',
+            'title' => 'Visible User',
+        ]);
+
+        UserProfile::create([
+            'user_id' => $unverifiedWithProfile->id,
         ]);
 
         ConnectionRequest::create([
@@ -375,7 +385,8 @@ class UserConnectionFlowTest extends TestCase
         $suggestions = collect($response->json('data'));
 
         $this->assertFalse($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $connectedUser->id));
-        $this->assertFalse($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $unverifiedUser->id));
+        $this->assertFalse($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $userWithoutProfile->id));
+        $this->assertTrue($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $unverifiedWithProfile->id));
 
         $pendingSentItem = $suggestions->first(fn(array $item) => (int) $item['user']['id'] === $pendingSentUser->id);
         $this->assertNotNull($pendingSentItem);
