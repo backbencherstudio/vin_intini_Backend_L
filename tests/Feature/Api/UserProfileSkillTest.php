@@ -268,6 +268,17 @@ class UserProfileSkillTest extends TestCase
         $this->assertNotNull($profile);
         $this->assertSame([$existingSkill->id, $newSkillId], $profile->skills_id);
 
+        $institution = Institution::query()->where('name', 'ABC University')->first();
+
+        $this->assertNotNull($institution);
+        $this->assertDatabaseHas('educations', [
+            'user_id' => $user->id,
+            'institution_id' => $institution->id,
+            'degree' => 'BSc',
+            'field_study' => 'Software',
+            'end_year' => '2024',
+        ]);
+
         $meResponse = $this->actingAs($user, 'api')->getJson('/api/me');
 
         $meResponse

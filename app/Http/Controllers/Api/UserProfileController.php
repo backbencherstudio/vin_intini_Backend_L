@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Education;
 use App\Models\Experience;
+use App\Models\Institution;
 use App\Models\Skill;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
@@ -173,6 +174,33 @@ class UserProfileController extends Controller
                 'about' => $request->about,
             ]
         );
+
+        $institutionName = trim((string) ($validated['institution'] ?? ''));
+        $degree = trim((string) ($validated['highest_degree'] ?? ''));
+        $endYear = trim((string) ($validated['graduation_year'] ?? ''));
+
+        if ($institutionName !== '' && $degree !== '' && $endYear !== '') {
+            $institution = Institution::query()->firstOrCreate([
+                'name' => $institutionName,
+            ]);
+
+            Education::query()->updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'institution_id' => $institution->id,
+                    'degree' => $degree,
+                    'end_year' => $endYear,
+                ],
+                [
+                    'field_study' => $validated['study_subcategory'] ?? null,
+                    'start_month' => 'January',
+                    'start_year' => $endYear,
+                    'end_month' => null,
+                    'is_current' => false,
+                    'skills_id' => $skillIds,
+                ],
+            );
+        }
 
         return response()->json([
             'status' => 'success',
