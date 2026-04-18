@@ -118,6 +118,7 @@ class UserConnectionFlowTest extends TestCase
     {
         $firstUser = $this->makeUser();
         $secondUser = $this->makeUser();
+        $mutualUser = $this->makeUser();
 
         ConnectionRequest::create([
             'sender_id' => $firstUser->id,
@@ -132,8 +133,18 @@ class UserConnectionFlowTest extends TestCase
         ]);
 
         UserFollow::create([
+            'follower_id' => $firstUser->id,
+            'following_id' => $mutualUser->id,
+        ]);
+
+        UserFollow::create([
             'follower_id' => $secondUser->id,
             'following_id' => $firstUser->id,
+        ]);
+
+        UserFollow::create([
+            'follower_id' => $secondUser->id,
+            'following_id' => $mutualUser->id,
         ]);
 
         $followersResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/followers');
@@ -143,16 +154,26 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.user.id', $secondUser->id)
-            ->assertJsonPath('data.0.is_following_back', true);
+            ->assertJsonPath('data.0.is_following_back', true)
+            ->assertJsonPath('data.0.mutual_connections_count', 1)
+            ->assertJsonPath('data.0.mutual_connections.0.id', $mutualUser->id);
 
         $followingResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following');
 
         $followingResponse
             ->assertOk()
             ->assertJsonPath('status', 'success')
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.user.id', $secondUser->id)
-            ->assertJsonPath('data.0.is_followed_back', true);
+            ->assertJsonCount(2, 'data');
+
+        $followingItems = collect($followingResponse->json('data'));
+        $followedItem = $followingItems->first(function (array $item) use ($secondUser): bool {
+            return (int) $item['user']['id'] === $secondUser->id;
+        });
+
+        $this->assertNotNull($followedItem);
+        $this->assertTrue($followedItem['is_followed_back']);
+        $this->assertSame(1, $followedItem['mutual_connections_count']);
+        $this->assertSame($mutualUser->id, $followedItem['mutual_connections'][0]['id']);
 
         $unfollowResponse = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/' . $secondUser->id . '/unfollow');
 

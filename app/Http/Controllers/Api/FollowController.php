@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserFollow;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class FollowController extends Controller
@@ -25,7 +26,12 @@ class FollowController extends Controller
             ->latest('id')
             ->get();
 
-        if($followers->isEmpty()) {
+        $mutualConnections = $this->buildMutualConnectionsMap(
+            $currentUser->id,
+            $followers->pluck('follower_id')->values()
+        );
+
+        if ($followers->isEmpty()) {
             return response()->json([
                 'status' => 'success',
                 'message' => 'You have no followers yet.',
@@ -35,11 +41,18 @@ class FollowController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $followers->map(function (UserFollow $follow) use ($followingIds) {
+            'data' => $followers->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
+                $mutualConnectionData = $mutualConnections[$follow->follower_id] ?? [
+                    'count' => 0,
+                    'preview' => [],
+                ];
+
                 return [
                     'id' => $follow->id,
                     'user' => $this->formatUser($follow->follower),
                     'is_following_back' => in_array($follow->follower_id, $followingIds, true),
+                    'mutual_connections_count' => $mutualConnectionData['count'],
+                    'mutual_connections' => $mutualConnectionData['preview'],
                     'followed_at' => optional($follow->created_at)?->toDateTimeString(),
                 ];
             })->values(),
@@ -60,7 +73,12 @@ class FollowController extends Controller
             ->latest('id')
             ->get();
 
-        if($following->isEmpty()) {
+        $mutualConnections = $this->buildMutualConnectionsMap(
+            $currentUser->id,
+            $following->pluck('following_id')->values()
+        );
+
+        if ($following->isEmpty()) {
             return response()->json([
                 'status' => 'success',
                 'message' => 'You are not following anyone yet.',
@@ -70,11 +88,18 @@ class FollowController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $following->map(function (UserFollow $follow) use ($followerIds) {
+            'data' => $following->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
+                $mutualConnectionData = $mutualConnections[$follow->following_id] ?? [
+                    'count' => 0,
+                    'preview' => [],
+                ];
+
                 return [
                     'id' => $follow->id,
                     'user' => $this->formatUser($follow->following),
                     'is_followed_back' => in_array($follow->following_id, $followerIds, true),
+                    'mutual_connections_count' => $mutualConnectionData['count'],
+                    'mutual_connections' => $mutualConnectionData['preview'],
                     'followed_at' => optional($follow->created_at)?->toDateTimeString(),
                 ];
             })->values(),
@@ -140,5 +165,69 @@ class FollowController extends Controller
             'cover_image' => $user->cover_image,
             'cover_image_url' => $user->cover_image_url,
         ];
+    }
+
+    private function buildMutualConnectionsMap(int $currentUserId, Collection $counterpartIds): array
+    {
+        if ($counterpartIds->isEmpty()) {
+            return [];
+        }
+
+        $currentFollowingIds = UserFollow::query()
+            ->where('follower_id', $currentUserId)
+            ->pluck('following_id')
+            ->unique()
+            ->values();
+
+        if ($currentFollowingIds->isEmpty()) {
+            return [];
+        }
+
+        $mutualFollowRows = UserFollow::query()
+            ->whereIn('follower_id', $counterpartIds->all())
+            ->whereIn('following_id', $currentFollowingIds->all())
+            ->get(['follower_id', 'following_id']);
+
+        $mutualUserIds = $mutualFollowRows
+            ->pluck('following_id')
+            ->unique()
+            ->values();
+
+        if ($mutualUserIds->isEmpty()) {
+            return [];
+        }
+
+        $mutualUsers = User::query()
+            ->whereIn('id', $mutualUserIds->all())
+            ->get(['id', 'first_name', 'last_name', 'title', 'profile_image'])
+            ->keyBy('id');
+
+        $mutualConnections = [];
+
+        foreach ($counterpartIds as $counterpartId) {
+            $counterpartMutualIds = $mutualFollowRows
+                ->where('follower_id', $counterpartId)
+                ->pluck('following_id')
+                ->unique()
+                ->values();
+
+            $preview = $counterpartMutualIds
+                ->map(function (int $userId) use ($mutualUsers) {
+                    return $mutualUsers->get($userId);
+                })
+                ->filter()
+                ->map(function (User $user) {
+                    return $this->formatUser($user);
+                })
+                ->take(1)
+                ->values();
+
+            $mutualConnections[$counterpartId] = [
+                'count' => $counterpartMutualIds->count(),
+                'preview' => $preview,
+            ];
+        }
+
+        return $mutualConnections;
     }
 }
