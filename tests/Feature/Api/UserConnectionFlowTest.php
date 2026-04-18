@@ -182,6 +182,7 @@ class UserConnectionFlowTest extends TestCase
         $followingResponse
             ->assertOk()
             ->assertJsonPath('status', 'success')
+            ->assertJsonPath('total_following', 2)
             ->assertJsonCount(2, 'data');
 
         $followingSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following?search=' . strtolower($secondUser->first_name));
@@ -189,6 +190,7 @@ class UserConnectionFlowTest extends TestCase
         $followingSearchResponse
             ->assertOk()
             ->assertJsonPath('status', 'success')
+            ->assertJsonPath('total_following', 2)
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.user.id', $secondUser->id);
 
@@ -198,6 +200,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'No following users found for this search.')
+            ->assertJsonPath('total_following', 2)
             ->assertJsonCount(0, 'data');
 
         $followingItems = collect($followingResponse->json('data'));
