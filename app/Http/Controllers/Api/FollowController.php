@@ -60,6 +60,14 @@ class FollowController extends Controller
             ->latest('id')
             ->get();
 
+        if($following->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'You are not following anyone yet.',
+                'data' => [],
+            ], 200);
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => $following->map(function (UserFollow $follow) use ($followerIds) {
