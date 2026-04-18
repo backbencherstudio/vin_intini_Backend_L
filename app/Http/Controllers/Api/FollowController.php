@@ -27,6 +27,8 @@ class FollowController extends Controller
             ->latest('id')
             ->get();
 
+        $totalFollowers = $followers->count();
+
         $mutualConnections = $this->buildMutualConnectionsMap(
             $currentUser->id,
             $followers->pluck('follower_id')->values()
@@ -50,12 +52,14 @@ class FollowController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => $search !== '' ? 'No followers found for this search.' : 'You have no followers yet.',
+                'total_followers' => $totalFollowers,
                 'data' => [],
             ], 200);
         }
 
         return response()->json([
             'status' => 'success',
+            'total_followers' => $totalFollowers,
             'data' => $filteredFollowers->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
                 $mutualConnectionData = $mutualConnections[$follow->follower_id] ?? [
                     'count' => 0,
