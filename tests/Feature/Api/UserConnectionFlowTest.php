@@ -158,6 +158,22 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('data.0.mutual_connections_count', 1)
             ->assertJsonPath('data.0.mutual_connections.0.id', $mutualUser->id);
 
+        $followersSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/followers?search=' . strtolower($secondUser->first_name));
+
+        $followersSearchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.user.id', $secondUser->id);
+
+        $followersNoMatchSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/followers?search=not-found-name');
+
+        $followersNoMatchSearchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'No followers found for this search.')
+            ->assertJsonCount(0, 'data');
+
         $followingResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following');
 
         $followingResponse
