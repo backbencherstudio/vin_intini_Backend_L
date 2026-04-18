@@ -181,6 +181,22 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(2, 'data');
 
+        $followingSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following?search=' . strtolower($secondUser->first_name));
+
+        $followingSearchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.user.id', $secondUser->id);
+
+        $followingNoMatchSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following?search=not-found-name');
+
+        $followingNoMatchSearchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'No following users found for this search.')
+            ->assertJsonCount(0, 'data');
+
         $followingItems = collect($followingResponse->json('data'));
         $followedItem = $followingItems->first(function (array $item) use ($secondUser): bool {
             return (int) $item['user']['id'] === $secondUser->id;

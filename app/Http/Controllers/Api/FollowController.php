@@ -77,6 +77,7 @@ class FollowController extends Controller
     public function following(Request $request): JsonResponse
     {
         $currentUser = $request->user();
+        $search = trim((string) $request->query('search', ''));
         $followerIds = UserFollow::query()
             ->where('following_id', $currentUser->id)
             ->pluck('follower_id')
@@ -93,17 +94,31 @@ class FollowController extends Controller
             $following->pluck('following_id')->values()
         );
 
-        if ($following->isEmpty()) {
+        $filteredFollowing = $following;
+
+        if ($search !== '') {
+            $normalizedSearch = mb_strtolower($search);
+
+            $filteredFollowing = $following
+                ->filter(function (UserFollow $follow) use ($normalizedSearch): bool {
+                    $fullName = trim(($follow->following?->first_name ?? '') . ' ' . ($follow->following?->last_name ?? ''));
+
+                    return str_contains(mb_strtolower($fullName), $normalizedSearch);
+                })
+                ->values();
+        }
+
+        if ($filteredFollowing->isEmpty()) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'You are not following anyone yet.',
+                'message' => $search !== '' ? 'No following users found for this search.' : 'You are not following anyone yet.',
                 'data' => [],
             ], 200);
         }
 
         return response()->json([
             'status' => 'success',
-            'data' => $following->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
+            'data' => $filteredFollowing->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
                 $mutualConnectionData = $mutualConnections[$follow->following_id] ?? [
                     'count' => 0,
                     'preview' => [],
