@@ -14,7 +14,7 @@ class UserProfile extends Model
         'profession',
         'highest_degree',
         'study_category',
-        'study_subcategory',
+        'field_study',
         'institution',
         'graduation_year',
         'interests',

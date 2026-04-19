@@ -19,7 +19,7 @@ return new class extends Migration
             $table->json('profession')->nullable(); // Multi-select array data
             $table->string('highest_degree')->nullable();
             $table->string('study_category')->nullable(); // static category
-            $table->string('study_subcategory')->nullable(); // static sub-category
+            $table->string('field_study')->nullable(); // static sub-category
             $table->string('institution')->nullable();
             $table->string('graduation_year')->nullable();
             $table->json('interests')->nullable(); // Multi-select array data
