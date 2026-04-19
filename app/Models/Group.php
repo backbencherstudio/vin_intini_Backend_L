@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Group extends Model
 {
     use HasFactory;
+
+    protected $appends = [
+        'logo_url',
+        'cover_photo_url',
+    ];
 
     protected $fillable = [
         'name',
@@ -21,7 +27,7 @@ class Group extends Model
         'type',
         'discoverability',
         'allow_member_invites',
-        'require_post_approval'
+        'require_post_approval',
     ];
 
     protected $casts = [
@@ -40,15 +46,13 @@ class Group extends Model
         return $this->belongsTo(User::class, 'creator_id');
     }
 
-    // public function getLogoUrlAttribute()
-    // {
-    //     return $this->logo ? asset('storage/' . $this->logo) : null;
-    // }
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->logo ? Storage::disk('public')->url($this->logo) : null;
+    }
 
-    // public function getCoverPhotoUrlAttribute()
-    // {
-    //     return $this->cover_photo ? asset('storage/' . $this->cover_photo) : null;
-    // }
-
-    // protected $appends = ['logo_url', 'cover_photo_url'];
+    public function getCoverPhotoUrlAttribute(): ?string
+    {
+        return $this->cover_photo ? Storage::disk('public')->url($this->cover_photo) : null;
+    }
 }

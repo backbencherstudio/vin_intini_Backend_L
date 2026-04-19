@@ -19,16 +19,33 @@ class GroupController extends Controller
             ->whereDoesntHave('members', function ($query) use ($user) {
                 $query->where('users.id', $user->id);
             })
-            ->withCount('members')
+            ->withCount([
+                'members as total_member',
+            ])
             ->inRandomOrder()
             ->limit(10)
             ->get([
                 'id',
                 'name',
                 'logo',
-                'type',
-                'discoverability',
             ]);
+
+        $groups = $groups->map(function (Group $group): array {
+            return [
+                'id' => $group->id,
+                'name' => $group->name,
+                'logo_url' => $group->logo_url,
+                'total_member' => (int) $group->total_member,
+            ];
+        })->values();
+
+        if ($groups->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'No group suggestions available at the moment. Please check back later.',
+                'data' => [],
+            ], 200);
+        }
 
         return response()->json([
             'status' => 'success',

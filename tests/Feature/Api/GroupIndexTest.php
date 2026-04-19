@@ -23,8 +23,8 @@ class GroupIndexTest extends TestCase
 
         for ($index = 1; $index <= 15; $index++) {
             $eligibleGroups->push(Group::create([
-                'name' => 'Public Listed Group ' . $index,
-                'description' => 'Group description ' . $index,
+                'name' => 'Public Listed Group '.$index,
+                'description' => 'Group description '.$index,
                 'industry' => ['Technology'],
                 'creator_id' => $creator->id,
                 'type' => 'public',
@@ -61,7 +61,7 @@ class GroupIndexTest extends TestCase
             'discoverability' => 'unlisted',
         ]);
 
-        $response = $this->actingAs($user, 'api')->getJson('/api/groups');
+        $response = $this->actingAs($user, 'api')->getJson('/api/groups-suggestions');
 
         $response
             ->assertOk()
@@ -70,11 +70,13 @@ class GroupIndexTest extends TestCase
 
         $returnedGroups = collect($response->json('data'));
 
-        $this->assertFalse($returnedGroups->contains(fn(array $group) => (int) $group['id'] === $joinedGroup->id));
+        $this->assertFalse($returnedGroups->contains(fn (array $group) => (int) $group['id'] === $joinedGroup->id));
 
         $returnedGroups->each(function (array $group) use ($eligibleGroups): void {
-            $this->assertSame('public', $group['type']);
-            $this->assertSame('listed', $group['discoverability']);
+            $this->assertArrayHasKey('name', $group);
+            $this->assertArrayHasKey('logo_url', $group);
+            $this->assertArrayHasKey('total_member', $group);
+            $this->assertIsInt($group['total_member']);
             $this->assertTrue($eligibleGroups->contains('id', (int) $group['id']));
         });
     }
