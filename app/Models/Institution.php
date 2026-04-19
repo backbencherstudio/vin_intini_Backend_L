@@ -14,6 +14,7 @@ class Institution extends Model
         'name',
         'logo',
         'type',
+        'state',
         'country',
         'website',
     ];

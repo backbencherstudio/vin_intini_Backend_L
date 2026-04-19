@@ -30,10 +30,6 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
         ->name('group.invite.join')
         ->middleware('signed');
 
-    // company, skill and institution suggestions for dropdown
-    Route::get('/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
-    Route::get('/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
-    Route::get('/institution-suggestions', [UserEducationController::class, 'institutionSuggestions']);
 
     // user profile routes
     Route::get('/profile', [UserProfileController::class, 'show']);

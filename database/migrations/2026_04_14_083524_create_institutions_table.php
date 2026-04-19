@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string('logo')->nullable();
             $table->string('type')->nullable();
+            $table->string('state')->nullable();
             $table->string('country')->nullable();
             $table->string('website')->nullable();
             $table->timestamps();

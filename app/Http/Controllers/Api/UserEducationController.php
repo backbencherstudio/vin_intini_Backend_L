@@ -22,7 +22,7 @@ class UserEducationController extends Controller
         $limit = $validated['limit'] ?? 10;
 
         $institutions = Institution::query()
-            ->select(['id', 'name', 'logo', 'type', 'country', 'website'])
+            ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%");
             })

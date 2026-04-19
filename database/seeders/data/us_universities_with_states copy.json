@@ -1,0 +1,1199 @@
+[
+  {
+    "name": "Harvard University",
+    "state_province": "Massachusetts",
+    "state": "MA",
+    "country": "United States",
+    "web_pages": ["http://www.harvard.edu/"],
+    "domains": ["harvard.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Massachusetts Institute of Technology",
+    "state_province": "Massachusetts",
+    "state": "MA",
+    "country": "United States",
+    "web_pages": ["http://web.mit.edu/"],
+    "domains": ["mit.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Stanford University",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.stanford.edu/"],
+    "domains": ["stanford.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of California, Berkeley",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.berkeley.edu/"],
+    "domains": ["berkeley.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of California, Los Angeles",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.ucla.edu/"],
+    "domains": ["ucla.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Yale University",
+    "state_province": "Connecticut",
+    "state": "CT",
+    "country": "United States",
+    "web_pages": ["http://www.yale.edu/"],
+    "domains": ["yale.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Princeton University",
+    "state_province": "New Jersey",
+    "state": "NJ",
+    "country": "United States",
+    "web_pages": ["http://www.princeton.edu/"],
+    "domains": ["princeton.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Columbia University",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.columbia.edu/"],
+    "domains": ["columbia.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Cornell University",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.cornell.edu/"],
+    "domains": ["cornell.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "New York University",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.nyu.edu/"],
+    "domains": ["nyu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Pennsylvania",
+    "state_province": "Pennsylvania",
+    "state": "PA",
+    "country": "United States",
+    "web_pages": ["http://www.upenn.edu/"],
+    "domains": ["upenn.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Carnegie Mellon University",
+    "state_province": "Pennsylvania",
+    "state": "PA",
+    "country": "United States",
+    "web_pages": ["http://www.cmu.edu/"],
+    "domains": ["cmu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Chicago",
+    "state_province": "Illinois",
+    "state": "IL",
+    "country": "United States",
+    "web_pages": ["http://www.uchicago.edu/"],
+    "domains": ["uchicago.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Northwestern University",
+    "state_province": "Illinois",
+    "state": "IL",
+    "country": "United States",
+    "web_pages": ["http://www.northwestern.edu/"],
+    "domains": ["northwestern.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Duke University",
+    "state_province": "North Carolina",
+    "state": "NC",
+    "country": "United States",
+    "web_pages": ["http://www.duke.edu/"],
+    "domains": ["duke.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Johns Hopkins University",
+    "state_province": "Maryland",
+    "state": "MD",
+    "country": "United States",
+    "web_pages": ["http://www.jhu.edu/"],
+    "domains": ["jhu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Michigan",
+    "state_province": "Michigan",
+    "state": "MI",
+    "country": "United States",
+    "web_pages": ["http://www.umich.edu/"],
+    "domains": ["umich.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Texas at Austin",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.utexas.edu/"],
+    "domains": ["utexas.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Rice University",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.rice.edu/"],
+    "domains": ["rice.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Washington",
+    "state_province": "Washington",
+    "state": "WA",
+    "country": "United States",
+    "web_pages": ["http://www.washington.edu/"],
+    "domains": ["washington.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Georgia Institute of Technology",
+    "state_province": "Georgia",
+    "state": "GA",
+    "country": "United States",
+    "web_pages": ["http://www.gatech.edu/"],
+    "domains": ["gatech.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Emory University",
+    "state_province": "Georgia",
+    "state": "GA",
+    "country": "United States",
+    "web_pages": ["http://www.emory.edu/"],
+    "domains": ["emory.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Vanderbilt University",
+    "state_province": "Tennessee",
+    "state": "TN",
+    "country": "United States",
+    "web_pages": ["http://www.vanderbilt.edu/"],
+    "domains": ["vanderbilt.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Virginia",
+    "state_province": "Virginia",
+    "state": "VA",
+    "country": "United States",
+    "web_pages": ["http://www.virginia.edu/"],
+    "domains": ["virginia.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of North Carolina at Chapel Hill",
+    "state_province": "North Carolina",
+    "state": "NC",
+    "country": "United States",
+    "web_pages": ["http://www.unc.edu/"],
+    "domains": ["unc.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Southern California",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.usc.edu/"],
+    "domains": ["usc.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "California Institute of Technology",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.caltech.edu/"],
+    "domains": ["caltech.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of California, San Diego",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.ucsd.edu/"],
+    "domains": ["ucsd.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of California, Davis",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.ucdavis.edu/"],
+    "domains": ["ucdavis.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of California, Irvine",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.uci.edu/"],
+    "domains": ["uci.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of California, Santa Barbara",
+    "state_province": "California",
+    "state": "CA",
+    "country": "United States",
+    "web_pages": ["http://www.ucsb.edu/"],
+    "domains": ["ucsb.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Brown University",
+    "state_province": "Rhode Island",
+    "state": "RI",
+    "country": "United States",
+    "web_pages": ["http://www.brown.edu/"],
+    "domains": ["brown.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Dartmouth College",
+    "state_province": "New Hampshire",
+    "state": "NH",
+    "country": "United States",
+    "web_pages": ["http://www.dartmouth.edu/"],
+    "domains": ["dartmouth.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Boston University",
+    "state_province": "Massachusetts",
+    "state": "MA",
+    "country": "United States",
+    "web_pages": ["http://www.bu.edu/"],
+    "domains": ["bu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Tufts University",
+    "state_province": "Massachusetts",
+    "state": "MA",
+    "country": "United States",
+    "web_pages": ["http://www.tufts.edu/"],
+    "domains": ["tufts.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Florida",
+    "state_province": "Florida",
+    "state": "FL",
+    "country": "United States",
+    "web_pages": ["http://www.ufl.edu/"],
+    "domains": ["ufl.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Miami",
+    "state_province": "Florida",
+    "state": "FL",
+    "country": "United States",
+    "web_pages": ["http://www.miami.edu/"],
+    "domains": ["miami.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Ohio State University",
+    "state_province": "Ohio",
+    "state": "OH",
+    "country": "United States",
+    "web_pages": ["http://www.osu.edu/"],
+    "domains": ["osu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Wisconsin-Madison",
+    "state_province": "Wisconsin",
+    "state": "WI",
+    "country": "United States",
+    "web_pages": ["http://www.wisc.edu/"],
+    "domains": ["wisc.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Illinois at Urbana-Champaign",
+    "state_province": "Illinois",
+    "state": "IL",
+    "country": "United States",
+    "web_pages": ["http://www.illinois.edu/"],
+    "domains": ["illinois.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Minnesota",
+    "state_province": "Minnesota",
+    "state": "MN",
+    "country": "United States",
+    "web_pages": ["http://www.umn.edu/"],
+    "domains": ["umn.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Pennsylvania State University",
+    "state_province": "Pennsylvania",
+    "state": "PA",
+    "country": "United States",
+    "web_pages": ["http://www.psu.edu/"],
+    "domains": ["psu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Purdue University",
+    "state_province": "Indiana",
+    "state": "IN",
+    "country": "United States",
+    "web_pages": ["http://www.purdue.edu/"],
+    "domains": ["purdue.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Maryland",
+    "state_province": "Maryland",
+    "state": "MD",
+    "country": "United States",
+    "web_pages": ["http://www.umd.edu/"],
+    "domains": ["umd.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Colorado Boulder",
+    "state_province": "Colorado",
+    "state": "CO",
+    "country": "United States",
+    "web_pages": ["http://www.colorado.edu/"],
+    "domains": ["colorado.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Arizona State University",
+    "state_province": "Arizona",
+    "state": "AZ",
+    "country": "United States",
+    "web_pages": ["http://www.asu.edu/"],
+    "domains": ["asu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Arizona",
+    "state_province": "Arizona",
+    "state": "AZ",
+    "country": "United States",
+    "web_pages": ["http://www.arizona.edu/"],
+    "domains": ["arizona.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Rutgers University",
+    "state_province": "New Jersey",
+    "state": "NJ",
+    "country": "United States",
+    "web_pages": ["http://www.rutgers.edu/"],
+    "domains": ["rutgers.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Pittsburgh",
+    "state_province": "Pennsylvania",
+    "state": "PA",
+    "country": "United States",
+    "web_pages": ["http://www.pitt.edu/"],
+    "domains": ["pitt.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Washington University in St. Louis",
+    "state_province": "Missouri",
+    "state": "MO",
+    "country": "United States",
+    "web_pages": ["http://www.wustl.edu/"],
+    "domains": ["wustl.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Indiana University Bloomington",
+    "state_province": "Indiana",
+    "state": "IN",
+    "country": "United States",
+    "web_pages": ["http://www.indiana.edu/"],
+    "domains": ["indiana.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Iowa",
+    "state_province": "Iowa",
+    "state": "IA",
+    "country": "United States",
+    "web_pages": ["http://www.uiowa.edu/"],
+    "domains": ["uiowa.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Oregon",
+    "state_province": "Oregon",
+    "state": "OR",
+    "country": "United States",
+    "web_pages": ["http://www.uoregon.edu/"],
+    "domains": ["uoregon.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Oregon State University",
+    "state_province": "Oregon",
+    "state": "OR",
+    "country": "United States",
+    "web_pages": ["http://www.oregonstate.edu/"],
+    "domains": ["oregonstate.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Utah",
+    "state_province": "Utah",
+    "state": "UT",
+    "country": "United States",
+    "web_pages": ["http://www.utah.edu/"],
+    "domains": ["utah.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Brigham Young University",
+    "state_province": "Utah",
+    "state": "UT",
+    "country": "United States",
+    "web_pages": ["http://www.byu.edu/"],
+    "domains": ["byu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Alabama",
+    "state_province": "Alabama",
+    "state": "AL",
+    "country": "United States",
+    "web_pages": ["http://www.ua.edu/"],
+    "domains": ["ua.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Auburn University",
+    "state_province": "Alabama",
+    "state": "AL",
+    "country": "United States",
+    "web_pages": ["http://www.auburn.edu/"],
+    "domains": ["auburn.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Louisiana State University",
+    "state_province": "Louisiana",
+    "state": "LA",
+    "country": "United States",
+    "web_pages": ["http://www.lsu.edu/"],
+    "domains": ["lsu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Tulane University",
+    "state_province": "Louisiana",
+    "state": "LA",
+    "country": "United States",
+    "web_pages": ["http://www.tulane.edu/"],
+    "domains": ["tulane.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Kentucky",
+    "state_province": "Kentucky",
+    "state": "KY",
+    "country": "United States",
+    "web_pages": ["http://www.uky.edu/"],
+    "domains": ["uky.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Tennessee",
+    "state_province": "Tennessee",
+    "state": "TN",
+    "country": "United States",
+    "web_pages": ["http://www.utk.edu/"],
+    "domains": ["utk.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of South Carolina",
+    "state_province": "South Carolina",
+    "state": "SC",
+    "country": "United States",
+    "web_pages": ["http://www.sc.edu/"],
+    "domains": ["sc.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Clemson University",
+    "state_province": "South Carolina",
+    "state": "SC",
+    "country": "United States",
+    "web_pages": ["http://www.clemson.edu/"],
+    "domains": ["clemson.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Georgia",
+    "state_province": "Georgia",
+    "state": "GA",
+    "country": "United States",
+    "web_pages": ["http://www.uga.edu/"],
+    "domains": ["uga.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Mississippi",
+    "state_province": "Mississippi",
+    "state": "MS",
+    "country": "United States",
+    "web_pages": ["http://www.olemiss.edu/"],
+    "domains": ["olemiss.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Mississippi State University",
+    "state_province": "Mississippi",
+    "state": "MS",
+    "country": "United States",
+    "web_pages": ["http://www.msstate.edu/"],
+    "domains": ["msstate.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Arkansas",
+    "state_province": "Arkansas",
+    "state": "AR",
+    "country": "United States",
+    "web_pages": ["http://www.uark.edu/"],
+    "domains": ["uark.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Oklahoma",
+    "state_province": "Oklahoma",
+    "state": "OK",
+    "country": "United States",
+    "web_pages": ["http://www.ou.edu/"],
+    "domains": ["ou.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Oklahoma State University",
+    "state_province": "Oklahoma",
+    "state": "OK",
+    "country": "United States",
+    "web_pages": ["http://www.okstate.edu/"],
+    "domains": ["okstate.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Kansas",
+    "state_province": "Kansas",
+    "state": "KS",
+    "country": "United States",
+    "web_pages": ["http://www.ku.edu/"],
+    "domains": ["ku.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Kansas State University",
+    "state_province": "Kansas",
+    "state": "KS",
+    "country": "United States",
+    "web_pages": ["http://www.k-state.edu/"],
+    "domains": ["k-state.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Nebraska",
+    "state_province": "Nebraska",
+    "state": "NE",
+    "country": "United States",
+    "web_pages": ["http://www.unl.edu/"],
+    "domains": ["unl.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Missouri",
+    "state_province": "Missouri",
+    "state": "MO",
+    "country": "United States",
+    "web_pages": ["http://www.missouri.edu/"],
+    "domains": ["missouri.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Delaware",
+    "state_province": "Delaware",
+    "state": "DE",
+    "country": "United States",
+    "web_pages": ["http://www.udel.edu/"],
+    "domains": ["udel.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Connecticut",
+    "state_province": "Connecticut",
+    "state": "CT",
+    "country": "United States",
+    "web_pages": ["http://www.uconn.edu/"],
+    "domains": ["uconn.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Vermont",
+    "state_province": "Vermont",
+    "state": "VT",
+    "country": "United States",
+    "web_pages": ["http://www.uvm.edu/"],
+    "domains": ["uvm.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of New Hampshire",
+    "state_province": "New Hampshire",
+    "state": "NH",
+    "country": "United States",
+    "web_pages": ["http://www.unh.edu/"],
+    "domains": ["unh.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Maine",
+    "state_province": "Maine",
+    "state": "ME",
+    "country": "United States",
+    "web_pages": ["http://www.umaine.edu/"],
+    "domains": ["umaine.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Rhode Island",
+    "state_province": "Rhode Island",
+    "state": "RI",
+    "country": "United States",
+    "web_pages": ["http://www.uri.edu/"],
+    "domains": ["uri.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "West Virginia University",
+    "state_province": "West Virginia",
+    "state": "WV",
+    "country": "United States",
+    "web_pages": ["http://www.wvu.edu/"],
+    "domains": ["wvu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Nevada, Las Vegas",
+    "state_province": "Nevada",
+    "state": "NV",
+    "country": "United States",
+    "web_pages": ["http://www.unlv.edu/"],
+    "domains": ["unlv.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Nevada, Reno",
+    "state_province": "Nevada",
+    "state": "NV",
+    "country": "United States",
+    "web_pages": ["http://www.unr.edu/"],
+    "domains": ["unr.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of New Mexico",
+    "state_province": "New Mexico",
+    "state": "NM",
+    "country": "United States",
+    "web_pages": ["http://www.unm.edu/"],
+    "domains": ["unm.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "New Mexico State University",
+    "state_province": "New Mexico",
+    "state": "NM",
+    "country": "United States",
+    "web_pages": ["http://www.nmsu.edu/"],
+    "domains": ["nmsu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Idaho",
+    "state_province": "Idaho",
+    "state": "ID",
+    "country": "United States",
+    "web_pages": ["http://www.uidaho.edu/"],
+    "domains": ["uidaho.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Boise State University",
+    "state_province": "Idaho",
+    "state": "ID",
+    "country": "United States",
+    "web_pages": ["http://www.boisestate.edu/"],
+    "domains": ["boisestate.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Montana State University",
+    "state_province": "Montana",
+    "state": "MT",
+    "country": "United States",
+    "web_pages": ["http://www.montana.edu/"],
+    "domains": ["montana.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Montana",
+    "state_province": "Montana",
+    "state": "MT",
+    "country": "United States",
+    "web_pages": ["http://www.umt.edu/"],
+    "domains": ["umt.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Wyoming",
+    "state_province": "Wyoming",
+    "state": "WY",
+    "country": "United States",
+    "web_pages": ["http://www.uwyo.edu/"],
+    "domains": ["uwyo.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of North Dakota",
+    "state_province": "North Dakota",
+    "state": "ND",
+    "country": "United States",
+    "web_pages": ["http://www.und.edu/"],
+    "domains": ["und.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "North Dakota State University",
+    "state_province": "North Dakota",
+    "state": "ND",
+    "country": "United States",
+    "web_pages": ["http://www.ndsu.edu/"],
+    "domains": ["ndsu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of South Dakota",
+    "state_province": "South Dakota",
+    "state": "SD",
+    "country": "United States",
+    "web_pages": ["http://www.usd.edu/"],
+    "domains": ["usd.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "South Dakota State University",
+    "state_province": "South Dakota",
+    "state": "SD",
+    "country": "United States",
+    "web_pages": ["http://www.sdstate.edu/"],
+    "domains": ["sdstate.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Alaska Fairbanks",
+    "state_province": "Alaska",
+    "state": "AK",
+    "country": "United States",
+    "web_pages": ["http://www.uaf.edu/"],
+    "domains": ["uaf.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Alaska Anchorage",
+    "state_province": "Alaska",
+    "state": "AK",
+    "country": "United States",
+    "web_pages": ["http://www.uaa.alaska.edu/"],
+    "domains": ["uaa.alaska.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Hawaii at Manoa",
+    "state_province": "Hawaii",
+    "state": "HI",
+    "country": "United States",
+    "web_pages": ["http://www.hawaii.edu/"],
+    "domains": ["hawaii.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Hawaii Pacific University",
+    "state_province": "Hawaii",
+    "state": "HI",
+    "country": "United States",
+    "web_pages": ["http://www.hpu.edu/"],
+    "domains": ["hpu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Texas A&M University",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.tamu.edu/"],
+    "domains": ["tamu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Texas Tech University",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.ttu.edu/"],
+    "domains": ["ttu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Baylor University",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.baylor.edu/"],
+    "domains": ["baylor.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Southern Methodist University",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.smu.edu/"],
+    "domains": ["smu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Texas Christian University",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.tcu.edu/"],
+    "domains": ["tcu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Houston",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.uh.edu/"],
+    "domains": ["uh.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of North Texas",
+    "state_province": "Texas",
+    "state": "TX",
+    "country": "United States",
+    "web_pages": ["http://www.unt.edu/"],
+    "domains": ["unt.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Florida State University",
+    "state_province": "Florida",
+    "state": "FL",
+    "country": "United States",
+    "web_pages": ["http://www.fsu.edu/"],
+    "domains": ["fsu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Central Florida",
+    "state_province": "Florida",
+    "state": "FL",
+    "country": "United States",
+    "web_pages": ["http://www.ucf.edu/"],
+    "domains": ["ucf.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of South Florida",
+    "state_province": "Florida",
+    "state": "FL",
+    "country": "United States",
+    "web_pages": ["http://www.usf.edu/"],
+    "domains": ["usf.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Florida International University",
+    "state_province": "Florida",
+    "state": "FL",
+    "country": "United States",
+    "web_pages": ["http://www.fiu.edu/"],
+    "domains": ["fiu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Michigan State University",
+    "state_province": "Michigan",
+    "state": "MI",
+    "country": "United States",
+    "web_pages": ["http://www.msu.edu/"],
+    "domains": ["msu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Wayne State University",
+    "state_province": "Michigan",
+    "state": "MI",
+    "country": "United States",
+    "web_pages": ["http://www.wayne.edu/"],
+    "domains": ["wayne.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Notre Dame",
+    "state_province": "Indiana",
+    "state": "IN",
+    "country": "United States",
+    "web_pages": ["http://www.nd.edu/"],
+    "domains": ["nd.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Case Western Reserve University",
+    "state_province": "Ohio",
+    "state": "OH",
+    "country": "United States",
+    "web_pages": ["http://www.case.edu/"],
+    "domains": ["case.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Cincinnati",
+    "state_province": "Ohio",
+    "state": "OH",
+    "country": "United States",
+    "web_pages": ["http://www.uc.edu/"],
+    "domains": ["uc.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Syracuse University",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.syracuse.edu/"],
+    "domains": ["syracuse.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University of Rochester",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.rochester.edu/"],
+    "domains": ["rochester.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Rensselaer Polytechnic Institute",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.rpi.edu/"],
+    "domains": ["rpi.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Fordham University",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.fordham.edu/"],
+    "domains": ["fordham.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Stony Brook University",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.stonybrook.edu/"],
+    "domains": ["stonybrook.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "University at Buffalo",
+    "state_province": "New York",
+    "state": "NY",
+    "country": "United States",
+    "web_pages": ["http://www.buffalo.edu/"],
+    "domains": ["buffalo.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Lehigh University",
+    "state_province": "Pennsylvania",
+    "state": "PA",
+    "country": "United States",
+    "web_pages": ["http://www.lehigh.edu/"],
+    "domains": ["lehigh.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Drexel University",
+    "state_province": "Pennsylvania",
+    "state": "PA",
+    "country": "United States",
+    "web_pages": ["http://www.drexel.edu/"],
+    "domains": ["drexel.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Temple University",
+    "state_province": "Pennsylvania",
+    "state": "PA",
+    "country": "United States",
+    "web_pages": ["http://www.temple.edu/"],
+    "domains": ["temple.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Villanova University",
+    "state_province": "Pennsylvania",
+    "state": "PA",
+    "country": "United States",
+    "web_pages": ["http://www.villanova.edu/"],
+    "domains": ["villanova.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "George Washington University",
+    "state_province": "District of Columbia",
+    "state": "DC",
+    "country": "United States",
+    "web_pages": ["http://www.gwu.edu/"],
+    "domains": ["gwu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Georgetown University",
+    "state_province": "District of Columbia",
+    "state": "DC",
+    "country": "United States",
+    "web_pages": ["http://www.georgetown.edu/"],
+    "domains": ["georgetown.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "American University",
+    "state_province": "District of Columbia",
+    "state": "DC",
+    "country": "United States",
+    "web_pages": ["http://www.american.edu/"],
+    "domains": ["american.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Howard University",
+    "state_province": "District of Columbia",
+    "state": "DC",
+    "country": "United States",
+    "web_pages": ["http://www.howard.edu/"],
+    "domains": ["howard.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Wake Forest University",
+    "state_province": "North Carolina",
+    "state": "NC",
+    "country": "United States",
+    "web_pages": ["http://www.wfu.edu/"],
+    "domains": ["wfu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "North Carolina State University",
+    "state_province": "North Carolina",
+    "state": "NC",
+    "country": "United States",
+    "web_pages": ["http://www.ncsu.edu/"],
+    "domains": ["ncsu.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "College of William & Mary",
+    "state_province": "Virginia",
+    "state": "VA",
+    "country": "United States",
+    "web_pages": ["http://www.wm.edu/"],
+    "domains": ["wm.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "Virginia Tech",
+    "state_province": "Virginia",
+    "state": "VA",
+    "country": "United States",
+    "web_pages": ["http://www.vt.edu/"],
+    "domains": ["vt.edu"],
+    "alpha_two_code": "US"
+  },
+  {
+    "name": "George Mason University",
+    "state_province": "Virginia",
+    "state": "VA",
+    "country": "United States",
+    "web_pages": ["http://www.gmu.edu/"],
+    "domains": ["gmu.edu"],
+    "alpha_two_code": "US"
+  }
+]
