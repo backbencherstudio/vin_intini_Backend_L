@@ -44,4 +44,9 @@ class UserProfile extends Model
     {
         return $this->belongsTo(Institution::class, 'current_institute_id');
     }
+
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+    ];
 }

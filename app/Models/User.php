@@ -37,6 +37,15 @@ class User extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
+        'mobile',
+        'otp',
+        'otp_expires_at',
+        'is_verified',
+        'profile_image',
+        'cover_image',
+        'email_verified_at',
+        'created_at',
+        'updated_at',
     ];
 
     protected function casts(): array
