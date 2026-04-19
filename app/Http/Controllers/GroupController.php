@@ -9,6 +9,33 @@ use Illuminate\Support\Facades\URL;
 
 class GroupController extends Controller
 {
+    public function groupSuggestions(Request $request)
+    {
+        $user = $request->user();
+
+        $groups = Group::query()
+            ->where('type', 'public')
+            ->where('discoverability', 'listed')
+            ->whereDoesntHave('members', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->withCount('members')
+            ->inRandomOrder()
+            ->limit(10)
+            ->get([
+                'id',
+                'name',
+                'logo',
+                'type',
+                'discoverability',
+            ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $groups,
+        ], 200);
+    }
+
     public function store(Request $request)
     {
         $data = $request->all();
@@ -50,10 +77,9 @@ class GroupController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Group created successfully!',
-            'data' => $group->load(['creator:id,first_name,last_name,email'])
+            'data' => $group->load(['creator:id,first_name,last_name,email']),
         ], 201);
     }
-
 
     public function show(Request $request, $id)
     {
@@ -61,7 +87,7 @@ class GroupController extends Controller
             'creator:id,first_name,last_name,email',
             'members' => function ($query) {
                 $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
-            }
+            },
         ])
             ->withCount('members')
             ->findOrFail($id);
@@ -72,7 +98,7 @@ class GroupController extends Controller
 
         $isAdmin = $user ? ($group->creator_id === $user->id) : false;
 
-        if ($group->type === 'private' && !$isMember && !$isAdmin) {
+        if ($group->type === 'private' && ! $isMember && ! $isAdmin) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'This is a private group. You must be a member to see details.',
@@ -83,8 +109,8 @@ class GroupController extends Controller
                         'type' => $group->type,
                         'members_count' => $group->members_count,
                     ],
-                    'is_current_user_member' => false
-                ]
+                    'is_current_user_member' => false,
+                ],
             ], 403);
         }
 
@@ -92,11 +118,10 @@ class GroupController extends Controller
             'status' => 'success',
             'data' => [
                 'group' => $group,
-                'is_current_user_member' => $isMember
-            ]
+                'is_current_user_member' => $isMember,
+            ],
         ], 200);
     }
-
 
     public function update(Request $request, $id)
     {
@@ -105,12 +130,12 @@ class GroupController extends Controller
         if ($group->creator_id !== auth()->id()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized! You can only edit your own groups.'
+                'message' => 'Unauthorized! You can only edit your own groups.',
             ], 403);
         }
 
         $input = $request->all();
-        if (isset($input['industry']) && is_string($input['industry']) && !empty($input['industry'])) {
+        if (isset($input['industry']) && is_string($input['industry']) && ! empty($input['industry'])) {
             $input['industry'] = array_map('trim', explode(',', $input['industry']));
         }
         $request->merge($input);
@@ -155,10 +180,9 @@ class GroupController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Group updated successfully!',
-            'data' => $group->fresh()
+            'data' => $group->fresh(),
         ], 200);
     }
-
 
     public function myCreatedGroups(Request $request)
     {
@@ -180,17 +204,16 @@ class GroupController extends Controller
                 'status' => 'success',
                 'message' => $request->has('search') ? 'No groups found matching your search.' : 'You haven’t created any groups yet.',
                 'total_created_groups_count' => $totalCreatedEver,
-                'data' => []
+                'data' => [],
             ], 200);
         }
 
         return response()->json([
             'status' => 'success',
             'total_created_groups_count' => $totalCreatedEver,
-            'data' => $groups
+            'data' => $groups,
         ], 200);
     }
-
 
     public function myJoinedGroups(Request $request)
     {
@@ -216,23 +239,22 @@ class GroupController extends Controller
                 'status' => 'success',
                 'message' => $request->has('search') ? 'No groups match your search.' : 'You haven’t joined any groups yet.',
                 'total_joined_count' => $totalJoinedEver,
-                'data' => []
+                'data' => [],
             ], 200);
         }
 
         return response()->json([
             'status' => 'success',
             'total_joined_count' => $totalJoinedEver,
-            'data' => $groups
+            'data' => $groups,
         ], 200);
     }
-
 
     public function joinGroup(Request $request, $group_id = null)
     {
         $targetGroupId = $group_id ?? $request->group_id;
 
-        if (!$targetGroupId) {
+        if (! $targetGroupId) {
             return response()->json(['status' => 'error', 'message' => 'Group ID is required'], 422);
         }
 
@@ -241,7 +263,7 @@ class GroupController extends Controller
         if ($group->members()->where('user_id', auth()->id())->exists()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'You are already a member of this group'
+                'message' => 'You are already a member of this group',
             ], 400);
         }
 
@@ -250,10 +272,9 @@ class GroupController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Joined successfully!',
-            'group_name' => $group->name
+            'group_name' => $group->name,
         ], 200);
     }
-
 
     // public function joinGroup(Request $request)
     // {
@@ -280,28 +301,27 @@ class GroupController extends Controller
     //     ], 200);
     // }
 
-
     public function leaveGroup(Request $request)
     {
         $request->validate([
-            'group_id' => 'required|exists:groups,id'
+            'group_id' => 'required|exists:groups,id',
         ]);
 
         $group = Group::findOrFail($request->group_id);
 
         $isMember = $group->members()->where('user_id', auth()->id())->exists();
 
-        if (!$isMember) {
+        if (! $isMember) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'You are not a member of this group'
+                'message' => 'You are not a member of this group',
             ], 400);
         }
 
         if ($group->creator_id === auth()->id()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Creator cannot leave the group. You must delete the group or transfer ownership.'
+                'message' => 'Creator cannot leave the group. You must delete the group or transfer ownership.',
             ], 403);
         }
 
@@ -309,10 +329,9 @@ class GroupController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Successfully left the group'
+            'message' => 'Successfully left the group',
         ], 200);
     }
-
 
     public function generateInviteLink($id)
     {
@@ -330,7 +349,7 @@ class GroupController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'invite_link' => $inviteUrl
+            'invite_link' => $inviteUrl,
         ]);
     }
 }
