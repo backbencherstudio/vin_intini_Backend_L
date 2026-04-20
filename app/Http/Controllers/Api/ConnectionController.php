@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ConnectionRequest;
 use App\Models\User;
 use App\Models\UserFollow;
+use App\Notifications\ConnectionRequestAcceptedNotification;
 use App\Notifications\ConnectionRequestReceivedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -392,19 +393,23 @@ class ConnectionController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($connectionRequest) {
+        $acceptedConnectionRequest = DB::transaction(function () use ($connectionRequest) {
             $connectionRequest->update([
                 'status' => ConnectionRequest::STATUS_ACCEPTED,
                 'responded_at' => now(),
             ]);
 
             $this->ensureMutualFollows($connectionRequest->sender, $connectionRequest->receiver);
+
+            return $connectionRequest->fresh()->loadMissing(['sender', 'receiver']);
         });
+
+        $acceptedConnectionRequest->sender->notify(new ConnectionRequestAcceptedNotification($acceptedConnectionRequest, $currentUser));
 
         return response()->json([
             'status' => 'success',
             'message' => 'Connection request accepted successfully.',
-            'data' => $this->formatConnectionRequest($connectionRequest->fresh()->loadMissing(['sender', 'receiver']), $currentUser->id, []),
+            'data' => $this->formatConnectionRequest($acceptedConnectionRequest, $currentUser->id, []),
         ], 200);
     }
 

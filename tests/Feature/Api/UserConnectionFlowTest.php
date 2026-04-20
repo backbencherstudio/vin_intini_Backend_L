@@ -6,6 +6,7 @@ use App\Models\ConnectionRequest;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Models\UserProfile;
+use App\Notifications\ConnectionRequestAcceptedNotification;
 use App\Notifications\ConnectionRequestReceivedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -98,6 +99,13 @@ class UserConnectionFlowTest extends TestCase
 
     public function test_user_can_accept_connection_request_and_creates_mutual_follows(): void
     {
+        Notification::fake();
+
+        config()->set('broadcasting.default', 'pusher');
+        config()->set('broadcasting.connections.pusher.app_id', 'test-app-id');
+        config()->set('broadcasting.connections.pusher.key', 'test-key');
+        config()->set('broadcasting.connections.pusher.secret', 'test-secret');
+
         $sender = $this->makeUser();
         $receiver = $this->makeUser();
 
@@ -130,6 +138,19 @@ class UserConnectionFlowTest extends TestCase
             'follower_id' => $receiver->id,
             'following_id' => $sender->id,
         ]);
+
+        Notification::assertSentTo(
+            $sender,
+            ConnectionRequestAcceptedNotification::class,
+            function (ConnectionRequestAcceptedNotification $notification, array $channels) use ($sender, $receiver): bool {
+                $this->assertContains('database', $channels);
+                $this->assertContains('broadcast', $channels);
+                $this->assertSame($receiver->id, $notification->acceptor->id);
+                $this->assertSame($sender->id, $notification->connectionRequest->sender_id);
+
+                return true;
+            }
+        );
     }
 
     public function test_user_can_ignore_connection_request(): void
