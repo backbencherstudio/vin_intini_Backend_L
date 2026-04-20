@@ -6,7 +6,9 @@ use App\Models\ConnectionRequest;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Models\UserProfile;
+use App\Notifications\ConnectionRequestReceivedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -37,6 +39,61 @@ class UserConnectionFlowTest extends TestCase
             'receiver_id' => $receiver->id,
             'status' => ConnectionRequest::STATUS_PENDING,
         ]);
+    }
+
+    public function test_sending_connection_request_creates_database_notification_for_receiver(): void
+    {
+        Notification::fake();
+
+        config()->set('broadcasting.default', 'pusher');
+        config()->set('broadcasting.connections.pusher.app_id', 'test-app-id');
+        config()->set('broadcasting.connections.pusher.key', 'test-key');
+        config()->set('broadcasting.connections.pusher.secret', 'test-secret');
+
+        $sender = $this->makeUser();
+        $receiver = $this->makeUser();
+
+        $response = $this->actingAs($sender, 'api')->postJson('/api/connections/request', [
+            'user_id' => $receiver->id,
+        ]);
+
+        $response->assertCreated();
+
+        Notification::assertSentTo(
+            $receiver,
+            ConnectionRequestReceivedNotification::class,
+            function (ConnectionRequestReceivedNotification $notification, array $channels) use ($sender, $receiver): bool {
+                $this->assertContains('database', $channels);
+                $this->assertContains('broadcast', $channels);
+                $this->assertSame($sender->id, $notification->sender->id);
+                $this->assertSame($receiver->id, $notification->connectionRequest->receiver_id);
+
+                return true;
+            }
+        );
+
+        Notification::assertCount(1);
+    }
+
+    public function test_connection_request_notification_skips_broadcast_when_pusher_credentials_are_missing(): void
+    {
+        $sender = $this->makeUser();
+        $receiver = $this->makeUser();
+
+        $connectionRequest = ConnectionRequest::create([
+            'sender_id' => $sender->id,
+            'receiver_id' => $receiver->id,
+            'status' => ConnectionRequest::STATUS_PENDING,
+        ]);
+
+        config()->set('broadcasting.default', 'pusher');
+        config()->set('broadcasting.connections.pusher.app_id', null);
+        config()->set('broadcasting.connections.pusher.key', null);
+        config()->set('broadcasting.connections.pusher.secret', null);
+
+        $notification = new ConnectionRequestReceivedNotification($connectionRequest, $sender);
+
+        $this->assertSame(['database'], $notification->via($receiver));
     }
 
     public function test_user_can_accept_connection_request_and_creates_mutual_follows(): void

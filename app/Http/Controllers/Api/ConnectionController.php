@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ConnectionRequest;
 use App\Models\User;
 use App\Models\UserFollow;
+use App\Notifications\ConnectionRequestReceivedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -357,6 +358,10 @@ class ConnectionController extends Controller
                 'status' => 'error',
                 'message' => $result['message'],
             ], $result['code']);
+        }
+
+        if ((int) $result['code'] === 201 && $result['connection']->receiver_id === $targetUser->id) {
+            $targetUser->notify(new ConnectionRequestReceivedNotification($result['connection'], $currentUser));
         }
 
         return response()->json([
