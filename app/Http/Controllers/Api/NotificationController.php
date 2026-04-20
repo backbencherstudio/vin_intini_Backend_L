@@ -1,0 +1,119 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class NotificationController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        $perPage = max(1, min((int) $request->integer('per_page', 20), 50));
+        $page = max(1, (int) $request->integer('page', 1));
+        $unreadOnly = (bool) $request->boolean('unread_only', false);
+
+        $query = $request->user()->notifications();
+
+        if ($unreadOnly) {
+            $query = $query->whereNull('read_at');
+        }
+
+        $notifications = $query->orderByDesc('created_at')->paginate($perPage, page: $page);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $notifications->getCollection()->map(fn($notification) => $this->formatNotification($notification))->values(),
+            'meta' => [
+                'total' => $notifications->total(),
+                'current_page' => $notifications->currentPage(),
+                'per_page' => $notifications->perPage(),
+                'last_page' => $notifications->lastPage(),
+                'unread_only' => $unreadOnly,
+            ],
+        ], 200);
+    }
+
+    public function unreadCount(Request $request): JsonResponse
+    {
+        $count = $request->user()->notifications()->whereNull('read_at')->count();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'unread_count' => $count,
+            ],
+        ], 200);
+    }
+
+    public function markAsRead(Request $request, string $notificationId): JsonResponse
+    {
+        $notification = $request->user()->notifications()->findOrFail($notificationId);
+
+        if ($notification->read_at === null) {
+            $notification->update(['read_at' => now()]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Notification marked as read.',
+            'data' => $this->formatNotification($notification),
+        ], 200);
+    }
+
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        $count = $request->user()->notifications()->whereNull('read_at')->update(['read_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'All notifications marked as read.',
+            'data' => [
+                'updated_count' => $count,
+            ],
+        ], 200);
+    }
+
+    public function delete(Request $request, string $notificationId): JsonResponse
+    {
+        $notification = $request->user()->notifications()->findOrFail($notificationId);
+        $notification->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Notification deleted successfully.',
+        ], 200);
+    }
+
+    public function deleteAll(Request $request): JsonResponse
+    {
+        $count = $request->user()->notifications()->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'All notifications deleted successfully.',
+            'data' => [
+                'deleted_count' => $count,
+            ],
+        ], 200);
+    }
+
+    private function formatNotification(Model $notification): array
+    {
+        $data = $notification->data;
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+        }
+
+        return [
+            'id' => $notification->id,
+            'type' => $notification->type,
+            'data' => $data,
+            'read_at' => $notification->read_at?->toDateTimeString(),
+            'is_read' => $notification->read_at !== null,
+            'created_at' => $notification->created_at?->toDateTimeString(),
+        ];
+    }
+}

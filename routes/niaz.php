@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ConnectionController;
 use App\Http\Controllers\Api\FollowController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
@@ -29,7 +30,6 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/group/join/invite/{group_id}', [GroupController::class, 'joinGroup'])
         ->name('group.invite.join')
         ->middleware('signed');
-
 
     // user profile routes
     Route::get('/profile', [UserProfileController::class, 'show']);
@@ -64,4 +64,12 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/connections/following', [FollowController::class, 'following']);
     Route::post('/connections/{user}/follow', [FollowController::class, 'follow']);
     Route::delete('/connections/{user}/unfollow', [FollowController::class, 'unfollow']);
+
+    // notification routes
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/{notificationId}/mark-as-read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{notificationId}', [NotificationController::class, 'delete']);
+    Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
 });
