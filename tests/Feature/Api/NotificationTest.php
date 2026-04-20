@@ -65,6 +65,36 @@ class NotificationTest extends TestCase
             ->assertJsonPath('data.unread_count', 1);
     }
 
+    public function test_user_can_get_realtime_config(): void
+    {
+        config()->set('broadcasting.default', 'pusher');
+        config()->set('broadcasting.connections.pusher.app_id', 'test-app-id');
+        config()->set('broadcasting.connections.pusher.key', 'test-key');
+        config()->set('broadcasting.connections.pusher.secret', 'test-secret');
+        config()->set('broadcasting.connections.pusher.options.cluster', 'mt1');
+        config()->set('broadcasting.connections.pusher.options.host', 'api-mt1.pusher.com');
+        config()->set('broadcasting.connections.pusher.options.port', 443);
+        config()->set('broadcasting.connections.pusher.options.scheme', 'https');
+
+        $user = $this->makeUser();
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/notifications/realtime-config');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.enabled', true)
+            ->assertJsonPath('data.broadcaster', 'pusher')
+            ->assertJsonPath('data.pusher.key', 'test-key')
+            ->assertJsonPath('data.pusher.cluster', 'mt1')
+            ->assertJsonPath('data.auth_endpoint', url('/api/broadcasting/auth'))
+            ->assertJsonPath('data.user_channel', 'App.Models.User.{id}')
+            ->assertJsonPath('data.notifications.received', 'App\\Notifications\\ConnectionRequestReceivedNotification')
+            ->assertJsonPath('data.notifications.accepted', 'App\\Notifications\\ConnectionRequestAcceptedNotification')
+            ->assertJsonPath('data.api.list', url('/api/notifications'))
+            ->assertJsonPath('data.api.unread_count', url('/api/notifications/unread-count'));
+    }
+
     public function test_user_can_mark_notification_as_read(): void
     {
         config()->set('broadcasting.default', 'pusher');
