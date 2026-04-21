@@ -107,7 +107,14 @@ class GroupController extends Controller
             },
         ])
             ->withCount('members')
-            ->findOrFail($id);
+            ->find($id);
+
+        if (! $group) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Group not found',
+            ], 404);
+        }
 
         $user = $request->user();
 

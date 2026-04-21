@@ -23,8 +23,8 @@ class GroupIndexTest extends TestCase
 
         for ($index = 1; $index <= 15; $index++) {
             $eligibleGroups->push(Group::create([
-                'name' => 'Public Listed Group '.$index,
-                'description' => 'Group description '.$index,
+                'name' => 'Public Listed Group ' . $index,
+                'description' => 'Group description ' . $index,
                 'industry' => ['Technology'],
                 'creator_id' => $creator->id,
                 'type' => 'public',
@@ -70,7 +70,7 @@ class GroupIndexTest extends TestCase
 
         $returnedGroups = collect($response->json('data'));
 
-        $this->assertFalse($returnedGroups->contains(fn (array $group) => (int) $group['id'] === $joinedGroup->id));
+        $this->assertFalse($returnedGroups->contains(fn(array $group) => (int) $group['id'] === $joinedGroup->id));
 
         $returnedGroups->each(function (array $group) use ($eligibleGroups): void {
             $this->assertArrayHasKey('name', $group);
@@ -79,6 +79,18 @@ class GroupIndexTest extends TestCase
             $this->assertIsInt($group['total_member']);
             $this->assertTrue($eligibleGroups->contains('id', (int) $group['id']));
         });
+    }
+
+    public function test_user_gets_custom_error_when_group_is_missing(): void
+    {
+        $user = $this->makeUser();
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/group-show/999999');
+
+        $response
+            ->assertStatus(404)
+            ->assertJsonPath('status', 'error')
+            ->assertJsonPath('message', 'Group not found');
     }
 
     private function makeUser(): User
