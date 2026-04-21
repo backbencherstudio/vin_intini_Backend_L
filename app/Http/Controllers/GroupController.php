@@ -300,31 +300,6 @@ class GroupController extends Controller
         ], 200);
     }
 
-    // public function joinGroup(Request $request)
-    // {
-    //     $request->validate([
-    //         'group_id' => 'required|exists:groups,id'
-    //     ]);
-
-    //     $groupId = $request->group_id;
-    //     $group = Group::findOrFail($groupId);
-
-    //     if ($group->members()->where('user_id', auth()->id())->exists()) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'You are already a member of this group'
-    //         ], 400);
-    //     }
-
-    //     $group->members()->attach(auth()->id(), ['role' => 'member']);
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Joined successfully!',
-    //         'group_name' => $group->name
-    //     ], 200);
-    // }
-
     public function leaveGroup(Request $request)
     {
         $request->validate([
