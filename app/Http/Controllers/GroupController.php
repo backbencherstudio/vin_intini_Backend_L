@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ConnectionRequest;
 use App\Models\Group;
+use App\Models\User;
+use App\Notifications\GroupInvitationNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 
@@ -143,6 +148,151 @@ class GroupController extends Controller
             'data' => [
                 'group' => $group,
                 'is_current_user_member' => $isMember,
+            ],
+        ], 200);
+    }
+
+    public function inviteableUsers(Request $request, $id)
+    {
+        $group = Group::query()
+            ->withCount('members')
+            ->find($id);
+
+        if (! $group) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Group not found',
+            ], 404);
+        }
+
+        $currentUser = $request->user();
+
+        if (! $this->canInviteToGroup($group, $currentUser->id)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not allowed to invite users to this group.',
+            ], 403);
+        }
+
+        $inviteableUserIds = $this->connectedUserIds($currentUser->id)
+            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
+            ->values();
+
+        $perPage = max(1, min((int) $request->integer('per_page', 15), 50));
+        $search = trim((string) $request->query('search', ''));
+
+        $query = User::query()
+            ->whereIn('id', $inviteableUserIds)
+            ->select(['id', 'first_name', 'last_name', 'title', 'profile_image'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery
+                        ->where('first_name', 'like', '%' . $search . '%')
+                        ->orWhere('last_name', 'like', '%' . $search . '%')
+                        ->orWhere('title', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('first_name')
+            ->orderBy('last_name');
+
+        $users = $query->paginate($perPage);
+
+        $data = $users->getCollection()->map(function (User $user): array {
+            return [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'title' => $user->title,
+                'profile_image_url' => $user->profile_image_url,
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data,
+            'meta' => [
+                'total' => $users->total(),
+                'current_page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'last_page' => $users->lastPage(),
+                'group_id' => $group->id,
+            ],
+        ], 200);
+    }
+
+    public function sendInvitations(Request $request, $id)
+    {
+        $group = Group::query()
+            ->withCount('members')
+            ->find($id);
+
+        if (! $group) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Group not found',
+            ], 404);
+        }
+
+        if (! $this->canInviteToGroup($group, $request->user()->id)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not allowed to invite users to this group.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1'],
+            'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+        ]);
+
+        $currentUser = $request->user();
+        $inviteableUserIds = $this->connectedUserIds($currentUser->id)
+            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
+            ->values();
+
+        $requestedUserIds = collect($validated['user_ids'])->map(fn($userId) => (int) $userId)->values();
+        $invalidUserIds = $requestedUserIds->diff($inviteableUserIds)->values();
+
+        if ($invalidUserIds->isNotEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Some selected users are not eligible for invitation.',
+                'data' => [
+                    'invalid_user_ids' => $invalidUserIds,
+                ],
+            ], 422);
+        }
+
+        $invitees = User::query()
+            ->whereIn('id', $requestedUserIds)
+            ->get(['id', 'first_name', 'last_name', 'title', 'profile_image']);
+
+        $inviteLink = URL::temporarySignedRoute(
+            'group.invite.join',
+            now()->addDays(7),
+            ['group_id' => $group->id]
+        );
+
+        Notification::send($invitees, new GroupInvitationNotification($group, $currentUser, $inviteLink));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Group invitations sent successfully.',
+            'data' => [
+                'group' => [
+                    'id' => $group->id,
+                    'name' => $group->name,
+                ],
+                'invite_link' => $inviteLink,
+                'invited_users' => $invitees->map(function (User $user): array {
+                    return [
+                        'id' => $user->id,
+                        'first_name' => $user->first_name,
+                        'last_name' => $user->last_name,
+                        'title' => $user->title,
+                        'profile_image_url' => $user->profile_image_url,
+                    ];
+                })->values(),
             ],
         ], 200);
     }
@@ -350,5 +500,33 @@ class GroupController extends Controller
             'status' => 'success',
             'invite_link' => $inviteUrl,
         ]);
+    }
+
+    private function canInviteToGroup(Group $group, int $userId): bool
+    {
+        if ($group->type === 'private') {
+            return $group->creator_id === $userId;
+        }
+
+        return $group->creator_id === $userId || $group->members()->where('user_id', $userId)->exists();
+    }
+
+    private function connectedUserIds(int $userId): Collection
+    {
+        return ConnectionRequest::query()
+            ->accepted()
+            ->where(function ($query) use ($userId) {
+                $query->where('sender_id', $userId)
+                    ->orWhere('receiver_id', $userId);
+            })
+            ->get(['sender_id', 'receiver_id'])
+            ->toBase()
+            ->map(function (ConnectionRequest $connectionRequest) use ($userId) {
+                return (int) ($connectionRequest->sender_id === $userId
+                    ? $connectionRequest->receiver_id
+                    : $connectionRequest->sender_id);
+            })
+            ->unique()
+            ->values();
     }
 }

@@ -27,6 +27,8 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/group/leave', [GroupController::class, 'leaveGroup']);
     // group invite routes
     Route::get('/group-invite-link/{id}', [GroupController::class, 'generateInviteLink']);
+    Route::get('/group-invite-users/{id}', [GroupController::class, 'inviteableUsers']);
+    Route::post('/group-invite-users/{id}', [GroupController::class, 'sendInvitations']);
     Route::get('/group/join/invite/{group_id}', [GroupController::class, 'joinGroup'])
         ->name('group.invite.join')
         ->middleware('signed');
