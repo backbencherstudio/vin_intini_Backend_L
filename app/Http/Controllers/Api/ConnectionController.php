@@ -376,7 +376,12 @@ class ConnectionController extends Controller
     {
         $currentUser = $request->user();
 
-        $this->ensureReceiverCanAct($connectionRequest, $currentUser->id);
+        if (! $this->receiverCanManage($connectionRequest, $currentUser->id)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Only the request receiver can accept this connection request.',
+            ], 403);
+        }
 
         if ($connectionRequest->status === ConnectionRequest::STATUS_ACCEPTED) {
             return response()->json([
@@ -417,7 +422,12 @@ class ConnectionController extends Controller
     {
         $currentUser = $request->user();
 
-        $this->ensureReceiverCanAct($connectionRequest, $currentUser->id);
+        if (! $this->receiverCanManage($connectionRequest, $currentUser->id)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Only the request receiver can ignore this connection request.',
+            ], 403);
+        }
 
         if ($connectionRequest->status !== ConnectionRequest::STATUS_PENDING) {
             return response()->json([
@@ -482,11 +492,9 @@ class ConnectionController extends Controller
         ], 200);
     }
 
-    private function ensureReceiverCanAct(ConnectionRequest $connectionRequest, int $userId): void
+    private function receiverCanManage(ConnectionRequest $connectionRequest, int $userId): bool
     {
-        if ($connectionRequest->receiver_id !== $userId) {
-            abort(403, 'You are not allowed to manage this connection request.');
-        }
+        return $connectionRequest->receiver_id === $userId;
     }
 
     private function ensureMutualFollows(User $firstUser, User $secondUser): void
