@@ -174,7 +174,7 @@ class GroupController extends Controller
         }
 
         $inviteableUserIds = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
             ->diff($this->pendingInvitationUserIds($group->id))
             ->values();
 
@@ -187,9 +187,9 @@ class GroupController extends Controller
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery
-                        ->where('first_name', 'like', '%'.$search.'%')
-                        ->orWhere('last_name', 'like', '%'.$search.'%')
-                        ->orWhere('title', 'like', '%'.$search.'%');
+                        ->where('first_name', 'like', '%' . $search . '%')
+                        ->orWhere('last_name', 'like', '%' . $search . '%')
+                        ->orWhere('title', 'like', '%' . $search . '%');
                 });
             })
             ->orderBy('first_name')
@@ -247,11 +247,11 @@ class GroupController extends Controller
 
         $currentUser = $request->user();
         $inviteableUserIds = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
             ->diff($this->pendingInvitationUserIds($group->id))
             ->values();
 
-        $requestedUserIds = collect($validated['user_ids'])->map(fn ($userId) => (int) $userId)->values();
+        $requestedUserIds = collect($validated['user_ids'])->map(fn($userId) => (int) $userId)->values();
         $invalidUserIds = $requestedUserIds->diff($inviteableUserIds)->values();
 
         if ($invalidUserIds->isNotEmpty()) {
@@ -324,7 +324,7 @@ class GroupController extends Controller
         $request->merge($input);
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255|unique:groups,name,'.$id,
+            'name' => 'sometimes|required|string|max:255|unique:groups,name,' . $id,
             'description' => 'sometimes|required|string|max:2500',
             'industry' => 'nullable|array|max:3',
             'location' => 'nullable|string|max:255',
@@ -554,14 +554,85 @@ class GroupController extends Controller
         ], 200);
     }
 
+    public function invitationRequests(Request $request)
+    {
+        $search = trim((string) $request->query('search', ''));
+        $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
+        $page = max(1, (int) $request->integer('page', 1));
+
+        $invitations = GroupInvitation::query()
+            ->where('invited_user_id', $request->user()->id)
+            ->with([
+                'group:id,name,type,logo,creator_id',
+                'inviter:id,first_name,last_name,title,profile_image',
+            ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->whereHas('group', function ($groupQuery) use ($search) {
+                    $groupQuery->where('name', 'like', '%' . $search . '%');
+                });
+            })
+            ->latest('id')
+            ->paginate($perPage, page: $page);
+
+        $data = $invitations->getCollection()
+            ->map(function (GroupInvitation $invitation): array {
+                $inviterName = trim(($invitation->inviter?->first_name ?? '') . ' ' . ($invitation->inviter?->last_name ?? ''));
+
+                return [
+                    'invitation_id' => $invitation->id,
+                    'group' => [
+                        'id' => $invitation->group?->id,
+                        'name' => $invitation->group?->name,
+                        'type' => $invitation->group?->type,
+                        'logo_url' => $invitation->group?->logo_url,
+                    ],
+                    'inviter' => [
+                        'id' => $invitation->inviter?->id,
+                        'name' => $inviterName,
+                        'title' => $invitation->inviter?->title,
+                        'profile_image_url' => $invitation->inviter?->profile_image_url,
+                    ],
+                    'requested_at' => $invitation->created_at?->toDateTimeString(),
+                ];
+            })
+            ->values();
+
+        if ($invitations->total() === 0) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'No pending group invitations found.',
+                'data' => [],
+                'meta' => [
+                    'total' => 0,
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'last_page' => 0,
+                    'search' => $search !== '' ? $search : null,
+                ],
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data,
+            'meta' => [
+                'total' => $invitations->total(),
+                'current_page' => $invitations->currentPage(),
+                'per_page' => $invitations->perPage(),
+                'last_page' => $invitations->lastPage(),
+                'search' => $search !== '' ? $search : null,
+            ],
+        ], 200);
+    }
+
     private function canInviteToGroup(Group $group, int $userId): bool
     {
         if ($group->type === 'private') {
             return $group->creator_id === $userId
                 || $group->members()
-                    ->where('user_id', $userId)
-                    ->wherePivot('role', 'admin')
-                    ->exists();
+                ->where('user_id', $userId)
+                ->wherePivot('role', 'admin')
+                ->exists();
         }
 
         return $group->creator_id === $userId
@@ -573,7 +644,7 @@ class GroupController extends Controller
         return GroupInvitation::query()
             ->where('group_id', $groupId)
             ->pluck('invited_user_id')
-            ->map(fn ($userId) => (int) $userId)
+            ->map(fn($userId) => (int) $userId)
             ->values();
     }
 

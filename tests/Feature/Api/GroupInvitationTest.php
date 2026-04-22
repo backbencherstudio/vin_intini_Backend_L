@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\ConnectionRequest;
 use App\Models\Group;
+use App\Models\GroupInvitation;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\GroupInvitationNotification;
@@ -95,10 +96,23 @@ class GroupInvitationTest extends TestCase
             ->assertJsonPath('data.group.id', $group->id)
             ->assertJsonCount(2, 'data.invited_users');
 
+        $this->assertDatabaseHas('group_invitations', [
+            'group_id' => $group->id,
+            'inviter_id' => $this->creator->id,
+            'invited_user_id' => $inviteeOne->id,
+        ]);
+
+        $this->assertDatabaseHas('group_invitations', [
+            'group_id' => $group->id,
+            'inviter_id' => $this->creator->id,
+            'invited_user_id' => $inviteeTwo->id,
+        ]);
+
         Notification::assertSentTo($inviteeOne, GroupInvitationNotification::class, function (GroupInvitationNotification $notification, array $channels) use ($group): bool {
             $this->assertSame(['database'], $channels);
             $this->assertSame($group->id, $notification->group->id);
             $this->assertSame($group->name, $notification->group->name);
+            $this->assertNotNull($notification->invitation->id);
 
             return true;
         });
@@ -107,6 +121,7 @@ class GroupInvitationTest extends TestCase
             $this->assertSame(['database'], $channels);
             $this->assertSame($group->id, $notification->group->id);
             $this->assertSame($group->name, $notification->group->name);
+            $this->assertNotNull($notification->invitation->id);
 
             return true;
         });
@@ -172,6 +187,90 @@ class GroupInvitationTest extends TestCase
         Notification::assertSentTo($invitee, GroupInvitationNotification::class);
     }
 
+    public function test_invited_user_can_accept_invitation_and_join_group(): void
+    {
+        Notification::fake();
+
+        $invitee = $this->makeConnectedUser();
+        $group = $this->createGroup('private');
+
+        $this->acceptConnection($this->creator, $invitee);
+
+        $this->actingAs($this->creator, 'api')
+            ->postJson('/api/group-invite-users/' . $group->id, [
+                'user_ids' => [$invitee->id],
+            ])
+            ->assertOk();
+
+        $invitation = GroupInvitation::query()
+            ->where('group_id', $group->id)
+            ->where('invited_user_id', $invitee->id)
+            ->firstOrFail();
+
+        $response = $this->actingAs($invitee, 'api')
+            ->postJson('/api/group-invitations/' . $invitation->id . '/accept');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Invitation accepted successfully.')
+            ->assertJsonPath('data.group_id', $group->id);
+
+        $this->assertDatabaseMissing('group_invitations', [
+            'id' => $invitation->id,
+        ]);
+
+        $this->assertTrue($group->fresh()->members()->where('user_id', $invitee->id)->exists());
+    }
+
+    public function test_invited_user_can_ignore_invitation_and_sender_can_reinvite(): void
+    {
+        Notification::fake();
+
+        $invitee = $this->makeConnectedUser();
+        $group = $this->createGroup();
+
+        $this->acceptConnection($this->creator, $invitee);
+
+        $this->actingAs($this->creator, 'api')
+            ->postJson('/api/group-invite-users/' . $group->id, [
+                'user_ids' => [$invitee->id],
+            ])
+            ->assertOk();
+
+        $invitation = GroupInvitation::query()
+            ->where('group_id', $group->id)
+            ->where('invited_user_id', $invitee->id)
+            ->firstOrFail();
+
+        $ignoreResponse = $this->actingAs($invitee, 'api')
+            ->postJson('/api/group-invitations/' . $invitation->id . '/ignore');
+
+        $ignoreResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Invitation ignored successfully.');
+
+        $this->assertDatabaseMissing('group_invitations', [
+            'id' => $invitation->id,
+        ]);
+
+        $resendResponse = $this->actingAs($this->creator, 'api')
+            ->postJson('/api/group-invite-users/' . $group->id, [
+                'user_ids' => [$invitee->id],
+            ]);
+
+        $resendResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(1, 'data.invited_users');
+
+        $this->assertDatabaseHas('group_invitations', [
+            'group_id' => $group->id,
+            'invited_user_id' => $invitee->id,
+        ]);
+    }
+
     public function test_private_group_non_creator_cannot_invite_users(): void
     {
         $member = $this->makeUser();
@@ -198,6 +297,97 @@ class GroupInvitationTest extends TestCase
             ->assertStatus(403)
             ->assertJsonPath('status', 'error')
             ->assertJsonPath('message', 'You are not allowed to invite users to this group.');
+    }
+
+    public function test_invited_user_can_view_only_group_invitation_requests(): void
+    {
+        $invitee = $this->makeConnectedUser();
+        $group = $this->createGroup('public');
+
+        $this->acceptConnection($this->creator, $invitee);
+
+        $this->actingAs($this->creator, 'api')
+            ->postJson('/api/group-invite-users/' . $group->id, [
+                'user_ids' => [$invitee->id],
+            ])
+            ->assertOk();
+
+        $response = $this->actingAs($invitee, 'api')
+            ->getJson('/api/group-invitations/requests');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.group.id', $group->id)
+            ->assertJsonPath('data.0.group.name', $group->name)
+            ->assertJsonPath('data.0.inviter.id', $this->creator->id)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.per_page', 10);
+    }
+
+    public function test_invited_user_can_search_and_paginate_group_invitation_requests(): void
+    {
+        $invitee = $this->makeConnectedUser();
+
+        $groupOne = Group::create([
+            'name' => 'Research Circle A',
+            'description' => 'A group for invited connections',
+            'industry' => ['Technology'],
+            'creator_id' => $this->creator->id,
+            'type' => 'public',
+            'discoverability' => 'listed',
+            'allow_member_invites' => true,
+        ]);
+        $groupOne->members()->attach($this->creator->id, ['role' => 'admin']);
+
+        $groupTwo = Group::create([
+            'name' => 'Marketing Hub',
+            'description' => 'A group for invited connections',
+            'industry' => ['Technology'],
+            'creator_id' => $this->creator->id,
+            'type' => 'public',
+            'discoverability' => 'listed',
+            'allow_member_invites' => true,
+        ]);
+        $groupTwo->members()->attach($this->creator->id, ['role' => 'admin']);
+
+        $this->acceptConnection($this->creator, $invitee);
+
+        $this->actingAs($this->creator, 'api')
+            ->postJson('/api/group-invite-users/' . $groupOne->id, [
+                'user_ids' => [$invitee->id],
+            ])
+            ->assertOk();
+
+        $this->actingAs($this->creator, 'api')
+            ->postJson('/api/group-invite-users/' . $groupTwo->id, [
+                'user_ids' => [$invitee->id],
+            ])
+            ->assertOk();
+
+        $searchResponse = $this->actingAs($invitee, 'api')
+            ->getJson('/api/group-invitations/requests?search=research');
+
+        $searchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.group.id', $groupOne->id)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('meta.search', 'research');
+
+        $paginationResponse = $this->actingAs($invitee, 'api')
+            ->getJson('/api/group-invitations/requests?per_page=1&page=2');
+
+        $paginationResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonPath('meta.last_page', 2);
     }
 
     private function createGroup(string $type = 'public'): Group

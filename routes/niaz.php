@@ -28,6 +28,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     // group invite routes
     Route::get('/group-invite-users/{id}', [GroupController::class, 'inviteableUsers']);
     Route::post('/group-invite-users/{id}', [GroupController::class, 'sendInvitations']);
+    Route::get('/group-invitations/requests', [GroupController::class, 'invitationRequests']);
     Route::post('/group-invitations/{invitationId}/accept', [GroupController::class, 'acceptInvitation']);
     Route::post('/group-invitations/{invitationId}/ignore', [GroupController::class, 'ignoreInvitation']);
 
