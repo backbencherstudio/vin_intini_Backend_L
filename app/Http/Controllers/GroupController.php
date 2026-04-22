@@ -45,15 +45,36 @@ class GroupController extends Controller
 
         if ($groups->isEmpty()) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => 'No group suggestions available at the moment. Please check back later.',
+                'status' => 'success',
                 'data' => [],
+                'stats' => [
+                    'total_groups' => 0,
+                ],
+                'total' => 0,
+                'limit' => 10,
+                'current_page' => 1,
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [],
             ], 200);
         }
 
         return response()->json([
+            'success' => true,
+            'message' => 'Group suggestions retrieved successfully.',
             'status' => 'success',
             'data' => $groups,
+            'stats' => [
+                'total_groups' => $groups->count(),
+            ],
+            'total' => $groups->count(),
+            'limit' => 10,
+            'current_page' => 1,
+            'total_page' => 1,
+            'last_page' => 1,
+            'filters' => [],
         ], 200);
     }
 
@@ -208,14 +229,21 @@ class GroupController extends Controller
         })->values();
 
         return response()->json([
+            'success' => true,
+            'message' => 'Inviteable users retrieved successfully.',
             'status' => 'success',
             'data' => $data,
-            'meta' => [
-                'total' => $users->total(),
-                'current_page' => $users->currentPage(),
-                'per_page' => $users->perPage(),
-                'last_page' => $users->lastPage(),
+            'stats' => [
+                'total_users' => $users->total(),
+            ],
+            'total' => $users->total(),
+            'limit' => $users->perPage(),
+            'current_page' => $users->currentPage(),
+            'total_page' => $users->lastPage(),
+            'last_page' => $users->lastPage(),
+            'filters' => [
                 'group_id' => $group->id,
+                'search' => $search !== '' ? $search : null,
             ],
         ], 200);
     }
@@ -283,8 +311,9 @@ class GroupController extends Controller
         }
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Group invitations sent successfully.',
+            'status' => 'success',
             'data' => [
                 'group' => [
                     'id' => $group->id,
@@ -384,17 +413,44 @@ class GroupController extends Controller
 
         if ($groups->isEmpty()) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => $request->has('search') ? 'No groups found matching your search.' : 'You haven’t created any groups yet.',
+                'status' => 'success',
                 'total_created_groups_count' => $totalCreatedEver,
                 'data' => [],
+                'stats' => [
+                    'total_created_groups_count' => $totalCreatedEver,
+                ],
+                'total' => 0,
+                'limit' => 10,
+                'current_page' => $groups->currentPage(),
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
+                    'search' => $request->has('search') ? $request->input('search') : null,
+                ],
             ], 200);
         }
 
+        $data = $groups->getCollection()->values();
+
         return response()->json([
+            'success' => true,
+            'message' => 'Created groups retrieved successfully.',
             'status' => 'success',
             'total_created_groups_count' => $totalCreatedEver,
-            'data' => $groups,
+            'data' => $data,
+            'stats' => [
+                'total_created_groups_count' => $totalCreatedEver,
+            ],
+            'total' => $groups->total(),
+            'limit' => $groups->perPage(),
+            'current_page' => $groups->currentPage(),
+            'total_page' => $groups->lastPage(),
+            'last_page' => $groups->lastPage(),
+            'filters' => [
+                'search' => $request->has('search') ? $request->input('search') : null,
+            ],
         ], 200);
     }
 
@@ -419,17 +475,44 @@ class GroupController extends Controller
 
         if ($groups->isEmpty()) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => $request->has('search') ? 'No groups match your search.' : 'You haven’t joined any groups yet.',
+                'status' => 'success',
                 'total_joined_count' => $totalJoinedEver,
                 'data' => [],
+                'stats' => [
+                    'total_joined_count' => $totalJoinedEver,
+                ],
+                'total' => 0,
+                'limit' => 10,
+                'current_page' => $groups->currentPage(),
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
+                    'search' => $request->has('search') ? $request->input('search') : null,
+                ],
             ], 200);
         }
 
+        $data = $groups->getCollection()->values();
+
         return response()->json([
+            'success' => true,
+            'message' => 'Joined groups retrieved successfully.',
             'status' => 'success',
             'total_joined_count' => $totalJoinedEver,
-            'data' => $groups,
+            'data' => $data,
+            'stats' => [
+                'total_joined_count' => $totalJoinedEver,
+            ],
+            'total' => $groups->total(),
+            'limit' => $groups->perPage(),
+            'current_page' => $groups->currentPage(),
+            'total_page' => $groups->lastPage(),
+            'last_page' => $groups->lastPage(),
+            'filters' => [
+                'search' => $request->has('search') ? $request->input('search') : null,
+            ],
         ], 200);
     }
 
@@ -599,27 +682,38 @@ class GroupController extends Controller
 
         if ($invitations->total() === 0) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => 'No pending group invitations found.',
+                'status' => 'success',
                 'data' => [],
-                'meta' => [
-                    'total' => 0,
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'last_page' => 0,
+                'stats' => [
+                    'total_invitations' => 0,
+                ],
+                'total' => 0,
+                'limit' => $perPage,
+                'current_page' => $page,
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
                     'search' => $search !== '' ? $search : null,
                 ],
             ], 200);
         }
 
         return response()->json([
+            'success' => true,
+            'message' => 'Group invitations retrieved successfully.',
             'status' => 'success',
             'data' => $data,
-            'meta' => [
-                'total' => $invitations->total(),
-                'current_page' => $invitations->currentPage(),
-                'per_page' => $invitations->perPage(),
-                'last_page' => $invitations->lastPage(),
+            'stats' => [
+                'total_invitations' => $invitations->total(),
+            ],
+            'total' => $invitations->total(),
+            'limit' => $invitations->perPage(),
+            'current_page' => $invitations->currentPage(),
+            'total_page' => $invitations->lastPage(),
+            'last_page' => $invitations->lastPage(),
+            'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
