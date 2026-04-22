@@ -38,14 +38,20 @@ class ConnectionController extends Controller
 
         if ($connections->isEmpty()) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => 'No accepted connection found.',
+                'status' => 'success',
                 'data' => [],
-                'meta' => [
-                    'total' => 0,
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'last_page' => 0,
+                'stats' => [
+                    'total_connections' => 0,
+                    'filtered_connections' => 0,
+                ],
+                'total' => 0,
+                'limit' => $perPage,
+                'current_page' => $page,
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
                     'search' => $search !== '' ? $search : null,
                     'sort' => $sort,
                 ],
@@ -115,14 +121,20 @@ class ConnectionController extends Controller
         })->values();
 
         return response()->json([
+            'success' => true,
+            'message' => 'Connections retrieved successfully.',
             'status' => 'success',
             'data' => $connectionData,
-            'meta' => [
+            'stats' => [
                 'total_connections' => $connections->count(),
                 'filtered_connections' => $items->count(),
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'last_page' => $paginator->lastPage(),
+            ],
+            'total' => $paginator->total(),
+            'limit' => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+            'total_page' => $paginator->lastPage(),
+            'last_page' => $paginator->lastPage(),
+            'filters' => [
                 'search' => $search !== '' ? $search : null,
                 'sort' => $sort,
             ],
@@ -148,12 +160,20 @@ class ConnectionController extends Controller
 
         if ($requests->isEmpty()) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => 'No pending connection requests found.',
+                'status' => 'success',
                 'data' => [],
-                'meta' => [
+                'stats' => [
                     'total_requests' => 0,
                     'filtered_requests' => 0,
+                ],
+                'total' => 0,
+                'limit' => 0,
+                'current_page' => 1,
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
                     'search' => $search !== '' ? $search : null,
                 ],
             ], 200);
@@ -182,12 +202,20 @@ class ConnectionController extends Controller
 
         if ($items->isEmpty()) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => 'No pending connection requests found for this search.',
+                'status' => 'success',
                 'data' => [],
-                'meta' => [
+                'stats' => [
                     'total_requests' => $requests->count(),
                     'filtered_requests' => 0,
+                ],
+                'total' => 0,
+                'limit' => 0,
+                'current_page' => 1,
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
                     'search' => $search,
                 ],
             ], 200);
@@ -207,15 +235,24 @@ class ConnectionController extends Controller
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
 
         return response()->json([
+            'success' => true,
+            'message' => 'Connection requests retrieved successfully.',
             'status' => 'success',
             'data' => $filteredRequests
                 ->map(function (ConnectionRequest $connectionRequest) use ($currentUser, $mutualConnections) {
                     return $this->formatConnectionRequest($connectionRequest, $currentUser->id, $mutualConnections, true);
                 })
                 ->values(),
-            'meta' => [
+            'stats' => [
                 'total_requests' => $requests->count(),
                 'filtered_requests' => $filteredRequests->count(),
+            ],
+            'total' => $filteredRequests->count(),
+            'limit' => $filteredRequests->count(),
+            'current_page' => 1,
+            'total_page' => 1,
+            'last_page' => 1,
+            'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
@@ -310,13 +347,19 @@ class ConnectionController extends Controller
         })->values();
 
         return response()->json([
+            'success' => true,
+            'message' => 'Connection suggestions retrieved successfully.',
             'status' => 'success',
             'data' => $data,
-            'meta' => [
-                'total' => $paginator->total(),
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'last_page' => $paginator->lastPage(),
+            'stats' => [
+                'total_suggestions' => $paginator->total(),
+            ],
+            'total' => $paginator->total(),
+            'limit' => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+            'total_page' => $paginator->lastPage(),
+            'last_page' => $paginator->lastPage(),
+            'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
