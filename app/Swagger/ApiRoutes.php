@@ -560,6 +560,9 @@ final class ApiRoutes
         operationId: 'get_api_connections_requests',
         summary: 'ConnectionController@requests',
         security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string', example: 'sadia')),
+        ],
         responses: [new OA\Response(response: 200, description: 'OK')],
     )]
     public function getConnectionRequests(): void {}

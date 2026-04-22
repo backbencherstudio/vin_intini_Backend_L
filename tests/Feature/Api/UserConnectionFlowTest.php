@@ -352,6 +352,49 @@ class UserConnectionFlowTest extends TestCase
         $this->assertDatabaseCount('connection_requests', 2);
     }
 
+    public function test_user_can_search_pending_connection_requests(): void
+    {
+        $receiver = $this->makeUser('Receiver', 'User');
+        $matchingSender = $this->makeUser('Sadia', 'Rahman');
+        $nonMatchingSender = $this->makeUser('Tanvir', 'Ahmed');
+
+        ConnectionRequest::create([
+            'sender_id' => $matchingSender->id,
+            'receiver_id' => $receiver->id,
+            'status' => ConnectionRequest::STATUS_PENDING,
+        ]);
+
+        ConnectionRequest::create([
+            'sender_id' => $nonMatchingSender->id,
+            'receiver_id' => $receiver->id,
+            'status' => ConnectionRequest::STATUS_PENDING,
+        ]);
+
+        $searchResponse = $this->actingAs($receiver, 'api')
+            ->getJson('/api/connections/requests?search=sadia');
+
+        $searchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.user.id', $matchingSender->id)
+            ->assertJsonPath('meta.total_requests', 2)
+            ->assertJsonPath('meta.filtered_requests', 1)
+            ->assertJsonPath('meta.search', 'sadia');
+
+        $noMatchResponse = $this->actingAs($receiver, 'api')
+            ->getJson('/api/connections/requests?search=not-found');
+
+        $noMatchResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'No pending connection requests found for this search.')
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('meta.total_requests', 2)
+            ->assertJsonPath('meta.filtered_requests', 0)
+            ->assertJsonPath('meta.search', 'not-found');
+    }
+
     public function test_user_can_remove_connection_and_it_removes_mutual_follows(): void
     {
         $firstUser = $this->makeUser();

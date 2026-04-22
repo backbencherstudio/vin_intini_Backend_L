@@ -132,6 +132,7 @@ class ConnectionController extends Controller
     public function requests(Request $request): JsonResponse
     {
         $currentUser = $request->user();
+        $search = trim((string) $request->query('search', ''));
 
         $requests = ConnectionRequest::query()
             ->pending()
@@ -150,10 +151,51 @@ class ConnectionController extends Controller
                 'status' => 'success',
                 'message' => 'No pending connection requests found.',
                 'data' => [],
+                'meta' => [
+                    'total_requests' => 0,
+                    'filtered_requests' => 0,
+                    'search' => $search !== '' ? $search : null,
+                ],
             ], 200);
         }
 
-        $counterpartIds = $requests
+        $items = $requests->map(function (ConnectionRequest $connectionRequest) use ($currentUser): array {
+            $counterpart = $connectionRequest->sender_id === $currentUser->id
+                ? $connectionRequest->receiver
+                : $connectionRequest->sender;
+
+            return [
+                'request' => $connectionRequest,
+                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+                'search_title' => (string) ($counterpart->title ?? ''),
+            ];
+        });
+
+        if ($search !== '') {
+            $normalizedSearch = mb_strtolower($search);
+
+            $items = $items->filter(function (array $item) use ($normalizedSearch): bool {
+                return str_contains(mb_strtolower($item['search_name']), $normalizedSearch)
+                    || str_contains(mb_strtolower($item['search_title']), $normalizedSearch);
+            })->values();
+        }
+
+        if ($items->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'No pending connection requests found for this search.',
+                'data' => [],
+                'meta' => [
+                    'total_requests' => $requests->count(),
+                    'filtered_requests' => 0,
+                    'search' => $search,
+                ],
+            ], 200);
+        }
+
+        $filteredRequests = $items->pluck('request')->values();
+
+        $counterpartIds = $filteredRequests
             ->map(function (ConnectionRequest $connectionRequest) use ($currentUser) {
                 return $connectionRequest->sender_id === $currentUser->id
                     ? $connectionRequest->receiver_id
@@ -166,11 +208,16 @@ class ConnectionController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $requests
+            'data' => $filteredRequests
                 ->map(function (ConnectionRequest $connectionRequest) use ($currentUser, $mutualConnections) {
                     return $this->formatConnectionRequest($connectionRequest, $currentUser->id, $mutualConnections, true);
                 })
                 ->values(),
+            'meta' => [
+                'total_requests' => $requests->count(),
+                'filtered_requests' => $filteredRequests->count(),
+                'search' => $search !== '' ? $search : null,
+            ],
         ], 200);
     }
 
