@@ -4,13 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\ConnectionRequest;
 use App\Models\Group;
+use App\Models\GroupInvitation;
 use App\Models\User;
 use App\Notifications\GroupInvitationNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 
 class GroupController extends Controller
 {
@@ -175,7 +174,8 @@ class GroupController extends Controller
         }
 
         $inviteableUserIds = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
+            ->diff($this->pendingInvitationUserIds($group->id))
             ->values();
 
         $perPage = max(1, min((int) $request->integer('per_page', 15), 50));
@@ -187,9 +187,9 @@ class GroupController extends Controller
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery
-                        ->where('first_name', 'like', '%' . $search . '%')
-                        ->orWhere('last_name', 'like', '%' . $search . '%')
-                        ->orWhere('title', 'like', '%' . $search . '%');
+                        ->where('first_name', 'like', '%'.$search.'%')
+                        ->orWhere('last_name', 'like', '%'.$search.'%')
+                        ->orWhere('title', 'like', '%'.$search.'%');
                 });
             })
             ->orderBy('first_name')
@@ -247,10 +247,11 @@ class GroupController extends Controller
 
         $currentUser = $request->user();
         $inviteableUserIds = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
+            ->diff($this->pendingInvitationUserIds($group->id))
             ->values();
 
-        $requestedUserIds = collect($validated['user_ids'])->map(fn($userId) => (int) $userId)->values();
+        $requestedUserIds = collect($validated['user_ids'])->map(fn ($userId) => (int) $userId)->values();
         $invalidUserIds = $requestedUserIds->diff($inviteableUserIds)->values();
 
         if ($invalidUserIds->isNotEmpty()) {
@@ -267,13 +268,19 @@ class GroupController extends Controller
             ->whereIn('id', $requestedUserIds)
             ->get(['id', 'first_name', 'last_name', 'title', 'profile_image']);
 
-        $inviteLink = URL::temporarySignedRoute(
-            'group.invite.join',
-            now()->addDays(7),
-            ['group_id' => $group->id]
-        );
+        $invitations = collect();
 
-        Notification::send($invitees, new GroupInvitationNotification($group, $currentUser, $inviteLink));
+        foreach ($invitees as $invitee) {
+            $invitation = GroupInvitation::create([
+                'group_id' => $group->id,
+                'inviter_id' => $currentUser->id,
+                'invited_user_id' => $invitee->id,
+            ]);
+
+            $invitations->push($invitation);
+
+            $invitee->notify(new GroupInvitationNotification($invitation, $group, $currentUser));
+        }
 
         return response()->json([
             'status' => 'success',
@@ -283,9 +290,11 @@ class GroupController extends Controller
                     'id' => $group->id,
                     'name' => $group->name,
                 ],
-                'invite_link' => $inviteLink,
-                'invited_users' => $invitees->map(function (User $user): array {
+                'invited_users' => $invitees->map(function (User $user) use ($invitations): array {
+                    $invitation = $invitations->firstWhere('invited_user_id', $user->id);
+
                     return [
+                        'invitation_id' => $invitation?->id,
                         'id' => $user->id,
                         'first_name' => $user->first_name,
                         'last_name' => $user->last_name,
@@ -315,7 +324,7 @@ class GroupController extends Controller
         $request->merge($input);
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255|unique:groups,name,' . $id,
+            'name' => 'sometimes|required|string|max:255|unique:groups,name,'.$id,
             'description' => 'sometimes|required|string|max:2500',
             'industry' => 'nullable|array|max:3',
             'location' => 'nullable|string|max:255',
@@ -482,33 +491,98 @@ class GroupController extends Controller
         ], 200);
     }
 
-    public function generateInviteLink($id)
+    public function acceptInvitation(Request $request, int $invitationId)
     {
-        $group = Group::findOrFail($id);
+        $invitation = GroupInvitation::query()
+            ->with('group')
+            ->where('id', $invitationId)
+            ->where('invited_user_id', $request->user()->id)
+            ->first();
 
-        if (auth()->id() !== $group->creator_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (! $invitation) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invitation not found.',
+            ], 404);
         }
 
-        $inviteUrl = URL::temporarySignedRoute(
-            'group.invite.join',
-            now()->addDays(7),
-            ['group_id' => $group->id]
-        );
+        $group = $invitation->group;
+        $currentUserId = $request->user()->id;
+
+        if (! $group->members()->where('user_id', $currentUserId)->exists()) {
+            $group->members()->attach($currentUserId, ['role' => 'member']);
+        }
+
+        $invitation->delete();
+
+        $this->deleteGroupInvitationNotification($request->user(), $group->id);
 
         return response()->json([
             'status' => 'success',
-            'invite_link' => $inviteUrl,
-        ]);
+            'message' => 'Invitation accepted successfully.',
+            'data' => [
+                'group_id' => $group->id,
+                'group_name' => $group->name,
+            ],
+        ], 200);
+    }
+
+    public function ignoreInvitation(Request $request, int $invitationId)
+    {
+        $invitation = GroupInvitation::query()
+            ->with('group')
+            ->where('id', $invitationId)
+            ->where('invited_user_id', $request->user()->id)
+            ->first();
+
+        if (! $invitation) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invitation not found.',
+            ], 404);
+        }
+
+        $group = $invitation->group;
+
+        $invitation->delete();
+
+        $this->deleteGroupInvitationNotification($request->user(), $group->id);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Invitation ignored successfully.',
+        ], 200);
     }
 
     private function canInviteToGroup(Group $group, int $userId): bool
     {
         if ($group->type === 'private') {
-            return $group->creator_id === $userId;
+            return $group->creator_id === $userId
+                || $group->members()
+                    ->where('user_id', $userId)
+                    ->wherePivot('role', 'admin')
+                    ->exists();
         }
 
-        return $group->creator_id === $userId || $group->members()->where('user_id', $userId)->exists();
+        return $group->creator_id === $userId
+            || $group->members()->where('user_id', $userId)->exists();
+    }
+
+    private function pendingInvitationUserIds(int $groupId): Collection
+    {
+        return GroupInvitation::query()
+            ->where('group_id', $groupId)
+            ->pluck('invited_user_id')
+            ->map(fn ($userId) => (int) $userId)
+            ->values();
+    }
+
+    private function deleteGroupInvitationNotification(User $user, int $groupId): void
+    {
+        $user->notifications()
+            ->where('type', GroupInvitationNotification::class)
+            ->where('data->group_id', $groupId)
+            ->delete();
     }
 
     private function connectedUserIds(int $userId): Collection
