@@ -3,15 +3,16 @@
 namespace App\Notifications;
 
 use App\Models\Group;
+use App\Models\GroupInvitation;
 use App\Models\User;
 use Illuminate\Notifications\Notification;
 
 class GroupInvitationNotification extends Notification
 {
     public function __construct(
+        public GroupInvitation $invitation,
         public Group $group,
-        public User $inviter,
-        public string $inviteLink
+        public User $inviter
     ) {}
 
     public function via(object $notifiable): array
@@ -21,16 +22,16 @@ class GroupInvitationNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $inviterName = trim(($this->inviter->first_name ?? '') . ' ' . ($this->inviter->last_name ?? ''));
+        $inviterName = trim(($this->inviter->first_name ?? '').' '.($this->inviter->last_name ?? ''));
 
         return [
+            'invitation_id' => $this->invitation->id,
             'group_id' => $this->group->id,
             'group_name' => $this->group->name,
             'group_logo_url' => $this->group->logo_url,
             'inviter_id' => $this->inviter->id,
             'inviter_name' => $inviterName,
-            'message' => $inviterName . ' invited you to join ' . $this->group->name,
-            'invite_link' => $this->inviteLink,
+            'message' => $inviterName.' invited you to join '.$this->group->name,
             'type' => 'group_invitation',
             'sent_at' => now()->toDateTimeString(),
         ];
