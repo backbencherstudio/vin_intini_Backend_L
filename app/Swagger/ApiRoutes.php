@@ -414,31 +414,31 @@ final class ApiRoutes
     )]
     public function postGroupLeave(): void {}
 
-    #[OA\Get(
-        path: '/api/group-invite-link/{id}',
+    #[OA\Post(
+        path: '/api/group-invitations/{invitationId}/accept',
         tags: ['Groups'],
-        operationId: 'get_api_group_invite_link',
-        summary: 'GroupController@generateInviteLink',
+        operationId: 'post_api_group_invitation_accept',
+        summary: 'GroupController@acceptInvitation',
         security: [['bearerAuth' => []]],
         parameters: [
-            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'invitationId', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 1)),
         ],
         responses: [new OA\Response(response: 200, description: 'OK')],
     )]
-    public function getGroupInviteLink(): void {}
+    public function postGroupInvitationAccept(): void {}
 
-    #[OA\Get(
-        path: '/api/group/join/invite/{group_id}',
+    #[OA\Post(
+        path: '/api/group-invitations/{invitationId}/ignore',
         tags: ['Groups'],
-        operationId: 'get_api_group_join_invite',
-        summary: 'GroupController@joinGroup (signed invite link)',
+        operationId: 'post_api_group_invitation_ignore',
+        summary: 'GroupController@ignoreInvitation',
         security: [['bearerAuth' => []]],
         parameters: [
-            new OA\Parameter(name: 'group_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'invitationId', in: 'path', required: true, schema: new OA\Schema(type: 'integer', example: 1)),
         ],
         responses: [new OA\Response(response: 200, description: 'OK')],
     )]
-    public function getGroupJoinInvite(): void {}
+    public function postGroupInvitationIgnore(): void {}
 
     #[OA\Get(
         path: '/api/company-suggestions',
