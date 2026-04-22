@@ -50,31 +50,60 @@ class FollowController extends Controller
 
         if ($filteredFollowers->isEmpty()) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => $search !== '' ? 'No followers found for this search.' : 'You have no followers yet.',
+                'status' => 'success',
                 'total_followers' => $totalFollowers,
                 'data' => [],
+                'stats' => [
+                    'total_followers' => $totalFollowers,
+                    'filtered_followers' => 0,
+                ],
+                'total' => 0,
+                'limit' => 0,
+                'current_page' => 1,
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
+                    'search' => $search !== '' ? $search : null,
+                ],
             ], 200);
         }
 
+        $data = $filteredFollowers->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
+            $mutualConnectionData = $mutualConnections[$follow->follower_id] ?? [
+                'count' => 0,
+                'preview' => [],
+            ];
+
+            return [
+                'id' => $follow->id,
+                'user' => $this->formatUser($follow->follower),
+                'is_following_back' => in_array($follow->follower_id, $followingIds, true),
+                'mutual_connections_count' => $mutualConnectionData['count'],
+                'mutual_connections' => $mutualConnectionData['preview'],
+                'followed_at' => optional($follow->created_at)?->toDateTimeString(),
+            ];
+        })->values();
+
         return response()->json([
+            'success' => true,
+            'message' => 'Followers retrieved successfully.',
             'status' => 'success',
             'total_followers' => $totalFollowers,
-            'data' => $filteredFollowers->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
-                $mutualConnectionData = $mutualConnections[$follow->follower_id] ?? [
-                    'count' => 0,
-                    'preview' => [],
-                ];
-
-                return [
-                    'id' => $follow->id,
-                    'user' => $this->formatUser($follow->follower),
-                    'is_following_back' => in_array($follow->follower_id, $followingIds, true),
-                    'mutual_connections_count' => $mutualConnectionData['count'],
-                    'mutual_connections' => $mutualConnectionData['preview'],
-                    'followed_at' => optional($follow->created_at)?->toDateTimeString(),
-                ];
-            })->values(),
+            'data' => $data,
+            'stats' => [
+                'total_followers' => $totalFollowers,
+                'filtered_followers' => $data->count(),
+            ],
+            'total' => $data->count(),
+            'limit' => $data->count(),
+            'current_page' => 1,
+            'total_page' => 1,
+            'last_page' => 1,
+            'filters' => [
+                'search' => $search !== '' ? $search : null,
+            ],
         ], 200);
     }
 
@@ -116,31 +145,60 @@ class FollowController extends Controller
 
         if ($filteredFollowing->isEmpty()) {
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => $search !== '' ? 'No following users found for this search.' : 'You are not following anyone yet.',
+                'status' => 'success',
                 'total_following' => $totalFollowing,
                 'data' => [],
+                'stats' => [
+                    'total_following' => $totalFollowing,
+                    'filtered_following' => 0,
+                ],
+                'total' => 0,
+                'limit' => 0,
+                'current_page' => 1,
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
+                    'search' => $search !== '' ? $search : null,
+                ],
             ], 200);
         }
 
+        $data = $filteredFollowing->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
+            $mutualConnectionData = $mutualConnections[$follow->following_id] ?? [
+                'count' => 0,
+                'preview' => [],
+            ];
+
+            return [
+                'id' => $follow->id,
+                'user' => $this->formatUser($follow->following),
+                'is_followed_back' => in_array($follow->following_id, $followerIds, true),
+                'mutual_connections_count' => $mutualConnectionData['count'],
+                'mutual_connections' => $mutualConnectionData['preview'],
+                'followed_at' => optional($follow->created_at)?->toDateTimeString(),
+            ];
+        })->values();
+
         return response()->json([
+            'success' => true,
+            'message' => 'Following users retrieved successfully.',
             'status' => 'success',
             'total_following' => $totalFollowing,
-            'data' => $filteredFollowing->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
-                $mutualConnectionData = $mutualConnections[$follow->following_id] ?? [
-                    'count' => 0,
-                    'preview' => [],
-                ];
-
-                return [
-                    'id' => $follow->id,
-                    'user' => $this->formatUser($follow->following),
-                    'is_followed_back' => in_array($follow->following_id, $followerIds, true),
-                    'mutual_connections_count' => $mutualConnectionData['count'],
-                    'mutual_connections' => $mutualConnectionData['preview'],
-                    'followed_at' => optional($follow->created_at)?->toDateTimeString(),
-                ];
-            })->values(),
+            'data' => $data,
+            'stats' => [
+                'total_following' => $totalFollowing,
+                'filtered_following' => $data->count(),
+            ],
+            'total' => $data->count(),
+            'limit' => $data->count(),
+            'current_page' => 1,
+            'total_page' => 1,
+            'last_page' => 1,
+            'filters' => [
+                'search' => $search !== '' ? $search : null,
+            ],
         ], 200);
     }
 
