@@ -11,9 +11,10 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $perPage = max(1, min((int) $request->integer('per_page', 20), 50));
-        $page = max(1, (int) $request->integer('page', 1));
+        $perPage = max(1, min((int) $request->integer('limit', $request->integer('per_page', 20)), 50));
+        $page = max(1, (int) $request->integer('current_page', $request->integer('page', 1)));
         $unreadOnly = (bool) $request->boolean('unread_only', false);
+        $search = trim((string) $request->query('search', ''));
 
         $query = $request->user()->notifications();
 
@@ -21,17 +22,37 @@ class NotificationController extends Controller
             $query = $query->whereNull('read_at');
         }
 
+        if ($search !== '') {
+            $query = $query->where(function ($notificationQuery) use ($search) {
+                $notificationQuery
+                    ->where('type', 'like', '%' . $search . '%')
+                    ->orWhere('data', 'like', '%' . $search . '%');
+            });
+        }
+
+        $statsQuery = clone $query;
+
         $notifications = $query->orderByDesc('created_at')->paginate($perPage, page: $page);
 
+        $totalNotifications = $statsQuery->count();
+        $unreadNotifications = (clone $statsQuery)->whereNull('read_at')->count();
+
         return response()->json([
-            'status' => 'success',
+            'success' => true,
+            'message' => 'Notifications retrieved successfully',
+            'stats' => [
+                'total_notifications' => $totalNotifications,
+                'unread_notifications' => $unreadNotifications,
+            ],
             'data' => $notifications->getCollection()->map(fn($notification) => $this->formatNotification($notification))->values(),
-            'meta' => [
-                'total' => $notifications->total(),
-                'current_page' => $notifications->currentPage(),
-                'per_page' => $notifications->perPage(),
-                'last_page' => $notifications->lastPage(),
+            'total' => $notifications->total(),
+            'limit' => $notifications->perPage(),
+            'current_page' => $notifications->currentPage(),
+            'total_page' => $notifications->lastPage(),
+            'last_page' => $notifications->lastPage(),
+            'filters' => [
                 'unread_only' => $unreadOnly,
+                'search' => $search !== '' ? $search : null,
             ],
         ], 200);
     }

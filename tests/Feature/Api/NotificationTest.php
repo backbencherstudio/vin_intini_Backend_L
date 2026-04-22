@@ -34,8 +34,11 @@ class NotificationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('status', 'success')
-            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('stats.total_notifications', 1)
+            ->assertJsonPath('stats.unread_notifications', 1)
             ->assertJsonCount(1, 'data');
 
         $notification = $response->json('data')[0];
@@ -222,9 +225,11 @@ class NotificationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('status', 'success')
-            ->assertJsonPath('meta.total', 2)
-            ->assertJsonPath('meta.unread_only', true)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('total', 2)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('filters.unread_only', true)
+            ->assertJsonPath('stats.total_notifications', 2)
             ->assertJsonCount(2, 'data');
     }
 
