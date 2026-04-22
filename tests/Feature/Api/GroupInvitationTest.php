@@ -63,7 +63,11 @@ class GroupInvitationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(2, 'data')
-            ->assertJsonPath('meta.total', 2);
+            ->assertJsonPath('total', 2)
+            ->assertJsonPath('limit', 15)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('last_page', 1);
 
         $returnedIds = collect($response->json('data'))->pluck('id')->map(fn($id) => (int) $id)->all();
 
@@ -317,13 +321,18 @@ class GroupInvitationTest extends TestCase
 
         $response
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Group invitations retrieved successfully.')
             ->assertJsonPath('status', 'success')
-            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('limit', 10)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('last_page', 1)
             ->assertJsonPath('data.0.group.id', $group->id)
             ->assertJsonPath('data.0.group.name', $group->name)
             ->assertJsonPath('data.0.inviter.id', $this->creator->id)
-            ->assertJsonPath('meta.current_page', 1)
-            ->assertJsonPath('meta.per_page', 10);
+            ->assertJsonPath('filters.search', null);
     }
 
     public function test_invited_user_can_search_and_paginate_group_invitation_requests(): void
@@ -371,23 +380,33 @@ class GroupInvitationTest extends TestCase
 
         $searchResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Group invitations retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.group.id', $groupOne->id)
-            ->assertJsonPath('meta.total', 1)
-            ->assertJsonPath('meta.search', 'research');
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('limit', 10)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('last_page', 1)
+            ->assertJsonPath('filters.search', 'research');
 
         $paginationResponse = $this->actingAs($invitee, 'api')
             ->getJson('/api/group-invitations/requests?per_page=1&page=2');
 
         $paginationResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Group invitations retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('meta.total', 2)
-            ->assertJsonPath('meta.current_page', 2)
-            ->assertJsonPath('meta.per_page', 1)
-            ->assertJsonPath('meta.last_page', 2);
+            ->assertJsonPath('total', 2)
+            ->assertJsonPath('limit', 1)
+            ->assertJsonPath('current_page', 2)
+            ->assertJsonPath('total_page', 2)
+            ->assertJsonPath('last_page', 2)
+            ->assertJsonPath('filters.search', null);
     }
 
     private function createGroup(string $type = 'public'): Group

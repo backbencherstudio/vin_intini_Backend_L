@@ -229,8 +229,15 @@ class UserConnectionFlowTest extends TestCase
 
         $followersResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Followers retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('total_followers', 1)
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('limit', 1)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('last_page', 1)
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.user.id', $secondUser->id)
             ->assertJsonPath('data.0.is_following_back', true)
@@ -241,8 +248,11 @@ class UserConnectionFlowTest extends TestCase
 
         $followersSearchResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Followers retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('total_followers', 1)
+            ->assertJsonPath('total', 1)
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.user.id', $secondUser->id);
 
@@ -250,25 +260,38 @@ class UserConnectionFlowTest extends TestCase
 
         $followersNoMatchSearchResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'No followers found for this search.')
             ->assertJsonPath('total_followers', 1)
+            ->assertJsonPath('total', 0)
+            ->assertJsonPath('total_page', 0)
             ->assertJsonCount(0, 'data');
 
         $followingResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following');
 
         $followingResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Following users retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('total_following', 2)
+            ->assertJsonPath('total', 2)
+            ->assertJsonPath('limit', 2)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('last_page', 1)
             ->assertJsonCount(2, 'data');
 
         $followingSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following?search=' . strtolower($secondUser->first_name));
 
         $followingSearchResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Following users retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('total_following', 2)
+            ->assertJsonPath('total', 1)
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.user.id', $secondUser->id);
 
@@ -276,9 +299,12 @@ class UserConnectionFlowTest extends TestCase
 
         $followingNoMatchSearchResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'No following users found for this search.')
             ->assertJsonPath('total_following', 2)
+            ->assertJsonPath('total', 0)
+            ->assertJsonPath('total_page', 0)
             ->assertJsonCount(0, 'data');
 
         $followingItems = collect($followingResponse->json('data'));
@@ -375,24 +401,37 @@ class UserConnectionFlowTest extends TestCase
 
         $searchResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Connection requests retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.user.id', $matchingSender->id)
-            ->assertJsonPath('meta.total_requests', 2)
-            ->assertJsonPath('meta.filtered_requests', 1)
-            ->assertJsonPath('meta.search', 'sadia');
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('limit', 1)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('last_page', 1)
+            ->assertJsonPath('stats.total_requests', 2)
+            ->assertJsonPath('stats.filtered_requests', 1)
+            ->assertJsonPath('filters.search', 'sadia');
 
         $noMatchResponse = $this->actingAs($receiver, 'api')
             ->getJson('/api/connections/requests?search=not-found');
 
         $noMatchResponse
             ->assertOk()
-            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'No pending connection requests found for this search.')
+            ->assertJsonPath('status', 'success')
             ->assertJsonCount(0, 'data')
-            ->assertJsonPath('meta.total_requests', 2)
-            ->assertJsonPath('meta.filtered_requests', 0)
-            ->assertJsonPath('meta.search', 'not-found');
+            ->assertJsonPath('total', 0)
+            ->assertJsonPath('limit', 0)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 0)
+            ->assertJsonPath('last_page', 0)
+            ->assertJsonPath('stats.total_requests', 2)
+            ->assertJsonPath('stats.filtered_requests', 0)
+            ->assertJsonPath('filters.search', 'not-found');
     }
 
     public function test_user_can_remove_connection_and_it_removes_mutual_follows(): void
@@ -476,25 +515,31 @@ class UserConnectionFlowTest extends TestCase
 
         $defaultResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Connections retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(10, 'data')
             ->assertJsonPath('data.0.user.name', 'Mike Moon')
-            ->assertJsonPath('meta.total_connections', 12)
-            ->assertJsonPath('meta.filtered_connections', 12)
-            ->assertJsonPath('meta.current_page', 1)
-            ->assertJsonPath('meta.per_page', 10)
-            ->assertJsonPath('meta.last_page', 2)
-            ->assertJsonPath('meta.sort', 'recent');
+            ->assertJsonPath('total', 12)
+            ->assertJsonPath('limit', 10)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 2)
+            ->assertJsonPath('last_page', 2)
+            ->assertJsonPath('stats.total_connections', 12)
+            ->assertJsonPath('stats.filtered_connections', 12)
+            ->assertJsonPath('filters.sort', 'recent');
 
         $searchResponse = $this->actingAs($currentUser, 'api')->getJson('/api/connections?search=amy');
 
         $searchResponse
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Connections retrieved successfully.')
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.user.name', 'Amy Alpha')
-            ->assertJsonPath('meta.filtered_connections', 1)
-            ->assertJsonPath('meta.search', 'amy');
+            ->assertJsonPath('stats.filtered_connections', 1)
+            ->assertJsonPath('filters.search', 'amy');
 
         $oldResponse = $this->actingAs($currentUser, 'api')->getJson('/api/connections?sort=old');
 
@@ -502,7 +547,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('data.0.user.name', 'Zoe Zenith')
-            ->assertJsonPath('meta.sort', 'old');
+            ->assertJsonPath('filters.sort', 'old');
 
         $azResponse = $this->actingAs($currentUser, 'api')->getJson('/api/connections?sort=az');
 
@@ -510,7 +555,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('data.0.user.name', 'Amy Alpha')
-            ->assertJsonPath('meta.sort', 'az');
+            ->assertJsonPath('filters.sort', 'az');
     }
 
     public function test_user_can_view_connection_suggestions_with_pending_states(): void

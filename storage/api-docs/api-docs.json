@@ -795,16 +795,64 @@
                 ]
             }
         },
-        "/api/group-invite-link/{id}": {
+        "/api/group-invitations/requests": {
             "get": {
                 "tags": [
                     "Groups"
                 ],
-                "summary": "GroupController@generateInviteLink",
-                "operationId": "get_api_group_invite_link",
+                "summary": "GroupController@invitationRequests",
+                "operationId": "get_api_group_invitations_requests",
                 "parameters": [
                     {
-                        "name": "id",
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "Research"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 10
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/group-invitations/{invitationId}/accept": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "GroupController@acceptInvitation",
+                "operationId": "post_api_group_invitation_accept",
+                "parameters": [
+                    {
+                        "name": "invitationId",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -825,16 +873,16 @@
                 ]
             }
         },
-        "/api/group/join/invite/{group_id}": {
-            "get": {
+        "/api/group-invitations/{invitationId}/ignore": {
+            "post": {
                 "tags": [
                     "Groups"
                 ],
-                "summary": "GroupController@joinGroup (signed invite link)",
-                "operationId": "get_api_group_join_invite",
+                "summary": "GroupController@ignoreInvitation",
+                "operationId": "post_api_group_invitation_ignore",
                 "parameters": [
                     {
-                        "name": "group_id",
+                        "name": "invitationId",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -1000,7 +1048,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@index",
+                "summary": "ConnectionController@index",
                 "operationId": "get_api_connections",
                 "responses": {
                     "200": {
@@ -1019,7 +1067,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@suggestions",
+                "summary": "ConnectionController@suggestions",
                 "operationId": "get_api_connections_suggestions",
                 "parameters": [
                     {
@@ -1067,8 +1115,19 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@requests",
+                "summary": "ConnectionController@requests",
                 "operationId": "get_api_connections_requests",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "sadia"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK"
@@ -1086,7 +1145,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@removeConnection",
+                "summary": "ConnectionController@removeConnection",
                 "operationId": "delete_api_connections_user_remove",
                 "parameters": [
                     {
@@ -1116,7 +1175,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@follow",
+                "summary": "FollowController@follow",
                 "operationId": "post_api_connections_user_follow",
                 "parameters": [
                     {
@@ -1146,7 +1205,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@sendRequest",
+                "summary": "ConnectionController@sendRequest",
                 "operationId": "post_api_connections_request",
                 "requestBody": {
                     "required": true,
@@ -1187,7 +1246,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@accept",
+                "summary": "ConnectionController@accept",
                 "operationId": "post_api_connections_requests_accept",
                 "parameters": [
                     {
@@ -1217,7 +1276,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@ignore",
+                "summary": "ConnectionController@ignore",
                 "operationId": "post_api_connections_requests_ignore",
                 "parameters": [
                     {
@@ -1247,7 +1306,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@followers",
+                "summary": "FollowController@followers",
                 "operationId": "get_api_connections_followers",
                 "responses": {
                     "200": {
@@ -1266,7 +1325,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@following",
+                "summary": "FollowController@following",
                 "operationId": "get_api_connections_following",
                 "responses": {
                     "200": {
@@ -1285,7 +1344,7 @@
                 "tags": [
                     "Connections"
                 ],
-                "summary": "UserConnectionController@unfollow",
+                "summary": "FollowController@unfollow",
                 "operationId": "delete_api_connections_user_unfollow",
                 "parameters": [
                     {

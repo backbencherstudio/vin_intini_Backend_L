@@ -65,8 +65,15 @@ class GroupIndexTest extends TestCase
 
         $response
             ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Group suggestions retrieved successfully.')
             ->assertJsonPath('status', 'success')
-            ->assertJsonCount(10, 'data');
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('total', 10)
+            ->assertJsonPath('limit', 10)
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('total_page', 1)
+            ->assertJsonPath('last_page', 1);
 
         $returnedGroups = collect($response->json('data'));
 
