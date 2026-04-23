@@ -145,7 +145,21 @@ class GroupController extends Controller
 
         $user = $request->user();
 
-        $isMember = $user ? $group->members()->where('user_id', $user->id)->exists() : false;
+        // $isMember = $user ? $group->members()->where('user_id', $user->id)->exists() : false;
+
+        $isMember = false;
+        $notificationStatus = null;
+
+        if ($user) {
+            $membership = GroupUser::where('group_id', $group->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($membership) {
+                $isMember = true;
+                $notificationStatus = $membership->notification_status;
+            }
+        }
 
         $isAdmin = $user ? ($group->creator_id === $user->id) : false;
 
@@ -161,6 +175,7 @@ class GroupController extends Controller
                         'members_count' => $group->members_count,
                     ],
                     'is_current_user_member' => false,
+                    'notification_status' => null,
                 ],
             ], 403);
         }
@@ -170,6 +185,7 @@ class GroupController extends Controller
             'data' => [
                 'group' => $group,
                 'is_current_user_member' => $isMember,
+                'notification_status' => $notificationStatus,
             ],
         ], 200);
     }
