@@ -6,6 +6,8 @@ use App\Models\Group;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -98,6 +100,45 @@ class GroupIndexTest extends TestCase
             ->assertStatus(404)
             ->assertJsonPath('status', 'error')
             ->assertJsonPath('message', 'Group not found');
+    }
+
+    public function test_group_creator_can_update_group_images(): void
+    {
+        Storage::fake('public');
+
+        $creator = $this->makeUser();
+        $group = Group::create([
+            'name' => 'Design Guild',
+            'description' => 'A group for designers',
+            'industry' => ['Design'],
+            'creator_id' => $creator->id,
+            'type' => 'public',
+            'discoverability' => 'listed',
+            'logo' => 'group_logos/old-logo.png',
+            'cover_photo' => 'group_covers/old-cover.png',
+        ]);
+
+        Storage::disk('public')->put('group_logos/old-logo.png', 'old-logo');
+        Storage::disk('public')->put('group_covers/old-cover.png', 'old-cover');
+
+        $response = $this->actingAs($creator, 'api')->postJson('/api/group-images/' . $group->id, [
+            'logo' => UploadedFile::fake()->image('logo.png'),
+            'cover_photo' => UploadedFile::fake()->image('cover.png'),
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Group images updated successfully!')
+            ->assertJsonPath('data.logo', fn(?string $value) => is_string($value) && str_starts_with($value, 'group_logos/'))
+            ->assertJsonPath('data.cover_photo', fn(?string $value) => is_string($value) && str_starts_with($value, 'group_covers/'));
+
+        $group->refresh();
+
+        $this->assertNotSame('group_logos/old-logo.png', $group->logo);
+        $this->assertNotSame('group_covers/old-cover.png', $group->cover_photo);
+        Storage::disk('public')->assertMissing('group_logos/old-logo.png');
+        Storage::disk('public')->assertMissing('group_covers/old-cover.png');
     }
 
     private function makeUser(): User

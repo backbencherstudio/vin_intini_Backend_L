@@ -18,6 +18,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/group-create', [GroupController::class, 'store']);
     Route::get('/group-show/{id}', [GroupController::class, 'show']);
     Route::post('/group-update/{id}', [GroupController::class, 'update']);
+    Route::post('/group-images/{id}', [GroupController::class, 'updateImages']);
     // my group routes
     Route::get('/my-created-groups', [GroupController::class, 'myCreatedGroups']);
     // my joined group routes
