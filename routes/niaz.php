@@ -67,7 +67,6 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/connections/{user}/unfollow', [FollowController::class, 'unfollow']);
 
     // notification routes
-    Route::get('/notifications/realtime-config', [NotificationController::class, 'realtimeConfig']);
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('/notifications/{notificationId}/mark-as-read', [NotificationController::class, 'markAsRead']);

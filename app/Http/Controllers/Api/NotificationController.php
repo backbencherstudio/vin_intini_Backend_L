@@ -137,36 +137,4 @@ class NotificationController extends Controller
             'created_at' => $notification->created_at?->toDateTimeString(),
         ];
     }
-
-    public function realtimeConfig(Request $request): JsonResponse
-    {
-        $pusherConnection = config('broadcasting.connections.pusher', []);
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'enabled' => config('broadcasting.default') === 'pusher'
-                    && filled(data_get($pusherConnection, 'key'))
-                    && filled(data_get($pusherConnection, 'app_id')),
-                'broadcaster' => 'pusher',
-                'pusher' => [
-                    'key' => data_get($pusherConnection, 'key'),
-                    'cluster' => data_get($pusherConnection, 'options.cluster'),
-                    'host' => data_get($pusherConnection, 'options.host'),
-                    'port' => data_get($pusherConnection, 'options.port'),
-                    'scheme' => data_get($pusherConnection, 'options.scheme'),
-                ],
-                'auth_endpoint' => url('/api/broadcasting/auth'),
-                'user_channel' => 'App.Models.User.{id}',
-                'notifications' => [
-                    'received' => 'App\\Notifications\\ConnectionRequestReceivedNotification',
-                    'accepted' => 'App\\Notifications\\ConnectionRequestAcceptedNotification',
-                ],
-                'api' => [
-                    'list' => url('/api/notifications'),
-                    'unread_count' => url('/api/notifications/unread-count'),
-                ],
-            ],
-        ], 200);
-    }
 }
