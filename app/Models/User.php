@@ -144,4 +144,19 @@ class User extends Authenticatable implements JWTSubject
 
         return asset('storage/'.ltrim($value, '/'));
     }
+
+    public function posts()
+    {
+        return $this->hasMany(Post::class);
+    }
+
+    public function likedPosts()
+    {
+        return $this->belongsToMany(Post::class, 'post_likes');
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(Comment::class);
+    }
 }
