@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\GroupInvitation;
 use App\Models\User;
 use App\Notifications\GroupInvitationNotification;
+use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -393,6 +394,68 @@ class GroupController extends Controller
             'status' => 'success',
             'message' => 'Group updated successfully!',
             'data' => $group->fresh(),
+        ], 200);
+    }
+
+    public function updateImages(Request $request, ProfileImageService $profileImageService, $id)
+    {
+        $request->validate([
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'cover_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ]);
+
+        if (! $request->hasFile('logo') && ! $request->hasFile('cover_photo')) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'At least one image file is required.',
+                'errors' => [
+                    'images' => ['Please provide logo or cover_photo.'],
+                ],
+            ], 422);
+        }
+
+        $group = Group::findOrFail($id);
+
+        if ($group->creator_id !== auth()->id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized! You can only edit your own groups.',
+            ], 403);
+        }
+
+        $updateData = [];
+
+        if ($request->hasFile('logo')) {
+            $updateData['logo'] = $profileImageService->storeUploaded(
+                $request->file('logo'),
+                $group->logo,
+                'group_logos',
+            );
+        }
+
+        if ($request->hasFile('cover_photo')) {
+            $updateData['cover_photo'] = $profileImageService->storeUploaded(
+                $request->file('cover_photo'),
+                $group->cover_photo,
+                'group_covers',
+            );
+        }
+
+        if ($updateData !== []) {
+            $group->update($updateData);
+        }
+
+        $group = $group->fresh();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Group images updated successfully!',
+            'data' => [
+                'logo' => $group->logo,
+                'logo_url' => $group->logo_url,
+                'cover_photo' => $group->cover_photo,
+                'cover_photo_url' => $group->cover_photo_url,
+            ],
         ], 200);
     }
 
