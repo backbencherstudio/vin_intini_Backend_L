@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Connection;
 use App\Models\Group;
 use App\Models\GroupInvitation;
+use App\Models\GroupUser;
 use App\Models\User;
 use App\Notifications\GroupInvitationNotification;
 use App\Services\ProfileImageService;
@@ -830,5 +831,28 @@ class GroupController extends Controller
             })
             ->unique()
             ->values();
+    }
+
+    public function toggleNotificationStatus(Request $request, $groupId)
+    {
+        $user = $request->user();
+
+        $groupUser = GroupUser::query()
+            ->where('user_id', $user->id)
+            ->where('group_id', $groupId)
+            ->firstOrFail();
+
+        $groupUser->update([
+            'notification_status' => ! $groupUser->notification_status,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Group notification status updated successfully!',
+            'data' => [
+                'group_id' => $groupUser->group_id,
+                'notification_status' => $groupUser->notification_status,
+            ],
+        ], 200);
     }
 }
