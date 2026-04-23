@@ -129,9 +129,9 @@ class GroupController extends Controller
     {
         $group = Group::with([
             'creator:id,first_name,last_name,email',
-            'members' => function ($query) {
-                $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
-            },
+            // 'members' => function ($query) {
+            //     $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
+            // },
         ])
             ->withCount('members')
             ->find($id);
@@ -149,6 +149,8 @@ class GroupController extends Controller
 
         $isMember = false;
         $notificationStatus = null;
+        $mutualMembers = [];
+        $mutualMembersCount = 0;
 
         if ($user) {
             $membership = GroupUser::where('group_id', $group->id)
@@ -158,6 +160,25 @@ class GroupController extends Controller
             if ($membership) {
                 $isMember = true;
                 $notificationStatus = $membership->notification_status;
+            }
+
+            $myFriendIds = $this->connectedUserIds($user->id);
+
+            if ($myFriendIds->isNotEmpty()) {
+                $mutualQuery = $group->members()
+                    ->whereIn('users.id', $myFriendIds)
+                    ->select('users.id', 'first_name', 'last_name', 'profile_image');
+
+                $mutualMembersCount = $mutualQuery->count();
+
+                $mutualMembers = $mutualQuery->limit(5)->get()->map(function ($member) {
+                    return [
+                        'id' => $member->id,
+                        'first_name' => $member->first_name,
+                        'last_name' => $member->last_name,
+                        'profile_image_url' => $member->profile_image_url,
+                    ];
+                });
             }
         }
 
@@ -176,6 +197,8 @@ class GroupController extends Controller
                     ],
                     'is_current_user_member' => false,
                     'notification_status' => null,
+                    'mutual_members_count' => $mutualMembersCount,
+                    'mutual_members' => $mutualMembers,
                 ],
             ], 403);
         }
@@ -186,6 +209,8 @@ class GroupController extends Controller
                 'group' => $group,
                 'is_current_user_member' => $isMember,
                 'notification_status' => $notificationStatus,
+                'mutual_members_count' => $mutualMembersCount,
+                'mutual_members' => $mutualMembers,
             ],
         ], 200);
     }
