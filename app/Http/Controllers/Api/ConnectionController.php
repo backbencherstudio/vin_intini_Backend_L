@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ConnectionRequest;
+use App\Models\Connection;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Notifications\ConnectionRequestAcceptedNotification;
@@ -25,7 +25,7 @@ class ConnectionController extends Controller
         $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
         $page = max(1, (int) $request->integer('page', 1));
 
-        $connections = ConnectionRequest::query()
+        $connections = Connection::query()
             ->accepted()
             ->forUser($currentUser->id)
             ->with([
@@ -59,7 +59,7 @@ class ConnectionController extends Controller
         }
 
         $counterpartIds = $connections
-            ->map(function (ConnectionRequest $connectionRequest) use ($currentUser) {
+            ->map(function (Connection $connectionRequest) use ($currentUser) {
                 return $connectionRequest->sender_id === $currentUser->id
                     ? $connectionRequest->receiver_id
                     : $connectionRequest->sender_id;
@@ -67,14 +67,14 @@ class ConnectionController extends Controller
             ->unique()
             ->values();
 
-        $items = $connections->map(function (ConnectionRequest $connectionRequest) use ($currentUser) {
+        $items = $connections->map(function (Connection $connectionRequest) use ($currentUser) {
             $counterpart = $connectionRequest->sender_id === $currentUser->id
                 ? $connectionRequest->receiver
                 : $connectionRequest->sender;
 
             return [
                 'payload' => $this->formatConnectionRequest($connectionRequest, $currentUser->id, []),
-                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+                'search_name' => trim(($counterpart->first_name ?? '').' '.($counterpart->last_name ?? '')),
                 'connected_at' => $connectionRequest->responded_at?->timestamp ?? $connectionRequest->created_at?->timestamp ?? 0,
             ];
         });
@@ -146,7 +146,7 @@ class ConnectionController extends Controller
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
 
-        $requests = ConnectionRequest::query()
+        $requests = Connection::query()
             ->pending()
             ->forUser($currentUser->id)
             ->with([
@@ -179,14 +179,14 @@ class ConnectionController extends Controller
             ], 200);
         }
 
-        $items = $requests->map(function (ConnectionRequest $connectionRequest) use ($currentUser): array {
+        $items = $requests->map(function (Connection $connectionRequest) use ($currentUser): array {
             $counterpart = $connectionRequest->sender_id === $currentUser->id
                 ? $connectionRequest->receiver
                 : $connectionRequest->sender;
 
             return [
                 'request' => $connectionRequest,
-                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+                'search_name' => trim(($counterpart->first_name ?? '').' '.($counterpart->last_name ?? '')),
                 'search_title' => (string) ($counterpart->title ?? ''),
             ];
         });
@@ -224,7 +224,7 @@ class ConnectionController extends Controller
         $filteredRequests = $items->pluck('request')->values();
 
         $counterpartIds = $filteredRequests
-            ->map(function (ConnectionRequest $connectionRequest) use ($currentUser) {
+            ->map(function (Connection $connectionRequest) use ($currentUser) {
                 return $connectionRequest->sender_id === $currentUser->id
                     ? $connectionRequest->receiver_id
                     : $connectionRequest->sender_id;
@@ -239,7 +239,7 @@ class ConnectionController extends Controller
             'message' => 'Connection requests retrieved successfully.',
             'status' => 'success',
             'data' => $filteredRequests
-                ->map(function (ConnectionRequest $connectionRequest) use ($currentUser, $mutualConnections) {
+                ->map(function (Connection $connectionRequest) use ($currentUser, $mutualConnections) {
                     return $this->formatConnectionRequest($connectionRequest, $currentUser->id, $mutualConnections, true);
                 })
                 ->values(),
@@ -264,14 +264,14 @@ class ConnectionController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
 
-        $acceptedCounterpartIds = ConnectionRequest::query()
+        $acceptedCounterpartIds = Connection::query()
             ->accepted()
             ->where(function ($query) use ($currentUser) {
                 $query->where('sender_id', $currentUser->id)
                     ->orWhere('receiver_id', $currentUser->id);
             })
             ->get(['sender_id', 'receiver_id'])
-            ->map(function (ConnectionRequest $connectionRequest) use ($currentUser) {
+            ->map(function (Connection $connectionRequest) use ($currentUser) {
                 return $connectionRequest->sender_id === $currentUser->id
                     ? $connectionRequest->receiver_id
                     : $connectionRequest->sender_id;
@@ -287,9 +287,9 @@ class ConnectionController extends Controller
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
-                    $query->where('first_name', 'like', '%' . $search . '%')
-                        ->orWhere('last_name', 'like', '%' . $search . '%')
-                        ->orWhere('title', 'like', '%' . $search . '%');
+                    $query->where('first_name', 'like', '%'.$search.'%')
+                        ->orWhere('last_name', 'like', '%'.$search.'%')
+                        ->orWhere('title', 'like', '%'.$search.'%');
                 });
             })
             ->select(['id', 'first_name', 'last_name', 'title', 'profile_image', 'cover_image'])
@@ -299,14 +299,14 @@ class ConnectionController extends Controller
 
         $candidateIds = $paginator->getCollection()->pluck('id')->values();
 
-        $outgoingPendingByUserId = ConnectionRequest::query()
+        $outgoingPendingByUserId = Connection::query()
             ->pending()
             ->where('sender_id', $currentUser->id)
             ->whereIn('receiver_id', $candidateIds)
             ->get(['id', 'receiver_id'])
             ->keyBy('receiver_id');
 
-        $incomingPendingByUserId = ConnectionRequest::query()
+        $incomingPendingByUserId = Connection::query()
             ->pending()
             ->where('receiver_id', $currentUser->id)
             ->whereIn('sender_id', $candidateIds)
@@ -382,7 +382,7 @@ class ConnectionController extends Controller
         $targetUser = User::query()->findOrFail($validated['user_id']);
 
         $result = DB::transaction(function () use ($currentUser, $targetUser) {
-            $alreadyConnected = ConnectionRequest::query()
+            $alreadyConnected = Connection::query()
                 ->accepted()
                 ->where(function ($query) use ($currentUser, $targetUser) {
                     $query->where('sender_id', $currentUser->id)
@@ -403,7 +403,7 @@ class ConnectionController extends Controller
                 ];
             }
 
-            $reversePendingRequest = ConnectionRequest::query()
+            $reversePendingRequest = Connection::query()
                 ->pending()
                 ->where('sender_id', $targetUser->id)
                 ->where('receiver_id', $currentUser->id)
@@ -411,7 +411,7 @@ class ConnectionController extends Controller
 
             if ($reversePendingRequest) {
                 $reversePendingRequest->update([
-                    'status' => ConnectionRequest::STATUS_ACCEPTED,
+                    'status' => Connection::STATUS_ACCEPTED,
                     'responded_at' => now(),
                 ]);
 
@@ -425,13 +425,13 @@ class ConnectionController extends Controller
                 ];
             }
 
-            $connectionRequest = ConnectionRequest::query()->updateOrCreate(
+            $connectionRequest = Connection::query()->updateOrCreate(
                 [
                     'sender_id' => $currentUser->id,
                     'receiver_id' => $targetUser->id,
                 ],
                 [
-                    'status' => ConnectionRequest::STATUS_PENDING,
+                    'status' => Connection::STATUS_PENDING,
                     'responded_at' => null,
                 ]
             );
@@ -462,7 +462,7 @@ class ConnectionController extends Controller
         ], $result['code']);
     }
 
-    public function accept(Request $request, ConnectionRequest $connectionRequest): JsonResponse
+    public function accept(Request $request, Connection $connectionRequest): JsonResponse
     {
         $currentUser = $request->user();
 
@@ -473,7 +473,7 @@ class ConnectionController extends Controller
             ], 403);
         }
 
-        if ($connectionRequest->status === ConnectionRequest::STATUS_ACCEPTED) {
+        if ($connectionRequest->status === Connection::STATUS_ACCEPTED) {
             return response()->json([
                 'status' => 'success',
                 'message' => 'Connection request already accepted.',
@@ -481,7 +481,7 @@ class ConnectionController extends Controller
             ], 200);
         }
 
-        if ($connectionRequest->status !== ConnectionRequest::STATUS_PENDING) {
+        if ($connectionRequest->status !== Connection::STATUS_PENDING) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Only pending connection requests can be accepted.',
@@ -490,7 +490,7 @@ class ConnectionController extends Controller
 
         $acceptedConnectionRequest = DB::transaction(function () use ($connectionRequest) {
             $connectionRequest->update([
-                'status' => ConnectionRequest::STATUS_ACCEPTED,
+                'status' => Connection::STATUS_ACCEPTED,
                 'responded_at' => now(),
             ]);
 
@@ -508,7 +508,7 @@ class ConnectionController extends Controller
         ], 200);
     }
 
-    public function ignore(Request $request, ConnectionRequest $connectionRequest): JsonResponse
+    public function ignore(Request $request, Connection $connectionRequest): JsonResponse
     {
         $currentUser = $request->user();
 
@@ -519,7 +519,7 @@ class ConnectionController extends Controller
             ], 403);
         }
 
-        if ($connectionRequest->status !== ConnectionRequest::STATUS_PENDING) {
+        if ($connectionRequest->status !== Connection::STATUS_PENDING) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Only pending connection requests can be ignored.',
@@ -548,7 +548,7 @@ class ConnectionController extends Controller
         }
 
         DB::transaction(function () use ($currentUser, $user) {
-            ConnectionRequest::query()
+            Connection::query()
                 ->where(function ($query) use ($currentUser, $user) {
                     $query->where('sender_id', $currentUser->id)
                         ->where('receiver_id', $user->id)
@@ -582,7 +582,7 @@ class ConnectionController extends Controller
         ], 200);
     }
 
-    private function receiverCanManage(ConnectionRequest $connectionRequest, int $userId): bool
+    private function receiverCanManage(Connection $connectionRequest, int $userId): bool
     {
         return $connectionRequest->receiver_id === $userId;
     }
@@ -606,14 +606,14 @@ class ConnectionController extends Controller
             return [];
         }
 
-        $currentConnections = ConnectionRequest::query()
+        $currentConnections = Connection::query()
             ->accepted()
             ->where(function ($query) use ($currentUserId) {
                 $query->where('sender_id', $currentUserId)
                     ->orWhere('receiver_id', $currentUserId);
             })
             ->get(['sender_id', 'receiver_id'])
-            ->map(function (ConnectionRequest $connectionRequest) use ($currentUserId) {
+            ->map(function (Connection $connectionRequest) use ($currentUserId) {
                 return $connectionRequest->sender_id === $currentUserId
                     ? $connectionRequest->receiver_id
                     : $connectionRequest->sender_id;
@@ -630,7 +630,7 @@ class ConnectionController extends Controller
             $adjacency[$connectedUserId] = [];
         }
 
-        $relatedConnections = ConnectionRequest::query()
+        $relatedConnections = Connection::query()
             ->accepted()
             ->where(function ($query) use ($currentConnections) {
                 $query->whereIn('sender_id', $currentConnections->all())
@@ -687,7 +687,7 @@ class ConnectionController extends Controller
         return $formatted;
     }
 
-    private function formatConnectionRequest(ConnectionRequest $connectionRequest, int $currentUserId, array $mutualConnections, bool $includeHistoryDetails = false): array
+    private function formatConnectionRequest(Connection $connectionRequest, int $currentUserId, array $mutualConnections, bool $includeHistoryDetails = false): array
     {
         $counterpart = $connectionRequest->sender_id === $currentUserId
             ? $connectionRequest->receiver
@@ -704,7 +704,7 @@ class ConnectionController extends Controller
             'is_outgoing' => $connectionRequest->sender_id === $currentUserId,
             'can_accept' => false,
             'can_ignore' => false,
-            'connected_since' => $connectionRequest->status === ConnectionRequest::STATUS_ACCEPTED && $connectionRequest->responded_at
+            'connected_since' => $connectionRequest->status === Connection::STATUS_ACCEPTED && $connectionRequest->responded_at
                 ? $connectionRequest->responded_at->format('d M, Y')
                 : null,
             'user' => $counterpartData,
@@ -717,35 +717,35 @@ class ConnectionController extends Controller
             $payload['direction'] = $connectionRequest->receiver_id === $currentUserId ? 'incoming' : 'outgoing';
             $payload['requested_at'] = $connectionRequest->created_at?->toDateTimeString();
             $payload['responded_at'] = $connectionRequest->responded_at?->toDateTimeString();
-            $payload['can_accept'] = $connectionRequest->status === ConnectionRequest::STATUS_PENDING && $connectionRequest->receiver_id === $currentUserId;
-            $payload['can_ignore'] = $connectionRequest->status === ConnectionRequest::STATUS_PENDING && $connectionRequest->receiver_id === $currentUserId;
+            $payload['can_accept'] = $connectionRequest->status === Connection::STATUS_PENDING && $connectionRequest->receiver_id === $currentUserId;
+            $payload['can_ignore'] = $connectionRequest->status === Connection::STATUS_PENDING && $connectionRequest->receiver_id === $currentUserId;
         }
 
         return $payload;
     }
 
-    private function requestMessage(ConnectionRequest $connectionRequest, int $currentUserId, string $counterpartName): string
+    private function requestMessage(Connection $connectionRequest, int $currentUserId, string $counterpartName): string
     {
-        if ($connectionRequest->status === ConnectionRequest::STATUS_ACCEPTED) {
+        if ($connectionRequest->status === Connection::STATUS_ACCEPTED) {
             return 'You both are now connected';
         }
 
-        if ($connectionRequest->status === ConnectionRequest::STATUS_IGNORED) {
+        if ($connectionRequest->status === Connection::STATUS_IGNORED) {
             return $connectionRequest->receiver_id === $currentUserId
-                ? 'You ignored ' . $counterpartName . '\'s invitation'
-                : $counterpartName . ' ignored your invitation';
+                ? 'You ignored '.$counterpartName.'\'s invitation'
+                : $counterpartName.' ignored your invitation';
         }
 
         return $connectionRequest->sender_id === $currentUserId
             ? 'Connection request sent'
-            : $counterpartName . ' sent you a connection request';
+            : $counterpartName.' sent you a connection request';
     }
 
     private function formatUser(User $user): array
     {
         return [
             'id' => $user->id,
-            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'title' => $user->title,

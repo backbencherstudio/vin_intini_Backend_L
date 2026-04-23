@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\ConnectionRequest;
+use App\Models\Connection;
 use App\Models\User;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
@@ -14,7 +14,7 @@ class ConnectionRequestAcceptedNotification extends Notification
     use Queueable;
 
     public function __construct(
-        public ConnectionRequest $connectionRequest,
+        public Connection $connectionRequest,
         public User $acceptor
     ) {}
 

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\ConnectionRequest;
+use App\Models\Connection;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Models\UserProfile;
@@ -31,14 +31,14 @@ class UserConnectionFlowTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Connection request sent successfully.')
-            ->assertJsonPath('data.status', ConnectionRequest::STATUS_PENDING)
+            ->assertJsonPath('data.status', Connection::STATUS_PENDING)
             ->assertJsonPath('data.user.id', $receiver->id)
             ->assertJsonPath('data.is_outgoing', true);
 
-        $this->assertDatabaseHas('connection_requests', [
+        $this->assertDatabaseHas('connections', [
             'sender_id' => $sender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
     }
 
@@ -81,10 +81,10 @@ class UserConnectionFlowTest extends TestCase
         $sender = $this->makeUser();
         $receiver = $this->makeUser();
 
-        $connectionRequest = ConnectionRequest::create([
+        $connectionRequest = Connection::create([
             'sender_id' => $sender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
 
         config()->set('broadcasting.default', 'pusher');
@@ -109,10 +109,10 @@ class UserConnectionFlowTest extends TestCase
         $sender = $this->makeUser();
         $receiver = $this->makeUser();
 
-        $connectionRequest = ConnectionRequest::create([
+        $connectionRequest = Connection::create([
             'sender_id' => $sender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
 
         $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/' . $connectionRequest->id . '/accept');
@@ -121,12 +121,12 @@ class UserConnectionFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Connection request accepted successfully.')
-            ->assertJsonPath('data.status', ConnectionRequest::STATUS_ACCEPTED)
+            ->assertJsonPath('data.status', Connection::STATUS_ACCEPTED)
             ->assertJsonPath('data.is_incoming', true);
 
-        $this->assertDatabaseHas('connection_requests', [
+        $this->assertDatabaseHas('connections', [
             'id' => $connectionRequest->id,
-            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'status' => Connection::STATUS_ACCEPTED,
         ]);
 
         $this->assertDatabaseHas('user_follows', [
@@ -158,10 +158,10 @@ class UserConnectionFlowTest extends TestCase
         $sender = $this->makeUser();
         $receiver = $this->makeUser();
 
-        $connectionRequest = ConnectionRequest::create([
+        $connectionRequest = Connection::create([
             'sender_id' => $sender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
 
         $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/' . $connectionRequest->id . '/ignore');
@@ -171,7 +171,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Connection request ignored successfully.');
 
-        $this->assertDatabaseMissing('connection_requests', [
+        $this->assertDatabaseMissing('connections', [
             'id' => $connectionRequest->id,
         ]);
 
@@ -185,10 +185,10 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Connection request sent successfully.');
 
-        $this->assertDatabaseHas('connection_requests', [
+        $this->assertDatabaseHas('connections', [
             'sender_id' => $sender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
     }
 
@@ -198,10 +198,10 @@ class UserConnectionFlowTest extends TestCase
         $secondUser = $this->makeUser();
         $mutualUser = $this->makeUser();
 
-        ConnectionRequest::create([
+        Connection::create([
             'sender_id' => $firstUser->id,
             'receiver_id' => $secondUser->id,
-            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'status' => Connection::STATUS_ACCEPTED,
             'responded_at' => now(),
         ]);
 
@@ -351,16 +351,16 @@ class UserConnectionFlowTest extends TestCase
         $receiver = $this->makeUser();
         $acceptedSender = $this->makeUser();
 
-        ConnectionRequest::create([
+        Connection::create([
             'sender_id' => $sender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
 
-        ConnectionRequest::create([
+        Connection::create([
             'sender_id' => $acceptedSender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'status' => Connection::STATUS_ACCEPTED,
             'responded_at' => now(),
         ]);
 
@@ -370,12 +370,12 @@ class UserConnectionFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.status', ConnectionRequest::STATUS_PENDING)
+            ->assertJsonPath('data.0.status', Connection::STATUS_PENDING)
             ->assertJsonPath('data.0.message', $sender->first_name . ' ' . $sender->last_name . ' sent you a connection request')
             ->assertJsonPath('data.0.can_accept', true)
             ->assertJsonPath('data.0.can_ignore', true);
 
-        $this->assertDatabaseCount('connection_requests', 2);
+        $this->assertDatabaseCount('connections', 2);
     }
 
     public function test_user_can_search_pending_connection_requests(): void
@@ -384,16 +384,16 @@ class UserConnectionFlowTest extends TestCase
         $matchingSender = $this->makeUser('Sadia', 'Rahman');
         $nonMatchingSender = $this->makeUser('Tanvir', 'Ahmed');
 
-        ConnectionRequest::create([
+        Connection::create([
             'sender_id' => $matchingSender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
 
-        ConnectionRequest::create([
+        Connection::create([
             'sender_id' => $nonMatchingSender->id,
             'receiver_id' => $receiver->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
 
         $searchResponse = $this->actingAs($receiver, 'api')
@@ -439,10 +439,10 @@ class UserConnectionFlowTest extends TestCase
         $firstUser = $this->makeUser();
         $secondUser = $this->makeUser();
 
-        $connectionRequest = ConnectionRequest::create([
+        $connectionRequest = Connection::create([
             'sender_id' => $firstUser->id,
             'receiver_id' => $secondUser->id,
-            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'status' => Connection::STATUS_ACCEPTED,
             'responded_at' => now(),
         ]);
 
@@ -466,7 +466,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('data.is_connected', false)
             ->assertJsonPath('data.is_following', false);
 
-        $this->assertDatabaseMissing('connection_requests', [
+        $this->assertDatabaseMissing('connections', [
             'id' => $connectionRequest->id,
         ]);
 
@@ -503,10 +503,10 @@ class UserConnectionFlowTest extends TestCase
         foreach ($connections as $index => $connectionUserData) {
             $connectionUser = $this->makeUser($connectionUserData['first_name'], $connectionUserData['last_name']);
 
-            ConnectionRequest::create([
+            Connection::create([
                 'sender_id' => $currentUser->id,
                 'receiver_id' => $connectionUser->id,
-                'status' => ConnectionRequest::STATUS_ACCEPTED,
+                'status' => Connection::STATUS_ACCEPTED,
                 'responded_at' => now()->subDays(11 - $index),
             ]);
         }
@@ -582,23 +582,23 @@ class UserConnectionFlowTest extends TestCase
             'user_id' => $unverifiedWithProfile->id,
         ]);
 
-        ConnectionRequest::create([
+        Connection::create([
             'sender_id' => $currentUser->id,
             'receiver_id' => $connectedUser->id,
-            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'status' => Connection::STATUS_ACCEPTED,
             'responded_at' => now(),
         ]);
 
-        $pendingSentRequest = ConnectionRequest::create([
+        $pendingSentRequest = Connection::create([
             'sender_id' => $currentUser->id,
             'receiver_id' => $pendingSentUser->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
 
-        $pendingReceivedRequest = ConnectionRequest::create([
+        $pendingReceivedRequest = Connection::create([
             'sender_id' => $pendingReceivedUser->id,
             'receiver_id' => $currentUser->id,
-            'status' => ConnectionRequest::STATUS_PENDING,
+            'status' => Connection::STATUS_PENDING,
         ]);
 
         $response = $this->actingAs($currentUser, 'api')->getJson('/api/connections/suggestions');

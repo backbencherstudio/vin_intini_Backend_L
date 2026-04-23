@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ConnectionRequest;
+use App\Models\Connection;
 use App\Models\Group;
 use App\Models\GroupInvitation;
 use App\Models\User;
@@ -752,7 +752,7 @@ class GroupController extends Controller
 
     private function connectedUserIds(int $userId): Collection
     {
-        return ConnectionRequest::query()
+        return Connection::query()
             ->accepted()
             ->where(function ($query) use ($userId) {
                 $query->where('sender_id', $userId)
@@ -760,7 +760,7 @@ class GroupController extends Controller
             })
             ->get(['sender_id', 'receiver_id'])
             ->toBase()
-            ->map(function (ConnectionRequest $connectionRequest) use ($userId) {
+            ->map(function (Connection $connectionRequest) use ($userId) {
                 return (int) ($connectionRequest->sender_id === $userId
                     ? $connectionRequest->receiver_id
                     : $connectionRequest->sender_id);

@@ -97,12 +97,12 @@ class User extends Authenticatable implements JWTSubject
 
     public function connectionRequestsSent(): HasMany
     {
-        return $this->hasMany(ConnectionRequest::class, 'sender_id');
+        return $this->hasMany(Connection::class, 'sender_id');
     }
 
     public function connectionRequestsReceived(): HasMany
     {
-        return $this->hasMany(ConnectionRequest::class, 'receiver_id');
+        return $this->hasMany(Connection::class, 'receiver_id');
     }
 
     public function followers(): BelongsToMany
@@ -128,7 +128,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/' . ltrim($value, '/'));
+        return asset('storage/'.ltrim($value, '/'));
     }
 
     public function getCoverImageUrlAttribute(): ?string
@@ -142,6 +142,6 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/' . ltrim($value, '/'));
+        return asset('storage/'.ltrim($value, '/'));
     }
 }

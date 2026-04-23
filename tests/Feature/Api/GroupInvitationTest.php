@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\ConnectionRequest;
+use App\Models\Connection;
 use App\Models\Group;
 use App\Models\GroupInvitation;
 use App\Models\User;
@@ -452,10 +452,10 @@ class GroupInvitationTest extends TestCase
 
     private function acceptConnection(User $firstUser, User $secondUser): void
     {
-        ConnectionRequest::create([
+        Connection::create([
             'sender_id' => $firstUser->id,
             'receiver_id' => $secondUser->id,
-            'status' => ConnectionRequest::STATUS_ACCEPTED,
+            'status' => Connection::STATUS_ACCEPTED,
             'responded_at' => now(),
         ]);
     }
