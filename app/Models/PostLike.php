@@ -12,6 +12,7 @@ class PostLike extends Model
     protected $fillable = [
         'post_id',
         'user_id',
+        'group_id',
     ];
 
     public function post()
@@ -22,5 +23,10 @@ class PostLike extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(Group::class);
     }
 }

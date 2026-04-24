@@ -311,4 +311,35 @@ class PostController extends Controller
         }
     }
 
+    public function removeFromGroup($postId, $groupId)
+    {
+        $user = auth('api')->user();
+
+        $postGroup = PostGroup::where('post_id', $postId)
+            ->where('group_id', $groupId)
+            ->firstOrFail();
+
+        $post = $postGroup->post;
+        $group = $postGroup->group;
+
+        if (
+            $post->user_id !== $user->id &&
+            $group->creator_id !== $user->id
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $postGroup->update([
+            'remove_status' => 1
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Post removed from group'
+        ]);
+    }
+
 }
