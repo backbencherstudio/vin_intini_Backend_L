@@ -460,7 +460,7 @@ class PostController extends Controller
                     $media->delete();
                 }
             }
- 
+
             if ($request->hasFile('media')) {
 
                 $existingCount = $post->media()->count();
@@ -500,6 +500,79 @@ class PostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Group post update failed',
+                'error' => app()->environment('local') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    public function destroyGroupPost($postId, $groupId)
+    {
+        $user = auth('api')->user();
+
+        $post = Post::with(['media', 'groups'])->findOrFail($postId);
+
+        if ($post->visibility !== 'groups') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This is not a group post'
+            ], 400);
+        }
+
+        if ($post->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only post creator can delete this post'
+            ], 403);
+        }
+
+        $existsInGroup = $post->groups()->where('groups.id', $groupId)->exists();
+
+        if (!$existsInGroup) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found in this group'
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $post->groups()->detach($groupId);
+
+            if ($post->groups()->count() === 0) {
+
+                foreach ($post->media as $media) {
+
+                    $count = PostMedia::where('file_path', $media->file_path)->count();
+
+                    if ($count === 1) {
+                        Storage::disk('public')->delete($media->file_path);
+                    }
+
+                    $media->delete();
+                }
+
+                Comment::where('post_id', $post->id)->delete();
+                PostLike::where('post_id', $post->id)->delete();
+
+                $post->delete();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Post removed from group successfully'
+            ]);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove post from group',
                 'error' => app()->environment('local') ? $e->getMessage() : null
             ], 500);
         }
