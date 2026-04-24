@@ -13,7 +13,6 @@ return new class extends Migration
 
             $table->foreignId('post_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('group_id')->nullable()->constrained()->nullOnDelete();
 
             $table->text('comment');
 

@@ -12,10 +12,9 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-
             $table->text('description')->nullable();
-
             $table->enum('visibility', ['public', 'connections', 'groups'])->default('public');
+            $table->enum('who_can_comment', ['anyone', 'connections', 'no_one'])->default('anyone');
 
             $table->timestamps();
 

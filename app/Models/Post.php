@@ -13,6 +13,7 @@ class Post extends Model
         'user_id',
         'description',
         'visibility',
+        'who_can_comment',
     ];
 
     public function user()

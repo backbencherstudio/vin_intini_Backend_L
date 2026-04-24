@@ -13,10 +13,12 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     // Route::get('/posts', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/posts/{id}', [PostController::class, 'edit']);
-    Route::post('/posts/{id}', [PostController::class, 'update']);
-    Route::delete('/posts/{id}', [PostController::class, 'destroy']);
+    Route::post('/profile/posts/{id}', [PostController::class, 'updateProfilePost']);
 
-    Route::post('remove-post/{postId}/group/{groupId}', [PostController::class, 'removeFromGroup']);
+    Route::delete('/profile/posts/{id}', [PostController::class, 'destroyProfilePost']);
+
+    Route::get('/posts/{post}/groups/{group}/edit', [PostController::class, 'editGroupPost']);
+    Route::post('/remove-post/{postId}/group/{groupId}', [PostController::class, 'removeFromGroup']);
 
     Route::get('/timeline', [TimelineController::class, 'timeline']);
 
