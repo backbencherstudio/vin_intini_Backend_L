@@ -9,7 +9,6 @@ class PostGroup extends Model
     protected $fillable = [
         'post_id',
         'group_id',
-        'remove_status',
     ];
 
     public function post()

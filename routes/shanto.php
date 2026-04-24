@@ -16,8 +16,9 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
 
     Route::delete('/profile/posts/{id}', [PostController::class, 'destroyProfilePost']);
 
-    Route::get('/posts/{post}/groups/{group}/edit', [PostController::class, 'editGroupPost']);
-    Route::post('/remove-post/{postId}/group/{groupId}', [PostController::class, 'removeFromGroup']);
+    Route::get('/groups/{group}/posts/{post}', [PostController::class, 'editGroupPost']);
+    Route::post('/groups/{group}/posts/{post}', [PostController::class, 'updateGroupPost']);
+    Route::delete('/groups/{group}/posts/{post}', [PostController::class, 'destroyGroupPost']);
 
     Route::get('/timeline', [TimelineController::class, 'timeline']);
 
