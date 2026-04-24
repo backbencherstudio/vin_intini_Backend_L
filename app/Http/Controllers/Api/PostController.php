@@ -124,7 +124,7 @@ class PostController extends Controller
         }
     }
 
-    public function edit($id)
+    public function editProfilePost($id)
     {
         $user = auth('api')->user();
 
@@ -264,6 +264,67 @@ class PostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Post update failed',
+                'error' => app()->environment('local') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    public function destroyProfilePost($id)
+    {
+        $user = auth('api')->user();
+
+        $post = Post::with(['media', 'comments', 'likes'])->findOrFail($id);
+
+        if ($post->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        if (!in_array($post->visibility, ['public', 'connections'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Group posts cannot be deleted from profile'
+            ], 403);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            foreach ($post->media as $media) {
+
+                $count = PostMedia::where('file_path', $media->file_path)->count();
+
+                if ($count === 1) {
+                    Storage::disk('public')->delete($media->file_path);
+                }
+
+                $media->delete();
+            }
+
+            Comment::where('post_id', $post->id)->delete();
+            PostLike::where('post_id', $post->id)->delete();
+
+            $post->groups()->detach();
+
+            $post->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Post deleted successfully'
+            ]);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Post deletion failed',
                 'error' => app()->environment('local') ? $e->getMessage() : null
             ], 500);
         }
