@@ -15,6 +15,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('visibility', ['public', 'connections', 'groups'])->default('public');
             $table->enum('who_can_comment', ['anyone', 'connections', 'no_one'])->default('anyone');
+            $table->unsignedBigInteger('total_like')->default(0);
+            $table->unsignedBigInteger('total_comment')->default(0);
 
             $table->timestamps();
 

@@ -14,6 +14,8 @@ class Post extends Model
         'description',
         'visibility',
         'who_can_comment',
+        'total_like',
+        'total_comment'
     ];
 
     public function user()

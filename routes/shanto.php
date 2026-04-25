@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\NewsfeedController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\TimelineController;
@@ -20,6 +21,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/groups/{group}/posts/{post}', [PostController::class, 'updateGroupPost']);
     Route::delete('/groups/{group}/posts/{post}', [PostController::class, 'destroyGroupPost']);
 
-    Route::get('/timeline', [TimelineController::class, 'timeline']);
+    Route::get('/newsfeed', [NewsfeedController::class, 'newsFeed']);
+    // Route::get('/timeline', [TimelineController::class, 'timeline']);
 
 });
