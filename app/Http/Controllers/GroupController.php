@@ -631,14 +631,37 @@ class GroupController extends Controller
 
         $group = Group::findOrFail($targetGroupId);
 
-        if ($group->members()->where('user_id', auth()->id())->exists()) {
+        $userId = auth()->id();
+
+        $existingMembership = $group->members()->where('user_id', $userId)->first();
+
+        if ($existingMembership) {
+            if ($existingMembership->pivot->status === 'banned') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'You are banned from this group and cannot re-join.',
+                ], 403);
+            }
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'You are already a member of this group',
             ], 400);
         }
 
-        $group->members()->attach(auth()->id(), ['role' => 'member']);
+        $group->members()->attach($userId, [
+            'role' => 'member',
+            'status' => 'active'
+        ]);
+
+        // if ($group->members()->where('user_id', auth()->id())->exists()) {
+        //     return response()->json([
+        //         'status' => 'error',
+        //         'message' => 'You are already a member of this group',
+        //     ], 400);
+        // }
+
+        // $group->members()->attach(auth()->id(), ['role' => 'member']);
 
         return response()->json([
             'status' => 'success',
