@@ -133,7 +133,10 @@ class GroupController extends Controller
             //     $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
             // },
         ])
-            ->withCount('members')
+            // ->withCount('members')
+            ->withCount(['members' => function($query) {
+                $query->where('group_users.status', 'active');
+            }])
             ->find($id);
 
         if (! $group) {
@@ -158,6 +161,14 @@ class GroupController extends Controller
                 ->first();
 
             if ($membership) {
+                if ($membership->status === 'banned') {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'You are banned from this group.',
+                        'is_banned' => true
+                    ], 403);
+                }
+
                 $isMember = true;
                 $notificationStatus = $membership->notification_status;
             }
@@ -166,6 +177,7 @@ class GroupController extends Controller
 
             if ($myFriendIds->isNotEmpty()) {
                 $mutualQuery = $group->members()
+                    ->wherePivot('status', 'active')
                     ->whereIn('users.id', $myFriendIds)
                     ->select('users.id', 'first_name', 'last_name', 'profile_image');
 
@@ -563,13 +575,18 @@ class GroupController extends Controller
     {
         $user = auth()->user();
 
-        $baseQuery = $user->groups()->where('groups.creator_id', '!=', $user->id);
+        $baseQuery = $user->groups()
+            ->wherePivot('status', 'active')
+            ->where('groups.creator_id', '!=', $user->id);
 
         $totalJoinedEver = (clone $baseQuery)->count();
 
         $query = $baseQuery
             ->with(['creator:id,first_name,last_name,email,profile_image'])
-            ->withCount('members');
+            ->withCount(['members' => function($query) {
+                $query->where('group_users.status', 'active');
+            }]);
+            // ->withCount('members');
 
         if ($request->has('search')) {
             $search = $request->input('search');
@@ -631,14 +648,37 @@ class GroupController extends Controller
 
         $group = Group::findOrFail($targetGroupId);
 
-        if ($group->members()->where('user_id', auth()->id())->exists()) {
+        $userId = auth()->id();
+
+        $existingMembership = $group->members()->where('user_id', $userId)->first();
+
+        if ($existingMembership) {
+            if ($existingMembership->pivot->status === 'banned') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'You are banned from this group and cannot re-join.',
+                ], 403);
+            }
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'You are already a member of this group',
             ], 400);
         }
 
-        $group->members()->attach(auth()->id(), ['role' => 'member']);
+        $group->members()->attach($userId, [
+            'role' => 'member',
+            'status' => 'active'
+        ]);
+
+        // if ($group->members()->where('user_id', auth()->id())->exists()) {
+        //     return response()->json([
+        //         'status' => 'error',
+        //         'message' => 'You are already a member of this group',
+        //     ], 400);
+        // }
+
+        // $group->members()->attach(auth()->id(), ['role' => 'member']);
 
         return response()->json([
             'status' => 'success',
@@ -894,6 +934,50 @@ class GroupController extends Controller
                 'group_id' => $groupUser->group_id,
                 'notification_status' => $groupUser->notification_status,
             ],
+        ], 200);
+    }
+
+    public function banUser(Request $request, $groupId, $userId)
+    {
+        $group = Group::findOrFail($groupId);
+
+        $currentUser = $request->user();
+
+        $isAdmin = $group->creator_id === $currentUser->id ||
+                $group->members()
+                        ->where('users.id', $currentUser->id)
+                        ->wherePivot('role', 'admin')
+                        ->exists();
+
+        if (!$isAdmin) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized! Only admins can ban users.'], 403);
+        }
+
+        if ($userId == $currentUser->id || $userId == $group->creator_id) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid action.'], 422);
+        }
+
+        $membership = $group->members()->where('users.id', $userId)->first();
+
+        if (!$membership) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This user is not a member of this group.'
+            ], 404);
+        }
+
+        if ($membership->pivot->status === 'banned') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User is already banned.'
+            ], 400);
+        }
+
+        $group->members()->updateExistingPivot($userId, ['status' => 'banned']);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User has been banned from the group successfully.',
         ], 200);
     }
 }

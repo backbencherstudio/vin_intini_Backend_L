@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('group_id')->constrained()->onDelete('cascade');
             $table->string('role')->default('member'); // member, admin, moderator
+            $table->string('status')->default('active'); // active, pending, banned
             $table->boolean('notification_status')->default(true);
             $table->timestamps();
         });
