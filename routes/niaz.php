@@ -33,6 +33,8 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/group-invitations/requests', [GroupController::class, 'invitationRequests']);
     Route::post('/group-invitations/{invitationId}/accept', [GroupController::class, 'acceptInvitation']);
     Route::post('/group-invitations/{invitationId}/ignore', [GroupController::class, 'ignoreInvitation']);
+    //ban user route
+    Route::post('/groups/{groupId}/ban/{userId}', [GroupController::class, 'banUser']);
 
     // user profile routes
     Route::get('/profile', [UserProfileController::class, 'show']);

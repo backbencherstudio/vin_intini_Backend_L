@@ -896,4 +896,48 @@ class GroupController extends Controller
             ],
         ], 200);
     }
+
+    public function banUser(Request $request, $groupId, $userId)
+    {
+        $group = Group::findOrFail($groupId);
+
+        $currentUser = $request->user();
+
+        $isAdmin = $group->creator_id === $currentUser->id ||
+                $group->members()
+                        ->where('users.id', $currentUser->id)
+                        ->wherePivot('role', 'admin')
+                        ->exists();
+
+        if (!$isAdmin) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized! Only admins can ban users.'], 403);
+        }
+
+        if ($userId == $currentUser->id || $userId == $group->creator_id) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid action.'], 422);
+        }
+
+        $membership = $group->members()->where('users.id', $userId)->first();
+
+        if (!$membership) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This user is not a member of this group.'
+            ], 404);
+        }
+
+        if ($membership->pivot->status === 'banned') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User is already banned.'
+            ], 400);
+        }
+
+        $group->members()->updateExistingPivot($userId, ['status' => 'banned']);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User has been banned from the group successfully.',
+        ], 200);
+    }
 }
