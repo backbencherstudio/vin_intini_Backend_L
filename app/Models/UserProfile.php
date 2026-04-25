@@ -22,6 +22,11 @@ class UserProfile extends Model
         'current_position_id',
         'current_institute_id',
         'about',
+
+        'notify_jobs',
+        'notify_publications',
+        'notify_residency',
+        'notify_offers',
     ];
 
     protected $casts = [

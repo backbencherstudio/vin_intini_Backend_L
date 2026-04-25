@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
+use App\Http\Controllers\GroupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', function () {
@@ -37,10 +38,11 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
 
-    // company, skill and institution suggestions for dropdown
+    // group, company, skill and institution suggestions for dropdown
     Route::get('/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
     Route::get('/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
     Route::get('/institution-suggestions', [UserEducationController::class, 'institutionSuggestions']);
+    Route::get('/groups-suggestions', [GroupController::class, 'groupSuggestions']);
 
     Route::post('/setup-profile', [UserProfileController::class, 'setupProfile'])
         ->middleware('verified_user');

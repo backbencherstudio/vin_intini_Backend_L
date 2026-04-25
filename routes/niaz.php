@@ -14,7 +14,7 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {});
 Route::middleware(['auth:api', 'role:user'])->group(function () {
 
     // group routes
-    Route::get('/groups-suggestions', [GroupController::class, 'groupSuggestions']);
+    // Route::get('/groups-suggestions', [GroupController::class, 'groupSuggestions']);
     Route::post('/group-create', [GroupController::class, 'store']);
     Route::get('/group-show/{id}', [GroupController::class, 'show']);
     Route::post('/group-update/{id}', [GroupController::class, 'update']);

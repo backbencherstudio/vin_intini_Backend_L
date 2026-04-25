@@ -104,6 +104,12 @@ class UserProfileController extends Controller
 
     public function setupProfile(Request $request, ProfileImageService $profileImageService)
     {
+         if ($request->has('group_ids') && is_string($request->group_ids)) {
+            $request->merge([
+                'group_ids' => explode(',', $request->group_ids)
+            ]);
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string',
             'last_name' => 'required|string',
@@ -123,6 +129,13 @@ class UserProfileController extends Controller
             'skills.*' => 'string',
             'current_position_id' => 'nullable|integer|exists:experiences,id',
             'current_institute_id' => 'nullable|integer|exists:institutions,id',
+
+            'notify_jobs'         => 'nullable|boolean',
+            'notify_publications' => 'nullable|boolean',
+            'notify_residency'    => 'nullable|boolean',
+            'notify_offers'       => 'nullable|boolean',
+            'group_ids'           => 'nullable|array',
+            'group_ids.*'         => 'exists:groups,id'
         ]);
 
         $user = $request->user();
@@ -172,8 +185,17 @@ class UserProfileController extends Controller
                 'current_position_id' => $currentPositionId,
                 'current_institute_id' => $currentInstituteId,
                 'about' => $request->about,
+
+                'notify_jobs'         => $request->boolean('notify_jobs'),
+                'notify_publications' => $request->boolean('notify_publications'),
+                'notify_residency'    => $request->boolean('notify_residency'),
+                'notify_offers'       => $request->boolean('notify_offers'),
             ]
         );
+
+        if ($request->has('group_ids')) {
+            $user->groups()->syncWithoutDetaching($request->group_ids);
+        }
 
         $institutionName = trim((string) ($validated['institution'] ?? ''));
         $degree = trim((string) ($validated['highest_degree'] ?? ''));
@@ -205,7 +227,7 @@ class UserProfileController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Profile completed successfully!',
-            'data' => $user->load('profile'),
+            'data' => $user->load('profile', 'groups:id,name,logo'),
         ], 200);
     }
 
