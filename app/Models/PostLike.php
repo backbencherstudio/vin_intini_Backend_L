@@ -12,7 +12,6 @@ class PostLike extends Model
     protected $fillable = [
         'post_id',
         'user_id',
-        'group_id',
     ];
 
     public function post()

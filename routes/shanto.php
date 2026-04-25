@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\NewsfeedController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PostController;
@@ -23,5 +24,8 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
 
     Route::get('/newsfeed', [NewsfeedController::class, 'newsFeed']);
     // Route::get('/timeline', [TimelineController::class, 'timeline']);
+
+    //Like
+    Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
 
 });
