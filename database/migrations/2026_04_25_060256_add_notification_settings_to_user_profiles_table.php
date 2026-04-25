@@ -25,7 +25,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('user_profiles', function (Blueprint $table) {
-            //
+            $table->dropColumn(['notify_jobs', 'notify_publications', 'notify_residency', 'notify_offers']);
         });
     }
 };
