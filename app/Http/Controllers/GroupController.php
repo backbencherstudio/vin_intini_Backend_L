@@ -133,7 +133,10 @@ class GroupController extends Controller
             //     $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
             // },
         ])
-            ->withCount('members')
+            // ->withCount('members')
+            ->withCount(['members' => function($query) {
+                $query->where('group_users.status', 'active');
+            }])
             ->find($id);
 
         if (! $group) {
@@ -158,6 +161,14 @@ class GroupController extends Controller
                 ->first();
 
             if ($membership) {
+                if ($membership->status === 'banned') {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'You are banned from this group.',
+                        'is_banned' => true
+                    ], 403);
+                }
+
                 $isMember = true;
                 $notificationStatus = $membership->notification_status;
             }
@@ -166,6 +177,7 @@ class GroupController extends Controller
 
             if ($myFriendIds->isNotEmpty()) {
                 $mutualQuery = $group->members()
+                    ->wherePivot('status', 'active')
                     ->whereIn('users.id', $myFriendIds)
                     ->select('users.id', 'first_name', 'last_name', 'profile_image');
 
@@ -563,13 +575,18 @@ class GroupController extends Controller
     {
         $user = auth()->user();
 
-        $baseQuery = $user->groups()->where('groups.creator_id', '!=', $user->id);
+        $baseQuery = $user->groups()
+            ->wherePivot('status', 'active')
+            ->where('groups.creator_id', '!=', $user->id);
 
         $totalJoinedEver = (clone $baseQuery)->count();
 
         $query = $baseQuery
             ->with(['creator:id,first_name,last_name,email,profile_image'])
-            ->withCount('members');
+            ->withCount(['members' => function($query) {
+                $query->where('group_users.status', 'active');
+            }]);
+            // ->withCount('members');
 
         if ($request->has('search')) {
             $search = $request->input('search');
