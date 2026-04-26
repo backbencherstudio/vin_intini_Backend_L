@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\ConnectionController;
 use App\Http\Controllers\Api\FollowController;
 use App\Http\Controllers\Api\NotificationController;
@@ -77,4 +78,12 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead']);
     Route::delete('/notifications/{notificationId}', [NotificationController::class, 'delete']);
     Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
+
+    //academia routes
+    Route::get('/states', [AcademiaController::class, 'getStates']);
+    Route::get('/states/{id}', [AcademiaController::class, 'getStateDetails']);
+    Route::get('/states/{id}/universities', [AcademiaController::class, 'getUniversities']);
+    Route::get('/states/{id}/residencies', [AcademiaController::class, 'getResidencies']);
+    Route::get('/states/{id}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
+    Route::get('/states/{id}/jobs', [AcademiaController::class, 'getJobs']);
 });
