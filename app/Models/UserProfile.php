@@ -33,6 +33,11 @@ class UserProfile extends Model
         'profession' => 'array',
         'interests' => 'array',
         'skills_id' => 'array',
+
+        'notify_jobs' => 'boolean',
+        'notify_publications' => 'boolean',
+        'notify_residency' => 'boolean',
+        'notify_offers' => 'boolean',
     ];
 
     public function user(): BelongsTo
