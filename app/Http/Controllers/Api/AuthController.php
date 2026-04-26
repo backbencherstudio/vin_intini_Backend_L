@@ -112,65 +112,9 @@ class AuthController extends Controller
                 'current_institute' => $currentInstitute ? [
                     'id' => $currentInstitute->id,
                     'name' => $currentInstitute->name,
-                    'logo' => $currentInstitute->logo,
-                    'type' => $currentInstitute->type,
-                    'country' => $currentInstitute->country,
-                    'website' => $currentInstitute->website,
                 ] : null,
 
                 'skills' => $skills,
-
-                'experiences' => $user->experiences->map(function ($experience) {
-                    return [
-                        'id' => $experience->id,
-                        'company_id' => $experience->company_id,
-                        'company' => [
-                            'id' => $experience->company?->id,
-                            'name' => $experience->company?->name,
-                            'logo' => $experience->company?->logo,
-                            'location' => $experience->company?->location,
-                            'industry' => $experience->company?->industry,
-                            'website' => $experience->company?->website,
-                        ],
-                        'title' => $experience->title,
-                        'start_date' => $experience->start_date,
-                        'end_date' => $experience->end_date,
-                        'is_current' => $experience->is_current,
-                        'status' => $experience->formatted_end_date_attribute,
-                        'description' => $experience->description,
-                        // 'skills_id' => $experience->skills_id,
-                        'skills' => $experience->skills_data,
-                    ];
-                })->values(),
-
-                'educations' => $user->educations->map(function ($education) {
-                    return [
-                        'id' => $education->id,
-                        'institution_id' => $education->institution_id,
-                        'institution' => [
-                            'id' => $education->institution?->id,
-                            'name' => $education->institution?->name,
-                            'logo' => $education->institution?->logo,
-                            'type' => $education->institution?->type,
-                            'country' => $education->institution?->country,
-                            'website' => $education->institution?->website,
-                        ],
-                        'degree' => $education->degree,
-                        'field_study' => $education->field_study,
-                        'start_month' => $education->start_month,
-                        'start_year' => $education->start_year,
-                        'end_month' => $education->end_month,
-                        'end_year' => $education->end_year,
-                        'grade' => $education->grade,
-                        'description' => $education->description,
-                        'activities' => $education->activities,
-                        'is_current' => $education->is_current,
-                        'status' => $education->status,
-                        // 'skills_id' => $education->skills_id,
-                        'skills' => $education->skills_data,
-                    ];
-                })->values(),
-
                 'about' => $user->profile?->about,
                 'interests' => $user->profile?->interests,
                 'profession' => $user->profile?->profession,
