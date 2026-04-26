@@ -110,6 +110,13 @@ class UserProfileController extends Controller
             ]);
         }
 
+        $request->merge([
+            'notify_jobs' => filter_var($request->notify_jobs, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+            'notify_publications' => filter_var($request->notify_publications, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+            'notify_residency' => filter_var($request->notify_residency, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+            'notify_offers' => filter_var($request->notify_offers, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+        ]);
+
         $validated = $request->validate([
             'first_name' => 'required|string',
             'last_name' => 'required|string',
