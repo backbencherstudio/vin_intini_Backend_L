@@ -66,8 +66,26 @@ class AuthController extends Controller
     {
         $user = auth('api')->user();
 
-        $user->load(['roles', 'profile.currentPosition.company', 'educations.institution']);
-        $latestEducation = $user->educations->sortByDesc('id')->first();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $user->load([
+            'roles',
+            'profile.currentPosition.company',
+            'profile.currentInstitute',
+            'educations.institution',
+            'experiences.company'
+        ]);
+
+        $skills = Skill::query()
+            ->select(['id', 'name'])
+            ->whereIn('id', $user->profile?->skills_id ?? [])
+            ->orderBy('name')
+            ->get();
+
+        $currentPosition = $user->profile?->currentPosition;
+        $currentInstitute = $user->profile?->currentInstitute;
 
         return response()->json([
             'success' => true,
@@ -81,35 +99,134 @@ class AuthController extends Controller
                 'cover_image_url' => $user->cover_image_url,
                 'roles' => $user->roles->pluck('name')->implode(', '),
 
-                'profile' => $user->profile ? [
-                    'country' => $user->profile->country,
-                    'postal_code' => $user->profile->postal_code,
-                    'profession' => $user->profile->profession,
-                    'degree' => $latestEducation?->degree,
-                    // 'study_category' => $user->profile->study_category,
-                    // 'study_subcategory' => $user->profile->study_subcategory,
-                    // 'institution' => $user->profile->institution,
-                    'field_study' => $latestEducation?->field_study,
-                    'institution' => $latestEducation?->institution?->name,
-                    'graduation_year' => $latestEducation?->end_year,
-                    'interests' => $user->profile->interests,
-                    'skills_id' => $user->profile->skills_id,
-                    'skills' => Skill::query()
-                        ->whereIn('id', $user->profile->skills_id ?? [])
-                        ->orderBy('name')
-                        ->pluck('name')
-                        ->values(),
-                    'current_position_id' => $user->profile->current_position_id,
-                    'current_position' => $user->profile->currentPosition ? [
-                        'id' => $user->profile->currentPosition->id,
-                        'title' => $user->profile->currentPosition->title,
-                        'company_name' => $user->profile->currentPosition->company?->name,
-                    ] : null,
-                    'about' => $user->profile->about,
+                'country' => $user->profile?->country,
+                'current_position_id' => $user->profile?->current_position_id,
+                'current_institute_id' => $user->profile?->current_institute_id,
+
+                'current_position' => $currentPosition ? [
+                    'id' => $currentPosition->id,
+                    'title' => $currentPosition->title,
+                    'company_name' => $currentPosition->company?->name,
                 ] : null,
+
+                'current_institute' => $currentInstitute ? [
+                    'id' => $currentInstitute->id,
+                    'name' => $currentInstitute->name,
+                    'logo' => $currentInstitute->logo,
+                    'type' => $currentInstitute->type,
+                    'country' => $currentInstitute->country,
+                    'website' => $currentInstitute->website,
+                ] : null,
+
+                'skills' => $skills,
+
+                'experiences' => $user->experiences->map(function ($experience) {
+                    return [
+                        'id' => $experience->id,
+                        'company_id' => $experience->company_id,
+                        'company' => [
+                            'id' => $experience->company?->id,
+                            'name' => $experience->company?->name,
+                            'logo' => $experience->company?->logo,
+                            'location' => $experience->company?->location,
+                            'industry' => $experience->company?->industry,
+                            'website' => $experience->company?->website,
+                        ],
+                        'title' => $experience->title,
+                        'start_date' => $experience->start_date,
+                        'end_date' => $experience->end_date,
+                        'is_current' => $experience->is_current,
+                        'status' => $experience->formatted_end_date_attribute,
+                        'description' => $experience->description,
+                        // 'skills_id' => $experience->skills_id,
+                        'skills' => $experience->skills_data,
+                    ];
+                })->values(),
+
+                'educations' => $user->educations->map(function ($education) {
+                    return [
+                        'id' => $education->id,
+                        'institution_id' => $education->institution_id,
+                        'institution' => [
+                            'id' => $education->institution?->id,
+                            'name' => $education->institution?->name,
+                            'logo' => $education->institution?->logo,
+                            'type' => $education->institution?->type,
+                            'country' => $education->institution?->country,
+                            'website' => $education->institution?->website,
+                        ],
+                        'degree' => $education->degree,
+                        'field_study' => $education->field_study,
+                        'start_month' => $education->start_month,
+                        'start_year' => $education->start_year,
+                        'end_month' => $education->end_month,
+                        'end_year' => $education->end_year,
+                        'grade' => $education->grade,
+                        'description' => $education->description,
+                        'activities' => $education->activities,
+                        'is_current' => $education->is_current,
+                        'status' => $education->status,
+                        // 'skills_id' => $education->skills_id,
+                        'skills' => $education->skills_data,
+                    ];
+                })->values(),
+
+                'about' => $user->profile?->about,
+                'interests' => $user->profile?->interests,
+                'profession' => $user->profile?->profession,
+                'postal_code' => $user->profile?->postal_code,
             ],
         ]);
     }
+
+    // public function me()
+    // {
+    //     $user = auth('api')->user();
+
+    //     $user->load(['roles', 'profile.currentPosition.company', 'educations.institution']);
+    //     $latestEducation = $user->educations->sortByDesc('id')->first();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'user' => [
+    //             'id' => $user->id,
+    //             'first_name' => $user->first_name,
+    //             'last_name' => $user->last_name,
+    //             'title' => $user->title,
+    //             'email' => $user->email,
+    //             'profile_image_url' => $user->profile_image_url,
+    //             'cover_image_url' => $user->cover_image_url,
+    //             'roles' => $user->roles->pluck('name')->implode(', '),
+
+    //             'profile' => $user->profile ? [
+    //                 'country' => $user->profile->country,
+    //                 'postal_code' => $user->profile->postal_code,
+    //                 'profession' => $user->profile->profession,
+    //                 'degree' => $latestEducation?->degree,
+    //                 // 'study_category' => $user->profile->study_category,
+    //                 // 'study_subcategory' => $user->profile->study_subcategory,
+    //                 // 'institution' => $user->profile->institution,
+    //                 'field_study' => $latestEducation?->field_study,
+    //                 'institution' => $latestEducation?->institution?->name,
+    //                 'graduation_year' => $latestEducation?->end_year,
+    //                 'interests' => $user->profile->interests,
+    //                 'skills_id' => $user->profile->skills_id,
+    //                 'skills' => Skill::query()
+    //                     ->whereIn('id', $user->profile->skills_id ?? [])
+    //                     ->orderBy('name')
+    //                     ->pluck('name')
+    //                     ->values(),
+    //                 'current_position_id' => $user->profile->current_position_id,
+    //                 'current_position' => $user->profile->currentPosition ? [
+    //                     'id' => $user->profile->currentPosition->id,
+    //                     'title' => $user->profile->currentPosition->title,
+    //                     'company_name' => $user->profile->currentPosition->company?->name,
+    //                 ] : null,
+    //                 'about' => $user->profile->about,
+    //             ] : null,
+    //         ],
+    //     ]);
+    // }
 
     public function logout()
     {
