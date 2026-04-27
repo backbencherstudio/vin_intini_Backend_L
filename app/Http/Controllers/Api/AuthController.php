@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RegisterOtpMail;
+use App\Models\Connection;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -70,6 +71,11 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
 
+        $totalConnections = Connection::query()
+            ->accepted()
+            ->forUser($user->id)
+            ->count();
+
         $user->load([
             'roles',
             'profile.currentPosition.company',
@@ -100,6 +106,7 @@ class AuthController extends Controller
                 'roles' => $user->roles->pluck('name')->implode(', '),
 
                 'country' => $user->profile?->country,
+                'total_connections' => $totalConnections, 
                 'current_position_id' => $user->profile?->current_position_id,
                 'current_institute_id' => $user->profile?->current_institute_id,
 
