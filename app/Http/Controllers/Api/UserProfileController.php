@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Connection;
 use App\Models\Education;
 use App\Models\Experience;
 use App\Models\Institution;
@@ -16,6 +17,11 @@ class UserProfileController extends Controller
     public function show(Request $request)
     {
         $user = $request->user()->load(['profile.currentPosition.company', 'profile.currentInstitute', 'educations.institution', 'experiences.company']);
+
+        $totalConnections = Connection::query()
+            ->accepted()
+            ->forUser($user->id)
+            ->count();
 
         $skills = Skill::query()
             ->select(['id', 'name'])
@@ -33,6 +39,7 @@ class UserProfileController extends Controller
                 'last_name' => $user->last_name,
                 'title' => $user->title,
                 'country' => $user->profile?->country,
+                'total_connections' => $totalConnections,
                 'current_position_id' => $user->profile?->current_position_id,
                 'current_institute_id' => $user->profile?->current_institute_id,
                 'current_position' => $currentPosition ? [
@@ -43,10 +50,10 @@ class UserProfileController extends Controller
                 'current_institute' => $currentInstitute ? [
                     'id' => $currentInstitute->id,
                     'name' => $currentInstitute->name,
-                    'logo' => $currentInstitute->logo,
-                    'type' => $currentInstitute->type,
-                    'country' => $currentInstitute->country,
-                    'website' => $currentInstitute->website,
+                    // 'logo' => $currentInstitute->logo,
+                    // 'type' => $currentInstitute->type,
+                    // 'country' => $currentInstitute->country,
+                    // 'website' => $currentInstitute->website,
                 ] : null,
                 'skills' => $skills,
                 'experiences' => $user->experiences->map(function ($experience) {
@@ -56,10 +63,10 @@ class UserProfileController extends Controller
                         'company' => [
                             'id' => $experience->company?->id,
                             'name' => $experience->company?->name,
-                            'logo' => $experience->company?->logo,
-                            'location' => $experience->company?->location,
-                            'industry' => $experience->company?->industry,
-                            'website' => $experience->company?->website,
+                            // 'logo' => $experience->company?->logo,
+                            // 'location' => $experience->company?->location,
+                            // 'industry' => $experience->company?->industry,
+                            // 'website' => $experience->company?->website,
                         ],
                         'title' => $experience->title,
                         'start_date' => $experience->start_date,
@@ -67,7 +74,7 @@ class UserProfileController extends Controller
                         'is_current' => $experience->is_current,
                         'status' => $experience->formatted_end_date_attribute,
                         'description' => $experience->description,
-                        'skills_id' => $experience->skills_id,
+                        // 'skills_id' => $experience->skills_id,
                         'skills' => $experience->skills_data,
                     ];
                 })->values(),
@@ -78,10 +85,10 @@ class UserProfileController extends Controller
                         'institution' => [
                             'id' => $education->institution?->id,
                             'name' => $education->institution?->name,
-                            'logo' => $education->institution?->logo,
-                            'type' => $education->institution?->type,
-                            'country' => $education->institution?->country,
-                            'website' => $education->institution?->website,
+                            // 'logo' => $education->institution?->logo,
+                            // 'type' => $education->institution?->type,
+                            // 'country' => $education->institution?->country,
+                            // 'website' => $education->institution?->website,
                         ],
                         'degree' => $education->degree,
                         'field_study' => $education->field_study,
@@ -94,7 +101,7 @@ class UserProfileController extends Controller
                         'activities' => $education->activities,
                         'is_current' => $education->is_current,
                         'status' => $education->status,
-                        'skills_id' => $education->skills_id,
+                        // 'skills_id' => $education->skills_id,
                         'skills' => $education->skills_data,
                     ];
                 })->values(),

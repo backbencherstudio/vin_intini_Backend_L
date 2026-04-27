@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RegisterOtpMail;
+use App\Models\Connection;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -66,8 +67,31 @@ class AuthController extends Controller
     {
         $user = auth('api')->user();
 
-        $user->load(['roles', 'profile.currentPosition.company', 'educations.institution']);
-        $latestEducation = $user->educations->sortByDesc('id')->first();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $totalConnections = Connection::query()
+            ->accepted()
+            ->forUser($user->id)
+            ->count();
+
+        $user->load([
+            'roles',
+            'profile.currentPosition.company',
+            'profile.currentInstitute',
+            'educations.institution',
+            'experiences.company'
+        ]);
+
+        $skills = Skill::query()
+            ->select(['id', 'name'])
+            ->whereIn('id', $user->profile?->skills_id ?? [])
+            ->orderBy('name')
+            ->get();
+
+        $currentPosition = $user->profile?->currentPosition;
+        $currentInstitute = $user->profile?->currentInstitute;
 
         return response()->json([
             'success' => true,
@@ -81,35 +105,79 @@ class AuthController extends Controller
                 'cover_image_url' => $user->cover_image_url,
                 'roles' => $user->roles->pluck('name')->implode(', '),
 
-                'profile' => $user->profile ? [
-                    'country' => $user->profile->country,
-                    'postal_code' => $user->profile->postal_code,
-                    'profession' => $user->profile->profession,
-                    'degree' => $latestEducation?->degree,
-                    // 'study_category' => $user->profile->study_category,
-                    // 'study_subcategory' => $user->profile->study_subcategory,
-                    // 'institution' => $user->profile->institution,
-                    'field_study' => $latestEducation?->field_study,
-                    'institution' => $latestEducation?->institution?->name,
-                    'graduation_year' => $latestEducation?->end_year,
-                    'interests' => $user->profile->interests,
-                    'skills_id' => $user->profile->skills_id,
-                    'skills' => Skill::query()
-                        ->whereIn('id', $user->profile->skills_id ?? [])
-                        ->orderBy('name')
-                        ->pluck('name')
-                        ->values(),
-                    'current_position_id' => $user->profile->current_position_id,
-                    'current_position' => $user->profile->currentPosition ? [
-                        'id' => $user->profile->currentPosition->id,
-                        'title' => $user->profile->currentPosition->title,
-                        'company_name' => $user->profile->currentPosition->company?->name,
-                    ] : null,
-                    'about' => $user->profile->about,
+                'country' => $user->profile?->country,
+                'total_connections' => $totalConnections, 
+                'current_position_id' => $user->profile?->current_position_id,
+                'current_institute_id' => $user->profile?->current_institute_id,
+
+                'current_position' => $currentPosition ? [
+                    'id' => $currentPosition->id,
+                    'title' => $currentPosition->title,
+                    'company_name' => $currentPosition->company?->name,
                 ] : null,
+
+                'current_institute' => $currentInstitute ? [
+                    'id' => $currentInstitute->id,
+                    'name' => $currentInstitute->name,
+                ] : null,
+
+                'skills' => $skills,
+                'about' => $user->profile?->about,
+                'interests' => $user->profile?->interests,
+                'profession' => $user->profile?->profession,
+                'postal_code' => $user->profile?->postal_code,
             ],
         ]);
     }
+
+    // public function me()
+    // {
+    //     $user = auth('api')->user();
+
+    //     $user->load(['roles', 'profile.currentPosition.company', 'educations.institution']);
+    //     $latestEducation = $user->educations->sortByDesc('id')->first();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'user' => [
+    //             'id' => $user->id,
+    //             'first_name' => $user->first_name,
+    //             'last_name' => $user->last_name,
+    //             'title' => $user->title,
+    //             'email' => $user->email,
+    //             'profile_image_url' => $user->profile_image_url,
+    //             'cover_image_url' => $user->cover_image_url,
+    //             'roles' => $user->roles->pluck('name')->implode(', '),
+
+    //             'profile' => $user->profile ? [
+    //                 'country' => $user->profile->country,
+    //                 'postal_code' => $user->profile->postal_code,
+    //                 'profession' => $user->profile->profession,
+    //                 'degree' => $latestEducation?->degree,
+    //                 // 'study_category' => $user->profile->study_category,
+    //                 // 'study_subcategory' => $user->profile->study_subcategory,
+    //                 // 'institution' => $user->profile->institution,
+    //                 'field_study' => $latestEducation?->field_study,
+    //                 'institution' => $latestEducation?->institution?->name,
+    //                 'graduation_year' => $latestEducation?->end_year,
+    //                 'interests' => $user->profile->interests,
+    //                 'skills_id' => $user->profile->skills_id,
+    //                 'skills' => Skill::query()
+    //                     ->whereIn('id', $user->profile->skills_id ?? [])
+    //                     ->orderBy('name')
+    //                     ->pluck('name')
+    //                     ->values(),
+    //                 'current_position_id' => $user->profile->current_position_id,
+    //                 'current_position' => $user->profile->currentPosition ? [
+    //                     'id' => $user->profile->currentPosition->id,
+    //                     'title' => $user->profile->currentPosition->title,
+    //                     'company_name' => $user->profile->currentPosition->company?->name,
+    //                 ] : null,
+    //                 'about' => $user->profile->about,
+    //             ] : null,
+    //         ],
+    //     ]);
+    // }
 
     public function logout()
     {
