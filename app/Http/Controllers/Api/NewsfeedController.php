@@ -32,7 +32,7 @@ class NewsfeedController extends Controller
 
         $postsQuery = Post::query()
             ->with([
-                'user:id,first_name,last_name,profile_image',
+                'user:id,first_name,last_name,profile_image,title',
                 'media',
                 'groups:id,name'
             ])
