@@ -192,18 +192,19 @@ class UserExperienceController extends Controller
             'skills' => 'nullable|array',
             'skills.*' => 'string|distinct',
         ]);
-        // $request->validate([
-        //     'title' => 'required|string',
-        //     'company_name' => 'required|string',
-        //     'start_month' => 'required', // e.g., "January"
-        //     'start_year' => 'required',  // e.g., "2024"
-        //     'skills' => 'array',         // e.g., ["PHP", "Laravel"]
-        // ]);
 
         $startDate = Carbon::parse($request->start_month . ' ' . $request->start_year)->startOfMonth();
         $endDate = null;
-        if (! $request->is_current && $request->end_month && $request->end_year) {
+
+        if (!$request->is_current) {
             $endDate = Carbon::parse($request->end_month . ' ' . $request->end_year)->startOfMonth();
+
+            if ($endDate->lt($startDate)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'End date cannot be earlier than start date.',
+                ], 422);
+            }
         }
 
         $company = Company::firstOrCreate(['name' => trim($request->company_name)]);
@@ -225,7 +226,7 @@ class UserExperienceController extends Controller
             'location_type' => $request->location_type,
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'is_current' => $request->is_current ?? false,
+            'is_current' => $request->is_current,
             'description' => $request->description,
             'skills_id' => $skillIds,
         ]);
@@ -236,6 +237,68 @@ class UserExperienceController extends Controller
             'data' => $experience->load('company'),
         ], 201);
     }
+
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'title' => 'required|string|max:255',
+    //         'company_name' => 'required|string|max:255',
+    //         'employment_type' => 'nullable|string',
+    //         'location' => 'nullable|string',
+    //         'location_type' => 'nullable|string',
+    //         'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+    //         'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
+    //         'is_current' => 'required|boolean',
+    //         'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+    //         'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
+    //         'description' => 'nullable|string',
+    //         'skills' => 'nullable|array',
+    //         'skills.*' => 'string|distinct',
+    //     ]);
+    //     // $request->validate([
+    //     //     'title' => 'required|string',
+    //     //     'company_name' => 'required|string',
+    //     //     'start_month' => 'required', // e.g., "January"
+    //     //     'start_year' => 'required',  // e.g., "2024"
+    //     //     'skills' => 'array',         // e.g., ["PHP", "Laravel"]
+    //     // ]);
+
+    //     $startDate = Carbon::parse($request->start_month . ' ' . $request->start_year)->startOfMonth();
+    //     $endDate = null;
+    //     if (! $request->is_current && $request->end_month && $request->end_year) {
+    //         $endDate = Carbon::parse($request->end_month . ' ' . $request->end_year)->startOfMonth();
+    //     }
+
+    //     $company = Company::firstOrCreate(['name' => trim($request->company_name)]);
+
+    //     $skillIds = [];
+    //     if ($request->has('skills')) {
+    //         foreach ($request->skills as $skillName) {
+    //             $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+    //             $skillIds[] = $skill->id;
+    //         }
+    //     }
+
+    //     $experience = Experience::create([
+    //         'user_id' => auth()->id(),
+    //         'company_id' => $company->id,
+    //         'title' => $request->title,
+    //         'employment_type' => $request->employment_type,
+    //         'location' => $request->location,
+    //         'location_type' => $request->location_type,
+    //         'start_date' => $startDate,
+    //         'end_date' => $endDate,
+    //         'is_current' => $request->is_current ?? false,
+    //         'description' => $request->description,
+    //         'skills_id' => $skillIds,
+    //     ]);
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Experience added successfully',
+    //         'data' => $experience->load('company'),
+    //     ], 201);
+    // }
 
     public function edit(Request $request, $id)
     {
