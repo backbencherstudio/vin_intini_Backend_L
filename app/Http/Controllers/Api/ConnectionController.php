@@ -67,6 +67,12 @@ class ConnectionController extends Controller
             ->unique()
             ->values();
 
+        $followingIds = UserFollow::query()
+            ->where('follower_id', $currentUser->id)
+            ->whereIn('following_id', $counterpartIds)
+            ->pluck('following_id')
+            ->toArray();
+
         $items = $connections->map(function (Connection $connectionRequest) use ($currentUser) {
             $counterpart = $connectionRequest->sender_id === $currentUser->id
                 ? $connectionRequest->receiver
@@ -110,12 +116,14 @@ class ConnectionController extends Controller
 
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
 
-        $connectionData = $paginator->getCollection()->map(function (array $item) use ($mutualConnections) {
+        $connectionData = $paginator->getCollection()->map(function (array $item) use ($mutualConnections, $followingIds) {
             $connection = $item['payload'];
             $counterpartId = $connection['user']['id'];
 
             $connection['mutual_connections_count'] = $mutualConnections[$counterpartId]['count'] ?? 0;
             $connection['mutual_connections'] = $mutualConnections[$counterpartId]['preview'] ?? [];
+
+            $connection['user']['is_following'] = in_array($counterpartId, $followingIds);
 
             return $connection;
         })->values();
