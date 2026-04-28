@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Education;
 use App\Models\Institution;
 use App\Models\Skill;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -55,30 +56,36 @@ class UserEducationController extends Controller
     {
         $validated = $request->validate([
             'institution_id' => 'nullable|integer|exists:institutions,id',
-            'institution' => 'nullable|string|max:255',
+            'institution' => 'required_without:institution_id|nullable|string|max:255',
             'degree' => 'required|string|max:255',
             'field_study' => 'nullable|string|max:255',
-            'start_month' => 'required|string|max:20',
-            'start_year' => 'required|digits:4',
-            'end_month' => 'nullable|string|max:20',
-            'end_year' => 'nullable|digits:4',
+            'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
+            'is_current' => 'required|boolean',
+            'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
             'grade' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'activities' => 'nullable|string',
             'skills' => 'nullable|array|max:5',
-            'skills.*' => 'string',
-            'is_current' => 'nullable|boolean',
+            'skills.*' => 'string|distinct',
         ]);
+        
+        $startDate = Carbon::parse($validated['start_month'] . ' ' . $validated['start_year'])->startOfMonth();
+        if (!$validated['is_current']) {
+            $endDate = Carbon::parse($validated['end_month'] . ' ' . $validated['end_year'])->startOfMonth();
 
-        if (empty($validated['institution_id']) && empty($validated['institution'])) {
-            throw ValidationException::withMessages([
-                'institution' => ['The institution field is required when institution_id is not present.'],
-            ]);
+            if ($endDate->lt($startDate)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'End date cannot be earlier than start date.',
+                ], 422);
+            }
         }
 
         $institution = $this->resolveInstitution($validated['institution_id'] ?? null, $validated['institution'] ?? null);
         $skillIds = $this->resolveSkillIds($validated['skills'] ?? []);
-        $isCurrent = (bool) ($validated['is_current'] ?? false);
+        $isCurrent = (bool) $validated['is_current'];
 
         $education = Education::create([
             'user_id' => $request->user()->id,
@@ -87,8 +94,8 @@ class UserEducationController extends Controller
             'field_study' => $validated['field_study'] ?? null,
             'start_month' => $validated['start_month'],
             'start_year' => $validated['start_year'],
-            'end_month' => $isCurrent ? null : ($validated['end_month'] ?? null),
-            'end_year' => $isCurrent ? null : ($validated['end_year'] ?? null),
+            'end_month' => $isCurrent ? null : $validated['end_month'],
+            'end_year' => $isCurrent ? null : $validated['end_year'],
             'grade' => $validated['grade'] ?? null,
             'description' => $validated['description'] ?? null,
             'activities' => $validated['activities'] ?? null,
@@ -102,6 +109,58 @@ class UserEducationController extends Controller
             'data' => $education->load('institution'),
         ], 201);
     }
+
+    // public function store(Request $request)
+    // {
+    //     $validated = $request->validate([
+    //         'institution_id' => 'nullable|integer|exists:institutions,id',
+    //         'institution' => 'nullable|string|max:255',
+    //         'degree' => 'required|string|max:255',
+    //         'field_study' => 'nullable|string|max:255',
+    //         'start_month' => 'required|string|max:20',
+    //         'start_year' => 'required|digits:4',
+    //         'end_month' => 'nullable|string|max:20',
+    //         'end_year' => 'nullable|digits:4',
+    //         'grade' => 'nullable|string|max:50',
+    //         'description' => 'nullable|string',
+    //         'activities' => 'nullable|string',
+    //         'skills' => 'nullable|array|max:5',
+    //         'skills.*' => 'string',
+    //         'is_current' => 'nullable|boolean',
+    //     ]);
+
+    //     if (empty($validated['institution_id']) && empty($validated['institution'])) {
+    //         throw ValidationException::withMessages([
+    //             'institution' => ['The institution field is required when institution_id is not present.'],
+    //         ]);
+    //     }
+
+    //     $institution = $this->resolveInstitution($validated['institution_id'] ?? null, $validated['institution'] ?? null);
+    //     $skillIds = $this->resolveSkillIds($validated['skills'] ?? []);
+    //     $isCurrent = (bool) ($validated['is_current'] ?? false);
+
+    //     $education = Education::create([
+    //         'user_id' => $request->user()->id,
+    //         'institution_id' => $institution->id,
+    //         'degree' => $validated['degree'],
+    //         'field_study' => $validated['field_study'] ?? null,
+    //         'start_month' => $validated['start_month'],
+    //         'start_year' => $validated['start_year'],
+    //         'end_month' => $isCurrent ? null : ($validated['end_month'] ?? null),
+    //         'end_year' => $isCurrent ? null : ($validated['end_year'] ?? null),
+    //         'grade' => $validated['grade'] ?? null,
+    //         'description' => $validated['description'] ?? null,
+    //         'activities' => $validated['activities'] ?? null,
+    //         'is_current' => $isCurrent,
+    //         'skills_id' => $skillIds,
+    //     ]);
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Education added successfully',
+    //         'data' => $education->load('institution'),
+    //     ], 201);
+    // }
 
     public function edit(Request $request, string $id)
     {
