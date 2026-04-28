@@ -44,7 +44,7 @@ class UserExperienceController extends Controller
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
-                        ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
                         : null,
                     'experiences' => $experiences,
                 ];
@@ -84,8 +84,8 @@ class UserExperienceController extends Controller
             'total_time' => $totalTime,
             'timeline' => $startingDate && $totalTime
                 ? $experience->is_current
-                ? $startingDate.' • '.$statusLabel.' • '.$totalTime
-                : $startingDate.' • '.$endingDate.' • '.$totalTime
+                ? $startingDate . ' • ' . $statusLabel . ' • ' . $totalTime
+                : $startingDate . ' • ' . $endingDate . ' • ' . $totalTime
                 : null,
         ];
     }
@@ -111,11 +111,11 @@ class UserExperienceController extends Controller
         $parts = [];
 
         if ($years > 0) {
-            $parts[] = $years.' year'.($years === 1 ? '' : 's');
+            $parts[] = $years . ' year' . ($years === 1 ? '' : 's');
         }
 
         if ($remainingMonths > 0) {
-            $parts[] = $remainingMonths.' month'.($remainingMonths === 1 ? '' : 's');
+            $parts[] = $remainingMonths . ' month' . ($remainingMonths === 1 ? '' : 's');
         }
 
         if ($parts === []) {
@@ -184,10 +184,10 @@ class UserExperienceController extends Controller
             'location' => 'nullable|string',
             'location_type' => 'nullable|string',
             'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required|integer|min:1900|max:'.(date('Y') + 10),
+            'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
             'is_current' => 'required|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
             'description' => 'nullable|string',
             'skills' => 'nullable|array',
             'skills.*' => 'string|distinct',
@@ -200,10 +200,10 @@ class UserExperienceController extends Controller
         //     'skills' => 'array',         // e.g., ["PHP", "Laravel"]
         // ]);
 
-        $startDate = Carbon::parse($request->start_month.' '.$request->start_year)->startOfMonth();
+        $startDate = Carbon::parse($request->start_month . ' ' . $request->start_year)->startOfMonth();
         $endDate = null;
         if (! $request->is_current && $request->end_month && $request->end_year) {
-            $endDate = Carbon::parse($request->end_month.' '.$request->end_year)->startOfMonth();
+            $endDate = Carbon::parse($request->end_month . ' ' . $request->end_year)->startOfMonth();
         }
 
         $company = Company::firstOrCreate(['name' => trim($request->company_name)]);
@@ -270,7 +270,7 @@ class UserExperienceController extends Controller
             ->where('user_id', $request->user()->id)
             ->find($id);
 
-        if (! $experience) {
+        if (!$experience) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Experience not found',
@@ -278,19 +278,19 @@ class UserExperienceController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => 'sometimes|required|string',
-            'company_name' => 'sometimes|required|string',
+            'title' => 'sometimes|required|string|max:255',
+            'company_name' => 'sometimes|required|string|max:255',
             'employment_type' => 'nullable|string',
             'location' => 'nullable|string',
             'location_type' => 'nullable|string',
-            'start_month' => 'sometimes|required|string',
+            'start_month' => 'sometimes|required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
             'start_year' => 'sometimes|required|digits:4',
-            'end_month' => 'nullable|string',
-            'end_year' => 'nullable|digits:4',
-            'is_current' => 'nullable|boolean',
+            'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            'end_year' => 'required_if:is_current,false,0|nullable|digits:4',
+            'is_current' => 'sometimes|required|boolean',
             'description' => 'nullable|string',
             'skills' => 'nullable|array',
-            'skills.*' => 'string',
+            'skills.*' => 'string|distinct',
         ]);
 
         $updateData = [
@@ -301,35 +301,48 @@ class UserExperienceController extends Controller
             'description' => $validated['description'] ?? $experience->description,
         ];
 
-        if (array_key_exists('company_name', $validated)) {
+        if (isset($validated['company_name'])) {
             $company = Company::firstOrCreate(['name' => trim($validated['company_name'])]);
             $updateData['company_id'] = $company->id;
         }
 
-        if (array_key_exists('start_month', $validated) && array_key_exists('start_year', $validated)) {
-            $updateData['start_date'] = Carbon::parse($validated['start_month'].' '.$validated['start_year'])->startOfMonth();
+        if (isset($validated['start_month']) || isset($validated['start_year'])) {
+            $month = $validated['start_month'] ?? Carbon::parse($experience->start_date)->format('F');
+            $year = $validated['start_year'] ?? Carbon::parse($experience->start_date)->format('Y');
+            $updateData['start_date'] = Carbon::parse("$month $year")->startOfMonth();
         }
 
-        $isCurrent = array_key_exists('is_current', $validated)
-            ? (bool) $validated['is_current']
-            : $experience->is_current;
-
+        $isCurrent = isset($validated['is_current']) ? (bool) $validated['is_current'] : $experience->is_current;
         $updateData['is_current'] = $isCurrent;
 
         if ($isCurrent) {
             $updateData['end_date'] = null;
-        } elseif (array_key_exists('end_month', $validated) && array_key_exists('end_year', $validated)) {
-            $updateData['end_date'] = Carbon::parse($validated['end_month'].' '.$validated['end_year'])->startOfMonth();
+        } else {
+            if (isset($validated['end_month']) || isset($validated['end_year'])) {
+                $eMonth = $validated['end_month'] ?? ($experience->end_date ? Carbon::parse($experience->end_date)->format('F') : 'January');
+                $eYear = $validated['end_year'] ?? ($experience->end_date ? Carbon::parse($experience->end_date)->format('Y') : date('Y'));
+                $updateData['end_date'] = Carbon::parse("$eMonth $eYear")->startOfMonth();
+            }
         }
 
-        if (array_key_exists('skills', $validated)) {
-            $skillIds = [];
+        $finalStart = $updateData['start_date'] ?? $experience->start_date;
+        $finalEnd = $updateData['end_date'] ?? $experience->end_date;
 
+        if (!$isCurrent && $finalStart && $finalEnd) {
+            if (Carbon::parse($finalEnd)->lt(Carbon::parse($finalStart))) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'End date cannot be earlier than start date.',
+                ], 422);
+            }
+        }
+
+        if (isset($validated['skills'])) {
+            $skillIds = [];
             foreach ($validated['skills'] as $skillName) {
                 $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
                 $skillIds[] = $skill->id;
             }
-
             $updateData['skills_id'] = $skillIds;
         }
 
@@ -341,6 +354,100 @@ class UserExperienceController extends Controller
             'data' => $experience->fresh()->load('company'),
         ]);
     }
+
+    // public function update(Request $request, $id)
+    // {
+    //     $experience = Experience::query()
+    //         ->where('user_id', $request->user()->id)
+    //         ->find($id);
+
+    //     if (! $experience) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Experience not found',
+    //         ], 404);
+    //     }
+
+    //     $validated = $request->validate([
+    //         'title' => 'sometimes|required|string|max:255',
+    //         'company_name' => 'sometimes|required|string|max:255',
+    //         'employment_type' => 'nullable|string',
+    //         'location' => 'nullable|string',
+    //         'location_type' => 'nullable|string',
+    //         'start_month' => 'sometimes|required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+    //         'start_year' => 'sometimes|required|digits:4',
+    //         'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+    //         'end_year' => 'required_if:is_current,false,0|nullable|digits:4',
+    //         'is_current' => 'sometimes|required|boolean',
+    //         'description' => 'nullable|string',
+    //         'skills' => 'nullable|array',
+    //         'skills.*' => 'string|distinct',
+    //     ]);
+
+    //     // $validated = $request->validate([
+    //     //     'title' => 'sometimes|required|string',
+    //     //     'company_name' => 'sometimes|required|string',
+    //     //     'employment_type' => 'nullable|string',
+    //     //     'location' => 'nullable|string',
+    //     //     'location_type' => 'nullable|string',
+    //     //     'start_month' => 'sometimes|required|string',
+    //     //     'start_year' => 'sometimes|required|digits:4',
+    //     //     'end_month' => 'nullable|string',
+    //     //     'end_year' => 'nullable|digits:4',
+    //     //     'is_current' => 'nullable|boolean',
+    //     //     'description' => 'nullable|string',
+    //     //     'skills' => 'nullable|array',
+    //     //     'skills.*' => 'string',
+    //     // ]);
+
+    //     $updateData = [
+    //         'title' => $validated['title'] ?? $experience->title,
+    //         'employment_type' => $validated['employment_type'] ?? $experience->employment_type,
+    //         'location' => $validated['location'] ?? $experience->location,
+    //         'location_type' => $validated['location_type'] ?? $experience->location_type,
+    //         'description' => $validated['description'] ?? $experience->description,
+    //     ];
+
+    //     if (array_key_exists('company_name', $validated)) {
+    //         $company = Company::firstOrCreate(['name' => trim($validated['company_name'])]);
+    //         $updateData['company_id'] = $company->id;
+    //     }
+
+    //     if (array_key_exists('start_month', $validated) && array_key_exists('start_year', $validated)) {
+    //         $updateData['start_date'] = Carbon::parse($validated['start_month'].' '.$validated['start_year'])->startOfMonth();
+    //     }
+
+    //     $isCurrent = array_key_exists('is_current', $validated)
+    //         ? (bool) $validated['is_current']
+    //         : $experience->is_current;
+
+    //     $updateData['is_current'] = $isCurrent;
+
+    //     if ($isCurrent) {
+    //         $updateData['end_date'] = null;
+    //     } elseif (array_key_exists('end_month', $validated) && array_key_exists('end_year', $validated)) {
+    //         $updateData['end_date'] = Carbon::parse($validated['end_month'].' '.$validated['end_year'])->startOfMonth();
+    //     }
+
+    //     if (array_key_exists('skills', $validated)) {
+    //         $skillIds = [];
+
+    //         foreach ($validated['skills'] as $skillName) {
+    //             $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+    //             $skillIds[] = $skill->id;
+    //         }
+
+    //         $updateData['skills_id'] = $skillIds;
+    //     }
+
+    //     $experience->update($updateData);
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Experience updated successfully',
+    //         'data' => $experience->fresh()->load('company'),
+    //     ]);
+    // }
 
     public function destroy(Request $request, $id)
     {
