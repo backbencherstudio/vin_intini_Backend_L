@@ -38,7 +38,8 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/groups/{groupId}/ban/{userId}', [GroupController::class, 'banUser']);
 
     // user profile routes
-    Route::get('/profile', [UserProfileController::class, 'show']);
+    Route::get('/profile/{id}', [UserProfileController::class, 'showUserProfile']); //others user profile
+    Route::get('/profile', [UserProfileController::class, 'show']); //current user profile
     Route::put('/profile/update', [UserProfileController::class, 'update']);
     Route::post('/profile/images', [UserProfileController::class, 'updateImages']);
 

@@ -8,6 +8,7 @@ use App\Models\Education;
 use App\Models\Experience;
 use App\Models\Institution;
 use App\Models\Skill;
+use App\Models\User;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -102,6 +103,99 @@ class UserProfileController extends Controller
                         'is_current' => $education->is_current,
                         'status' => $education->status,
                         // 'skills_id' => $education->skills_id,
+                        'skills' => $education->skills_data,
+                    ];
+                })->values(),
+            ],
+        ], 200);
+    }
+
+    public function showUserProfile($id)
+    {
+        $user = User::with([
+            'profile.currentPosition.company',
+            'profile.currentInstitute',
+            'educations.institution',
+            'experiences.company'
+        ])->find($id);
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User profile not found',
+            ], 404);
+        }
+
+        $totalConnections = Connection::query()
+            ->accepted()
+            ->forUser($user->id)
+            ->count();
+
+        $skills = Skill::query()
+            ->select(['id', 'name'])
+            ->whereIn('id', $user->profile?->skills_id ?? [])
+            ->orderBy('name')
+            ->get();
+
+        $currentPosition = $user->profile?->currentPosition;
+        $currentInstitute = $user->profile?->currentInstitute;
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'title' => $user->title,
+                'country' => $user->profile?->country,
+                'total_connections' => $totalConnections,
+                'current_position_id' => $user->profile?->current_position_id,
+                'current_institute_id' => $user->profile?->current_institute_id,
+                'current_position' => $currentPosition ? [
+                    'id' => $currentPosition->id,
+                    'title' => $currentPosition->title,
+                    'company_name' => $currentPosition->company?->name,
+                ] : null,
+                'current_institute' => $currentInstitute ? [
+                    'id' => $currentInstitute->id,
+                    'name' => $currentInstitute->name,
+                ] : null,
+                'skills' => $skills,
+                'experiences' => $user->experiences->map(function ($experience) {
+                    return [
+                        'id' => $experience->id,
+                        'company_id' => $experience->company_id,
+                        'company' => [
+                            'id' => $experience->company?->id,
+                            'name' => $experience->company?->name,
+                        ],
+                        'title' => $experience->title,
+                        'start_date' => $experience->start_date,
+                        'end_date' => $experience->end_date,
+                        'is_current' => $experience->is_current,
+                        'status' => $experience->formatted_end_date_attribute,
+                        'description' => $experience->description,
+                        'skills' => $experience->skills_data,
+                    ];
+                })->values(),
+                'educations' => $user->educations->map(function ($education) {
+                    return [
+                        'id' => $education->id,
+                        'institution_id' => $education->institution_id,
+                        'institution' => [
+                            'id' => $education->institution?->id,
+                            'name' => $education->institution?->name,
+                        ],
+                        'degree' => $education->degree,
+                        'field_study' => $education->field_study,
+                        'start_month' => $education->start_month,
+                        'start_year' => $education->start_year,
+                        'end_month' => $education->end_month,
+                        'end_year' => $education->end_year,
+                        'grade' => $education->grade,
+                        'description' => $education->description,
+                        'activities' => $education->activities,
+                        'is_current' => $education->is_current,
+                        'status' => $education->status,
                         'skills' => $education->skills_data,
                     ];
                 })->values(),
