@@ -71,15 +71,10 @@ class LikeController extends Controller
             }
         }
 
-        // ---------------------------------
-        // 🔁 2. ATOMIC LIKE TOGGLE
-        // ---------------------------------
-
         DB::beginTransaction();
 
         try {
 
-            // Lock row (prevents race condition)
             $post = Post::with('user')
                 ->where('id', $postId)
                 ->lockForUpdate()
@@ -91,7 +86,6 @@ class LikeController extends Controller
 
             if ($existingLike) {
 
-                // UNLIKE
                 $existingLike->delete();
                 $post->decrement('total_like');
 
@@ -106,17 +100,12 @@ class LikeController extends Controller
                 ]);
             }
 
-            // LIKE
             PostLike::create([
                 'post_id' => $post->id,
                 'user_id' => $user->id,
             ]);
 
             $post->increment('total_like');
-
-            // ---------------------------------
-            // 🔔 3. NOTIFICATION (NO SELF)
-            // ---------------------------------
 
             if ($post->user_id !== $user->id) {
                 $post->user->notify(new PostLikedNotification($user, $post));

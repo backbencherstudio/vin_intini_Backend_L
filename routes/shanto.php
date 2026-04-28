@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\NewsfeedController;
 use Illuminate\Support\Facades\Route;
@@ -27,5 +28,6 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
 
     //Like
     Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
+    Route::post('/comment/{post}', [CommentController::class, 'comment']);
 
 });
