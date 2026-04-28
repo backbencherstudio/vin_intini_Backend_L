@@ -82,9 +82,9 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
 
     //academia routes
     Route::get('/states', [AcademiaController::class, 'getStates']);
-    Route::get('/states/{id}', [AcademiaController::class, 'getStateDetails']);
-    Route::get('/states/{id}/universities', [AcademiaController::class, 'getUniversities']);
-    Route::get('/states/{id}/residencies', [AcademiaController::class, 'getResidencies']);
-    Route::get('/states/{id}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
-    Route::get('/states/{id}/jobs', [AcademiaController::class, 'getJobs']);
+    Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
+    Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
+    Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
+    Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
+    Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
 });

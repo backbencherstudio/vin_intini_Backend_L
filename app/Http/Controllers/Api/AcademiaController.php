@@ -25,9 +25,9 @@ class AcademiaController extends Controller
         ]);
     }
 
-    public function getStateDetails($id): JsonResponse
+    public function getStateDetails($code): JsonResponse
     {
-        $state = State::where('id', $id)
+        $state = State::where('code', $code)
             ->with(['universities', 'residencies', 'facilities', 'jobs'])
             ->firstOrFail();
 
@@ -37,9 +37,9 @@ class AcademiaController extends Controller
         ]);
     }
 
-    public function getUniversities($id): JsonResponse
+    public function getUniversities($code): JsonResponse
     {
-        $state = State::where('id', $id)->firstOrFail();
+        $state = State::where('code', $code)->firstOrFail();
         $universities = $state->universities()->get();
 
         return response()->json([
@@ -49,9 +49,9 @@ class AcademiaController extends Controller
         ]);
     }
 
-    public function getResidencies($id): JsonResponse
+    public function getResidencies($code): JsonResponse
     {
-        $state = State::where('id', $id)->firstOrFail();
+        $state = State::where('code', $code)->firstOrFail();
         $residencies = $state->residencies()->get();
 
         return response()->json([
@@ -60,10 +60,10 @@ class AcademiaController extends Controller
         ]);
     }
 
-    public function getFacilities($id, Request $request): JsonResponse
+    public function getFacilities($code, Request $request): JsonResponse
     {
         $type = $request->query('type');
-        $state = State::where('id', $id)->firstOrFail();
+        $state = State::where('code', $code)->firstOrFail();
 
         $facilities = $state->facilities()
             ->when($type, function ($query) use ($type) {
@@ -77,10 +77,10 @@ class AcademiaController extends Controller
     }
 
 
-    public function getJobs($id, Request $request): JsonResponse
+    public function getJobs($code, Request $request): JsonResponse
     {
         $category = $request->query('category');
-        $state = State::where('id', $id)->firstOrFail();
+        $state = State::where('code', $code)->firstOrFail();
 
         $jobs = $state->jobs()
             ->when($category, function ($query) use ($category) {
