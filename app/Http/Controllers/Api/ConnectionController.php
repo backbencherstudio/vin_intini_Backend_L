@@ -148,7 +148,8 @@ class ConnectionController extends Controller
 
         $requests = Connection::query()
             ->pending()
-            ->forUser($currentUser->id)
+            // ->forUser($currentUser->id)
+            ->where('receiver_id', $currentUser->id)
             ->with([
                 'sender:id,first_name,last_name,title,profile_image',
                 'receiver:id,first_name,last_name,title,profile_image',
