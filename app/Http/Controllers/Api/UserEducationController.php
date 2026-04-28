@@ -41,7 +41,7 @@ class UserEducationController extends Controller
     {
         $educations = Education::query()
             ->where('user_id', $request->user()->id)
-            ->with('institution')
+            ->with('institution:id,name')
             ->orderByDesc('start_year')
             ->orderByDesc('start_month')
             ->get();
