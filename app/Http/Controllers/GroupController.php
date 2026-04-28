@@ -303,20 +303,20 @@ class GroupController extends Controller
         ], 200);
     }
 
-    public function sendInvitations(Request $request, $id)
+    public function sendInvitation(Request $request, $id)
     {
         $group = Group::query()
             ->withCount('members')
             ->find($id);
 
-        if (! $group) {
+        if (!$group) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Group not found',
             ], 404);
         }
 
-        if (! $this->canInviteToGroup($group, $request->user()->id)) {
+        if (!$this->canInviteToGroup($group, $request->user()->id)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'You are not allowed to invite users to this group.',
@@ -324,71 +324,141 @@ class GroupController extends Controller
         }
 
         $validated = $request->validate([
-            'user_ids' => ['required', 'array', 'min:1'],
-            'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'user_id' => ['required', 'integer', 'exists:users,id'],
         ]);
 
         $currentUser = $request->user();
-        $inviteableUserIds = $this->connectedUserIds($currentUser->id)
+        $requestedUserId = (int) $validated['user_id'];
+
+        $isInviteable = $this->connectedUserIds($currentUser->id)
             ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
             ->diff($this->pendingInvitationUserIds($group->id))
-            ->values();
+            ->contains($requestedUserId);
 
-        $requestedUserIds = collect($validated['user_ids'])->map(fn($userId) => (int) $userId)->values();
-        $invalidUserIds = $requestedUserIds->diff($inviteableUserIds)->values();
-
-        if ($invalidUserIds->isNotEmpty()) {
+        if (!$isInviteable) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Some selected users are not eligible for invitation.',
-                'data' => [
-                    'invalid_user_ids' => $invalidUserIds,
-                ],
+                'message' => 'This user is not eligible for invitation.',
             ], 422);
         }
 
-        $invitees = User::query()
-            ->whereIn('id', $requestedUserIds)
-            ->get(['id', 'first_name', 'last_name', 'title', 'profile_image']);
+        $invitee = User::find($requestedUserId);
 
-        $invitations = collect();
+        $invitation = GroupInvitation::create([
+            'group_id' => $group->id,
+            'inviter_id' => $currentUser->id,
+            'invited_user_id' => $invitee->id,
+        ]);
 
-        foreach ($invitees as $invitee) {
-            $invitation = GroupInvitation::create([
-                'group_id' => $group->id,
-                'inviter_id' => $currentUser->id,
-                'invited_user_id' => $invitee->id,
-            ]);
-
-            $invitations->push($invitation);
-
-            $invitee->notify(new GroupInvitationNotification($invitation, $group, $currentUser));
-        }
+        $invitee->notify(new GroupInvitationNotification($invitation, $group, $currentUser));
 
         return response()->json([
             'success' => true,
-            'message' => 'Group invitations sent successfully.',
+            'message' => 'Group invitation sent successfully.',
             'status' => 'success',
             'data' => [
                 'group' => [
                     'id' => $group->id,
                     'name' => $group->name,
                 ],
-                'invited_users' => $invitees->map(function (User $user) use ($invitations): array {
-                    $invitation = $invitations->firstWhere('invited_user_id', $user->id);
-
-                    return [
-                        'invitation_id' => $invitation?->id,
-                        'id' => $user->id,
-                        'first_name' => $user->first_name,
-                        'last_name' => $user->last_name,
-                        'title' => $user->title,
-                        'profile_image_url' => $user->profile_image_url,
-                    ];
-                })->values(),
+                'invited_user' => [
+                    'invitation_id' => $invitation->id,
+                    'id' => $invitee->id,
+                    'first_name' => $invitee->first_name,
+                    'last_name' => $invitee->last_name,
+                    'title' => $invitee->title,
+                    'profile_image_url' => $invitee->profile_image_url,
+                ],
             ],
         ], 200);
     }
+
+    // public function sendInvitations(Request $request, $id)
+    // {
+    //     $group = Group::query()
+    //         ->withCount('members')
+    //         ->find($id);
+
+    //     if (! $group) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Group not found',
+    //         ], 404);
+    //     }
+
+    //     if (! $this->canInviteToGroup($group, $request->user()->id)) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'You are not allowed to invite users to this group.',
+    //         ], 403);
+    //     }
+
+    //     $validated = $request->validate([
+    //         'user_ids' => ['required', 'array', 'min:1'],
+    //         'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+    //     ]);
+
+    //     $currentUser = $request->user();
+    //     $inviteableUserIds = $this->connectedUserIds($currentUser->id)
+    //         ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
+    //         ->diff($this->pendingInvitationUserIds($group->id))
+    //         ->values();
+
+    //     $requestedUserIds = collect($validated['user_ids'])->map(fn($userId) => (int) $userId)->values();
+    //     $invalidUserIds = $requestedUserIds->diff($inviteableUserIds)->values();
+
+    //     if ($invalidUserIds->isNotEmpty()) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Some selected users are not eligible for invitation.',
+    //             'data' => [
+    //                 'invalid_user_ids' => $invalidUserIds,
+    //             ],
+    //         ], 422);
+    //     }
+
+    //     $invitees = User::query()
+    //         ->whereIn('id', $requestedUserIds)
+    //         ->get(['id', 'first_name', 'last_name', 'title', 'profile_image']);
+
+    //     $invitations = collect();
+
+    //     foreach ($invitees as $invitee) {
+    //         $invitation = GroupInvitation::create([
+    //             'group_id' => $group->id,
+    //             'inviter_id' => $currentUser->id,
+    //             'invited_user_id' => $invitee->id,
+    //         ]);
+
+    //         $invitations->push($invitation);
+
+    //         $invitee->notify(new GroupInvitationNotification($invitation, $group, $currentUser));
+    //     }
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Group invitations sent successfully.',
+    //         'status' => 'success',
+    //         'data' => [
+    //             'group' => [
+    //                 'id' => $group->id,
+    //                 'name' => $group->name,
+    //             ],
+    //             'invited_users' => $invitees->map(function (User $user) use ($invitations): array {
+    //                 $invitation = $invitations->firstWhere('invited_user_id', $user->id);
+
+    //                 return [
+    //                     'invitation_id' => $invitation?->id,
+    //                     'id' => $user->id,
+    //                     'first_name' => $user->first_name,
+    //                     'last_name' => $user->last_name,
+    //                     'title' => $user->title,
+    //                     'profile_image_url' => $user->profile_image_url,
+    //                 ];
+    //             })->values(),
+    //         ],
+    //     ], 200);
+    // }
 
     public function update(Request $request, $id)
     {
