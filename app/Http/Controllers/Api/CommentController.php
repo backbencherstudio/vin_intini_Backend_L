@@ -117,4 +117,53 @@ class CommentController extends Controller
             ], 500);
         }
     }
+
+    public function commentList(Request $request, $postId)
+    {
+        $perPage = $request->get('per_page', 10);
+
+        $comments = Comment::with([
+                'user:id,first_name,last_name,profile_image',
+                'replies.user:id,first_name,last_name,profile_image'
+            ])
+            ->where('post_id', $postId)
+            ->whereNull('parent_id')
+            ->latest()
+            ->paginate($perPage);
+
+        $data = collect($comments->items())->map(function ($comment) {
+            return [
+                'id' => $comment->id,
+                'comment' => $comment->comment,
+                'user' => [
+                    'id' => $comment->user->id,
+                    'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
+                    'profile_image' => $comment->user->profile_image_url,
+                ],
+                'replies' => $comment->replies->map(function ($reply) {
+                    return [
+                        'id' => $reply->id,
+                        'comment' => $reply->comment,
+                        'user' => [
+                            'id' => $reply->user->id,
+                            'name' => $reply->user->first_name . ' ' . $reply->user->last_name,
+                            'profile_image' => $reply->user->profile_image_url,
+                        ],
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Comment list',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $comments->currentPage(),
+                'per_page'     => $comments->perPage(),
+                'total'        => $comments->total(),
+                'last_page'    => $comments->lastPage(),
+            ]
+        ]);
+    }
 }

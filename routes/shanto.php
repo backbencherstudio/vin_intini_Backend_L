@@ -27,7 +27,12 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     // Route::get('/timeline', [TimelineController::class, 'timeline']);
 
     //Like
+
+    Route::get('/liked-list/{post}', [LikeController::class, 'likedList']);
     Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
+
+    Route::get('/comment-list/{post}', [CommentController::class, 'commentList']);
     Route::post('/comment/{post}', [CommentController::class, 'comment']);
+
 
 });
