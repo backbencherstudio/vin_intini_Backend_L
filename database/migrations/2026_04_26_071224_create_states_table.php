@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('states', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code', 5);
+            $table->string('code', 2)->unique();
             $table->string('slug')->unique();
             $table->timestamps();
         });
