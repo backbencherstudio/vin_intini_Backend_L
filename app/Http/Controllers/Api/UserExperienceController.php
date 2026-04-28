@@ -178,12 +178,27 @@ class UserExperienceController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'title' => 'required|string',
-            'company_name' => 'required|string',
-            'start_month' => 'required', // e.g., "January"
-            'start_year' => 'required',  // e.g., "2024"
-            'skills' => 'array',         // e.g., ["PHP", "Laravel"]
+            'title' => 'required|string|max:255',
+            'company_name' => 'required|string|max:255',
+            'employment_type' => 'nullable|string',
+            'location' => 'nullable|string',
+            'location_type' => 'nullable|string',
+            'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            'start_year' => 'required|integer|min:1900|max:'.(date('Y') + 10),
+            'is_current' => 'required|boolean',
+            'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
+            'description' => 'nullable|string',
+            'skills' => 'nullable|array',
+            'skills.*' => 'string|distinct',
         ]);
+        // $request->validate([
+        //     'title' => 'required|string',
+        //     'company_name' => 'required|string',
+        //     'start_month' => 'required', // e.g., "January"
+        //     'start_year' => 'required',  // e.g., "2024"
+        //     'skills' => 'array',         // e.g., ["PHP", "Laravel"]
+        // ]);
 
         $startDate = Carbon::parse($request->start_month.' '.$request->start_year)->startOfMonth();
         $endDate = null;
