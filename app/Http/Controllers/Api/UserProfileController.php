@@ -110,8 +110,10 @@ class UserProfileController extends Controller
         ], 200);
     }
 
-    public function showUserProfile($id)
+    public function showUserProfile(Request $request, $id)
     {
+        $currentUser = $request->user();
+
         $user = User::with([
             'profile.currentPosition.company',
             'profile.currentInstitute',
@@ -124,6 +126,38 @@ class UserProfileController extends Controller
                 'status' => 'error',
                 'message' => 'User profile not found',
             ], 404);
+        }
+
+        $connection = Connection::query()
+            ->where(function ($query) use ($currentUser, $user) {
+                $query->where('sender_id', $currentUser->id)
+                    ->where('receiver_id', $user->id);
+            })
+            ->orWhere(function ($query) use ($currentUser, $user) {
+                $query->where('sender_id', $user->id)
+                    ->where('receiver_id', $currentUser->id);
+            })
+            ->first();
+
+        $state = 'not_connected';
+        $actionLabel = 'Connect';
+        $pendingRequestId = null;
+
+        if ($connection) {
+            if ($connection->status === Connection::STATUS_ACCEPTED) {
+                $state = 'accepted';
+                $actionLabel = 'Connected';
+            } elseif ($connection->status === Connection::STATUS_PENDING) {
+                if ($connection->sender_id === $currentUser->id) {
+                    $state = 'pending_sent';
+                    $actionLabel = 'Pending';
+                    $pendingRequestId = $connection->id;
+                } else {
+                    $state = 'pending_received';
+                    $actionLabel = 'Accept';
+                    $pendingRequestId = $connection->id;
+                }
+            }
         }
 
         $totalConnections = Connection::query()
@@ -143,13 +177,21 @@ class UserProfileController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
+                'connection_status' => [
+                    'state' => $state,
+                    'action_label' => $actionLabel,
+                    'pending_request_id' => $pendingRequestId,
+                    'is_connected' => $state === 'accepted',
+                ],
+
+                'id' => $user->id,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'title' => $user->title,
+                'profile_image_url' => $user->profile_image_url,
+                'cover_image_url' => $user->cover_image_url,
                 'country' => $user->profile?->country,
                 'total_connections' => $totalConnections,
-                'current_position_id' => $user->profile?->current_position_id,
-                'current_institute_id' => $user->profile?->current_institute_id,
                 'current_position' => $currentPosition ? [
                     'id' => $currentPosition->id,
                     'title' => $currentPosition->title,
@@ -205,7 +247,7 @@ class UserProfileController extends Controller
 
     public function setupProfile(Request $request, ProfileImageService $profileImageService)
     {
-         if ($request->has('group_ids') && is_string($request->group_ids)) {
+        if ($request->has('group_ids') && is_string($request->group_ids)) {
             $request->merge([
                 'group_ids' => explode(',', $request->group_ids)
             ]);
