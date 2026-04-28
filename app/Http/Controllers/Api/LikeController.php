@@ -11,7 +11,6 @@ use App\Models\Connection;
 use App\Models\GroupUser;
 use App\Notifications\PostLikedNotification;
 
-
 class LikeController extends Controller
 {
     public function toggleLike(Request $request, $postId)
@@ -131,6 +130,36 @@ class LikeController extends Controller
                 'error' => app()->environment('local') ? $e->getMessage() : null
             ], 500);
         }
+    }
+
+    public function likedList(Request $request, $postId)
+    {
+        $perPage = $request->get('per_page', 10);
+
+        $likes = PostLike::with(['user:id,first_name,last_name,profile_image'])
+            ->where('post_id', $postId)
+            ->latest()
+            ->paginate($perPage);
+
+        $users = collect($likes->items())->map(function ($like) {
+            return [
+                'id' => $like->user->id,
+                'name' => $like->user->first_name . ' ' . $like->user->last_name,
+                'profile_image' => $like->user->profile_image_url,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Liked users list',
+            'data' => $users,
+            'pagination' => [
+                'current_page' => $likes->currentPage(),
+                'per_page'     => $likes->perPage(),
+                'total'        => $likes->total(),
+                'last_page'    => $likes->lastPage(),
+            ]
+        ]);
     }
 
 }
