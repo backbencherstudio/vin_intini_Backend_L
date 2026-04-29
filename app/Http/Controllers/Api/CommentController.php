@@ -127,9 +127,7 @@ class CommentController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $comments = Comment::with('user:id,first_name,last_name,profile_image')
-            ->withCount('replies')
             ->where('post_id', $postId)
-            ->whereNull('parent_id')
             ->latest()
             ->paginate($perPage);
 
@@ -142,7 +140,8 @@ class CommentController extends Controller
                     'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
                     'profile_image' => $comment->user->profile_image_url,
                 ],
-                'replies_count' => $comment->replies_count,
+                'like_count' => $comment->like_count,
+                'replies_count' => $comment->reply_count,
             ];
         });
 
@@ -158,4 +157,5 @@ class CommentController extends Controller
             ]
         ]);
     }
+
 }
