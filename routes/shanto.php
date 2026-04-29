@@ -31,6 +31,9 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/liked-list/{post}', [LikeController::class, 'likedList']);
     Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
 
+    Route::post('/comment-toggle-like/{comment}', [LikeController::class, 'likeComment']);
+    Route::post('/reply-toggle-like/{reply}', [LikeController::class, 'likeReply']);
+
     Route::get('/comment-list/{post}', [CommentController::class, 'commentList']);
     Route::post('/comment/{post}', [CommentController::class, 'comment']);
 

@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Comment;
+use App\Models\CommentLike;
 use Illuminate\Http\Request;
 use App\Models\PostLike;
 use App\Models\Post;
 use Illuminate\Support\Facades\DB;
 use App\Models\Connection;
 use App\Models\GroupUser;
+use App\Models\Reply;
+use App\Models\ReplyLike;
 use App\Notifications\PostLikedNotification;
 
 class LikeController extends Controller
@@ -160,6 +164,118 @@ class LikeController extends Controller
                 'last_page'    => $likes->lastPage(),
             ]
         ]);
+    }
+    
+    public function likeComment($commentId)
+    {
+        $userId = auth('api')->id();
+
+        $comment = Comment::select('id', 'like_count')->findOrFail($commentId);
+
+        try {
+
+            $created = CommentLike::firstOrCreate([
+                'comment_id' => $comment->id,
+                'user_id'    => $userId,
+            ]);
+
+            if ($created->wasRecentlyCreated) {
+
+                Comment::where('id', $comment->id)
+                    ->update([
+                        'like_count' => DB::raw('like_count + 1')
+                    ]);
+
+                return response()->json([
+                    'success'    => true,
+                    'message'    => 'Comment liked',
+                    'liked'      => true,
+                    'like_count' => $comment->like_count + 1,
+                ]);
+            }
+
+            CommentLike::where([
+                'comment_id' => $comment->id,
+                'user_id'    => $userId,
+            ])->delete();
+
+            Comment::where('id', $comment->id)
+                ->where('like_count', '>', 0)
+                ->update([
+                    'like_count' => DB::raw('like_count - 1')
+                ]);
+
+            return response()->json([
+                'success'    => true,
+                'message'    => 'Comment unliked',
+                'liked'      => false,
+                'like_count' => max(0, $comment->like_count - 1),
+            ]);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error'   => app()->environment('local') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    public function likeReply($replyId)
+    {
+        $userId = auth('api')->id();
+
+        $reply = Reply::select('id', 'like_count')->findOrFail($replyId);
+
+        try {
+
+            $created = ReplyLike::firstOrCreate([
+                'reply_id' => $reply->id,
+                'user_id'  => $userId,
+            ]);
+
+            if ($created->wasRecentlyCreated) {
+
+                Reply::where('id', $reply->id)
+                    ->update([
+                        'like_count' => DB::raw('like_count + 1')
+                    ]);
+
+                return response()->json([
+                    'success'    => true,
+                    'message'    => 'Reply liked',
+                    'liked'      => true,
+                    'like_count' => $reply->like_count + 1,
+                ]);
+            }
+
+            ReplyLike::where([
+                'reply_id' => $reply->id,
+                'user_id'  => $userId,
+            ])->delete();
+
+            Reply::where('id', $reply->id)
+                ->where('like_count', '>', 0)
+                ->update([
+                    'like_count' => DB::raw('like_count - 1')
+                ]);
+
+            return response()->json([
+                'success'    => true,
+                'message'    => 'Reply unliked',
+                'liked'      => false,
+                'like_count' => max(0, $reply->like_count - 1),
+            ]);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error'   => app()->environment('local') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 
 }

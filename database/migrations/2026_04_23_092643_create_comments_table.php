@@ -16,14 +16,9 @@ return new class extends Migration
 
             $table->text('comment');
 
-            $table->foreignId('parent_id')
-                ->nullable()
-                ->constrained('comments')
-                ->cascadeOnDelete();
-
             $table->timestamps();
 
-            $table->index(['post_id', 'parent_id']);
+            $table->index('post_id');
         });
     }
 
