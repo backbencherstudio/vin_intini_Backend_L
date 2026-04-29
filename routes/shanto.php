@@ -26,6 +26,8 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/newsfeed', [NewsfeedController::class, 'newsFeed']);
     Route::get('/timeline/{userId}', [TimelineController::class, 'timeline']);
 
+    Route::get('/group-posts/{groupId}', [TimelineController::class, 'groupPosts']);
+
     //Like
 
     Route::get('/liked-list/{post}', [LikeController::class, 'likedList']);
