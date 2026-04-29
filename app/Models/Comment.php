@@ -30,6 +30,11 @@ class Comment extends Model
         return $this->hasMany(Reply::class);
     }
 
+    public function likes()
+    {
+        return $this->hasMany(CommentLike::class);
+    }
+
     public function group()
     {
         return $this->belongsTo(Group::class);
