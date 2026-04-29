@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class GroupUser extends Model
 {
-    protected $fillable = ['user_id', 'group_id', 'role', 'notification_status'];
+    protected $fillable = ['user_id', 'group_id', 'role', 'notification_status','status'];
 
     protected function casts(): array
     {

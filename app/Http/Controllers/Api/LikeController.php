@@ -278,4 +278,68 @@ class LikeController extends Controller
         }
     }
 
+    public function commentLikedList(Request $request, $commentId)
+    {
+        $perPage = $request->get('per_page', 10);
+
+        $likes = CommentLike::with([
+                'user:id,first_name,last_name,profile_image'
+            ])
+            ->where('comment_id', $commentId)
+            ->latest()
+            ->paginate($perPage);
+
+        $users = collect($likes->items())->map(function ($like) {
+            return [
+                'id' => $like->user->id,
+                'name' => $like->user->first_name . ' ' . $like->user->last_name,
+                'profile_image' => $like->user->profile_image_url,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Comment liked users list',
+            'data' => $users,
+            'pagination' => [
+                'current_page' => $likes->currentPage(),
+                'per_page'     => $likes->perPage(),
+                'total'        => $likes->total(),
+                'last_page'    => $likes->lastPage(),
+            ]
+        ]);
+    }
+
+    public function replyLikedList(Request $request, $replyId)
+    {
+        $perPage = $request->get('per_page', 10);
+
+        $likes = ReplyLike::with([
+                'user:id,first_name,last_name,profile_image'
+            ])
+            ->where('reply_id', $replyId)
+            ->latest()
+            ->paginate($perPage);
+
+        $users = $likes->map(function ($like) {
+            return [
+                'id' => $like->user->id,
+                'name' => $like->user->first_name . ' ' . $like->user->last_name,
+                'profile_image' => $like->user->profile_image_url,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Reply liked users list',
+            'data' => $users,
+            'pagination' => [
+                'current_page' => $likes->currentPage(),
+                'per_page'     => $likes->perPage(),
+                'total'        => $likes->total(),
+                'last_page'    => $likes->lastPage(),
+            ]
+        ]);
+    }
+
 }

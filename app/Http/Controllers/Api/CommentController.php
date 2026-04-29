@@ -158,4 +158,39 @@ class CommentController extends Controller
         ]);
     }
 
+    public function replyList(Request $request, $commentId)
+    {
+        $perPage = $request->get('per_page', 10);
+
+        $replies = Reply::with('user:id,first_name,last_name,profile_image')
+            ->where('comment_id', $commentId)
+            ->latest()
+            ->paginate($perPage);
+
+        $data = collect($replies->items())->map(function ($reply) {
+            return [
+                'id' => $reply->id,
+                'reply' => $reply->reply,
+                'user' => [
+                    'id' => $reply->user->id,
+                    'name' => $reply->user->first_name . ' ' . $reply->user->last_name,
+                    'profile_image' => $reply->user->profile_image_url,
+                ],
+                'like_count' => $reply->like_count,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Reply list',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $replies->currentPage(),
+                'per_page'     => $replies->perPage(),
+                'total'        => $replies->total(),
+                'last_page'    => $replies->lastPage(),
+            ]
+        ]);
+    }
+
 }

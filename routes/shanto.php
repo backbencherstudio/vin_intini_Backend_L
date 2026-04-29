@@ -24,17 +24,23 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/groups/{group}/posts/{post}', [PostController::class, 'destroyGroupPost']);
 
     Route::get('/newsfeed', [NewsfeedController::class, 'newsFeed']);
-    // Route::get('/timeline', [TimelineController::class, 'timeline']);
+    Route::get('/timeline/{userId}', [TimelineController::class, 'timeline']);
+
+    Route::get('/group-posts/{groupId}', [TimelineController::class, 'groupPosts']);
 
     //Like
 
     Route::get('/liked-list/{post}', [LikeController::class, 'likedList']);
     Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
 
+    Route::get('/comment-liked-list/{comment}', [LikeController::class, 'commentLikedList']);
+    Route::get('/reply-liked-list/{reply}', [LikeController::class, 'replyLikedList']);
+
     Route::post('/comment-toggle-like/{comment}', [LikeController::class, 'likeComment']);
     Route::post('/reply-toggle-like/{reply}', [LikeController::class, 'likeReply']);
 
     Route::get('/comment-list/{post}', [CommentController::class, 'commentList']);
+    Route::get('/reply-list/{comment}', [CommentController::class, 'replyList']);
     Route::post('/comment/{post}', [CommentController::class, 'comment']);
 
 
