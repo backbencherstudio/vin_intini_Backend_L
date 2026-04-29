@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::table('comments', function (Blueprint $table) {
             $table->unsignedInteger('like_count')->default(0)->after('comment');
             $table->unsignedInteger('reply_count')->default(0)->after('like_count');
-            // $table->unsignedInteger('reply_like_count')->default(0)->after('reply_count');
         });
     }
 
