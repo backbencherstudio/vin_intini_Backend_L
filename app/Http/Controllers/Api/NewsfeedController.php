@@ -42,7 +42,7 @@ class NewsfeedController extends Controller
                 'media',
                 'groups:id,name'
             ])
-            ->where(function ($query) use ($groupIds, $allowedConnectionIds, $followingIds) {
+            ->where(function ($query) use ($groupIds, $allowedConnectionIds, $followingIds, $user) {
 
                 $query->where(function ($q) use ($followingIds) {
                     $q->where('visibility', 'public')
@@ -54,10 +54,17 @@ class NewsfeedController extends Controller
                     ->whereIn('user_id', $allowedConnectionIds);
                 })
 
-                ->orWhere(function ($q) use ($groupIds) {
+                ->orWhere(function ($q) use ($groupIds, $user) {
                     $q->where('visibility', 'groups')
-                    ->whereHas('groups', function ($q2) use ($groupIds) {
-                        $q2->whereIn('groups.id', $groupIds);
+                    ->whereHas('groups', function ($q2) use ($groupIds, $user) {
+
+                        $q2->whereIn('groups.id', $groupIds)
+
+                            ->whereHas('users', function ($q3) use ($user) {
+                                $q3->where('group_users.user_id', $user->id)
+                                    ->where('group_users.status', '!=', 'banned');
+                            });
+
                     });
                 });
             });
