@@ -128,7 +128,7 @@ class GroupController extends Controller
     public function show(Request $request, $id)
     {
         $group = Group::with([
-            'creator:id,first_name,last_name,email',
+            'creator:id,first_name,last_name,title',
             // 'members' => function ($query) {
             //     $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
             // },
