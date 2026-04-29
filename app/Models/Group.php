@@ -55,4 +55,11 @@ class Group extends Model
     {
         return $this->cover_photo ? Storage::disk('public')->url($this->cover_photo) : null;
     }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'group_users')
+            ->withPivot('status');
+    }
+
 }

@@ -24,7 +24,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/groups/{group}/posts/{post}', [PostController::class, 'destroyGroupPost']);
 
     Route::get('/newsfeed', [NewsfeedController::class, 'newsFeed']);
-    // Route::get('/timeline', [TimelineController::class, 'timeline']);
+    Route::get('/timeline/{userId}', [TimelineController::class, 'timeline']);
 
     //Like
 

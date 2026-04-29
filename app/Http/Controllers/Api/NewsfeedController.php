@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Connection;
 use App\Models\Post;
+use App\Models\UserFollow;
 
 
 class NewsfeedController extends Controller
@@ -20,7 +21,7 @@ class NewsfeedController extends Controller
         $connectionIds = Connection::where('status', Connection::STATUS_ACCEPTED)
             ->where(function ($q) use ($user) {
                 $q->where('sender_id', $user->id)
-                ->orWhere('receiver_id', $user->id);
+                    ->orWhere('receiver_id', $user->id);
             })
             ->selectRaw("
                 CASE
@@ -30,19 +31,27 @@ class NewsfeedController extends Controller
             ", [$user->id])
             ->pluck('user_id');
 
+        $followingIds = UserFollow::where('follower_id', $user->id)
+            ->pluck('following_id');
+
+        $allowedConnectionIds = $connectionIds->intersect($followingIds);
+
         $postsQuery = Post::query()
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
                 'media',
                 'groups:id,name'
             ])
-            ->where(function ($query) use ($groupIds, $connectionIds) {
+            ->where(function ($query) use ($groupIds, $allowedConnectionIds, $followingIds) {
 
-                $query->where('visibility', 'public')
+                $query->where(function ($q) use ($followingIds) {
+                    $q->where('visibility', 'public')
+                    ->whereIn('user_id', $followingIds);
+                })
 
-                ->orWhere(function ($q) use ($connectionIds) {
+                ->orWhere(function ($q) use ($allowedConnectionIds) {
                     $q->where('visibility', 'connections')
-                    ->whereIn('user_id', $connectionIds);
+                    ->whereIn('user_id', $allowedConnectionIds);
                 })
 
                 ->orWhere(function ($q) use ($groupIds) {
@@ -60,7 +69,7 @@ class NewsfeedController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Feed fetched successfully',
-            'data' => collect($posts->items())->map(function ($post) {
+            'data' => collect($posts->items())->map(function ($post) use ($user) {
                 return [
                     'id' => $post->id,
                     'user' => $post->user,
@@ -70,6 +79,10 @@ class NewsfeedController extends Controller
 
                     'total_like' => $post->total_like ?? 0,
                     'total_comment' => $post->total_comment ?? 0,
+
+                    'liked_by_me' => $post->likes()
+                        ->where('user_id', $user->id)
+                        ->exists(),
 
                     'media' => $post->media,
                     'groups' => $post->groups,
