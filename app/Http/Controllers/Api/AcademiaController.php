@@ -37,18 +37,58 @@ class AcademiaController extends Controller
         ]);
     }
 
+    // public function getUniversities(Request $request, $code): JsonResponse
+    // {
+    //     $search = trim((string) $request->query('search', ''));
+    //     $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
+
+    //     $state = State::where('code', $code)->first();
+
+    //     if (!$state) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'State not found',
+    //         ], 404);
+    //     }
+
+    //     $query = $state->universities();
+
+    //     if ($search !== '') {
+    //         $query->where('name', 'like', '%' . $search . '%');
+    //     }
+
+    //     $paginator = $query->paginate($perPage);
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Universities retrieved successfully.',
+    //         'status' => 'success',
+    //         'state_name' => $state->name,
+    //         'data' => $paginator->items(),
+    //         'stats' => [
+    //             'total_universities' => $paginator->total(),
+    //         ],
+    //         'total' => $paginator->total(),
+    //         'limit' => $paginator->perPage(),
+    //         'current_page' => $paginator->currentPage(),
+    //         'total_page' => $paginator->lastPage(),
+    //         'last_page' => $paginator->lastPage(),
+    //         'filters' => [
+    //             'search' => $search !== '' ? $search : null,
+    //         ],
+    //     ], 200);
+    // }
+
     public function getUniversities(Request $request, $code): JsonResponse
     {
+        $degreeFilter = $request->query('degree', 'All');
         $search = trim((string) $request->query('search', ''));
         $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
 
         $state = State::where('code', $code)->first();
 
         if (!$state) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'State not found',
-            ], 404);
+            return response()->json(['status' => 'error', 'message' => 'State not found'], 404);
         }
 
         $query = $state->universities();
@@ -57,24 +97,22 @@ class AcademiaController extends Controller
             $query->where('name', 'like', '%' . $search . '%');
         }
 
+        if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
+            $query->whereJsonContains('psychology_degrees', $degreeFilter);
+        }
+
         $paginator = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'message' => 'Universities retrieved successfully.',
-            'status' => 'success',
-            'state_name' => $state->name,
             'data' => $paginator->items(),
-            'stats' => [
-                'total_universities' => $paginator->total(),
-            ],
             'total' => $paginator->total(),
-            'limit' => $paginator->perPage(),
             'current_page' => $paginator->currentPage(),
-            'total_page' => $paginator->lastPage(),
             'last_page' => $paginator->lastPage(),
             'filters' => [
-                'search' => $search !== '' ? $search : null,
+                'applied_degree' => $degreeFilter, 
+                'search' => $search ?: null,
             ],
         ], 200);
     }
