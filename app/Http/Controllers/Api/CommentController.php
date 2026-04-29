@@ -10,13 +10,14 @@ use App\Models\Connection;
 use App\Models\Comment;
 use App\Notifications\CommentRepliedNotification;
 use App\Notifications\PostCommentedNotification;
+use App\Models\Reply;
 
 class CommentController extends Controller
 {
     public function comment(Request $request, $postId)
     {
         $request->validate([
-            'comment' => 'required|string|max:1000',
+            'comment'   => 'required|string|max:1000',
             'parent_id' => 'nullable|exists:comments,id',
         ]);
 
@@ -37,10 +38,10 @@ class CommentController extends Controller
                 ->where(function ($q) use ($user, $post) {
                     $q->where(function ($q1) use ($user, $post) {
                         $q1->where('sender_id', $user->id)
-                            ->where('receiver_id', $post->user_id);
+                        ->where('receiver_id', $post->user_id);
                     })->orWhere(function ($q2) use ($user, $post) {
                         $q2->where('sender_id', $post->user_id)
-                            ->where('receiver_id', $user->id);
+                        ->where('receiver_id', $user->id);
                     });
                 })
                 ->exists();
@@ -53,57 +54,60 @@ class CommentController extends Controller
             }
         }
 
-        $parentComment = null;
+        DB::beginTransaction();
 
-        if ($request->parent_id) {
+        try {
+
+            if (!$request->parent_id) {
+
+                $comment = Comment::create([
+                    'post_id' => $post->id,
+                    'user_id' => $user->id,
+                    'comment' => $request->comment,
+                ]);
+
+                $post->increment('total_comment');
+
+                if ($post->user_id !== $user->id) {
+                    $post->user->notify(
+                        new PostCommentedNotification($user, $post, $comment)
+                    );
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Comment added',
+                    'data' => $comment->load('user')
+                ]);
+            }
 
             $parentComment = Comment::where('id', $request->parent_id)
                 ->where('post_id', $post->id)
                 ->firstOrFail();
 
-            if ($parentComment->parent_id !== null) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Replies are only allowed one level deep'
-                ], 400);
-            }
-        }
-
-        DB::beginTransaction();
-
-        try {
-
-            $comment = Comment::create([
-                'post_id'   => $post->id,
-                'user_id'   => $user->id,
-                'comment'   => $request->comment,
-                'parent_id' => $request->parent_id ?? null,
+            $reply = Reply::create([
+                'post_id'    => $post->id,
+                'comment_id' => $parentComment->id,
+                'user_id'    => $user->id,
+                'reply'      => $request->comment,
             ]);
 
-            $post->increment('total_comment');
+            $parentComment->increment('reply_count');
 
-            if (!$request->parent_id) {
-
-                if ($post->user_id !== $user->id) {
-                    $post->user->notify(new PostCommentedNotification($user, $post, $comment));
-                }
-            }
-
-            if ($request->parent_id && $parentComment) {
-
-                if ($parentComment->user_id !== $user->id) {
-                    $parentComment->user->notify(
-                        new CommentRepliedNotification($user, $post, $comment)
-                    );
-                }
+            if ($parentComment->user_id !== $user->id) {
+                $parentComment->user->notify(
+                    new CommentRepliedNotification($user, $post, $reply)
+                );
             }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => $request->parent_id ? 'Reply added' : 'Comment added',
-                'data' => $comment->load('user')
+                'message' => 'Reply added',
+                'data' => $reply->load('user')
             ]);
 
         } catch (\Throwable $e) {
@@ -122,10 +126,8 @@ class CommentController extends Controller
     {
         $perPage = $request->get('per_page', 10);
 
-        $comments = Comment::with([
-                'user:id,first_name,last_name,profile_image',
-                'replies.user:id,first_name,last_name,profile_image'
-            ])
+        $comments = Comment::with('user:id,first_name,last_name,profile_image')
+            ->withCount('replies')
             ->where('post_id', $postId)
             ->whereNull('parent_id')
             ->latest()
@@ -140,17 +142,7 @@ class CommentController extends Controller
                     'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
                     'profile_image' => $comment->user->profile_image_url,
                 ],
-                'replies' => $comment->replies->map(function ($reply) {
-                    return [
-                        'id' => $reply->id,
-                        'comment' => $reply->comment,
-                        'user' => [
-                            'id' => $reply->user->id,
-                            'name' => $reply->user->first_name . ' ' . $reply->user->last_name,
-                            'profile_image' => $reply->user->profile_image_url,
-                        ],
-                    ];
-                }),
+                'replies_count' => $comment->replies_count,
             ];
         });
 
