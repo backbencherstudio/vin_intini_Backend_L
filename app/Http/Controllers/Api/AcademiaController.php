@@ -37,48 +37,6 @@ class AcademiaController extends Controller
         ]);
     }
 
-    // public function getUniversities(Request $request, $code): JsonResponse
-    // {
-    //     $search = trim((string) $request->query('search', ''));
-    //     $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
-
-    //     $state = State::where('code', $code)->first();
-
-    //     if (!$state) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'State not found',
-    //         ], 404);
-    //     }
-
-    //     $query = $state->universities();
-
-    //     if ($search !== '') {
-    //         $query->where('name', 'like', '%' . $search . '%');
-    //     }
-
-    //     $paginator = $query->paginate($perPage);
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Universities retrieved successfully.',
-    //         'status' => 'success',
-    //         'state_name' => $state->name,
-    //         'data' => $paginator->items(),
-    //         'stats' => [
-    //             'total_universities' => $paginator->total(),
-    //         ],
-    //         'total' => $paginator->total(),
-    //         'limit' => $paginator->perPage(),
-    //         'current_page' => $paginator->currentPage(),
-    //         'total_page' => $paginator->lastPage(),
-    //         'last_page' => $paginator->lastPage(),
-    //         'filters' => [
-    //             'search' => $search !== '' ? $search : null,
-    //         ],
-    //     ], 200);
-    // }
-
     public function getUniversities(Request $request, $code): JsonResponse
     {
         $degreeFilter = $request->query('degree', 'All');
@@ -111,23 +69,11 @@ class AcademiaController extends Controller
             'current_page' => $paginator->currentPage(),
             'last_page' => $paginator->lastPage(),
             'filters' => [
-                'applied_degree' => $degreeFilter, 
+                'applied_degree' => $degreeFilter,
                 'search' => $search ?: null,
             ],
         ], 200);
     }
-
-    // public function getUniversities($code): JsonResponse
-    // {
-    //     $state = State::where('code', $code)->firstOrFail();
-    //     $universities = $state->universities()->get();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'state_name' => $state->name,
-    //         'data' => $universities
-    //     ]);
-    // }
 
     public function getResidencies(Request $request, $code): JsonResponse
     {
@@ -170,17 +116,6 @@ class AcademiaController extends Controller
             ],
         ], 200);
     }
-
-    // public function getResidencies($code): JsonResponse
-    // {
-    //     $state = State::where('code', $code)->firstOrFail();
-    //     $residencies = $state->residencies()->get();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'data' => $residencies
-    //     ]);
-    // }
 
     public function getFacilities(Request $request, $code): JsonResponse
     {
@@ -229,23 +164,6 @@ class AcademiaController extends Controller
             ],
         ], 200);
     }
-
-    // public function getFacilities($code, Request $request): JsonResponse
-    // {
-    //     $type = $request->query('type');
-    //     $state = State::where('code', $code)->firstOrFail();
-
-    //     $facilities = $state->facilities()
-    //         ->when($type, function ($query) use ($type) {
-    //             return $query->where('type', $type);
-    //         })->get();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'data' => $facilities
-    //     ]);
-    // }
-
 
     public function getJobs($code, Request $request): JsonResponse
     {
