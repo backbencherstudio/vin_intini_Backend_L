@@ -21,7 +21,7 @@ class NewsfeedController extends Controller
         $connectionIds = Connection::where('status', Connection::STATUS_ACCEPTED)
             ->where(function ($q) use ($user) {
                 $q->where('sender_id', $user->id)
-                    ->orWhere('receiver_id', $user->id);
+                ->orWhere('receiver_id', $user->id);
             })
             ->selectRaw("
                 CASE
@@ -36,47 +36,51 @@ class NewsfeedController extends Controller
 
         $allowedConnectionIds = $connectionIds->intersect($followingIds);
 
-        $postsQuery = Post::query()
+        $posts = Post::query()
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
                 'media',
-                'groups:id,name'
+                'groups:id,name',
+                'likes' => function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                }
             ])
-            ->where(function ($query) use ($groupIds, $allowedConnectionIds, $followingIds, $user) {
+            ->where(function ($query) use ($user, $groupIds, $allowedConnectionIds, $followingIds) {
 
-                $query->where(function ($q) use ($followingIds) {
-                    $q->where('visibility', 'public')
-                    ->whereIn('user_id', $followingIds);
-                })
+                $query->where('user_id', $user->id)
 
-                ->orWhere(function ($q) use ($allowedConnectionIds) {
-                    $q->where('visibility', 'connections')
-                    ->whereIn('user_id', $allowedConnectionIds);
-                })
+                    ->orWhere(function ($query) use ($groupIds, $allowedConnectionIds, $followingIds, $user) {
 
-                ->orWhere(function ($q) use ($groupIds, $user) {
-                    $q->where('visibility', 'groups')
-                    ->whereHas('groups', function ($q2) use ($groupIds, $user) {
+                        $query->where(function ($q) use ($followingIds) {
+                            $q->where('visibility', 'public')
+                            ->whereIn('user_id', $followingIds);
+                        })
 
-                        $q2->whereIn('groups.id', $groupIds)
+                        ->orWhere(function ($q) use ($allowedConnectionIds) {
+                            $q->where('visibility', 'connections')
+                            ->whereIn('user_id', $allowedConnectionIds);
+                        })
 
-                            ->whereHas('users', function ($q3) use ($user) {
-                                $q3->where('group_users.user_id', $user->id)
-                                    ->where('group_users.status', '!=', 'banned');
+                        ->orWhere(function ($q) use ($groupIds, $user) {
+                            $q->where('visibility', 'groups')
+                            ->whereHas('groups', function ($q2) use ($groupIds, $user) {
+                                $q2->whereIn('groups.id', $groupIds)
+                                    ->whereHas('users', function ($q3) use ($user) {
+                                        $q3->where('group_users.user_id', $user->id)
+                                            ->where('group_users.status', '!=', 'banned');
+                                    });
                             });
+                        });
 
                     });
-                });
-            });
-
-        $posts = $postsQuery
+            })
             ->orderByDesc('id')
             ->paginate($request->get('per_page', 10));
 
         return response()->json([
             'success' => true,
             'message' => 'Feed fetched successfully',
-            'data' => collect($posts->items())->map(function ($post) use ($user) {
+            'data' => collect($posts->items())->map(function ($post) {
                 return [
                     'id' => $post->id,
                     'user' => $post->user,
@@ -87,9 +91,8 @@ class NewsfeedController extends Controller
                     'total_like' => $post->total_like ?? 0,
                     'total_comment' => $post->total_comment ?? 0,
 
-                    'liked_by_me' => $post->likes()
-                        ->where('user_id', $user->id)
-                        ->exists(),
+                    // ✅ no extra query now
+                    'liked_by_me' => $post->likes->isNotEmpty(),
 
                     'media' => $post->media,
                     'groups' => $post->groups,
