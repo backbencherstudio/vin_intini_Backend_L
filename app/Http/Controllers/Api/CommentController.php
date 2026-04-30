@@ -131,19 +131,21 @@ class CommentController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        $data = collect($comments->items())->map(function ($comment) {
-            return [
-                'id' => $comment->id,
-                'comment' => $comment->comment,
-                'user' => [
-                    'id' => $comment->user->id,
-                    'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
-                    'profile_image' => $comment->user->profile_image_url,
-                ],
-                'like_count' => $comment->like_count,
-                'replies_count' => $comment->reply_count,
-            ];
-        });
+            $data = collect($comments->items())->map(function ($comment) {
+                return [
+                    'id' => $comment->id,
+                    'comment' => $comment->comment,
+                    'user' => [
+                        'id' => $comment->user->id,
+                        'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
+                        'profile_image' => $comment->user->profile_image_url,
+                    ],
+                    'like_count' => $comment->like_count,
+                    'replies_count' => $comment->reply_count,
+
+                    'comment_time' => $comment->created_at,
+                ];
+            });
 
         return response()->json([
             'status' => true,
@@ -177,6 +179,7 @@ class CommentController extends Controller
                     'profile_image' => $reply->user->profile_image_url,
                 ],
                 'like_count' => $reply->like_count,
+                'created_at' => $reply->created_at,
             ];
         });
 
