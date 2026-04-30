@@ -21,7 +21,7 @@ class NewsfeedController extends Controller
         $connectionIds = Connection::where('status', Connection::STATUS_ACCEPTED)
             ->where(function ($q) use ($user) {
                 $q->where('sender_id', $user->id)
-                ->orWhere('receiver_id', $user->id);
+                    ->orWhere('receiver_id', $user->id);
             })
             ->selectRaw("
                 CASE
@@ -35,7 +35,6 @@ class NewsfeedController extends Controller
             ->pluck('following_id');
 
         $allowedConnectionIds = $connectionIds->intersect($followingIds);
-
         $posts = Post::query()
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
@@ -46,7 +45,6 @@ class NewsfeedController extends Controller
                 }
             ])
             ->where(function ($query) use ($user, $groupIds, $allowedConnectionIds, $followingIds) {
-
                 $query->where('user_id', $user->id)
 
                     ->orWhere(function ($query) use ($groupIds, $allowedConnectionIds, $followingIds, $user) {
@@ -54,21 +52,19 @@ class NewsfeedController extends Controller
                         $query->where(function ($q) use ($followingIds) {
                             $q->where('visibility', 'public');
                         })
-
                         ->orWhere(function ($q) use ($allowedConnectionIds) {
                             $q->where('visibility', 'connections')
-                            ->whereIn('user_id', $allowedConnectionIds);
+                                ->whereIn('user_id', $allowedConnectionIds);
                         })
-
                         ->orWhere(function ($q) use ($groupIds, $user) {
                             $q->where('visibility', 'groups')
-                            ->whereHas('groups', function ($q2) use ($groupIds, $user) {
-                                $q2->whereIn('groups.id', $groupIds)
-                                    ->whereHas('users', function ($q3) use ($user) {
-                                        $q3->where('group_users.user_id', $user->id)
-                                            ->where('group_users.status', '!=', 'banned');
-                                    });
-                            });
+                                ->whereHas('groups', function ($q2) use ($groupIds, $user) {
+                                    $q2->whereIn('groups.id', $groupIds)
+                                        ->whereHas('users', function ($q3) use ($user) {
+                                            $q3->where('group_users.user_id', $user->id)
+                                                ->where('group_users.status', '!=', 'banned');
+                                        });
+                                });
                         });
 
                     });
@@ -80,6 +76,18 @@ class NewsfeedController extends Controller
             'success' => true,
             'message' => 'Feed fetched successfully',
             'data' => collect($posts->items())->map(function ($post) use ($connectionIds, $user) {
+
+                $canEdit = ($post->user_id === $user->id);
+                $canDelete = ($post->user_id === $user->id);
+
+                foreach ($post->groups as $group) {
+                    $isGroupAdmin = $group->users()->wherePivot('role', 'admin')->wherePivot('user_id', $user->id)->exists();
+                    if ($isGroupAdmin) {
+                        $canEdit = true;
+                        $canDelete = true;
+                        break;
+                    }
+                }
 
                 return [
                     'id' => $post->id,
@@ -101,6 +109,8 @@ class NewsfeedController extends Controller
                     'media' => $post->media,
                     'groups' => $post->groups,
                     'created_at' => $post->created_at,
+                    'can_edit' => $canEdit,
+                    'can_delete' => $canDelete,
                 ];
             }),
 
