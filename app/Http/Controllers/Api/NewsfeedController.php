@@ -40,7 +40,7 @@ class NewsfeedController extends Controller
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
                 'media',
-                'groups:id,name',
+                'groups:id,name,logo',
                 'likes' => function ($q) use ($user) {
                     $q->where('user_id', $user->id);
                 }
@@ -80,7 +80,8 @@ class NewsfeedController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Feed fetched successfully',
-            'data' => collect($posts->items())->map(function ($post) {
+            'data' => collect($posts->items())->map(function ($post) use ($connectionIds, $user) {
+
                 return [
                     'id' => $post->id,
                     'user' => $post->user,
@@ -91,8 +92,12 @@ class NewsfeedController extends Controller
                     'total_like' => $post->total_like ?? 0,
                     'total_comment' => $post->total_comment ?? 0,
 
-                    // ✅ no extra query now
                     'liked_by_me' => $post->likes->isNotEmpty(),
+
+                    'is_connected' =>
+                        $post->user_id === $user->id
+                            ? true
+                            : $connectionIds->contains($post->user_id),
 
                     'media' => $post->media,
                     'groups' => $post->groups,
