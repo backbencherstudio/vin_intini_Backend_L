@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AcademiaMedicalResidency extends Model
 {
@@ -12,4 +13,9 @@ class AcademiaMedicalResidency extends Model
     protected $casts = [
         'degree_types' => 'array'
     ];
+
+    public function state(): BelongsTo
+    {
+        return $this->belongsTo(State::class);
+    }
 }
