@@ -196,4 +196,96 @@ class CommentController extends Controller
         ]);
     }
 
+    public function deleteComment($commentId)
+    {
+        $user = auth('api')->user();
+
+        $comment = Comment::with('post')->findOrFail($commentId);
+
+        if (
+            $comment->user_id !== $user->id &&
+            $comment->post->user_id !== $user->id
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to delete this comment'
+            ], 403);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            Reply::where('comment_id', $comment->id)->delete();
+
+            $comment->post->decrement('total_comment');
+
+            $comment->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Comment deleted successfully'
+            ]);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => app()->environment('local') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    public function deleteReply($replyId)
+    {
+        $user = auth('api')->user();
+
+        $reply = Reply::with(['comment.post'])->findOrFail($replyId);
+
+        $comment = $reply->comment;
+        $post = $comment->post;
+
+        if (
+            $reply->user_id !== $user->id &&
+            $comment->user_id !== $user->id &&
+            $post->user_id !== $user->id
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to delete this reply'
+            ], 403);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $reply->delete();
+
+            $comment->decrement('reply_count');
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Reply deleted successfully'
+            ]);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => app()->environment('local') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
 }

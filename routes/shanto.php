@@ -43,5 +43,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/reply-list/{comment}', [CommentController::class, 'replyList']);
     Route::post('/comment/{post}', [CommentController::class, 'comment']);
 
+    Route::delete('/comment/{id}', [CommentController::class, 'deleteComment']);
+    Route::delete('/reply/{id}', [CommentController::class, 'deleteReply']);
 
 });
