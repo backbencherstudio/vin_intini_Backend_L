@@ -31,11 +31,11 @@ Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp']
 // Social Authentication Routes
 Route::get('/auth/{provider}', [SocialController::class, 'redirect']);
 Route::get('/auth/{provider}/callback', [SocialController::class, 'callback']);
+Route::post('/refresh', [AuthController::class, 'refresh']);
 
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/refresh', [AuthController::class, 'refresh']);
 
 
     // group, company, skill and institution suggestions for dropdown
