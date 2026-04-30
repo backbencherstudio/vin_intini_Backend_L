@@ -52,8 +52,7 @@ class NewsfeedController extends Controller
                     ->orWhere(function ($query) use ($groupIds, $allowedConnectionIds, $followingIds, $user) {
 
                         $query->where(function ($q) use ($followingIds) {
-                            $q->where('visibility', 'public')
-                            ->whereIn('user_id', $followingIds);
+                            $q->where('visibility', 'public');
                         })
 
                         ->orWhere(function ($q) use ($allowedConnectionIds) {
