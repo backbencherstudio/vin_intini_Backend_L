@@ -126,26 +126,36 @@ class CommentController extends Controller
     {
         $perPage = $request->get('per_page', 10);
 
+        $user = auth('api')->user();
+
         $comments = Comment::with('user:id,first_name,last_name,profile_image')
             ->where('post_id', $postId)
             ->latest()
             ->paginate($perPage);
 
-            $data = collect($comments->items())->map(function ($comment) {
-                return [
-                    'id' => $comment->id,
-                    'comment' => $comment->comment,
-                    'user' => [
-                        'id' => $comment->user->id,
-                        'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
-                        'profile_image' => $comment->user->profile_image_url,
-                    ],
-                    'like_count' => $comment->like_count,
-                    'replies_count' => $comment->reply_count,
+        $data = collect($comments->items())->map(function ($comment) use ($user) {
 
-                    'comment_time' => $comment->created_at,
-                ];
-            });
+            $canDelete = (
+                $comment->user_id === $user->id ||
+                $comment->post->user_id === $user->id ||
+                ($comment->parent_id && $comment->parent->user_id === $user->id)
+            );
+
+            return [
+                'id' => $comment->id,
+                'comment' => $comment->comment,
+                'user' => [
+                    'id' => $comment->user->id,
+                    'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
+                    'profile_image' => $comment->user->profile_image_url,
+                ],
+                'like_count' => $comment->like_count,
+                'replies_count' => $comment->reply_count,
+
+                'comment_time' => $comment->created_at,
+                'can_delete' => $canDelete,
+            ];
+        });
 
         return response()->json([
             'status' => true,
@@ -163,13 +173,21 @@ class CommentController extends Controller
     public function replyList(Request $request, $commentId)
     {
         $perPage = $request->get('per_page', 10);
+        $user = auth('api')->user();
 
         $replies = Reply::with('user:id,first_name,last_name,profile_image')
             ->where('comment_id', $commentId)
             ->latest()
             ->paginate($perPage);
 
-        $data = collect($replies->items())->map(function ($reply) {
+        $data = collect($replies->items())->map(function ($reply) use ($user) {
+
+            $canDelete = (
+                $reply->user_id === $user->id ||
+                $reply->comment->user_id === $user->id ||
+                $reply->comment->post->user_id === $user->id
+            );
+
             return [
                 'id' => $reply->id,
                 'reply' => $reply->reply,
@@ -180,6 +198,7 @@ class CommentController extends Controller
                 ],
                 'like_count' => $reply->like_count,
                 'reply_time' => $reply->created_at,
+                'can_delete' => $canDelete,
             ];
         });
 
