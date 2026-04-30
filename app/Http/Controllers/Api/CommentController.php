@@ -179,7 +179,7 @@ class CommentController extends Controller
                     'profile_image' => $reply->user->profile_image_url,
                 ],
                 'like_count' => $reply->like_count,
-                'created_at' => $reply->created_at,
+                'reply_time' => $reply->created_at,
             ];
         });
 
