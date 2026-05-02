@@ -1055,16 +1055,13 @@ class GroupController extends Controller
     {
         $user = auth('api')->user();
 
-        $groups = Group::whereHas('users', function ($q) use ($user) {
-                $q->where('users.id', $user->id)
-                ->wherePivot('status', 'active');
-            })
-            ->select('id', 'name')
+        $groups = $user->groups()
+            ->where('group_users.status', 'active')
+            ->select('groups.id', 'groups.name')
             ->get();
 
         return response()->json([
             'status' => true,
-            'message' => 'User joined groups retrieved successfully',
             'data' => $groups
         ]);
     }
