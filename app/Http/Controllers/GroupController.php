@@ -1059,7 +1059,7 @@ class GroupController extends Controller
             ->where('group_users.status', 'active')
             ->select('groups.id', 'groups.name')
             ->get()
-            ->makeHidden('pivot');
+            ->makeHidden(['pivot', 'logo_url', 'cover_photo_url']);
 
         return response()->json([
             'status' => true,
