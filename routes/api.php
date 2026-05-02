@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\SocialController;
@@ -57,3 +58,11 @@ Route::middleware('auth:api')->group(function () {
         require __DIR__.'/shanto.php';
     });
 });
+
+//academia routes
+Route::get('/states', [AcademiaController::class, 'getStates']);
+Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
+Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
+Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
+Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
+Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
