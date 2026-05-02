@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class AcademiaUniversity extends Model
 {
     protected $table = 'academia_universities';
-    protected $fillable = ['state_id', 'name', 'psychology_degrees', 'neuroscience_degrees', 'has_online_options'];
+    protected $fillable = ['state_id', 'name', 'psychology_degrees', 'neuroscience_degrees', 'has_online_options', 'latitude', 'longitude'];
 
     protected $casts = [
         'psychology_degrees' => 'array',
@@ -15,7 +15,8 @@ class AcademiaUniversity extends Model
         'has_online_options' => 'boolean'
     ];
 
-    public function state() {
+    public function state()
+    {
         return $this->belongsTo(State::class);
     }
 }
