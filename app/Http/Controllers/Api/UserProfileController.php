@@ -290,7 +290,7 @@ class UserProfileController extends Controller
                 'total_connections' => $totalConnections,
                 'current_position' => $currentPosition ? [
                     'id' => $currentPosition->id,
-                    'company_name' => $currentPosition->company?->name,
+                    'company_name' => $currentPosition->name,
                 ] : null,
                 'current_institute' => $currentInstitute ? [
                     'id' => $currentInstitute->id,
