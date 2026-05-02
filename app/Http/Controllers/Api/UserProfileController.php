@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
 use App\Models\Connection;
 use App\Models\Education;
 use App\Models\Experience;
@@ -393,7 +394,7 @@ class UserProfileController extends Controller
             'skills' => 'nullable|array|max:5',
             'skills.*' => 'string',
             // 'current_position_id' => 'nullable|integer|exists:experiences,id',
-            'current_position_id' => 'nullable|integer', //|exists:companies,id
+            'current_position_id' => 'nullable|integer|exists:companies,id',
             'current_institute_id' => 'nullable|integer|exists:institutions,id',
             'about' => 'sometimes|required|string',
         ]);
@@ -525,7 +526,8 @@ class UserProfileController extends Controller
             return null;
         }
 
-        $experienceExists = Experience::query()
+        // $experienceExists = Experience::query()
+        $experienceExists = Company::query()
             ->whereKey($currentPositionId)
             ->where('user_id', $request->user()->id)
             ->exists();
