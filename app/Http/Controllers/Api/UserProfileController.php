@@ -18,7 +18,12 @@ class UserProfileController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user()->load(['profile.currentPosition.company', 'profile.currentInstitute', 'educations.institution', 'experiences.company']);
+        $user = $request->user()->load([
+            'profile.currentPosition',
+            'profile.currentInstitute.company',
+            'educations.institution',
+            'experiences.company'
+        ]);
 
         $totalConnections = Connection::query()
             ->accepted()
@@ -31,8 +36,9 @@ class UserProfileController extends Controller
             ->orderBy('name')
             ->get();
 
-        $currentPosition = $user->profile?->currentPosition;
-        $currentInstitute = $user->profile?->currentInstitute;
+        // profile objects
+        $currentPositionCompany = $user->profile?->currentPosition; // This is a Company model
+        $currentInstituteExperience = $user->profile?->currentInstitute; // This is an Experience model
 
         return response()->json([
             'status' => 'success',
@@ -43,22 +49,23 @@ class UserProfileController extends Controller
                 'about' => $user->profile?->about,
                 'country' => $user->profile?->country,
                 'total_connections' => $totalConnections,
+
                 'current_position_id' => $user->profile?->current_position_id,
                 'current_institute_id' => $user->profile?->current_institute_id,
-                'current_position' => $currentPosition ? [
-                    'id' => $currentPosition->id,
-                    'title' => $currentPosition->title,
-                    'company_name' => $currentPosition->company?->name,
+
+                'current_position' => $currentPositionCompany ? [
+                    'id' => $currentPositionCompany->id,
+                    'name' => $currentPositionCompany->name,
                 ] : null,
-                'current_institute' => $currentInstitute ? [
-                    'id' => $currentInstitute->id,
-                    'name' => $currentInstitute->name,
-                    // 'logo' => $currentInstitute->logo,
-                    // 'type' => $currentInstitute->type,
-                    // 'country' => $currentInstitute->country,
-                    // 'website' => $currentInstitute->website,
+
+                'current_institute' => $currentInstituteExperience ? [
+                    'id' => $currentInstituteExperience->id,
+                    'title' => $currentInstituteExperience->title,
+                    'company_name' => $currentInstituteExperience->company?->name,
                 ] : null,
+
                 'skills' => $skills,
+
                 'experiences' => $user->experiences->map(function ($experience) {
                     return [
                         'id' => $experience->id,
@@ -66,10 +73,6 @@ class UserProfileController extends Controller
                         'company' => [
                             'id' => $experience->company?->id,
                             'name' => $experience->company?->name,
-                            // 'logo' => $experience->company?->logo,
-                            // 'location' => $experience->company?->location,
-                            // 'industry' => $experience->company?->industry,
-                            // 'website' => $experience->company?->website,
                         ],
                         'title' => $experience->title,
                         'start_date' => $experience->start_date,
@@ -77,10 +80,10 @@ class UserProfileController extends Controller
                         'is_current' => $experience->is_current,
                         'status' => $experience->formatted_end_date_attribute,
                         'description' => $experience->description,
-                        // 'skills_id' => $experience->skills_id,
                         'skills' => $experience->skills_data,
                     ];
                 })->values(),
+
                 'educations' => $user->educations->map(function ($education) {
                     return [
                         'id' => $education->id,
@@ -88,10 +91,6 @@ class UserProfileController extends Controller
                         'institution' => [
                             'id' => $education->institution?->id,
                             'name' => $education->institution?->name,
-                            // 'logo' => $education->institution?->logo,
-                            // 'type' => $education->institution?->type,
-                            // 'country' => $education->institution?->country,
-                            // 'website' => $education->institution?->website,
                         ],
                         'degree' => $education->degree,
                         'field_study' => $education->field_study,
@@ -104,13 +103,108 @@ class UserProfileController extends Controller
                         'activities' => $education->activities,
                         'is_current' => $education->is_current,
                         'status' => $education->status,
-                        // 'skills_id' => $education->skills_id,
                         'skills' => $education->skills_data,
                     ];
                 })->values(),
             ],
         ], 200);
     }
+
+    // public function show(Request $request)
+    // {
+    //     $user = $request->user()->load(['profile.currentPosition.company', 'profile.currentInstitute', 'educations.institution', 'experiences.company']);
+
+    //     $totalConnections = Connection::query()
+    //         ->accepted()
+    //         ->forUser($user->id)
+    //         ->count();
+
+    //     $skills = Skill::query()
+    //         ->select(['id', 'name'])
+    //         ->whereIn('id', $user->profile?->skills_id ?? [])
+    //         ->orderBy('name')
+    //         ->get();
+
+    //     $currentPosition = $user->profile?->currentPosition;
+    //     $currentInstitute = $user->profile?->currentInstitute;
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => [
+    //             'first_name' => $user->first_name,
+    //             'last_name' => $user->last_name,
+    //             'title' => $user->title,
+    //             'about' => $user->profile?->about,
+    //             'country' => $user->profile?->country,
+    //             'total_connections' => $totalConnections,
+    //             'current_position_id' => $user->profile?->current_position_id,
+    //             'current_institute_id' => $user->profile?->current_institute_id,
+    //             'current_position' => $currentPosition ? [
+    //                 'id' => $currentPosition->id,
+    //                 'title' => $currentPosition->title,
+    //                 'company_name' => $currentPosition->company?->name,
+    //             ] : null,
+    //             'current_institute' => $currentInstitute ? [
+    //                 'id' => $currentInstitute->id,
+    //                 'name' => $currentInstitute->name,
+    //                 // 'logo' => $currentInstitute->logo,
+    //                 // 'type' => $currentInstitute->type,
+    //                 // 'country' => $currentInstitute->country,
+    //                 // 'website' => $currentInstitute->website,
+    //             ] : null,
+    //             'skills' => $skills,
+    //             'experiences' => $user->experiences->map(function ($experience) {
+    //                 return [
+    //                     'id' => $experience->id,
+    //                     'company_id' => $experience->company_id,
+    //                     'company' => [
+    //                         'id' => $experience->company?->id,
+    //                         'name' => $experience->company?->name,
+    //                         // 'logo' => $experience->company?->logo,
+    //                         // 'location' => $experience->company?->location,
+    //                         // 'industry' => $experience->company?->industry,
+    //                         // 'website' => $experience->company?->website,
+    //                     ],
+    //                     'title' => $experience->title,
+    //                     'start_date' => $experience->start_date,
+    //                     'end_date' => $experience->end_date,
+    //                     'is_current' => $experience->is_current,
+    //                     'status' => $experience->formatted_end_date_attribute,
+    //                     'description' => $experience->description,
+    //                     // 'skills_id' => $experience->skills_id,
+    //                     'skills' => $experience->skills_data,
+    //                 ];
+    //             })->values(),
+    //             'educations' => $user->educations->map(function ($education) {
+    //                 return [
+    //                     'id' => $education->id,
+    //                     'institution_id' => $education->institution_id,
+    //                     'institution' => [
+    //                         'id' => $education->institution?->id,
+    //                         'name' => $education->institution?->name,
+    //                         // 'logo' => $education->institution?->logo,
+    //                         // 'type' => $education->institution?->type,
+    //                         // 'country' => $education->institution?->country,
+    //                         // 'website' => $education->institution?->website,
+    //                     ],
+    //                     'degree' => $education->degree,
+    //                     'field_study' => $education->field_study,
+    //                     'start_month' => $education->start_month,
+    //                     'start_year' => $education->start_year,
+    //                     'end_month' => $education->end_month,
+    //                     'end_year' => $education->end_year,
+    //                     'grade' => $education->grade,
+    //                     'description' => $education->description,
+    //                     'activities' => $education->activities,
+    //                     'is_current' => $education->is_current,
+    //                     'status' => $education->status,
+    //                     // 'skills_id' => $education->skills_id,
+    //                     'skills' => $education->skills_data,
+    //                 ];
+    //             })->values(),
+    //         ],
+    //     ], 200);
+    // }
 
     public function showUserProfile(Request $request, $id)
     {
