@@ -212,6 +212,8 @@ class AcademiaAdminController extends Controller
             'program_name' => $request->program_name,
             'state_id' => $request->state_id,
             'location' => $request->location,
+            'latitude' => $request->latitude ?? 0,
+            'longitude' => $request->longitude ?? 0,
             'degree_types' => $degrees,
         ]);
 

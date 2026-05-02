@@ -20,9 +20,9 @@ return new class extends Migration
             $table->boolean('has_online_options')->default(false);
 
             // GPS Location
-            $table->decimal('latitude', 10, 7)->nullable();
-            $table->decimal('longitude', 10, 7)->nullable();
-            
+            $table->string('latitude', 20)->nullable();
+            $table->string('longitude', 20)->nullable();
+
             $table->timestamps();
         });
     }
