@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AcademiaAdminController;
+use App\Http\Controllers\Api\AcademiaController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,14 @@ Route::get('/clear', function () {
     Artisan::call('optimize:clear');
     return "Cleared!";
 });
+
+//academia routes
+Route::get('/states', [AcademiaController::class, 'getStates']);
+Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
+Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
+Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
+Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
+Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
 
 Route::prefix('admin/academia')->group(function () {
 
