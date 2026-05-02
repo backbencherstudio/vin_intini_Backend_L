@@ -78,7 +78,7 @@ class AuthController extends Controller
 
         $user->load([
             'roles',
-            'profile.currentPosition.company',
+            'profile.currentPosition',
             'profile.currentInstitute',
             'educations.institution',
             'experiences.company'
@@ -90,8 +90,8 @@ class AuthController extends Controller
             ->orderBy('name')
             ->get();
 
-        $currentPosition = $user->profile?->currentPosition;
-        $currentInstitute = $user->profile?->currentInstitute;
+        $currentPosition = $user->profile?->currentPosition; // Company Model
+        $currentInstitute = $user->profile?->currentInstitute; // Institution Model
 
         return response()->json([
             'success' => true,
@@ -106,14 +106,13 @@ class AuthController extends Controller
                 'roles' => $user->roles->pluck('name')->implode(', '),
 
                 'country' => $user->profile?->country,
-                'total_connections' => $totalConnections, 
+                'total_connections' => $totalConnections,
                 'current_position_id' => $user->profile?->current_position_id,
                 'current_institute_id' => $user->profile?->current_institute_id,
 
                 'current_position' => $currentPosition ? [
                     'id' => $currentPosition->id,
-                    'title' => $currentPosition->title,
-                    'company_name' => $currentPosition->company?->name,
+                    'name' => $currentPosition->name,
                 ] : null,
 
                 'current_institute' => $currentInstitute ? [

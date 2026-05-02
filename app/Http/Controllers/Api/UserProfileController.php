@@ -20,7 +20,7 @@ class UserProfileController extends Controller
     {
         $user = $request->user()->load([
             'profile.currentPosition',
-            'profile.currentInstitute.company',
+            'profile.currentInstitute',
             'educations.institution',
             'experiences.company'
         ]);
@@ -37,8 +37,8 @@ class UserProfileController extends Controller
             ->get();
 
         // profile objects
-        $currentPositionCompany = $user->profile?->currentPosition; // This is a Company model
-        $currentInstituteExperience = $user->profile?->currentInstitute; // This is an Experience model
+        $currentPositionCompany = $user->profile?->currentPosition; // Company
+        $currentInstitute = $user->profile?->currentInstitute;
 
         return response()->json([
             'status' => 'success',
@@ -58,10 +58,9 @@ class UserProfileController extends Controller
                     'name' => $currentPositionCompany->name,
                 ] : null,
 
-                'current_institute' => $currentInstituteExperience ? [
-                    'id' => $currentInstituteExperience->id,
-                    'title' => $currentInstituteExperience->title,
-                    'company_name' => $currentInstituteExperience->company?->name,
+                'current_institute' => $currentInstitute ? [
+                    'id' => $currentInstitute->id,
+                    'name' => $currentInstitute->name,
                 ] : null,
 
                 'skills' => $skills,
