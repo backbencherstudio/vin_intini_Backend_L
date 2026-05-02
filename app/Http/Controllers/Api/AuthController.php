@@ -96,8 +96,8 @@ class AuthController extends Controller
                     'institution' => $latestEducation?->institution?->name,
                     'graduation_year' => $latestEducation?->end_year,
                     'interests' => $user->profile->interests,
-                    'skills_id' => $user->profile->skills_id,
-                    'skills' => \App\Models\Skill::query()
+                    // 'skills_id' => $user->profile->skills_id,
+                    'skills' => Skill::query()
                         ->whereIn('id', $user->profile->skills_id ?? [])
                         ->orderBy('name')
                         ->pluck('name')
