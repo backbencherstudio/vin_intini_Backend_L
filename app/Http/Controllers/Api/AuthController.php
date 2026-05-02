@@ -106,7 +106,6 @@ class AuthController extends Controller
 
                     'current_position' => $user->profile->currentPosition ? [
                         'id' => $user->profile->currentPosition->id,
-                        'title' => $user->title,
                         'company_name' => $user->profile->currentPosition->name,
                     ] : null,
 
