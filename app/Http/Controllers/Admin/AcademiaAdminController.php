@@ -76,7 +76,7 @@ class AcademiaAdminController extends Controller
             'has_online_options' => $request->has('has_online_options')
         ]);
 
-        return redirect()->route('admin.universities.index')->with('success', 'University data updated successfully!');
+        return redirect()->back()->with('success', 'Facility updated successfully!');
     }
 
     public function destroyUniversity($id)
