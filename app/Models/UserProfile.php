@@ -45,19 +45,19 @@ class UserProfile extends Model
         return $this->belongsTo(User::class);
     }
 
+    // public function currentPosition(): BelongsTo
+    // {
+    //     return $this->belongsTo(Experience::class, 'current_position_id');
+    // }
+
     public function currentPosition(): BelongsTo
     {
-        return $this->belongsTo(Experience::class, 'current_position_id');
+        return $this->belongsTo(Company::class, 'current_position_id');
     }
-
-    // public function currentInstitute(): BelongsTo
-    // {
-    //     return $this->belongsTo(Institution::class, 'current_institute_id');
-    // }
 
     public function currentInstitute(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'current_position_id');
+        return $this->belongsTo(Institution::class, 'current_institute_id');
     }
 
     protected $hidden = [
