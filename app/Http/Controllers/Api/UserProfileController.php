@@ -438,11 +438,15 @@ class UserProfileController extends Controller
         }
 
         if (array_key_exists('current_position_id', $validated)) {
-            $profileData['current_position_id'] = $this->resolveCurrentPositionId(
-                $request,
-                $validated['current_position_id'],
-            );
+            $profileData['current_position_id'] = $validated['current_position_id'];
         }
+
+        // if (array_key_exists('current_position_id', $validated)) {
+        //     $profileData['current_position_id'] = $this->resolveCurrentPositionId(
+        //         $request,
+        //         $validated['current_position_id'],
+        //     );
+        // }
 
         if (array_key_exists('current_institute_id', $validated)) {
             $profileData['current_institute_id'] = $this->resolveCurrentInstituteId(
@@ -526,8 +530,7 @@ class UserProfileController extends Controller
             return null;
         }
 
-        // $experienceExists = Experience::query()
-        $experienceExists = Company::query()
+        $experienceExists = Experience::query()
             ->whereKey($currentPositionId)
             ->where('user_id', $request->user()->id)
             ->exists();
