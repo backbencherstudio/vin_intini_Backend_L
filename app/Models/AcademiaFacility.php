@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AcademiaFacility extends Model
 {
     protected $table = 'academia_facilities';
-    protected $fillable = ['state_id', 'name', 'location', 'type', 'university_id'];
+    protected $fillable = ['state_id', 'name', 'location', 'type', 'university_id', 'latitude', 'longitude'];
 
     public function university() {
         return $this->belongsTo(AcademiaUniversity::class);
