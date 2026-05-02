@@ -18,6 +18,11 @@ return new class extends Migration
             $table->json('psychology_degrees')->nullable(); // Store as ["BA", "MS"]
             $table->json('neuroscience_degrees')->nullable();
             $table->boolean('has_online_options')->default(false);
+
+            // GPS Location
+            $table->string('latitude', 20)->nullable();
+            $table->string('longitude', 20)->nullable();
+
             $table->timestamps();
         });
     }
