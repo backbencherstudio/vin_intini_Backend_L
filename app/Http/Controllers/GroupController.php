@@ -643,7 +643,7 @@ class GroupController extends Controller
 
     public function myJoinedGroups(Request $request)
     {
-        $user = auth()->user();
+        $user = auth('api')->user();
 
         $baseQuery = $user->groups()
             ->wherePivot('status', 'active')
@@ -1050,4 +1050,23 @@ class GroupController extends Controller
             'message' => 'User has been banned from the group successfully.',
         ], 200);
     }
+
+    public function myGroups(Request $request)
+    {
+        $user = auth('api')->user();
+
+        $groups = Group::whereHas('users', function ($q) use ($user) {
+                $q->where('users.id', $user->id)
+                ->wherePivot('status', 'active');
+            })
+            ->select('id', 'name')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'User joined groups retrieved successfully',
+            'data' => $groups
+        ]);
+    }
+
 }
