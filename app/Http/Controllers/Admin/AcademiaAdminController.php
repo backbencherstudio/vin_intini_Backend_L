@@ -58,8 +58,13 @@ class AcademiaAdminController extends Controller
         $uni = AcademiaUniversity::findOrFail($id);
 
         // String to Array Conversion
-        $psych = array_map('trim', explode(',', $request->psychology_degrees));
-        $neuro = array_map('trim', explode(',', $request->neuroscience_degrees));
+        $psych = $request->psychology_degrees
+            ? array_filter(array_map('trim', explode(',', $request->psychology_degrees)))
+            : [];
+
+        $neuro = $request->neuroscience_degrees
+            ? array_filter(array_map('trim', explode(',', $request->neuroscience_degrees)))
+            : [];
 
         $uni->update([
             'name' => $request->name,
