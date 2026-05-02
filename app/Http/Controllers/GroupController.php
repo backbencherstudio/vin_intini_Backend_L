@@ -1051,7 +1051,7 @@ class GroupController extends Controller
         ], 200);
     }
 
-    public function myGroups(Request $request)
+    public function groupList(Request $request)
     {
         $user = auth('api')->user();
 
