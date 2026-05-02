@@ -210,7 +210,7 @@ class UserProfileController extends Controller
         $currentUser = $request->user();
 
         $user = User::with([
-            'profile.currentPosition.company',
+            'profile.currentPosition',
             'profile.currentInstitute',
             'educations.institution',
             'experiences.company'
