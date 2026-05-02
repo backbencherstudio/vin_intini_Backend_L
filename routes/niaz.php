@@ -26,7 +26,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     // my joined group routes
     Route::get('/my-joined-groups', [GroupController::class, 'myJoinedGroups']);
 
-    Route::get('/group-list', [GroupController::class, 'myJoinedGroups']);
+    Route::get('/group-list', [GroupController::class, 'groupList']);
     // group member join and leave routes
     Route::post('/group/join', [GroupController::class, 'joinGroup']);
     Route::post('/group/leave', [GroupController::class, 'leaveGroup']);
