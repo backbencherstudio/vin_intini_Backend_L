@@ -1058,7 +1058,8 @@ class GroupController extends Controller
         $groups = $user->groups()
             ->where('group_users.status', 'active')
             ->select('groups.id', 'groups.name')
-            ->get();
+            ->get()
+            ->makeHidden('pivot');
 
         return response()->json([
             'status' => true,
