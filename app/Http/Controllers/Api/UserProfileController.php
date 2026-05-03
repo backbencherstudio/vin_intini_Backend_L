@@ -63,6 +63,9 @@ class UserProfileController extends Controller
                     'name' => $currentInstitute->name,
                 ] : null,
 
+                'profile_image_url' => $user->profile_image_url,
+                'cover_image_url' => $user->cover_image_url,
+
                 'skills' => $skills,
 
                 'experiences' => $user->experiences->map(function ($experience) {
