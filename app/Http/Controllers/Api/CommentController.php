@@ -128,7 +128,7 @@ class CommentController extends Controller
 
         $user = auth('api')->user();
 
-        $comments = Comment::with('user:id,first_name,last_name,profile_image')
+        $comments = Comment::with('user:id,title,first_name,last_name,profile_image')
             ->where('post_id', $postId)
             ->latest()
             ->paginate($perPage);
@@ -147,6 +147,7 @@ class CommentController extends Controller
                 'user' => [
                     'id' => $comment->user->id,
                     'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
+                    'title' => $comment->user->title,
                     'profile_image' => $comment->user->profile_image_url,
                 ],
                 'like_count' => $comment->like_count,
@@ -175,7 +176,7 @@ class CommentController extends Controller
         $perPage = $request->get('per_page', 10);
         $user = auth('api')->user();
 
-        $replies = Reply::with('user:id,first_name,last_name,profile_image')
+        $replies = Reply::with('user:id,title,first_name,last_name,profile_image')
             ->where('comment_id', $commentId)
             ->latest()
             ->paginate($perPage);
@@ -194,6 +195,7 @@ class CommentController extends Controller
                 'user' => [
                     'id' => $reply->user->id,
                     'name' => $reply->user->first_name . ' ' . $reply->user->last_name,
+                    'title' => $reply->user->title,
                     'profile_image' => $reply->user->profile_image_url,
                 ],
                 'like_count' => $reply->like_count,
