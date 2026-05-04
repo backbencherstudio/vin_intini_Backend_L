@@ -19,10 +19,10 @@ class CommentController extends Controller
         $request->validate([
             'comment'   => 'required|string|max:1000',
             'parent_id' => 'nullable|exists:comments,id',
+            'image'     => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
         $user = auth('api')->user();
-
         $post = Post::with('user')->findOrFail($postId);
 
         if ($post->who_can_comment === 'no_one') {
@@ -38,10 +38,10 @@ class CommentController extends Controller
                 ->where(function ($q) use ($user, $post) {
                     $q->where(function ($q1) use ($user, $post) {
                         $q1->where('sender_id', $user->id)
-                        ->where('receiver_id', $post->user_id);
+                            ->where('receiver_id', $post->user_id);
                     })->orWhere(function ($q2) use ($user, $post) {
                         $q2->where('sender_id', $post->user_id)
-                        ->where('receiver_id', $user->id);
+                            ->where('receiver_id', $user->id);
                     });
                 })
                 ->exists();
@@ -58,16 +58,25 @@ class CommentController extends Controller
 
         try {
 
+            $imagePath = null;
+
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('comments', 'public');
+            }
+
             if (!$request->parent_id) {
 
                 $comment = Comment::create([
                     'post_id' => $post->id,
                     'user_id' => $user->id,
                     'comment' => $request->comment,
+                    'image'   => $imagePath,
                 ]);
 
                 $post->increment('total_comment');
+                $post->refresh();
 
+                // notification
                 if ($post->user_id !== $user->id) {
                     $post->user->notify(
                         new PostCommentedNotification($user, $post, $comment)
@@ -79,7 +88,8 @@ class CommentController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Comment added',
-                    'data' => $comment->load('user')
+                    'data' => $comment,
+                    'total_comment' => $post->total_comment
                 ]);
             }
 
@@ -92,9 +102,11 @@ class CommentController extends Controller
                 'comment_id' => $parentComment->id,
                 'user_id'    => $user->id,
                 'reply'      => $request->comment,
+                'image'      => $imagePath,
             ]);
 
             $parentComment->increment('reply_count');
+            $parentComment->refresh();
 
             if ($parentComment->user_id !== $user->id) {
                 $parentComment->user->notify(
@@ -107,7 +119,8 @@ class CommentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Reply added',
-                'data' => $reply->load('user')
+                'data' => $reply,
+                'total_reply' => $parentComment->reply_count
             ]);
 
         } catch (\Throwable $e) {

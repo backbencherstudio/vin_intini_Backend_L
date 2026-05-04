@@ -15,7 +15,13 @@ class Reply extends Model
         'user_id',
         'reply',
         'like_count',
+        'image',
     ];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image ? asset('storage/' . $this->image) : null;
+    }
 
     public function post()
     {
