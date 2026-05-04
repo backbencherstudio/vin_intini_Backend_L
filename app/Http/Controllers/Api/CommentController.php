@@ -129,6 +129,11 @@ class CommentController extends Controller
         $user = auth('api')->user();
 
         $comments = Comment::with('user:id,title,first_name,last_name,profile_image')
+            ->withExists([
+                'likes as liked_by_me' => function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                }
+            ])
             ->where('post_id', $postId)
             ->latest()
             ->paginate($perPage);
@@ -144,15 +149,18 @@ class CommentController extends Controller
             return [
                 'id' => $comment->id,
                 'comment' => $comment->comment,
+
                 'user' => [
                     'id' => $comment->user->id,
                     'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
                     'title' => $comment->user->title,
                     'profile_image' => $comment->user->profile_image_url,
                 ],
-                'like_count' => $comment->like_count,
-                'replies_count' => $comment->reply_count,
 
+                'like_count' => $comment->like_count,
+                'liked_by_me' => (bool) $comment->liked_by_me,
+
+                'replies_count' => $comment->reply_count,
                 'comment_time' => $comment->created_at,
                 'can_delete' => $canDelete,
             ];
@@ -164,9 +172,9 @@ class CommentController extends Controller
             'data' => $data,
             'pagination' => [
                 'current_page' => $comments->currentPage(),
-                'per_page'     => $comments->perPage(),
-                'total'        => $comments->total(),
-                'last_page'    => $comments->lastPage(),
+                'per_page' => $comments->perPage(),
+                'total' => $comments->total(),
+                'last_page' => $comments->lastPage(),
             ]
         ]);
     }
@@ -177,6 +185,11 @@ class CommentController extends Controller
         $user = auth('api')->user();
 
         $replies = Reply::with('user:id,title,first_name,last_name,profile_image')
+            ->withExists([
+                'likes as liked_by_me' => function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                }
+            ])
             ->where('comment_id', $commentId)
             ->latest()
             ->paginate($perPage);
@@ -192,13 +205,17 @@ class CommentController extends Controller
             return [
                 'id' => $reply->id,
                 'reply' => $reply->reply,
+
                 'user' => [
                     'id' => $reply->user->id,
                     'name' => $reply->user->first_name . ' ' . $reply->user->last_name,
                     'title' => $reply->user->title,
                     'profile_image' => $reply->user->profile_image_url,
                 ],
+
                 'like_count' => $reply->like_count,
+                'liked_by_me' => (bool) $reply->liked_by_me,
+
                 'reply_time' => $reply->created_at,
                 'can_delete' => $canDelete,
             ];
