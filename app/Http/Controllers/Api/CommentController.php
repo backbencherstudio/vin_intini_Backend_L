@@ -11,6 +11,7 @@ use App\Models\Comment;
 use App\Notifications\CommentRepliedNotification;
 use App\Notifications\PostCommentedNotification;
 use App\Models\Reply;
+use Illuminate\Support\Facades\Storage;
 
 class CommentController extends Controller
 {
@@ -162,6 +163,7 @@ class CommentController extends Controller
             return [
                 'id' => $comment->id,
                 'comment' => $comment->comment,
+                'image_url' => $comment->image_url ?? null,
 
                 'user' => [
                     'id' => $comment->user->id,
@@ -218,7 +220,7 @@ class CommentController extends Controller
             return [
                 'id' => $reply->id,
                 'reply' => $reply->reply,
-
+                'image_url' => $reply->image_url ?? null,
                 'user' => [
                     'id' => $reply->user->id,
                     'name' => $reply->user->first_name . ' ' . $reply->user->last_name,
@@ -251,7 +253,7 @@ class CommentController extends Controller
     {
         $user = auth('api')->user();
 
-        $comment = Comment::with('post')->findOrFail($commentId);
+        $comment = Comment::with(['post', 'replies'])->findOrFail($commentId);
 
         if (
             $comment->user_id !== $user->id &&
@@ -267,9 +269,22 @@ class CommentController extends Controller
 
         try {
 
-            Reply::where('comment_id', $comment->id)->delete();
+            foreach ($comment->replies as $reply) {
 
-            $comment->post->decrement('total_comment');
+                if ($reply->image) {
+                    Storage::disk('public')->delete($reply->image);
+                }
+
+                $reply->delete();
+            }
+
+            if ($comment->image) {
+                Storage::disk('public')->delete($comment->image);
+            }
+
+            $totalDecrease = 1 + $comment->replies()->count();
+
+            $comment->post->decrement('total_comment', $totalDecrease);
 
             $comment->delete();
 
@@ -316,15 +331,22 @@ class CommentController extends Controller
 
         try {
 
+            if ($reply->image) {
+                Storage::disk('public')->delete($reply->image);
+            }
+
             $reply->delete();
 
-            $comment->decrement('reply_count');
+            if ($comment->reply_count > 0) {
+                $comment->decrement('reply_count');
+            }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Reply deleted successfully'
+                'message' => 'Reply deleted successfully',
+                'total_reply' => $comment->reply_count
             ]);
 
         } catch (\Throwable $e) {
