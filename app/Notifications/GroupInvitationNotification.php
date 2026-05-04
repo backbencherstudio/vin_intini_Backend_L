@@ -65,7 +65,7 @@ class GroupInvitationNotification extends Notification
             'inviter_name' => $inviterName,
             'message' => $inviterName . ' invited you to join ' . $this->group->name,
             'type' => 'group_invitation',
-            'sent_at' => now()->toDateTimeString(),
+            'sent_at' => now()->toIso8601String(),
         ];
     }
 
