@@ -13,7 +13,13 @@ class Comment extends Model
         'post_id',
         'user_id',
         'comment',
+        'image',
     ];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image ? asset('storage/' . $this->image) : null;
+    }
 
     public function post()
     {

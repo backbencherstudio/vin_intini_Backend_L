@@ -970,9 +970,9 @@ class GroupController extends Controller
 
         $groups = $user->groups()
             ->where('group_users.status', 'active')
-            ->select('groups.id', 'groups.name')
+            ->select('groups.id', 'groups.name', 'groups.logo', 'groups.description')
             ->get()
-            ->makeHidden(['pivot', 'logo_url', 'cover_photo_url']);
+            ->makeHidden(['pivot', 'cover_photo_url']);
 
         return response()->json([
             'status' => true,

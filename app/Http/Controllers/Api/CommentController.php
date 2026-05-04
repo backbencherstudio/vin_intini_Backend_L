@@ -11,6 +11,7 @@ use App\Models\Comment;
 use App\Notifications\CommentRepliedNotification;
 use App\Notifications\PostCommentedNotification;
 use App\Models\Reply;
+use Illuminate\Support\Facades\Storage;
 
 class CommentController extends Controller
 {
@@ -19,10 +20,10 @@ class CommentController extends Controller
         $request->validate([
             'comment'   => 'required|string|max:1000',
             'parent_id' => 'nullable|exists:comments,id',
+            'image'     => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
         $user = auth('api')->user();
-
         $post = Post::with('user')->findOrFail($postId);
 
         if ($post->who_can_comment === 'no_one') {
@@ -38,10 +39,10 @@ class CommentController extends Controller
                 ->where(function ($q) use ($user, $post) {
                     $q->where(function ($q1) use ($user, $post) {
                         $q1->where('sender_id', $user->id)
-                        ->where('receiver_id', $post->user_id);
+                            ->where('receiver_id', $post->user_id);
                     })->orWhere(function ($q2) use ($user, $post) {
                         $q2->where('sender_id', $post->user_id)
-                        ->where('receiver_id', $user->id);
+                            ->where('receiver_id', $user->id);
                     });
                 })
                 ->exists();
@@ -58,16 +59,25 @@ class CommentController extends Controller
 
         try {
 
+            $imagePath = null;
+
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('comments', 'public');
+            }
+
             if (!$request->parent_id) {
 
                 $comment = Comment::create([
                     'post_id' => $post->id,
                     'user_id' => $user->id,
                     'comment' => $request->comment,
+                    'image'   => $imagePath,
                 ]);
 
                 $post->increment('total_comment');
+                $post->refresh();
 
+                // notification
                 if ($post->user_id !== $user->id) {
                     $post->user->notify(
                         new PostCommentedNotification($user, $post, $comment)
@@ -79,7 +89,8 @@ class CommentController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Comment added',
-                    'data' => $comment->load('user')
+                    'data' => $comment,
+                    'total_comment' => $post->total_comment
                 ]);
             }
 
@@ -92,9 +103,11 @@ class CommentController extends Controller
                 'comment_id' => $parentComment->id,
                 'user_id'    => $user->id,
                 'reply'      => $request->comment,
+                'image'      => $imagePath,
             ]);
 
             $parentComment->increment('reply_count');
+            $parentComment->refresh();
 
             if ($parentComment->user_id !== $user->id) {
                 $parentComment->user->notify(
@@ -107,7 +120,8 @@ class CommentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Reply added',
-                'data' => $reply->load('user')
+                'data' => $reply,
+                'total_reply' => $parentComment->reply_count
             ]);
 
         } catch (\Throwable $e) {
@@ -128,7 +142,12 @@ class CommentController extends Controller
 
         $user = auth('api')->user();
 
-        $comments = Comment::with('user:id,first_name,last_name,profile_image')
+        $comments = Comment::with('user:id,title,first_name,last_name,profile_image')
+            ->withExists([
+                'likes as liked_by_me' => function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                }
+            ])
             ->where('post_id', $postId)
             ->latest()
             ->paginate($perPage);
@@ -144,14 +163,19 @@ class CommentController extends Controller
             return [
                 'id' => $comment->id,
                 'comment' => $comment->comment,
+                'image_url' => $comment->image_url ?? null,
+
                 'user' => [
                     'id' => $comment->user->id,
                     'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
+                    'title' => $comment->user->title,
                     'profile_image' => $comment->user->profile_image_url,
                 ],
-                'like_count' => $comment->like_count,
-                'replies_count' => $comment->reply_count,
 
+                'like_count' => $comment->like_count,
+                'liked_by_me' => (bool) $comment->liked_by_me,
+
+                'replies_count' => $comment->reply_count,
                 'comment_time' => $comment->created_at,
                 'can_delete' => $canDelete,
             ];
@@ -163,9 +187,9 @@ class CommentController extends Controller
             'data' => $data,
             'pagination' => [
                 'current_page' => $comments->currentPage(),
-                'per_page'     => $comments->perPage(),
-                'total'        => $comments->total(),
-                'last_page'    => $comments->lastPage(),
+                'per_page' => $comments->perPage(),
+                'total' => $comments->total(),
+                'last_page' => $comments->lastPage(),
             ]
         ]);
     }
@@ -175,7 +199,12 @@ class CommentController extends Controller
         $perPage = $request->get('per_page', 10);
         $user = auth('api')->user();
 
-        $replies = Reply::with('user:id,first_name,last_name,profile_image')
+        $replies = Reply::with('user:id,title,first_name,last_name,profile_image')
+            ->withExists([
+                'likes as liked_by_me' => function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                }
+            ])
             ->where('comment_id', $commentId)
             ->latest()
             ->paginate($perPage);
@@ -191,12 +220,17 @@ class CommentController extends Controller
             return [
                 'id' => $reply->id,
                 'reply' => $reply->reply,
+                'image_url' => $reply->image_url ?? null,
                 'user' => [
                     'id' => $reply->user->id,
                     'name' => $reply->user->first_name . ' ' . $reply->user->last_name,
+                    'title' => $reply->user->title,
                     'profile_image' => $reply->user->profile_image_url,
                 ],
+
                 'like_count' => $reply->like_count,
+                'liked_by_me' => (bool) $reply->liked_by_me,
+
                 'reply_time' => $reply->created_at,
                 'can_delete' => $canDelete,
             ];
@@ -219,7 +253,7 @@ class CommentController extends Controller
     {
         $user = auth('api')->user();
 
-        $comment = Comment::with('post')->findOrFail($commentId);
+        $comment = Comment::with(['post', 'replies'])->findOrFail($commentId);
 
         if (
             $comment->user_id !== $user->id &&
@@ -235,9 +269,22 @@ class CommentController extends Controller
 
         try {
 
-            Reply::where('comment_id', $comment->id)->delete();
+            foreach ($comment->replies as $reply) {
 
-            $comment->post->decrement('total_comment');
+                if ($reply->image) {
+                    Storage::disk('public')->delete($reply->image);
+                }
+
+                $reply->delete();
+            }
+
+            if ($comment->image) {
+                Storage::disk('public')->delete($comment->image);
+            }
+
+            $totalDecrease = 1 + $comment->replies()->count();
+
+            $comment->post->decrement('total_comment', $totalDecrease);
 
             $comment->delete();
 
@@ -284,15 +331,22 @@ class CommentController extends Controller
 
         try {
 
+            if ($reply->image) {
+                Storage::disk('public')->delete($reply->image);
+            }
+
             $reply->delete();
 
-            $comment->decrement('reply_count');
+            if ($comment->reply_count > 0) {
+                $comment->decrement('reply_count');
+            }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Reply deleted successfully'
+                'message' => 'Reply deleted successfully',
+                'total_reply' => $comment->reply_count
             ]);
 
         } catch (\Throwable $e) {
