@@ -115,54 +115,6 @@ class AuthController extends Controller
         ]);
     }
 
-    // public function me()
-    // {
-    //     $user = auth('api')->user();
-
-    //     $user->load(['roles', 'profile.currentPosition.company', 'educations.institution']);
-    //     $latestEducation = $user->educations->sortByDesc('id')->first();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'user' => [
-    //             'id' => $user->id,
-    //             'first_name' => $user->first_name,
-    //             'last_name' => $user->last_name,
-    //             'title' => $user->title,
-    //             'email' => $user->email,
-    //             'profile_image_url' => $user->profile_image_url,
-    //             'cover_image_url' => $user->cover_image_url,
-    //             'roles' => $user->roles->pluck('name')->implode(', '),
-
-    //             'profile' => $user->profile ? [
-    //                 'country' => $user->profile->country,
-    //                 'postal_code' => $user->profile->postal_code,
-    //                 'profession' => $user->profile->profession,
-    //                 'degree' => $latestEducation?->degree,
-    //                 // 'study_category' => $user->profile->study_category,
-    //                 // 'study_subcategory' => $user->profile->study_subcategory,
-    //                 // 'institution' => $user->profile->institution,
-    //                 'field_study' => $latestEducation?->field_study,
-    //                 'institution' => $latestEducation?->institution?->name,
-    //                 'graduation_year' => $latestEducation?->end_year,
-    //                 'interests' => $user->profile->interests,
-    //                 'skills_id' => $user->profile->skills_id,
-    //                 'skills' => Skill::query()
-    //                     ->whereIn('id', $user->profile->skills_id ?? [])
-    //                     ->orderBy('name')
-    //                     ->pluck('name')
-    //                     ->values(),
-    //                 'current_position_id' => $user->profile->current_position_id,
-    //                 'current_position' => $user->profile->currentPosition ? [
-    //                     'id' => $user->profile->currentPosition->id,
-    //                     'title' => $user->profile->currentPosition->title,
-    //                     'company_name' => $user->profile->currentPosition->company?->name,
-    //                 ] : null,
-    //                 'about' => $user->profile->about,
-    //             ] : null,
-    //         ],
-    //     ]);
-    // }
 
     public function logout()
     {
@@ -417,59 +369,4 @@ class AuthController extends Controller
             ], 500);
         }
     }
-
-    // public function register(Request $request)
-    // {
-    //     $validator = Validator::make($request->all(), [
-    //         'name'     => 'required|string|max:255',
-    //         'email'    => 'required|email|unique:users,email',
-    //         'mobile'   => 'nullable|string|max:20',
-    //         'password' => 'required|string|min:6|confirmed',
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json([
-    //             'status'  => false,
-    //             'message' => 'Validation failed.',
-    //             'errors'  => $validator->errors()
-    //         ], 422);
-    //     }
-
-    //     $validated = $validator->validated();
-
-    //     DB::beginTransaction();
-
-    //     try {
-    //         $user = User::create([
-    //             'name'     => $validated['name'],
-    //             'email'    => $validated['email'],
-    //             'mobile'   => $validated['mobile'] ?? null,
-    //             'password' => bcrypt($validated['password']),
-    //         ]);
-    //         // Assign role to user (API guard)
-    //         $role = Role::where('name', 'user')
-    //             ->where('guard_name', 'api')
-    //             ->firstOrFail();
-
-    //         $user->assignRole($role);
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'status'  => true,
-    //             'message' => 'User registered successfully.',
-    //             'data'    => [
-    //                 'id'    => $user->id,
-    //                 'name'  => $user->name,
-    //                 'email' => $user->email,
-    //                 'roles' => $user->getRoleNames(),
-    //             ]
-    //         ], 201);
-    //     } catch (\Throwable $e) {
-    //         DB::rollBack();
-    //         return response()->json([
-    //             'status'  => false,
-    //             'message' => 'User registration failed.',
-    //         ], 500);
-    //     }
-    // }
 }
