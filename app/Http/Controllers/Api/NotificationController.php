@@ -132,9 +132,9 @@ class NotificationController extends Controller
             'id' => $notification->id,
             'type' => $notification->type,
             'data' => $data,
-            'read_at' => $notification->read_at?->toDateTimeString(),
+            'read_at' => $notification->read_at?->toIso8601String(),
             'is_read' => $notification->read_at !== null,
-            'created_at' => $notification->created_at?->toDateTimeString(),
+            'created_at' => $notification->created_at?->toIso8601String(),
         ];
     }
 }
