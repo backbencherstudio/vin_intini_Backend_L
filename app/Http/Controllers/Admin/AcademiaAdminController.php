@@ -141,6 +141,7 @@ class AcademiaAdminController extends Controller
             'type' => $request->type,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
+            'website' => $request->website ?? null,
         ]);
 
         return redirect()->back()->with('success', 'Facility updated successfully!');
