@@ -361,4 +361,48 @@ class CommentController extends Controller
         }
     }
 
+    public function myComments(Request $request)
+    {
+        $user = auth('api')->user();
+
+        $comments = Comment::with([
+                'post:id,user_id,description',
+                'post.user:id,first_name,last_name'
+            ])
+            ->where('user_id', $user->id)
+            ->latest()
+            ->paginate($request->get('per_page', 10));
+
+        $data = collect($comments->items())->map(function ($comment) {
+            return [
+                'id' => $comment->id,
+                'comment' => $comment->comment,
+
+                'post' => [
+                    'id' => $comment->post->id,
+                    'description' => $comment->post->description,
+
+                    'posted_by' => [
+                        'id' => $comment->post->user->id ?? null,
+                        'name' => $comment->post->user->first_name . ' ' . $comment->post->user->last_name ?? null,
+                    ],
+                ],
+
+                'comment_time' => $comment->created_at,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'My comment list retrieved successfully',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $comments->currentPage(),
+                'per_page'     => $comments->perPage(),
+                'total'        => $comments->total(),
+                'last_page'    => $comments->lastPage(),
+            ]
+        ]);
+    }
+
 }
