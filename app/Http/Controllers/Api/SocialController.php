@@ -111,7 +111,7 @@ class SocialController extends Controller
                     'first_name' => $user->first_name,
                     'last_name'  => $user->last_name,
                     'image'      => $user->profile_image_url,
-                    'role'       => $this->getRoleNames()->first(),
+                    'role'       => $user->roles->first()?->name,
                     'is_onboarding' => $user->profile ? true : false,
                 ];
 
