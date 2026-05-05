@@ -101,11 +101,28 @@ class SocialController extends Controller
             }
 
             $token = JWTAuth::fromUser($user);
+            $roles = $user->roles->pluck('name')->implode(',');
 
             if ($platform === 'web') {
                 $frontendUrl = rtrim(config('app.frontend_url'), '/');
-                return redirect("{$frontendUrl}/mu/home?token={$token}");
+
+                $params = http_build_query([
+                    'token'         => $token,
+                    'id'            => $user->id,
+                    'first_name'    => $user->first_name,
+                    'last_name'     => $user->last_name,
+                    'profile_image_url' => $user->profile_image_url,
+                    'roles'         => $roles,
+                    'is_onboarding'   => $user->profile ? 'true' : 'false'
+                ]);
+
+                return redirect("{$frontendUrl}/mu/home?{$params}");
             }
+
+            // if ($platform === 'web') {
+            //     $frontendUrl = rtrim(config('app.frontend_url'), '/');
+            //     return redirect("{$frontendUrl}/mu/home?token={$token}");
+            // }
 
             return response()->json([
                 'success' => true,
