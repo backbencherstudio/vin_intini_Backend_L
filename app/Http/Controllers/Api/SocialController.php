@@ -112,7 +112,7 @@ class SocialController extends Controller
                     'last_name'  => $user->last_name,
                     'image'      => $user->profile_image_url,
                     'roles'      => $user->roles->pluck('name')->toArray(),
-                    'has_profile' => $user->profile ? true : false,
+                    'is_onboarding' => $user->profile ? true : false,
                 ];
 
                 $encodedAuth = base64_encode(json_encode($payload));
