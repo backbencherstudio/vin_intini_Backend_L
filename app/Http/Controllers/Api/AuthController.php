@@ -77,6 +77,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
+            'is_onboarding' => $user->profile ? true : false,
             'user' => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
