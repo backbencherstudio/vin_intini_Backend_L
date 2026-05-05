@@ -968,11 +968,18 @@ class GroupController extends Controller
     {
         $user = auth('api')->user();
 
-        $groups = $user->groups()
-            ->where('group_users.status', 'active')
-            ->select('groups.id', 'groups.name', 'groups.logo', 'groups.description')
-            ->get()
-            ->makeHidden(['pivot', 'cover_photo_url']);
+        $groups = Group::query()
+            ->where(function ($query) use ($user) {
+
+                $query->where('creator_id', $user->id)
+                    ->orWhereHas('users', function ($q) use ($user) {
+                        $q->where('users.id', $user->id)
+                            ->where('group_users.status', '!=', 'banned');
+                    });
+            })
+            ->select('id', 'name', 'logo', 'description', 'creator_id')
+            ->latest()
+            ->get();
 
         return response()->json([
             'status' => true,

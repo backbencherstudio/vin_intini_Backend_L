@@ -112,7 +112,9 @@ class TimelineController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        $isMember = $membership && $membership->status !== 'banned';
+        $isCreator = $group->creator_id === $user->id;
+
+        $isMember = $isCreator || ($membership && $membership->status !== 'banned');
 
         if ($group->type === 'private' && !$isMember) {
             return response()->json([
@@ -121,7 +123,7 @@ class TimelineController extends Controller
             ], 403);
         }
 
-        if ($membership && $membership->status === 'banned') {
+        if (!$isCreator && $membership && $membership->status === 'banned') {
             return response()->json([
                 'success' => false,
                 'message' => 'You are banned from this group'
@@ -138,7 +140,7 @@ class TimelineController extends Controller
             ->whereHas('groups', function ($q) use ($groupId) {
                 $q->where('groups.id', $groupId);
             })
-            ->orderByDesc('id')
+            ->latest()
             ->paginate($request->get('per_page', 10));
 
         return response()->json([
@@ -168,14 +170,15 @@ class TimelineController extends Controller
             'meta' => [
                 'group_id' => $group->id,
                 'group_type' => $group->type,
+                'is_creator' => $isCreator,
                 'is_member' => $isMember,
             ],
 
             'pagination' => [
                 'current_page' => $posts->currentPage(),
-                'per_page'     => $posts->perPage(),
-                'total'        => $posts->total(),
-                'last_page'    => $posts->lastPage(),
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+                'last_page' => $posts->lastPage(),
             ]
         ]);
     }
