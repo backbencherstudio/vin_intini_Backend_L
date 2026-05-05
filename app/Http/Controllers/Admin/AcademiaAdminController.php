@@ -206,6 +206,7 @@ class AcademiaAdminController extends Controller
             'latitude' => $request->latitude ?? 0,
             'longitude' => $request->longitude ?? 0,
             'degree_types' => $degrees,
+            'website' => $request->website,
         ]);
 
         return redirect()->back()->with('success', 'New Residency Program added successfully!');
@@ -229,6 +230,7 @@ class AcademiaAdminController extends Controller
             'latitude' => $request->latitude ?? 0,
             'longitude' => $request->longitude ?? 0,
             'degree_types' => $degrees,
+            'website' => $request->website,
         ]);
 
         return redirect()->back()->with('success', 'Residency Program updated successfully!');
