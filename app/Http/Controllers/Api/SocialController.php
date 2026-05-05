@@ -105,18 +105,19 @@ class SocialController extends Controller
             if ($platform === 'web') {
                 $frontendUrl = rtrim(config('app.frontend_url'), '/');
 
-                $userData = [
-                    'id'            => $user->id,
-                    'first_name'    => $user->first_name,
-                    'last_name'     => $user->last_name,
-                    'profile_image' => $user->profile_image_url,
-                    'roles'         => $user->roles->pluck('name')->toArray(),
-                    'has_profile'   => $user->profile ? true : false,
+                $payload = [
+                    'token'      => $token,
+                    'id'         => $user->id,
+                    'first_name' => $user->first_name,
+                    'last_name'  => $user->last_name,
+                    'image'      => $user->profile_image_url,
+                    'roles'      => $user->roles->pluck('name')->toArray(),
+                    'has_profile' => $user->profile ? true : false,
                 ];
 
-                $encodedData = base64_encode(json_encode($userData));
+                $encodedAuth = base64_encode(json_encode($payload));
 
-                return redirect("{$frontendUrl}/mu/home?token={$token}&data={$encodedData}");
+                return redirect("{$frontendUrl}/mu/home?auth={$encodedAuth}");
             }
 
             // if ($platform === 'web') {
