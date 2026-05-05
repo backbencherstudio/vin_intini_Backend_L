@@ -181,8 +181,8 @@
                     <div class="mb-3"><label class="form-label fw-bold">Location</label><input type="text" name="location" id="fac_loc" class="form-control"></div>
                     <div class="row mb-3 bg-light p-3 rounded border mx-0 shadow-sm">
                         <h6 class="fw-bold text-secondary mb-3 small">Update Coordinates</h6>
-                        <div class="col-md-6"><input type="text" name="latitude" id="fac_lat" class="form-control form-control-sm"></div>
-                        <div class="col-md-6"><input type="text" name="longitude" id="fac_long" class="form-control form-control-sm"></div>
+                        <div class="col-md-6"><label class="small text-muted">Latitude</label><input type="text" name="latitude" placeholder="e.g. 33.44" id="fac_lat" class="form-control form-control-sm"></div>
+                        <div class="col-md-6"><label class="small text-muted">Longitude</label><input type="text" name="longitude" placeholder="e.g. -112.07" id="fac_long" class="form-control form-control-sm"></div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-0">
