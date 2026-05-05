@@ -65,8 +65,10 @@
                                 <th class="text-start">University Name</th>
                                 <th>State</th>
                                 <th>Psychology Degrees</th>
+                                <th>Counseling Degrees</th>
                                 <th>Neuroscience Degrees</th>
                                 <th>Map Pin</th>
+                                <th>Website</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -91,6 +93,16 @@
                                         @endif
                                     </td>
                                     <td>
+                                        @if (!empty($uni->counseling_degrees) && is_array($uni->counseling_degrees))
+                                            @foreach ($uni->counseling_degrees as $degree)
+                                                <span
+                                                    class="badge bg-warning-subtle text-warning border border-warning-subtle x-small mb-1">{{ $degree }}</span>
+                                            @endforeach
+                                        @else
+                                            <span class="text-muted small">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         @if (!empty($uni->neuroscience_degrees) && is_array($uni->neuroscience_degrees))
                                             @foreach ($uni->neuroscience_degrees as $degree)
                                                 <span
@@ -104,11 +116,21 @@
                                         @if ($uni->latitude == 0 || $uni->latitude == null)
                                             <span class="text-danger x-small fw-bold">No GPS</span>
                                         @else
-                                            <code class="text-primary x-small">{{ number_format($uni->latitude, 2) }},
-                                                {{ number_format($uni->longitude, 2) }}</code>
+                                            <code class="text-primary x-small">{{ $uni->latitude }},
+                                                {{ $uni->longitude }}</code>
                                         @endif
                                     </td>
-                                    
+                                    <td>
+                                        @if ($uni->website)
+                                            <a href="{{ str_starts_with($uni->website, 'http') ? $uni->website : 'https://' . $uni->website }}"
+                                            target="_blank"
+                                            class="btn btn-link btn-sm p-0 text-decoration-none fw-bold">
+                                                <i class="fas fa-external-link-alt me-1 small"></i> Visit Website
+                                            </a>
+                                        @else
+                                            <span class="text-muted small">N/A</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <div class="d-flex justify-content-center gap-2">
                                             <button type="button" class="btn btn-sm btn-warning px-3 shadow-sm"
@@ -118,7 +140,9 @@
                                                 data-long="{{ $uni->longitude }}"
                                                 data-online="{{ $uni->has_online_options ? 1 : 0 }}"
                                                 data-psych="{{ is_array($uni->psychology_degrees) ? implode(', ', $uni->psychology_degrees) : '' }}"
-                                                data-neuro="{{ is_array($uni->neuroscience_degrees) ? implode(', ', $uni->neuroscience_degrees) : '' }}">
+                                                data-neuro="{{ is_array($uni->neuroscience_degrees) ? implode(', ', $uni->neuroscience_degrees) : '' }}"
+                                                data-counseling="{{ is_array($uni->counseling_degrees) ? implode(', ', $uni->counseling_degrees) : '' }}"
+                                                data-website="{{ $uni->website ?? '' }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
 
@@ -177,21 +201,23 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-6 pt-4 mt-2">
+                            {{-- <div class="col-md-6 pt-4 mt-2">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="has_online_options"
                                         id="create_online">
                                     <label class="form-check-label fw-bold" for="create_online">Available Online?</label>
                                 </div>
-                            </div>
+                            </div> --}}
                         </div>
                         <div class="row mb-3 bg-light p-3 rounded border mx-0">
                             <h6 class="fw-bold text-secondary mb-3 small">Map Coordinates</h6>
                             <div class="col-md-6">
+                                <label class="small text-muted">Latitude</label>
                                 <input type="text" name="latitude" class="form-control"
                                     placeholder="Latitude (e.g. 34.05)">
                             </div>
                             <div class="col-md-6">
+                                <label class="small text-muted">Longitude</label>
                                 <input type="text" name="longitude" class="form-control"
                                     placeholder="Longitude (e.g. -118.24)">
                             </div>
@@ -202,9 +228,19 @@
                                 placeholder="Comma separated list">
                         </div>
                         <div class="mb-3">
+                            <label class="form-label fw-bold text-primary small">Counseling Degrees (MA, MDiv, PhD)</label>
+                            <input type="text" name="counseling_degrees" class="form-control"
+                                placeholder="Comma separated list">
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label fw-bold text-success small">Neuroscience Degrees (BS, PhD)</label>
                             <input type="text" name="neuroscience_degrees" class="form-control"
                                 placeholder="Comma separated list">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-danger small">University Website</label>
+                            <input type="url" name="website" class="form-control"
+                                placeholder="https://example.com">
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0">
@@ -216,7 +252,6 @@
         </div>
     </div>
 
-    <!-- Edit University Modal (আগের মতোই থাকবে) -->
     <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
@@ -240,30 +275,41 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-6 pt-4 mt-2">
+                            {{-- <div class="col-md-6 pt-4 mt-2">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="has_online_options"
                                         id="modal_online">
                                     <label class="form-check-label fw-bold" for="modal_online">Available Online?</label>
                                 </div>
-                            </div>
+                            </div> --}}
                         </div>
                         <div class="row mb-3 bg-light p-3 rounded border mx-0">
                             <h6 class="fw-bold text-secondary mb-3 small">Map Coordinates</h6>
                             <div class="col-md-6">
-                                <input type="text" name="latitude" id="modal_lat" class="form-control">
+                                <label class="small text-muted">Latitude</label>
+                                <input type="text" name="latitude" id="modal_lat" class="form-control" placeholder="Lat (e.g. 33.44)">
                             </div>
                             <div class="col-md-6">
-                                <input type="text" name="longitude" id="modal_long" class="form-control">
+                                <label class="small text-muted">Longitude</label>
+                                <input type="text" name="longitude" id="modal_long" class="form-control" placeholder="Long (e.g. -112.07)">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold text-info small">Psychology Degrees</label>
-                            <input type="text" name="psychology_degrees" id="modal_psych" class="form-control">
+                            <input type="text" name="psychology_degrees" id="modal_psych" class="form-control" placeholder="e.g. BA, MA, PhD (comma separated)">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-primary small">Counseling Degrees</label>
+                            <input type="text" name="counseling_degrees" id="modal_counseling" class="form-control" placeholder="e.g. MA, MD, PhD (comma separated)">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold text-success small">Neuroscience Degrees</label>
-                            <input type="text" name="neuroscience_degrees" id="modal_neuro" class="form-control">
+                            <input type="text" name="neuroscience_degrees" id="modal_neuro" class="form-control" placeholder="e.g. BA, MA, PhD (comma separated)">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-danger small">University Website</label>
+                            <input type="url" name="website" id="modal_website" class="form-control"
+                                placeholder="https://example.com">
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0">
@@ -291,7 +337,9 @@
                 document.getElementById('modal_lat').value = button.getAttribute('data-lat');
                 document.getElementById('modal_long').value = button.getAttribute('data-long');
                 document.getElementById('modal_psych').value = button.getAttribute('data-psych');
+                document.getElementById('modal_counseling').value = button.getAttribute('data-counseling');
                 document.getElementById('modal_neuro').value = button.getAttribute('data-neuro');
+                document.getElementById('modal_website').value = button.getAttribute('data-website') || '';
                 document.getElementById('modal_online').checked = (button.getAttribute('data-online') == 1);
             });
         });
