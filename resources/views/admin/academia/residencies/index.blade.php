@@ -70,6 +70,7 @@
                                 <th>City / Location</th>
                                 <th>Degree Types</th>
                                 <th>Map Pin</th>
+                                <th>Website</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -100,11 +101,21 @@
                                     </td>
                                     <td>
                                         @if ($item->latitude && $item->longitude)
-                                            <div class="bg-light p-1 rounded border d-inline-block px-2 shadow-sm">
-                                                <code class="text-primary small">{{ number_format($item->latitude, 2) }}, {{ number_format($item->longitude, 2) }}</code>
-                                            </div>
+                                            <code class="text-primary x-small">{{ $item->latitude }},
+                                                {{ $item->longitude }}</code>
                                         @else
                                             <span class="text-danger x-small fw-bold">No GPS</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($item->website)
+                                            <a href="{{ str_starts_with($item->website, 'http') ? $item->website : 'https://' . $item->website }}"
+                                            target="_blank"
+                                            class="btn btn-link btn-sm p-0 text-decoration-none fw-bold">
+                                                <i class="fas fa-external-link-alt me-1 small"></i> Visit Website
+                                            </a>
+                                        @else
+                                            <span class="text-muted small">N/A</span>
                                         @endif
                                     </td>
                                     <td>
@@ -118,7 +129,8 @@
                                                 data-location="{{ $item->location }}"
                                                 data-lat="{{ $item->latitude }}"
                                                 data-long="{{ $item->longitude }}"
-                                                data-degrees="{{ is_array($item->degree_types) ? implode(', ', $item->degree_types) : '' }}">
+                                                data-degrees="{{ is_array($item->degree_types) ? implode(', ', $item->degree_types) : '' }}"
+                                                data-website="{{ $item->website ?? '' }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
 
@@ -195,6 +207,10 @@
                             <label class="form-label fw-bold text-success small">Degrees (Comma Separated)</label>
                             <input type="text" name="degree_types" class="form-control" placeholder="MD, DO, PhD">
                         </div>
+                        <div class="mb-0">
+                            <label class="form-label fw-bold text-success small">Website</label>
+                            <input type="url" name="website" class="form-control" placeholder="https://example.com">
+                        </div>
                     </div>
                     <div class="modal-footer bg-light border-0 text-start">
                         <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
@@ -247,6 +263,10 @@
                             <label class="form-label fw-bold text-success small">Degrees (Comma Separated)</label>
                             <input type="text" name="degree_types" id="edit_res_degrees" class="form-control" placeholder="MD, DO, PhD (comma separated)">
                         </div>
+                        <div class="mb-0 text-start">
+                            <label class="form-label fw-bold text-success small">Website</label>
+                            <input type="url" name="website" id="edit_res_website" class="form-control" placeholder="https://example.com">
+                        </div>
                     </div>
                     <div class="modal-footer bg-light border-0">
                         <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
@@ -272,6 +292,7 @@
                 document.getElementById('edit_res_lat').value = button.getAttribute('data-lat');
                 document.getElementById('edit_res_long').value = button.getAttribute('data-long');
                 document.getElementById('edit_res_degrees').value = button.getAttribute('data-degrees');
+                document.getElementById('edit_res_website').value = button.getAttribute('data-website');
             });
         });
     </script>

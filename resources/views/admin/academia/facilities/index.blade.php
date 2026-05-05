@@ -64,6 +64,7 @@
                             <th>State</th>
                             <th>Category</th>
                             <th>Map Pin (Lat, Long)</th>
+                            <th>Website</th>
                             <th class="pe-4">Actions</th>
                         </tr>
                     </thead>
@@ -86,9 +87,20 @@
                                 </td>
                                 <td>
                                     @if ($item->latitude && $item->longitude)
-                                        <code class="text-primary">{{ number_format($item->latitude, 4) }}, {{ number_format($item->longitude, 4) }}</code>
+                                        <code class="text-primary">{{ $item->latitude }}, {{ $item->longitude }}</code>
                                     @else
                                         <span class="text-danger small fw-bold">No GPS</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($item->website)
+                                        <a href="{{ str_starts_with($item->website, 'http') ? $item->website : 'https://' . $item->website }}"
+                                        target="_blank"
+                                        class="btn btn-link btn-sm p-0 text-decoration-none fw-bold">
+                                            <i class="fas fa-external-link-alt me-1 small"></i> Visit Website
+                                        </a>
+                                    @else
+                                        <span class="text-muted small">N/A</span>
                                     @endif
                                 </td>
                                 <td class="pe-4">
@@ -96,7 +108,8 @@
                                         <!-- Edit Button -->
                                         <button class="btn btn-sm btn-outline-warning shadow-sm" data-bs-toggle="modal" data-bs-target="#editFacilityModal"
                                             data-id="{{ $item->id }}" data-name="{{ $item->name }}" data-state="{{ $item->state_id }}"
-                                            data-type="{{ $item->type }}" data-location="{{ $item->location }}" data-lat="{{ $item->latitude }}" data-long="{{ $item->longitude }}">
+                                            data-type="{{ $item->type }}" data-location="{{ $item->location }}" data-lat="{{ $item->latitude }}" data-long="{{ $item->longitude }}"
+                                            data-website="{{ $item->website ?? '' }}">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <!-- Delete Button -->
@@ -108,7 +121,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="py-5">No records found.</td></tr>
+                            <tr><td colspan="7" class="py-5">No records found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -148,6 +161,10 @@
                         <div class="col-md-6"><label class="small text-muted">Latitude</label><input type="text" name="latitude" class="form-control form-control-sm" placeholder="e.g. 33.44"></div>
                         <div class="col-md-6"><label class="small text-muted">Longitude</label><input type="text" name="longitude" class="form-control form-control-sm" placeholder="e.g. -112.07"></div>
                     </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-bold text-success small">Website</label>
+                        <input type="url" name="website" class="form-control" placeholder="https://example.com">
+                    </div>
                 </div>
                 <div class="modal-footer bg-light border-0">
                     <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
@@ -184,6 +201,10 @@
                         <div class="col-md-6"><label class="small text-muted">Latitude</label><input type="text" name="latitude" placeholder="e.g. 33.44" id="fac_lat" class="form-control form-control-sm"></div>
                         <div class="col-md-6"><label class="small text-muted">Longitude</label><input type="text" name="longitude" placeholder="e.g. -112.07" id="fac_long" class="form-control form-control-sm"></div>
                     </div>
+                    <div class="mb-0 text-start">
+                        <label class="form-label fw-bold text-success small">Website</label>
+                        <input type="url" name="website" id="edit_res_website" class="form-control" placeholder="https://example.com">
+                    </div>
                 </div>
                 <div class="modal-footer bg-light border-0">
                     <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
@@ -207,6 +228,7 @@
             document.getElementById('fac_loc').value = button.getAttribute('data-location');
             document.getElementById('fac_lat').value = button.getAttribute('data-lat');
             document.getElementById('fac_long').value = button.getAttribute('data-long');
+            document.getElementById('edit_res_website').value = button.getAttribute('data-website');
         });
     });
 </script>
