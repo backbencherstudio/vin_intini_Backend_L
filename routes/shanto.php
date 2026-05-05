@@ -46,4 +46,6 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/comment/{id}', [CommentController::class, 'deleteComment']);
     Route::delete('/reply/{id}', [CommentController::class, 'deleteReply']);
 
+    Route::get('/my-comment-list', [CommentController::class, 'myComments']);
+
 });
