@@ -37,6 +37,7 @@ class AcademiaAdminController extends Controller
         ]);
 
         $psychDegrees = $request->psychology_degrees ? array_map('trim', explode(',', $request->psychology_degrees)) : [];
+        $counselingDegrees = $request->counseling_degrees ? array_map('trim', explode(',', $request->counseling_degrees)) : [];
         $neuroDegrees = $request->neuroscience_degrees ? array_map('trim', explode(',', $request->neuroscience_degrees)) : [];
 
         AcademiaUniversity::create([
@@ -46,7 +47,9 @@ class AcademiaAdminController extends Controller
             'longitude' => $request->longitude ?? 0,
             'has_online_options' => $request->has('has_online_options'),
             'psychology_degrees' => $psychDegrees,
+            'counseling_degrees' => $counselingDegrees,
             'neuroscience_degrees' => $neuroDegrees,
+            'website' => $request->website ?? null,
         ]);
 
         return redirect()->back()->with('success', 'New University added successfully!');
@@ -66,6 +69,10 @@ class AcademiaAdminController extends Controller
             ? array_filter(array_map('trim', explode(',', $request->neuroscience_degrees)))
             : [];
 
+        $counseling = $request->counseling_degrees
+            ? array_filter(array_map('trim', explode(',', $request->counseling_degrees)))
+            : [];
+
         $uni->update([
             'name' => $request->name,
             'state_id' => $request->state_id,
@@ -73,10 +80,12 @@ class AcademiaAdminController extends Controller
             'longitude' => $request->longitude,
             'psychology_degrees' => $psych,
             'neuroscience_degrees' => $neuro,
-            'has_online_options' => $request->has('has_online_options')
+            'counseling_degrees' => $counseling,
+            'has_online_options' => $request->has('has_online_options'),
+            'website' => $request->website ?? null,
         ]);
 
-        return redirect()->back()->with('success', 'Facility updated successfully!');
+        return redirect()->back()->with('success', 'University updated successfully!');
     }
 
     public function destroyUniversity($id)

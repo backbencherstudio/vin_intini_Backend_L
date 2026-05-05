@@ -183,9 +183,11 @@
                         <div class="row mb-3 bg-light p-3 rounded border mx-0 shadow-sm">
                             <h6 class="fw-bold text-secondary mb-3 small">Map Coordinates</h6>
                             <div class="col-md-6">
+                                <label class="small text-muted">Latitude</label>
                                 <input type="text" name="latitude" class="form-control" placeholder="Lat (e.g. 33.44)">
                             </div>
                             <div class="col-md-6">
+                                <label class="small text-muted">Longitude</label>
                                 <input type="text" name="longitude" class="form-control" placeholder="Long (e.g. -112.07)">
                             </div>
                         </div>
@@ -235,15 +237,15 @@
                         <div class="row mb-3 bg-light p-3 rounded border mx-0 shadow-sm text-start">
                             <h6 class="fw-bold text-secondary mb-3 small">Map Coordinates</h6>
                             <div class="col-md-6">
-                                <input type="text" name="latitude" id="edit_res_lat" class="form-control">
+                                <label class="small text-muted">Latitude</label><input type="text" name="latitude" id="edit_res_lat" class="form-control" placeholder="Lat (e.g. 33.44)">
                             </div>
                             <div class="col-md-6">
-                                <input type="text" name="longitude" id="edit_res_long" class="form-control">
+                                <label class="small text-muted">Longitude</label><input type="text" name="longitude" id="edit_res_long" class="form-control" placeholder="Long (e.g. -112.07)">
                             </div>
                         </div>
                         <div class="mb-0 text-start">
-                            <label class="form-label fw-bold text-success small text-start d-block">Degrees</label>
-                            <input type="text" name="degree_types" id="edit_res_degrees" class="form-control">
+                            <label class="form-label fw-bold text-success small">Degrees (Comma Separated)</label>
+                            <input type="text" name="degree_types" id="edit_res_degrees" class="form-control" placeholder="MD, DO, PhD (comma separated)">
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0">

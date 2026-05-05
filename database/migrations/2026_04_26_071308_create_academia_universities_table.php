@@ -16,7 +16,9 @@ return new class extends Migration
             $table->foreignId('state_id')->constrained('states')->onDelete('cascade');
             $table->string('name');
             $table->json('psychology_degrees')->nullable(); // Store as ["BA", "MS"]
+            $table->json('counseling_degrees')->nullable();
             $table->json('neuroscience_degrees')->nullable();
+            $table->string('website')->nullable();
             $table->boolean('has_online_options')->default(false);
 
             // GPS Location

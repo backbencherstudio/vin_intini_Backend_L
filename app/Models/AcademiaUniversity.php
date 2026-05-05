@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 class AcademiaUniversity extends Model
 {
     protected $table = 'academia_universities';
-    protected $fillable = ['state_id', 'name', 'psychology_degrees', 'neuroscience_degrees', 'has_online_options', 'latitude', 'longitude'];
+    protected $fillable = ['state_id', 'name', 'psychology_degrees', 'neuroscience_degrees', 'has_online_options', 'latitude', 'longitude', 'counseling_degrees', 'website'];
 
     protected $casts = [
         'psychology_degrees' => 'array',
         'neuroscience_degrees' => 'array',
+        'counseling_degrees' => 'array',
         'has_online_options' => 'boolean'
     ];
 
