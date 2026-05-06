@@ -82,5 +82,11 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/notifications/{notificationId}', [NotificationController::class, 'delete']);
     Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
 
-    
+    //academia routes
+    Route::get('/states', [AcademiaController::class, 'getStates']);
+    Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
+    Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
+    Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
+    Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
+    Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
 });
