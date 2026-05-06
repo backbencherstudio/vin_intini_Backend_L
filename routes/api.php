@@ -59,10 +59,3 @@ Route::middleware('auth:api')->group(function () {
     });
 });
 
-//academia routes
-Route::get('/states', [AcademiaController::class, 'getStates']);
-Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
-Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
-Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
-Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
-Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
