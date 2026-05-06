@@ -303,7 +303,7 @@ class ConnectionController extends Controller
             })
             ->select(['id', 'first_name', 'last_name', 'title', 'profile_image', 'cover_image'])
             // ->latest('id');
-            ->inRandomOrder('id');
+            ->inRandomOrder($currentUser->id);
 
         $paginator = $suggestionsQuery->paginate($perPage);
 
