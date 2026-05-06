@@ -74,7 +74,8 @@ class ConnectionRequestReceivedNotification extends Notification
             'sender_name' => trim(($this->sender->first_name ?? '') . ' ' . ($this->sender->last_name ?? '')),
             'sender_profile_image' => $this->sender->profile_image,
             'sender_profile_image_url' => $this->sender->profile_image_url,
-            'message' => trim(($this->sender->first_name ?? '') . ' ' . ($this->sender->last_name ?? '')) . ' sent you a connection request',
+            'message' => 'sent you a connection request',
+            // 'message' => trim(($this->sender->first_name ?? '') . ' ' . ($this->sender->last_name ?? '')) . ' sent you a connection request',
             'type' => 'connection_request_received',
             'requested_at' => $this->connectionRequest->created_at?->toIso8601String(),
         ];
