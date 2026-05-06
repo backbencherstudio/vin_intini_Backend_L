@@ -15,7 +15,7 @@ Route::get('/clear', function () {
 });
 
 
-Route::prefix('admin/academia')->group(function () {
+Route::prefix('/academia')->group(function () {
 
     // 1. Universities (List, Edit, Update)
     Route::get('/universities', [AcademiaAdminController::class, 'indexUniversities'])->name('admin.universities.index');
