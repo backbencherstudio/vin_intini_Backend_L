@@ -54,7 +54,8 @@ class ConnectionRequestAcceptedNotification extends Notification
             'acceptor_name' => $acceptorName,
             'acceptor_profile_image' => $this->acceptor->profile_image,
             'acceptor_profile_image_url' => $this->acceptor->profile_image_url,
-            'message' => $acceptorName . ' accepted your connection request',
+            // 'message' => $acceptorName . ' accepted your connection request',
+            'message' => 'accepted your connection request',
             'type' => 'connection_request_accepted',
             'responded_at' => $this->connectionRequest->responded_at?->toIso8601String(),
         ];
