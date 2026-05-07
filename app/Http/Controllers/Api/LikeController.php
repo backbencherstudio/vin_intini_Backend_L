@@ -16,6 +16,7 @@ use App\Models\ReplyLike;
 use App\Models\User;
 use App\Notifications\CommentLikedNotification;
 use App\Notifications\PostLikedNotification;
+use App\Notifications\ReplyLikedNotification;
 
 class LikeController extends Controller
 {
@@ -237,15 +238,15 @@ class LikeController extends Controller
 
     public function likeReply($replyId)
     {
-        $userId = auth('api')->id();
+        $user = auth('api')->user();
 
-        $reply = Reply::select('id', 'like_count')->findOrFail($replyId);
+        $reply = Reply::findOrFail($replyId);
 
         try {
 
             $created = ReplyLike::firstOrCreate([
                 'reply_id' => $reply->id,
-                'user_id'  => $userId,
+                'user_id'  => $user->id,
             ]);
 
             if ($created->wasRecentlyCreated) {
@@ -254,6 +255,17 @@ class LikeController extends Controller
                     ->update([
                         'like_count' => DB::raw('like_count + 1')
                     ]);
+
+                if ($reply->user_id != $user->id) {
+
+                    $replyOwner = User::find($reply->user_id);
+
+                    if ($replyOwner) {
+                        $replyOwner->notify(
+                            new ReplyLikedNotification($user, $reply)
+                        );
+                    }
+                }
 
                 return response()->json([
                     'success'    => true,
@@ -265,7 +277,7 @@ class LikeController extends Controller
 
             ReplyLike::where([
                 'reply_id' => $reply->id,
-                'user_id'  => $userId,
+                'user_id'  => $user->id,
             ])->delete();
 
             Reply::where('id', $reply->id)
