@@ -70,7 +70,7 @@
                                 <th>State</th>
                                 {{-- <th>City / Location</th> --}}
                                 <th>Degree Types</th>
-                                <th>Map Pin</th>
+                                <th>Map Pin (Lat, Long)</th>
                                 <th>Website</th>
                                 <th>Action</th>
                             </tr>
