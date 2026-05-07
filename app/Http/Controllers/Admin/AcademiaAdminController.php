@@ -146,6 +146,7 @@ class AcademiaAdminController extends Controller
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'website' => $request->website ?? null,
+            'phone' => $request->phone ?? null,
         ]);
 
         return redirect()->back()->with('success', 'Facility updated successfully!');
@@ -157,6 +158,7 @@ class AcademiaAdminController extends Controller
             'name' => 'required|string|max:255',
             'state_id' => 'required|exists:states,id',
             'type' => 'required',
+            'phone' => 'nullable|string|max:255',
         ]);
 
         AcademiaFacility::create($request->all());

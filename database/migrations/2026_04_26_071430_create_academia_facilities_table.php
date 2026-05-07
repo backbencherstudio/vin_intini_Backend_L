@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('location')->nullable();
             $table->enum('type', ['state_institution', 'university_hospital', 'va_facility']);
             $table->foreignId('university_id')->nullable()->constrained('academia_universities')->onDelete('set null');
+            $table->string('phone')->nullable();
             $table->string('website')->nullable();
 
             // GPS Location

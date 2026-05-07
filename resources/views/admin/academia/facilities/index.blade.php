@@ -109,7 +109,7 @@
                                         <button class="btn btn-sm btn-outline-warning shadow-sm" data-bs-toggle="modal" data-bs-target="#editFacilityModal"
                                             data-id="{{ $item->id }}" data-name="{{ $item->name }}" data-state="{{ $item->state_id }}"
                                             data-type="{{ $item->type }}" data-location="{{ $item->location }}" data-lat="{{ $item->latitude }}" data-long="{{ $item->longitude }}"
-                                            data-website="{{ $item->website ?? '' }}">
+                                            data-website="{{ $item->website ?? '' }}" data-phone="{{ $item->phone ?? '' }}">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <!-- Delete Button -->
@@ -162,6 +162,10 @@
                         <div class="col-md-6"><label class="small text-muted">Longitude</label><input type="text" name="longitude" class="form-control form-control-sm" placeholder="e.g. -112.07"></div>
                     </div>
                     <div class="mb-0">
+                        <label class="form-label fw-bold text-success small">Phone</label>
+                        <input type="text" name="phone" class="form-control" placeholder="(123) 456-7890">
+                    </div>
+                    <div class="mb-0">
                         <label class="form-label fw-bold text-success small">Website</label>
                         <input type="url" name="website" class="form-control" placeholder="https://example.com">
                     </div>
@@ -202,7 +206,11 @@
                         <div class="col-md-6"><label class="small text-muted">Longitude</label><input type="text" name="longitude" placeholder="e.g. -112.07" id="fac_long" class="form-control form-control-sm"></div>
                     </div>
                     <div class="mb-0 text-start">
-                        <label class="form-label fw-bold text-success small">Website</label>
+                        <label class="form-label fw-bold small">Phone</label>
+                        <input type="text" name="phone" id="edit_res_phone" class="form-control" placeholder="(123) 456-7890">
+                    </div>
+                    <div class="mb-0 text-start">
+                        <label class="form-label fw-bold small">Website</label>
                         <input type="url" name="website" id="edit_res_website" class="form-control" placeholder="https://example.com">
                     </div>
                 </div>
@@ -229,6 +237,7 @@
             document.getElementById('fac_lat').value = button.getAttribute('data-lat');
             document.getElementById('fac_long').value = button.getAttribute('data-long');
             document.getElementById('edit_res_website').value = button.getAttribute('data-website');
+            document.getElementById('edit_res_phone').value = button.getAttribute('data-phone');
         });
     });
 </script>
