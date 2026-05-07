@@ -26,18 +26,16 @@ class LikeController extends Controller
 
         $post = Post::with(['user', 'groups'])->findOrFail($postId);
 
-
-
         if ($post->visibility === 'connections') {
 
             $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
                 ->where(function ($q) use ($user, $post) {
                     $q->where(function ($q1) use ($user, $post) {
                         $q1->where('sender_id', $user->id)
-                        ->where('receiver_id', $post->user_id);
+                            ->where('receiver_id', $post->user_id);
                     })->orWhere(function ($q2) use ($user, $post) {
                         $q2->where('sender_id', $post->user_id)
-                        ->where('receiver_id', $user->id);
+                            ->where('receiver_id', $user->id);
                     });
                 })
                 ->exists();
@@ -49,8 +47,6 @@ class LikeController extends Controller
                 ], 403);
             }
         }
-
-        $group = null;
 
         if ($post->visibility === 'groups') {
 
@@ -94,6 +90,7 @@ class LikeController extends Controller
 
                 $existingLike->delete();
                 $post->decrement('total_like');
+                $post->refresh();
 
                 DB::commit();
 
@@ -112,6 +109,7 @@ class LikeController extends Controller
             ]);
 
             $post->increment('total_like');
+            $post->refresh();
 
             if ($post->user_id !== $user->id) {
                 $post->user->notify(new PostLikedNotification($user, $post));
@@ -133,8 +131,7 @@ class LikeController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Something went wrong',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'message' => 'Something went wrong'
             ], 500);
         }
     }
