@@ -63,6 +63,7 @@
                             <tr class="text-secondary text-uppercase small fw-bold">
                                 <th class="ps-4 py-3">ID</th>
                                 <th class="text-start">University Name</th>
+                                <th class="text-start">State</th>
                                 <th>Psychology Degrees</th>
                                 <th>Counseling Degrees</th>
                                 <th>Neuroscience Degrees</th>
