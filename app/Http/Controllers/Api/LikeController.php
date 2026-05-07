@@ -13,6 +13,8 @@ use App\Models\Connection;
 use App\Models\GroupUser;
 use App\Models\Reply;
 use App\Models\ReplyLike;
+use App\Models\User;
+use App\Notifications\CommentLikedNotification;
 use App\Notifications\PostLikedNotification;
 
 class LikeController extends Controller
@@ -168,15 +170,15 @@ class LikeController extends Controller
     
     public function likeComment($commentId)
     {
-        $userId = auth('api')->id();
+        $user = auth('api')->user();
 
-        $comment = Comment::select('id', 'like_count')->findOrFail($commentId);
+        $comment = Comment::findOrFail($commentId);
 
         try {
 
             $created = CommentLike::firstOrCreate([
                 'comment_id' => $comment->id,
-                'user_id'    => $userId,
+                'user_id'    => $user->id,
             ]);
 
             if ($created->wasRecentlyCreated) {
@@ -185,6 +187,17 @@ class LikeController extends Controller
                     ->update([
                         'like_count' => DB::raw('like_count + 1')
                     ]);
+
+                if ($comment->user_id != $user->id) {
+                    
+                    $commentOwner = User::find($comment->user_id);
+
+                    if ($commentOwner) {
+                        $commentOwner->notify(
+                            new CommentLikedNotification($user, $comment)
+                        );
+                    }
+                }
 
                 return response()->json([
                     'success'    => true,
@@ -196,7 +209,7 @@ class LikeController extends Controller
 
             CommentLike::where([
                 'comment_id' => $comment->id,
-                'user_id'    => $userId,
+                'user_id'    => $user->id,
             ])->delete();
 
             Comment::where('id', $comment->id)
