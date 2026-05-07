@@ -24,7 +24,8 @@
                     <div class="col-md-4">
                         <label class="form-label fw-bold small text-muted">Search Program / City</label>
                         <div class="input-group shadow-sm">
-                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                            <span class="input-group-text bg-white border-end-0 text-muted"><i
+                                    class="fas fa-search"></i></span>
                             <input type="text" name="search" class="form-control border-start-0"
                                 placeholder="e.g. Psychiatry or Phoenix" value="{{ request('search') }}">
                         </div>
@@ -67,7 +68,7 @@
                                 <th class="ps-4 py-3">ID</th>
                                 <th class="text-start">Program Name</th>
                                 <th>State</th>
-                                <th>City / Location</th>
+                                {{-- <th>City / Location</th> --}}
                                 <th>Degree Types</th>
                                 <th>Map Pin</th>
                                 <th>Website</th>
@@ -80,20 +81,27 @@
                                     <td class="ps-4 text-muted small">#{{ $item->id }}</td>
                                     <td class="text-start">
                                         <div class="fw-bold text-dark">{{ $item->program_name }}</div>
+                                        <div class="text-muted small"><i class="fas fa-map-marker-alt text-danger"></i>
+                                            {{ $item->location ?? 'N/A' }} | <i class="fas fa-phone text-info"></i>
+                                            {{ $item->phone ?? 'N/A' }}</div>
                                     </td>
+                                    {{-- <td class="text-start">
+                                        <div class="fw-bold text-dark">{{ $item->program_name }}</div>
+                                    </td> --}}
                                     <td>
                                         <span class="badge bg-light text-dark border px-2 py-1">
                                             {{ $item->state->name ?? 'N/A' }}
                                         </span>
                                     </td>
-                                    <td>
+                                    {{-- <td>
                                         <small class="text-muted"><i class="fas fa-map-marker-alt text-danger me-1"></i>
                                             {{ $item->location ?? 'N/A' }}</small>
-                                    </td>
+                                    </td> --}}
                                     <td>
                                         @if ($item->degree_types && is_array($item->degree_types))
                                             @foreach ($item->degree_types as $degree)
-                                                <span class="badge bg-info-subtle text-info border border-info-subtle x-small px-2 mb-1">{{ $degree }}</span>
+                                                <span
+                                                    class="badge bg-info-subtle text-info border border-info-subtle x-small px-2 mb-1">{{ $degree }}</span>
                                             @endforeach
                                         @else
                                             <span class="text-muted small">None</span>
@@ -110,8 +118,8 @@
                                     <td>
                                         @if ($item->website)
                                             <a href="{{ str_starts_with($item->website, 'http') ? $item->website : 'https://' . $item->website }}"
-                                            target="_blank"
-                                            class="btn btn-link btn-sm p-0 text-decoration-none fw-bold">
+                                                target="_blank"
+                                                class="btn btn-link btn-sm p-0 text-decoration-none fw-bold">
                                                 <i class="fas fa-external-link-alt me-1 small"></i> Visit Website
                                             </a>
                                         @else
@@ -123,12 +131,9 @@
                                             <!-- Edit Trigger -->
                                             <button type="button" class="btn btn-sm btn-warning px-3 shadow-sm"
                                                 data-bs-toggle="modal" data-bs-target="#editResidencyModal"
-                                                data-id="{{ $item->id }}"
-                                                data-name="{{ $item->program_name }}"
-                                                data-state="{{ $item->state_id }}"
-                                                data-location="{{ $item->location }}"
-                                                data-lat="{{ $item->latitude }}"
-                                                data-long="{{ $item->longitude }}"
+                                                data-id="{{ $item->id }}" data-name="{{ $item->program_name }}"
+                                                data-state="{{ $item->state_id }}" data-location="{{ $item->location }}"
+                                                data-lat="{{ $item->latitude }}" data-long="{{ $item->longitude }}"
                                                 data-degrees="{{ is_array($item->degree_types) ? implode(', ', $item->degree_types) : '' }}"
                                                 data-website="{{ $item->website ?? '' }}"
                                                 data-phone="{{ $item->phone ?? '' }}">
@@ -136,7 +141,8 @@
                                             </button>
 
                                             <!-- Delete Form -->
-                                            <form action="{{ route('admin.residencies.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Delete this program?');">
+                                            <form action="{{ route('admin.residencies.destroy', $item->id) }}"
+                                                method="POST" onsubmit="return confirm('Delete this program?');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-outline-danger px-3 shadow-sm">
@@ -197,11 +203,13 @@
                             <h6 class="fw-bold text-secondary mb-3 small">Map Coordinates</h6>
                             <div class="col-md-6">
                                 <label class="small text-muted">Latitude</label>
-                                <input type="text" name="latitude" class="form-control" placeholder="Lat (e.g. 33.44)">
+                                <input type="text" name="latitude" class="form-control"
+                                    placeholder="Lat (e.g. 33.44)">
                             </div>
                             <div class="col-md-6">
                                 <label class="small text-muted">Longitude</label>
-                                <input type="text" name="longitude" class="form-control" placeholder="Long (e.g. -112.07)">
+                                <input type="text" name="longitude" class="form-control"
+                                    placeholder="Long (e.g. -112.07)">
                             </div>
                         </div>
                         <div class="mb-0">
@@ -258,28 +266,34 @@
                         <div class="row mb-3 bg-light p-3 rounded border mx-0 shadow-sm text-start">
                             <h6 class="fw-bold text-secondary mb-3 small">Map Coordinates</h6>
                             <div class="col-md-6">
-                                <label class="small text-muted">Latitude</label><input type="text" name="latitude" id="edit_res_lat" class="form-control" placeholder="Lat (e.g. 33.44)">
+                                <label class="small text-muted">Latitude</label><input type="text" name="latitude"
+                                    id="edit_res_lat" class="form-control" placeholder="Lat (e.g. 33.44)">
                             </div>
                             <div class="col-md-6">
-                                <label class="small text-muted">Longitude</label><input type="text" name="longitude" id="edit_res_long" class="form-control" placeholder="Long (e.g. -112.07)">
+                                <label class="small text-muted">Longitude</label><input type="text" name="longitude"
+                                    id="edit_res_long" class="form-control" placeholder="Long (e.g. -112.07)">
                             </div>
                         </div>
                         <div class="mb-0 text-start">
                             <label class="form-label fw-bold text-success small">Degrees (Comma Separated)</label>
-                            <input type="text" name="degree_types" id="edit_res_degrees" class="form-control" placeholder="MD, DO, PhD (comma separated)">
+                            <input type="text" name="degree_types" id="edit_res_degrees" class="form-control"
+                                placeholder="MD, DO, PhD (comma separated)">
                         </div>
                         <div class="mb-0 text-start">
                             <label class="form-label fw-bold text-success small">Phone</label>
-                            <input type="text" name="phone" id="edit_res_phone" class="form-control" placeholder="(123) 456-7890">
+                            <input type="text" name="phone" id="edit_res_phone" class="form-control"
+                                placeholder="(123) 456-7890">
                         </div>
                         <div class="mb-0 text-start">
                             <label class="form-label fw-bold text-success small">Website</label>
-                            <input type="url" name="website" id="edit_res_website" class="form-control" placeholder="https://example.com">
+                            <input type="url" name="website" id="edit_res_website" class="form-control"
+                                placeholder="https://example.com">
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0">
                         <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-warning px-5 shadow fw-bold text-dark text-start">Update Program</button>
+                        <button type="submit" class="btn btn-warning px-5 shadow fw-bold text-dark text-start">Update
+                            Program</button>
                     </div>
                 </form>
             </div>
@@ -308,10 +322,28 @@
     </script>
 
     <style>
-        .x-small { font-size: 0.65rem; font-weight: 600; }
-        .bg-info-subtle { background-color: #e1f5fe !important; border-color: #b3e5fc !important; color: #01579b !important; }
-        .pagination svg { width: 1.2rem !important; }
-        .modal-content { border-radius: 15px; }
-        .table thead th { font-size: 0.8rem; letter-spacing: 0.5px; }
+        .x-small {
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+
+        .bg-info-subtle {
+            background-color: #e1f5fe !important;
+            border-color: #b3e5fc !important;
+            color: #01579b !important;
+        }
+
+        .pagination svg {
+            width: 1.2rem !important;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+        }
+
+        .table thead th {
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
     </style>
 @endsection

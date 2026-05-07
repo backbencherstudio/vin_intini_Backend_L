@@ -74,7 +74,7 @@
                                 <td class="ps-4 text-muted small">#{{ $item->id }}</td>
                                 <td class="text-start">
                                     <div class="fw-bold text-dark">{{ $item->name }}</div>
-                                    <div class="text-muted small"><i class="fas fa-map-marker-alt text-danger"></i> {{ $item->location ?? 'N/A' }}</div>
+                                    <div class="text-muted small"><i class="fas fa-map-marker-alt text-danger"></i> {{ $item->location ?? 'N/A' }} | <i class="fas fa-phone text-info"></i> {{ $item->phone ?? 'N/A' }}</div>
                                 </td>
                                 <td><span class="badge bg-light text-dark border">{{ $item->state->name ?? 'N/A' }}</span></td>
                                 <td>

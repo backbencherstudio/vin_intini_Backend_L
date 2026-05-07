@@ -63,7 +63,6 @@
                             <tr class="text-secondary text-uppercase small fw-bold">
                                 <th class="ps-4 py-3">ID</th>
                                 <th class="text-start">University Name</th>
-                                <th>State</th>
                                 <th>Psychology Degrees</th>
                                 <th>Counseling Degrees</th>
                                 <th>Neuroscience Degrees</th>
@@ -76,8 +75,14 @@
                             @forelse($data as $uni)
                                 <tr>
                                     <td class="ps-4 text-muted small">#{{ $uni->id }}</td>
+                                    {{-- <td class="text-start">
+                                        <div class="fw-bold text-dark">{{ $uni->name }}</div>
+                                    </td> --}}
                                     <td class="text-start">
                                         <div class="fw-bold text-dark">{{ $uni->name }}</div>
+                                        <div class="text-muted small"><i class="fas fa-map-marker-alt text-danger"></i>
+                                            {{ $uni->location ?? 'N/A' }} | <i class="fas fa-phone text-info"></i>
+                                            {{ $uni->phone ?? 'N/A' }}</div>
                                     </td>
                                     <td><span
                                             class="badge bg-light text-dark border px-2 py-1">{{ $uni->state->name ?? 'N/A' }}</span>
