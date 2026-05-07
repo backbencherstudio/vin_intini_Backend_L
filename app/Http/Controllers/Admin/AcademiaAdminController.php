@@ -50,6 +50,8 @@ class AcademiaAdminController extends Controller
             'counseling_degrees' => $counselingDegrees,
             'neuroscience_degrees' => $neuroDegrees,
             'website' => $request->website ?? null,
+            'phone' => $request->phone ?? null,
+            'location' => $request->location ?? null,
         ]);
 
         return redirect()->back()->with('success', 'New University added successfully!');
@@ -82,6 +84,8 @@ class AcademiaAdminController extends Controller
             'neuroscience_degrees' => $neuro,
             'counseling_degrees' => $counseling,
             'has_online_options' => $request->has('has_online_options'),
+            'phone' => $request->phone ?? null,
+            'location' => $request->location ?? null,
             'website' => $request->website ?? null,
         ]);
 

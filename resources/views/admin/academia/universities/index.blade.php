@@ -123,8 +123,8 @@
                                     <td>
                                         @if ($uni->website)
                                             <a href="{{ str_starts_with($uni->website, 'http') ? $uni->website : 'https://' . $uni->website }}"
-                                            target="_blank"
-                                            class="btn btn-link btn-sm p-0 text-decoration-none fw-bold">
+                                                target="_blank"
+                                                class="btn btn-link btn-sm p-0 text-decoration-none fw-bold">
                                                 <i class="fas fa-external-link-alt me-1 small"></i> Visit Website
                                             </a>
                                         @else
@@ -142,7 +142,9 @@
                                                 data-psych="{{ is_array($uni->psychology_degrees) ? implode(', ', $uni->psychology_degrees) : '' }}"
                                                 data-neuro="{{ is_array($uni->neuroscience_degrees) ? implode(', ', $uni->neuroscience_degrees) : '' }}"
                                                 data-counseling="{{ is_array($uni->counseling_degrees) ? implode(', ', $uni->counseling_degrees) : '' }}"
-                                                data-website="{{ $uni->website ?? '' }}">
+                                                data-website="{{ $uni->website ?? '' }}"
+                                                data-phone="{{ $uni->phone ?? '' }}"
+                                                data-location="{{ $uni->location ?? '' }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
 
@@ -201,46 +203,63 @@
                                     @endforeach
                                 </select>
                             </div>
-                            {{-- <div class="col-md-6 pt-4 mt-2">
-                                <div class="form-check form-switch">
+                            <div class="col-md-6">
+                                <div class="">
+                                    <label class="form-label fw-bold small">Location</label>
+                                    <input type="text" name="location" class="form-control" placeholder="Address">
+                                </div>
+                                {{-- <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="has_online_options"
                                         id="create_online">
                                     <label class="form-check-label fw-bold" for="create_online">Available Online?</label>
-                                </div>
-                            </div> --}}
+                                </div> --}}
+                            </div>
                         </div>
                         <div class="row mb-3 bg-light p-3 rounded border mx-0">
                             <h6 class="fw-bold text-secondary mb-3 small">Map Coordinates</h6>
                             <div class="col-md-6">
                                 <label class="small text-muted">Latitude</label>
                                 <input type="text" name="latitude" class="form-control"
-                                    placeholder="Latitude (e.g. 34.05)">
+                                    placeholder="Latitude (e.g. 34.05)" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="small text-muted">Longitude</label>
                                 <input type="text" name="longitude" class="form-control"
-                                    placeholder="Longitude (e.g. -118.24)">
+                                    placeholder="Longitude (e.g. -118.24)" required>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-info small">Psychology Degrees (BA, MS, PhD)</label>
+                            <label class="form-label fw-bold small">Psychology Degrees (BA, MS, PhD)</label>
                             <input type="text" name="psychology_degrees" class="form-control"
                                 placeholder="Comma separated list">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-primary small">Counseling Degrees (MA, MDiv, PhD)</label>
+                            <label class="form-label fw-bold  small">Counseling Degrees (MA, MDiv, PhD)</label>
                             <input type="text" name="counseling_degrees" class="form-control"
                                 placeholder="Comma separated list">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-success small">Neuroscience Degrees (BS, PhD)</label>
+                            <label class="form-label fw-bold small">Neuroscience Degrees (BS, PhD)</label>
                             <input type="text" name="neuroscience_degrees" class="form-control"
                                 placeholder="Comma separated list">
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-danger small">University Website</label>
-                            <input type="url" name="website" class="form-control"
-                                placeholder="https://example.com">
+                        <div class="col-md-12">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small">Phone</label>
+                                        <input type="text" name="phone" class="form-control"
+                                            placeholder="e.g. (123) 456-7890">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small">University Website</label>
+                                        <input type="url" name="website" class="form-control"
+                                            placeholder="https://example.com">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0">
@@ -266,50 +285,69 @@
                             <label class="form-label fw-bold">University Name</label>
                             <input type="text" name="name" id="modal_name" class="form-control" required>
                         </div>
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">State</label>
                                 <select name="state_id" id="modal_state" class="form-select" required>
+                                    <option value="">Select State</option>
                                     @foreach ($states as $state)
                                         <option value="{{ $state->id }}">{{ $state->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            {{-- <div class="col-md-6 pt-4 mt-2">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="has_online_options"
-                                        id="modal_online">
-                                    <label class="form-check-label fw-bold" for="modal_online">Available Online?</label>
-                                </div>
-                            </div> --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Location</label>
+                                <input type="text" name="location" id="modal_location" class="form-control"
+                                    placeholder="Address">
+                            </div>
                         </div>
+
                         <div class="row mb-3 bg-light p-3 rounded border mx-0">
                             <h6 class="fw-bold text-secondary mb-3 small">Map Coordinates</h6>
                             <div class="col-md-6">
                                 <label class="small text-muted">Latitude</label>
-                                <input type="text" name="latitude" id="modal_lat" class="form-control" placeholder="Lat (e.g. 33.44)">
+                                <input type="text" name="latitude" id="modal_lat" class="form-control"
+                                    placeholder="Latitude">
                             </div>
                             <div class="col-md-6">
                                 <label class="small text-muted">Longitude</label>
-                                <input type="text" name="longitude" id="modal_long" class="form-control" placeholder="Long (e.g. -112.07)">
+                                <input type="text" name="longitude" id="modal_long" class="form-control"
+                                    placeholder="Longitude">
                             </div>
                         </div>
+
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-info small">Psychology Degrees</label>
-                            <input type="text" name="psychology_degrees" id="modal_psych" class="form-control" placeholder="e.g. BA, MA, PhD (comma separated)">
+                            <label class="form-label fw-bold small">Psychology Degrees (BA, MS, PhD)</label>
+                            <input type="text" name="psychology_degrees" id="modal_psych" class="form-control"
+                                placeholder="Comma separated list">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-primary small">Counseling Degrees</label>
-                            <input type="text" name="counseling_degrees" id="modal_counseling" class="form-control" placeholder="e.g. MA, MD, PhD (comma separated)">
+                            <label class="form-label fw-bold small">Counseling Degrees (MA, MDiv, PhD)</label>
+                            <input type="text" name="counseling_degrees" id="modal_counseling" class="form-control"
+                                placeholder="Comma separated list">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-success small">Neuroscience Degrees</label>
-                            <input type="text" name="neuroscience_degrees" id="modal_neuro" class="form-control" placeholder="e.g. BA, MA, PhD (comma separated)">
+                            <label class="form-label fw-bold small">Neuroscience Degrees (BS, PhD)</label>
+                            <input type="text" name="neuroscience_degrees" id="modal_neuro" class="form-control"
+                                placeholder="Comma separated list">
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-danger small">University Website</label>
-                            <input type="url" name="website" id="modal_website" class="form-control"
-                                placeholder="https://example.com">
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">Phone</label>
+                                    <input type="text" name="phone" id="modal_phone" class="form-control"
+                                        placeholder="e.g. (123) 456-7890">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">University Website</label>
+                                    <input type="url" name="website" id="modal_website" class="form-control"
+                                        placeholder="https://example.com">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0">
@@ -334,11 +372,13 @@
 
                 document.getElementById('modal_name').value = button.getAttribute('data-name');
                 document.getElementById('modal_state').value = button.getAttribute('data-state');
+                document.getElementById('modal_location').value = button.getAttribute('data-location') || '';
                 document.getElementById('modal_lat').value = button.getAttribute('data-lat');
                 document.getElementById('modal_long').value = button.getAttribute('data-long');
                 document.getElementById('modal_psych').value = button.getAttribute('data-psych');
                 document.getElementById('modal_counseling').value = button.getAttribute('data-counseling');
                 document.getElementById('modal_neuro').value = button.getAttribute('data-neuro');
+                document.getElementById('modal_phone').value = button.getAttribute('data-phone') || '';
                 document.getElementById('modal_website').value = button.getAttribute('data-website') || '';
                 document.getElementById('modal_online').checked = (button.getAttribute('data-online') == 1);
             });

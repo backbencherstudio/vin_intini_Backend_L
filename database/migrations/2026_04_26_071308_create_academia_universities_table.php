@@ -18,6 +18,8 @@ return new class extends Migration
             $table->json('psychology_degrees')->nullable(); // Store as ["BA", "MS"]
             $table->json('counseling_degrees')->nullable();
             $table->json('neuroscience_degrees')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('location')->nullable();
             $table->string('website')->nullable();
             $table->boolean('has_online_options')->default(false);
 
