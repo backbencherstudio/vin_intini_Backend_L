@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AcademiaMedicalResidency extends Model
 {
     protected $table = 'academia_medical_residencies';
-    protected $fillable = ['state_id', 'program_name', 'location', 'degree_types', 'latitude', 'longitude', 'website'];
+    protected $fillable = ['state_id', 'program_name', 'location', 'degree_types', 'latitude', 'longitude', 'website', 'phone'];
 
     protected $casts = [
         'degree_types' => 'array',

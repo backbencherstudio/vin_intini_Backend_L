@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('program_name');
             $table->string('location')->nullable();
             $table->json('degree_types')->nullable(); // Store as ["MD", "DO"]
+            $table->string('phone')->nullable();
             $table->string('website')->nullable();
 
             // GPS Location

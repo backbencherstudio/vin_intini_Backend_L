@@ -200,6 +200,7 @@ class AcademiaAdminController extends Controller
         $request->validate([
             'program_name' => 'required|string|max:255',
             'state_id' => 'required|exists:states,id',
+            'phone' => 'nullable|string|max:255',
         ]);
 
         $degrees = $request->degree_types ? array_map('trim', explode(',', $request->degree_types)) : [];
@@ -212,6 +213,7 @@ class AcademiaAdminController extends Controller
             'longitude' => $request->longitude ?? 0,
             'degree_types' => $degrees,
             'website' => $request->website,
+            'phone' => $request->phone,
         ]);
 
         return redirect()->back()->with('success', 'New Residency Program added successfully!');
@@ -222,6 +224,7 @@ class AcademiaAdminController extends Controller
         $request->validate([
             'program_name' => 'required|string|max:255',
             'state_id' => 'required|exists:states,id',
+            'phone' => 'nullable|string|max:255',
         ]);
 
         $item = AcademiaMedicalResidency::findOrFail($id);
@@ -236,6 +239,7 @@ class AcademiaAdminController extends Controller
             'longitude' => $request->longitude ?? 0,
             'degree_types' => $degrees,
             'website' => $request->website,
+            'phone' => $request->phone,
         ]);
 
         return redirect()->back()->with('success', 'Residency Program updated successfully!');
