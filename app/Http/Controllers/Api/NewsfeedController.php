@@ -107,7 +107,7 @@ class NewsfeedController extends Controller
                             : $connectionIds->contains($post->user_id),
 
                     'media' => $post->media,
-                    'groups' => $post->groups,
+                    'group' => $post->groups->first(),
                     'created_at' => $post->created_at,
                     'can_edit' => $canEdit,
                     'can_delete' => $canDelete,
