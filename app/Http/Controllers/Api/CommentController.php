@@ -18,9 +18,9 @@ class CommentController extends Controller
     public function comment(Request $request, $postId)
     {
         $request->validate([
-            'comment'   => 'required|string|max:1000',
+            'comment'   => 'nullable|string|max:1000|required_without:image',
+            'image'     => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120|required_without:comment',
             'parent_id' => 'nullable|exists:comments,id',
-            'image'     => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
         $user = auth('api')->user();
@@ -70,7 +70,7 @@ class CommentController extends Controller
                 $comment = Comment::create([
                     'post_id' => $post->id,
                     'user_id' => $user->id,
-                    'comment' => $request->comment,
+                    'comment' => $request->comment ?? null,
                     'image'   => $imagePath,
                 ]);
 
@@ -102,7 +102,7 @@ class CommentController extends Controller
                 'post_id'    => $post->id,
                 'comment_id' => $parentComment->id,
                 'user_id'    => $user->id,
-                'reply'      => $request->comment,
+                'reply'      => $request->comment ?? null,
                 'image'      => $imagePath,
             ]);
 
@@ -162,7 +162,7 @@ class CommentController extends Controller
 
             return [
                 'id' => $comment->id,
-                'comment' => $comment->comment,
+                'comment' => $comment->comment ?? null,
                 'image_url' => $comment->image_url ?? null,
 
                 'user' => [
@@ -219,7 +219,7 @@ class CommentController extends Controller
 
             return [
                 'id' => $reply->id,
-                'reply' => $reply->reply,
+                'reply' => $reply->reply ?? null,
                 'image_url' => $reply->image_url ?? null,
                 'user' => [
                     'id' => $reply->user->id,
