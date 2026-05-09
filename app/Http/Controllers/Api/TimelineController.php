@@ -130,6 +130,19 @@ class TimelineController extends Controller
             ], 403);
         }
 
+        $connections = Connection::where('status', Connection::STATUS_ACCEPTED)
+            ->where(function ($q) use ($user) {
+                $q->where('sender_id', $user->id)
+                ->orWhere('receiver_id', $user->id);
+            })
+            ->get()
+            ->map(function ($conn) use ($user) {
+                return $conn->sender_id === $user->id
+                    ? $conn->receiver_id
+                    : $conn->sender_id;
+            })
+            ->flip();
+
         $posts = Post::query()
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
@@ -149,7 +162,11 @@ class TimelineController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Group posts fetched successfully',
-            'data' => collect($posts->items())->map(function ($post) use ($user) {
+            'data' => collect($posts->items())->map(function ($post) use ($user, $connections) {
+
+                $isConnected = $post->user_id === $user->id
+                    || isset($connections[$post->user_id]);
+
                 return [
                     'id' => $post->id,
                     'user' => $post->user,
@@ -165,8 +182,11 @@ class TimelineController extends Controller
                     'media' => $post->media,
                     'groups' => $post->groups,
                     'created_at' => $post->created_at,
+
                     'can_edit' => $post->user_id === $user->id,
                     'can_delete' => $post->user_id === $user->id,
+
+                    'is_connected' => $isConnected,
                 ];
             }),
 
