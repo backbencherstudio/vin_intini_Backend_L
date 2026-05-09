@@ -43,7 +43,7 @@ class ConnectionRequestReceivedNotification extends Notification
      */
     public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        return new BroadcastMessage($this->payload());
+        return new BroadcastMessage($this->payload($notifiable));
     }
 
     /**
@@ -63,10 +63,10 @@ class ConnectionRequestReceivedNotification extends Notification
      */
     public function toArray(object $notifiable): array
     {
-        return $this->payload();
+        return $this->payload($notifiable);
     }
 
-    private function payload(): array
+    private function payload(object $notifiable): array
     {
         return [
             'connection_request_id' => $this->connectionRequest->id,
@@ -78,6 +78,10 @@ class ConnectionRequestReceivedNotification extends Notification
             // 'message' => trim(($this->sender->first_name ?? '') . ' ' . ($this->sender->last_name ?? '')) . ' sent you a connection request',
             'type' => 'connection_request_received',
             'requested_at' => $this->connectionRequest->created_at?->toIso8601String(),
+            'unread_count' => $notifiable
+                ->notifications()
+                ->whereNull('read_at')
+                ->count(),
         ];
     }
 
