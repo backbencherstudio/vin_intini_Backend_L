@@ -23,7 +23,7 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->text('reply');
+            $table->text('reply')->nullable();
 
             $table->unsignedInteger('like_count')->default(0);
 
