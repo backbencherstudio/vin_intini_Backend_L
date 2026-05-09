@@ -11,108 +11,51 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $perPage = max(1, min((int) $request->integer('limit', 20), 50));
-
-        $unreadOnly = $request->boolean('unread_only', false);
+        $perPage = max(1, min((int) $request->integer('limit', $request->integer('per_page', 20)), 50));
+        $page = max(1, (int) $request->integer('current_page', $request->integer('page', 1)));
+        $unreadOnly = (bool) $request->boolean('unread_only', false);
         $search = trim((string) $request->query('search', ''));
 
         $query = $request->user()->notifications();
 
         if ($unreadOnly) {
-            $query->whereNull('read_at');
+            $query = $query->whereNull('read_at');
         }
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('type', 'like', "%{$search}%")
-                    ->orWhere('data', 'like', "%{$search}%");
+            $query = $query->where(function ($notificationQuery) use ($search) {
+                $notificationQuery
+                    ->where('type', 'like', '%' . $search . '%')
+                    ->orWhere('data', 'like', '%' . $search . '%');
             });
         }
 
-        $notifications = $query
-            ->orderByDesc('created_at')
-            ->paginate($perPage);
+        $statsQuery = clone $query;
 
-        $totalNotifications = $request->user()->notifications()->count();
+        $notifications = $query->orderByDesc('created_at')->paginate($perPage, page: $page);
 
-        $unreadNotifications = $request->user()
-            ->notifications()
-            ->whereNull('read_at')
-            ->count();
+        $totalNotifications = $statsQuery->count();
+        $unreadNotifications = (clone $statsQuery)->whereNull('read_at')->count();
 
         return response()->json([
             'success' => true,
             'message' => 'Notifications retrieved successfully',
-
             'stats' => [
                 'total_notifications' => $totalNotifications,
                 'unread_notifications' => $unreadNotifications,
             ],
-
-            'data' => $notifications->getCollection()
-                ->map(fn($notification) => $this->formatNotification($notification))
-                ->values(),
-
+            'data' => $notifications->getCollection()->map(fn($notification) => $this->formatNotification($notification))->values(),
             'total' => $notifications->total(),
             'limit' => $notifications->perPage(),
             'current_page' => $notifications->currentPage(),
             'total_page' => $notifications->lastPage(),
             'last_page' => $notifications->lastPage(),
-
             'filters' => [
                 'unread_only' => $unreadOnly,
                 'search' => $search !== '' ? $search : null,
             ],
-        ]);
+        ], 200);
     }
-
-    // public function index(Request $request): JsonResponse
-    // {
-    //     $perPage = max(1, min((int) $request->integer('limit', $request->integer('per_page', 20)), 50));
-    //     $page = max(1, (int) $request->integer('current_page', $request->integer('page', 1)));
-    //     $unreadOnly = (bool) $request->boolean('unread_only', false);
-    //     $search = trim((string) $request->query('search', ''));
-
-    //     $query = $request->user()->notifications();
-
-    //     if ($unreadOnly) {
-    //         $query = $query->whereNull('read_at');
-    //     }
-
-    //     if ($search !== '') {
-    //         $query = $query->where(function ($notificationQuery) use ($search) {
-    //             $notificationQuery
-    //                 ->where('type', 'like', '%' . $search . '%')
-    //                 ->orWhere('data', 'like', '%' . $search . '%');
-    //         });
-    //     }
-
-    //     $statsQuery = clone $query;
-
-    //     $notifications = $query->orderByDesc('created_at')->paginate($perPage, page: $page);
-
-    //     $totalNotifications = $statsQuery->count();
-    //     $unreadNotifications = (clone $statsQuery)->whereNull('read_at')->count();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Notifications retrieved successfully',
-    //         'stats' => [
-    //             'total_notifications' => $totalNotifications,
-    //             'unread_notifications' => $unreadNotifications,
-    //         ],
-    //         'data' => $notifications->getCollection()->map(fn($notification) => $this->formatNotification($notification))->values(),
-    //         'total' => $notifications->total(),
-    //         'limit' => $notifications->perPage(),
-    //         'current_page' => $notifications->currentPage(),
-    //         'total_page' => $notifications->lastPage(),
-    //         'last_page' => $notifications->lastPage(),
-    //         'filters' => [
-    //             'unread_only' => $unreadOnly,
-    //             'search' => $search !== '' ? $search : null,
-    //         ],
-    //     ], 200);
-    // }
 
     public function unreadCount(Request $request): JsonResponse
     {
