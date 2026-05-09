@@ -134,7 +134,10 @@ class TimelineController extends Controller
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
                 'media',
-                'groups:id,name'
+                'groups:id,name',
+                'likes' => function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                }
             ])
             ->where('visibility', 'groups')
             ->whereHas('groups', function ($q) use ($groupId) {
@@ -157,13 +160,13 @@ class TimelineController extends Controller
                     'total_like' => $post->total_like ?? 0,
                     'total_comment' => $post->total_comment ?? 0,
 
-                    'liked_by_me' => $post->likes()
-                        ->where('user_id', $user->id)
-                        ->exists(),
+                    'liked_by_me' => $post->likes->isNotEmpty(),
 
                     'media' => $post->media,
                     'groups' => $post->groups,
                     'created_at' => $post->created_at,
+                    'can_edit' => $post->user_id === $user->id,
+                    'can_delete' => $post->user_id === $user->id,
                 ];
             }),
 
