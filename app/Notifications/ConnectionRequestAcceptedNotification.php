@@ -31,7 +31,7 @@ class ConnectionRequestAcceptedNotification extends Notification
 
     public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        return new BroadcastMessage($this->payload());
+        return new BroadcastMessage($this->payload($notifiable));
     }
 
     public function broadcastOn(): array
@@ -41,10 +41,10 @@ class ConnectionRequestAcceptedNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        return $this->payload();
+        return $this->payload($notifiable);
     }
 
-    private function payload(): array
+    private function payload(object $notifiable): array
     {
         $acceptorName = trim(($this->acceptor->first_name ?? '') . ' ' . ($this->acceptor->last_name ?? ''));
 
@@ -58,6 +58,10 @@ class ConnectionRequestAcceptedNotification extends Notification
             'message' => 'accepted your connection request',
             'type' => 'connection_request_accepted',
             'responded_at' => $this->connectionRequest->responded_at?->toIso8601String(),
+            'unread_count' => $notifiable
+                ->notifications()
+                ->whereNull('read_at')
+                ->count(),
         ];
     }
 
