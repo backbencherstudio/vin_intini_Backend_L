@@ -20,29 +20,35 @@ class PostLikedNotification extends Notification implements ShouldQueue
         $this->post = $post;
     }
 
-
     public function via($notifiable)
     {
         return ['database', 'broadcast'];
     }
 
+    protected function notificationData($notifiable)
+    {
+        $unreadCount = $notifiable
+            ->unreadNotifications()
+            ->count();
+
+        return [
+            'sender_id'    => $this->sender->id,
+            'sender_name'  => $this->sender->first_name . ' ' . $this->sender->last_name,
+            'post_id'      => $this->post->id,
+            'message'      => 'liked your post',
+            'unread_count' => $unreadCount + 1,
+        ];
+    }
+
     public function toDatabase($notifiable)
     {
-        return [
-            'sender_id' => $this->sender->id,
-            'sender_name' => $this->sender->first_name . ' ' . $this->sender->last_name,
-            'post_id' => $this->post->id,
-            'message' => 'liked your post'
-        ];
+        return $this->notificationData($notifiable);
     }
 
     public function toBroadcast($notifiable)
     {
-        return new BroadcastMessage([
-            'sender_id' => $this->sender->id,
-            'sender_name' => $this->sender->first_name . ' ' . $this->sender->last_name,
-            'post_id' => $this->post->id,
-            'message' => 'liked your post'
-        ]);
+        return new BroadcastMessage(
+            $this->notificationData($notifiable)
+        );
     }
 }

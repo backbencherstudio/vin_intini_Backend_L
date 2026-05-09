@@ -25,25 +25,31 @@ class ReplyLikedNotification extends Notification implements ShouldQueue
         return ['database', 'broadcast'];
     }
 
+    protected function notificationData($notifiable)
+    {
+        $unreadCount = $notifiable
+            ->unreadNotifications()
+            ->count();
+
+        return [
+            'sender_id'    => $this->sender->id,
+            'sender_name'  => $this->sender->first_name . ' ' . $this->sender->last_name,
+            'reply_id'     => $this->reply->id,
+            'comment_id'   => $this->reply->comment_id,
+            'message'      => 'liked your reply',
+            'unread_count' => $unreadCount + 1,
+        ];
+    }
+
     public function toDatabase($notifiable)
     {
-        return [
-            'sender_id'   => $this->sender->id,
-            'sender_name' => $this->sender->first_name . ' ' . $this->sender->last_name,
-            'reply_id'    => $this->reply->id,
-            'comment_id'  => $this->reply->comment_id,
-            'message'     => 'liked your reply',
-        ];
+        return $this->notificationData($notifiable);
     }
 
     public function toBroadcast($notifiable)
     {
-        return new BroadcastMessage([
-            'sender_id'   => $this->sender->id,
-            'sender_name' => $this->sender->first_name . ' ' . $this->sender->last_name,
-            'reply_id'    => $this->reply->id,
-            'comment_id'  => $this->reply->comment_id,
-            'message'     => 'liked your reply',
-        ]);
+        return new BroadcastMessage(
+            $this->notificationData($notifiable)
+        );
     }
 }
