@@ -56,6 +56,7 @@ class UserExperienceController extends Controller
 
         return response()->json([
             'status' => 'success',
+            'is_own_experience' => $isOwnExperience,
             'data' => $grouped,
         ]);
     }
