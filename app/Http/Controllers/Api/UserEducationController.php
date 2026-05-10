@@ -16,11 +16,11 @@ class UserEducationController extends Controller
     {
         $validated = $request->validate([
             'search' => 'nullable|string|max:100',
-            'limit' => 'nullable|integer|min:1|max:20',
+            'limit' => 'nullable|integer|min:1|max:100',
         ]);
 
         $search = trim((string) ($validated['search'] ?? ''));
-        $limit = $validated['limit'] ?? 10;
+        $limit = $validated['limit'] ?? 100;
 
         $institutions = Institution::query()
             ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website'])
