@@ -75,6 +75,8 @@ class UserEducationController extends Controller
 
     public function index(Request $request)
     {
+        $isOwnEducation = true;
+
         $educations = Education::query()
             ->where('user_id', $request->user()->id)
             ->with('institution:id,name')
@@ -84,6 +86,7 @@ class UserEducationController extends Controller
 
         return response()->json([
             'status' => 'success',
+            'is_own_education' => $isOwnEducation,
             'data' => $educations,
         ]);
     }
