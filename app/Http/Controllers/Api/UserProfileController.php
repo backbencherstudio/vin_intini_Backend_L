@@ -130,6 +130,8 @@ class UserProfileController extends Controller
             ], 404);
         }
 
+        $isOwnProfile = $currentUser->id === $user->id;
+
         $connection = Connection::query()
             ->where(function ($query) use ($currentUser, $user) {
                 $query->where('sender_id', $currentUser->id)
@@ -179,6 +181,7 @@ class UserProfileController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
+                'is_own_profile' => $isOwnProfile,
                 'connection_status' => [
                     'state' => $state,
                     'action_label' => $actionLabel,
