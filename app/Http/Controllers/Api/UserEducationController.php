@@ -22,12 +22,26 @@ class UserEducationController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
         $limit = $validated['limit'] ?? 100;
 
-        $institutions = Institution::query()
-            ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website'])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
+        $query = Institution::query()
+            ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website']);
+
+        if ($search !== '') {
+            $keywords = explode(' ', $search);
+
+            $query->where(function ($q) use ($keywords) {
+                foreach ($keywords as $keyword) {
+                    $q->where('name', 'LIKE', '%' . $keyword . '%');
+                }
+            });
+
+            $query->orderByRaw("CASE
+            WHEN name LIKE ? THEN 1
+            WHEN name LIKE ? THEN 2
+            ELSE 3
+            END", [$search . '%', '%' . $search . '%']);
+        }
+
+        $institutions = $query->orderBy('name')
             ->limit($limit)
             ->get();
 
@@ -36,6 +50,30 @@ class UserEducationController extends Controller
             'data' => $institutions,
         ]);
     }
+    // public function institutionSuggestions(Request $request)
+    // {
+    //     $validated = $request->validate([
+    //         'search' => 'nullable|string|max:100',
+    //         'limit' => 'nullable|integer|min:1|max:100',
+    //     ]);
+
+    //     $search = trim((string) ($validated['search'] ?? ''));
+    //     $limit = $validated['limit'] ?? 100;
+
+    //     $institutions = Institution::query()
+    //         ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website'])
+    //         ->when($search !== '', function ($query) use ($search) {
+    //             $query->where('name', 'like', "%{$search}%");
+    //         })
+    //         ->orderBy('name')
+    //         ->limit($limit)
+    //         ->get();
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => $institutions,
+    //     ]);
+    // }
 
     public function index(Request $request)
     {
