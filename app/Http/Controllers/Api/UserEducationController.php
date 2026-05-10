@@ -16,49 +16,47 @@ class UserEducationController extends Controller
     {
         $validated = $request->validate([
             'search' => 'nullable|string|max:100',
-            'limit' => 'nullable|integer|min:1|max:100',
+            'limit'  => 'nullable|integer|min:1|max:20',
         ]);
 
         $search = trim((string) ($validated['search'] ?? ''));
-        $limit = $validated['limit'] ?? 100;
+        $limit  = $validated['limit'] ?? 20;
 
         $query = Institution::query()
             ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website']);
 
         if ($search !== '') {
-            $keywords = explode(' ', $search);
+            $query->where('name', 'like', "%{$search}%")
 
-            $query->where(function ($q) use ($keywords) {
-                foreach ($keywords as $keyword) {
-                    $q->where('name', 'LIKE', '%' . $keyword . '%');
-                }
-            });
-
-            $query->orderByRaw("CASE
-            WHEN name LIKE ? THEN 1
-            WHEN name LIKE ? THEN 2
-            ELSE 3
-            END", [$search . '%', '%' . $search . '%']);
+                ->orderByRaw("
+                CASE
+                    WHEN name = ? THEN 1
+                    WHEN name LIKE ? THEN 2
+                    ELSE 3
+                END
+            ", [$search, $search . '%']);
         }
 
-        $institutions = $query->orderBy('name')
+        $institutions = $query->orderBy('name', 'asc')
             ->limit($limit)
             ->get();
 
         return response()->json([
             'status' => 'success',
-            'data' => $institutions,
+            'count'  => $institutions->count(),
+            'data'   => $institutions,
         ]);
     }
+
     // public function institutionSuggestions(Request $request)
     // {
     //     $validated = $request->validate([
     //         'search' => 'nullable|string|max:100',
-    //         'limit' => 'nullable|integer|min:1|max:100',
+    //         'limit' => 'nullable|integer|min:1|max:20',
     //     ]);
 
     //     $search = trim((string) ($validated['search'] ?? ''));
-    //     $limit = $validated['limit'] ?? 100;
+    //     $limit = $validated['limit'] ?? 20;
 
     //     $institutions = Institution::query()
     //         ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website'])
