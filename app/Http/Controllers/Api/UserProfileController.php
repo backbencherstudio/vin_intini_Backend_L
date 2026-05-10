@@ -132,34 +132,39 @@ class UserProfileController extends Controller
 
         $isOwnProfile = $currentUser->id === $user->id;
 
-        $connection = Connection::query()
-            ->where(function ($query) use ($currentUser, $user) {
-                $query->where('sender_id', $currentUser->id)
-                    ->where('receiver_id', $user->id);
-            })
-            ->orWhere(function ($query) use ($currentUser, $user) {
-                $query->where('sender_id', $user->id)
-                    ->where('receiver_id', $currentUser->id);
-            })
-            ->first();
-
         $state = 'not_connected';
         $actionLabel = 'Connect';
         $pendingRequestId = null;
 
-        if ($connection) {
-            if ($connection->status === Connection::STATUS_ACCEPTED) {
-                $state = 'accepted';
-                $actionLabel = 'Connected';
-            } elseif ($connection->status === Connection::STATUS_PENDING) {
-                if ($connection->sender_id === $currentUser->id) {
-                    $state = 'pending_sent';
-                    $actionLabel = 'Pending';
-                    $pendingRequestId = $connection->id;
-                } else {
-                    $state = 'pending_received';
-                    $actionLabel = 'Accept';
-                    $pendingRequestId = $connection->id;
+        if ($isOwnProfile) {
+            $state = 'self';
+            $actionLabel = 'Edit Profile';
+        } else {
+            $connection = Connection::query()
+                ->where(function ($query) use ($currentUser, $user) {
+                    $query->where('sender_id', $currentUser->id)
+                        ->where('receiver_id', $user->id);
+                })
+                ->orWhere(function ($query) use ($currentUser, $user) {
+                    $query->where('sender_id', $user->id)
+                        ->where('receiver_id', $currentUser->id);
+                })
+                ->first();
+
+            if ($connection) {
+                if ($connection->status === Connection::STATUS_ACCEPTED) {
+                    $state = 'accepted';
+                    $actionLabel = 'Connected';
+                } elseif ($connection->status === Connection::STATUS_PENDING) {
+                    if ($connection->sender_id === $currentUser->id) {
+                        $state = 'pending_sent';
+                        $actionLabel = 'Pending';
+                        $pendingRequestId = $connection->id;
+                    } else {
+                        $state = 'pending_received';
+                        $actionLabel = 'Accept';
+                        $pendingRequestId = $connection->id;
+                    }
                 }
             }
         }
