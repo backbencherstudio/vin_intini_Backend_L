@@ -25,6 +25,8 @@ class UserProfileController extends Controller
             'experiences.company'
         ]);
 
+        $isOwnProfile = true;
+
         $totalConnections = Connection::query()
             ->accepted()
             ->forUser($user->id)
@@ -43,6 +45,7 @@ class UserProfileController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
+                'is_own_profile' => $isOwnProfile,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'title' => $user->title,
