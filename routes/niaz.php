@@ -51,7 +51,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/experience/edit/{id}', [UserExperienceController::class, 'edit']);
     Route::post('/experience/update/{id}', [UserExperienceController::class, 'update']);
     Route::delete('/experience/delete/{id}', [UserExperienceController::class, 'destroy']);
-    Route::get('/user-experiences/{id}', [UserExperienceController::class, 'showExperienceByUserId']); 
+    Route::get('/user-experiences/{id}', [UserExperienceController::class, 'showExperienceByUserId']);
 
     // user education routes
     Route::get('/education/list', [UserEducationController::class, 'index']); //list of user education (auth user)
@@ -59,6 +59,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/education/edit/{id}', [UserEducationController::class, 'edit']);
     Route::post('/education/update/{id}', [UserEducationController::class, 'update']);
     Route::delete('/education/delete/{id}', [UserEducationController::class, 'destroy']);
+    Route::get('/user-educations/{id}', [UserEducationController::class, 'showEducationByUserId']);
 
     // user connection routes
     Route::get('/connections', [ConnectionController::class, 'index']);
