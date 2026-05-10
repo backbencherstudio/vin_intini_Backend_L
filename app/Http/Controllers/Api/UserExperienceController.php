@@ -14,6 +14,8 @@ class UserExperienceController extends Controller
 {
     public function index(Request $request)
     {
+        $isOwnExperience = true;
+
         $experiences = Experience::query()
             ->where('user_id', $request->user()->id)
             ->with('company')
@@ -24,6 +26,7 @@ class UserExperienceController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'No experiences found',
+                'is_own_experience' => $isOwnExperience,
                 'data' => [],
             ]);
         }
