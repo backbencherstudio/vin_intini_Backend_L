@@ -57,6 +57,55 @@ class UserExperienceController extends Controller
         ]);
     }
 
+    public function showExperienceByUserId(Request $request, $id)
+    {
+        $isOwnExperience = auth()->check() && auth()->id() == $id;
+
+        $experiences = Experience::query()
+            ->where('user_id', $id)
+            ->with('company')
+            ->orderByDesc('start_date')
+            ->get();
+
+        if ($experiences->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'No experiences found',
+                'is_own_experience' => $isOwnExperience,
+                'data' => [],
+            ]);
+        }
+
+        $grouped = $experiences
+            ->groupBy('company_id')
+            ->map(function ($companyExperiences) {
+                $company = $companyExperiences->first()->company;
+                $latestExperience = $companyExperiences->first();
+
+                $experiences = $companyExperiences->values()->map(function ($experience) {
+                    return $this->formatExperience($experience);
+                });
+
+                return [
+                    'company' => $company,
+                    'company_name' => $company?->name,
+                    'job_type' => $latestExperience?->employment_type,
+                    'period' => $this->formatCompanyPeriod($companyExperiences),
+                    'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
+                        : null,
+                    'experiences' => $experiences,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'status' => 'success',
+            'is_own_experience' => $isOwnExperience,
+            'data' => $grouped,
+        ]);
+    }
+
     private function formatExperience(Experience $experience): array
     {
         $companyName = $experience->company?->name;

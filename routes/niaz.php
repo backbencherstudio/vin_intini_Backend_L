@@ -46,14 +46,15 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/profile/images', [UserProfileController::class, 'updateImages']);
 
     // user experience routes
-    Route::get('/experience/list', [UserExperienceController::class, 'index']);
+    Route::get('/experience/list', [UserExperienceController::class, 'index']); //list of user experience (auth user)
     Route::post('/experience/add', [UserExperienceController::class, 'store']);
     Route::get('/experience/edit/{id}', [UserExperienceController::class, 'edit']);
     Route::post('/experience/update/{id}', [UserExperienceController::class, 'update']);
     Route::delete('/experience/delete/{id}', [UserExperienceController::class, 'destroy']);
+    Route::get('/user-experiences/{id}', [UserExperienceController::class, 'showExperienceByUserId']); 
 
     // user education routes
-    Route::get('/education/list', [UserEducationController::class, 'index']);
+    Route::get('/education/list', [UserEducationController::class, 'index']); //list of user education (auth user)
     Route::post('/education/add', [UserEducationController::class, 'store']);
     Route::get('/education/edit/{id}', [UserEducationController::class, 'edit']);
     Route::post('/education/update/{id}', [UserEducationController::class, 'update']);
