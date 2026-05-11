@@ -167,7 +167,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="py-5 text-center text-muted">No records found.</td>
+                                    <td colspan="9" class="py-5 text-center text-muted">No records found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
