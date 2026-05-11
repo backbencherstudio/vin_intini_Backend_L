@@ -27,25 +27,32 @@ class PostCommentedNotification extends Notification implements ShouldQueue
         return ['database', 'broadcast'];
     }
 
-    public function toDatabase($notifiable)
+    public function notificationData($notifiable)
     {
+        $unreadCount = $notifiable
+            ->unreadNotifications()
+            ->count();
+
         return [
             'sender_id'   => $this->sender->id,
             'sender_name' => $this->sender->first_name . ' ' . $this->sender->last_name,
             'post_id'     => $this->post->id,
             'comment_id'  => $this->comment->id,
+            'type'        => class_basename(self::class),
             'message'     => 'commented on your post',
+            'unread_count'=> $unreadCount + 1,
         ];
+    }
+
+    public function toDatabase($notifiable)
+    {
+        return $this->notificationData($notifiable);
     }
 
     public function toBroadcast($notifiable)
     {
-        return new BroadcastMessage([
-            'sender_id'   => $this->sender->id,
-            'sender_name' => $this->sender->first_name . ' ' . $this->sender->last_name,
-            'post_id'     => $this->post->id,
-            'comment_id'  => $this->comment->id,
-            'message'     => 'commented on your post',
-        ]);
+        return new BroadcastMessage(
+            $this->notificationData($notifiable)
+        );
     }
 }

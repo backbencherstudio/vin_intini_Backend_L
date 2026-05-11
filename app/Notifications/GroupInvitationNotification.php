@@ -10,8 +10,9 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
-class GroupInvitationNotification extends Notification
+class GroupInvitationNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -20,7 +21,6 @@ class GroupInvitationNotification extends Notification
         public Group $group,
         public User $inviter
     ) {}
-
 
     public function via(object $notifiable): array
     {
@@ -33,43 +33,49 @@ class GroupInvitationNotification extends Notification
         return $channels;
     }
 
-
-    public function toBroadcast(object $notifiable): BroadcastMessage
+    private function notificationData($notifiable): array
     {
-        return new BroadcastMessage($this->payload());
-    }
+        $unreadCount = $notifiable
+            ->unreadNotifications()
+            ->count();
 
-
-    public function broadcastOn(): array
-    {
-        return [new PrivateChannel('App.Models.User.' . $this->invitation->user_id)];
-    }
-
-
-    public function toArray(object $notifiable): array
-    {
-        return $this->payload();
-    }
-
-
-    private function payload(): array
-    {
-        $inviterName = trim(($this->inviter->first_name ?? '') . ' ' . ($this->inviter->last_name ?? ''));
+        $inviterName = trim(
+            ($this->inviter->first_name ?? '') . ' ' .
+            ($this->inviter->last_name ?? '')
+        );
 
         return [
             'invitation_id' => $this->invitation->id,
-            'group_id' => $this->group->id,
-            'group_name' => $this->group->name,
-            'group_logo_url' => $this->group->logo_url,
-            'inviter_id' => $this->inviter->id,
-            'inviter_name' => $inviterName,
-            'message' => 'invited you to join ' . $this->group->name,
-            // 'message' => $inviterName . ' invited you to join ' . $this->group->name,
-            'type' => 'group_invitation',
-            'sent_at' => now()->toIso8601String(),
+            'group_id'      => $this->group->id,
+            'group_name'    => $this->group->name,
+            'group_logo_url'=> $this->group->logo_url,
+            'inviter_id'    => $this->inviter->id,
+            'inviter_name'  => $inviterName,
+            'message'       => 'invited you to join ' . $this->group->name,
+            'type'          => class_basename(self::class),
+            'sent_at'       => now()->toIso8601String(),
+            'unread_count'  => $unreadCount + 1,
         ];
     }
 
+    public function toArray(object $notifiable): array
+    {
+        return $this->notificationData($notifiable);
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage(
+            $this->notificationData($notifiable)
+        );
+    }
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('App.Models.User.' . $this->invitation->user_id)
+        ];
+    }
 
     private function hasValidPusherBroadcastConfig(): bool
     {
