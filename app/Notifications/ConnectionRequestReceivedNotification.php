@@ -9,24 +9,17 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
-class ConnectionRequestReceivedNotification extends Notification
+class ConnectionRequestReceivedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Create a new notification instance.
-     */
     public function __construct(
         public Connection $connectionRequest,
         public User $sender
     ) {}
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
     public function via(object $notifiable): array
     {
         $channels = ['database'];
@@ -38,46 +31,46 @@ class ConnectionRequestReceivedNotification extends Notification
         return $channels;
     }
 
-    /**
-     * Get the broadcast representation of the notification.
-     */
-    public function toBroadcast(object $notifiable): BroadcastMessage
+    private function notificationData($notifiable): array
     {
-        return new BroadcastMessage($this->payload());
-    }
+        $unreadCount = $notifiable
+            ->unreadNotifications()
+            ->count();
 
-    /**
-     * Get the channels the event should broadcast on.
-     *
-     * @return array<int, Channel>
-     */
-    public function broadcastOn(): array
-    {
-        return [new PrivateChannel('App.Models.User.' . $this->connectionRequest->receiver_id)];
-    }
-
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(object $notifiable): array
-    {
-        return $this->payload();
-    }
-
-    private function payload(): array
-    {
         return [
             'connection_request_id' => $this->connectionRequest->id,
-            'sender_id' => $this->sender->id,
-            'sender_name' => trim(($this->sender->first_name ?? '') . ' ' . ($this->sender->last_name ?? '')),
-            'sender_profile_image' => $this->sender->profile_image,
-            'sender_profile_image_url' => $this->sender->profile_image_url,
-            'message' => 'sent you a connection request',
-            // 'message' => trim(($this->sender->first_name ?? '') . ' ' . ($this->sender->last_name ?? '')) . ' sent you a connection request',
-            'type' => 'connection_request_received',
-            'requested_at' => $this->connectionRequest->created_at?->toIso8601String(),
+            'sender_id'             => $this->sender->id,
+            'sender_name'           => trim(
+                ($this->sender->first_name ?? '') . ' ' .
+                ($this->sender->last_name ?? '')
+            ),
+            'sender_profile_image'      => $this->sender->profile_image,
+            'sender_profile_image_url'  => $this->sender->profile_image_url,
+            'message'               => 'sent you a connection request',
+            'type'                  => class_basename(self::class),
+            'requested_at'          => $this->connectionRequest->created_at?->toIso8601String(),
+            'unread_count'          => $unreadCount + 1,
+        ];
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        return $this->notificationData($notifiable);
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage(
+            $this->notificationData($notifiable)
+        );
+    }
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel(
+                'App.Models.User.' . $this->connectionRequest->receiver_id
+            )
         ];
     }
 
