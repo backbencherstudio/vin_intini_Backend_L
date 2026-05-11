@@ -22,7 +22,9 @@ class ConnectionController extends Controller
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
         $sort = strtolower(trim((string) $request->query('sort', 'recent')));
-        $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
+        $perPage = $request->integer('limit', $request->integer('per_page', 10));
+        $perPage = max(1, min($perPage, 100));
+        // $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
         $page = max(1, (int) $request->integer('page', 1));
 
         $connections = Connection::query()
@@ -154,9 +156,12 @@ class ConnectionController extends Controller
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
 
+        $perPage = $request->integer('limit', $request->integer('per_page', 10));
+        $perPage = max(1, min($perPage, 100));
+        $page = max(1, (int) $request->integer('page', 1));
+
         $requests = Connection::query()
             ->pending()
-            // ->forUser($currentUser->id)
             ->where('receiver_id', $currentUser->id)
             ->with([
                 'sender:id,first_name,last_name,title,profile_image',
@@ -178,8 +183,8 @@ class ConnectionController extends Controller
                     'filtered_requests' => 0,
                 ],
                 'total' => 0,
-                'limit' => 0,
-                'current_page' => 1,
+                'limit' => $perPage,
+                'current_page' => $page,
                 'total_page' => 0,
                 'last_page' => 0,
                 'filters' => [
@@ -202,70 +207,189 @@ class ConnectionController extends Controller
 
         if ($search !== '') {
             $normalizedSearch = mb_strtolower($search);
-
             $items = $items->filter(function (array $item) use ($normalizedSearch): bool {
                 return str_contains(mb_strtolower($item['search_name']), $normalizedSearch)
                     || str_contains(mb_strtolower($item['search_title']), $normalizedSearch);
-            })->values();
+            });
         }
 
-        if ($items->isEmpty()) {
+        $totalFiltered = $items->count();
+        $paginatedItems = $items->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $currentPageRequests = $paginatedItems->pluck('request')->values();
+
+        $counterpartIds = $currentPageRequests->map(function (Connection $connectionRequest) use ($currentUser) {
+            return $connectionRequest->sender_id === $currentUser->id
+                ? $connectionRequest->receiver_id
+                : $connectionRequest->sender_id;
+        })->unique()->values();
+
+        $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
+
+        $lastPage = (int) ceil($totalFiltered / $perPage);
+
+        if ($currentPageRequests->isEmpty()) {
             return response()->json([
                 'success' => true,
-                'message' => 'No pending connection requests found for this search.',
+                'message' => $search !== '' ? 'No pending connection requests found for this search.' : 'No pending connection requests found.',
                 'status' => 'success',
                 'data' => [],
                 'stats' => [
                     'total_requests' => $requests->count(),
-                    'filtered_requests' => 0,
+                    'filtered_requests' => $totalFiltered,
                 ],
-                'total' => 0,
-                'limit' => 0,
-                'current_page' => 1,
-                'total_page' => 0,
-                'last_page' => 0,
+                'total' => $totalFiltered,
+                'limit' => $perPage,
+                'current_page' => $page,
+                'total_page' => $lastPage,
+                'last_page' => $lastPage,
                 'filters' => [
-                    'search' => $search,
+                    'search' => $search !== '' ? $search : null,
                 ],
             ], 200);
         }
-
-        $filteredRequests = $items->pluck('request')->values();
-
-        $counterpartIds = $filteredRequests
-            ->map(function (Connection $connectionRequest) use ($currentUser) {
-                return $connectionRequest->sender_id === $currentUser->id
-                    ? $connectionRequest->receiver_id
-                    : $connectionRequest->sender_id;
-            })
-            ->unique()
-            ->values();
-
-        $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
 
         return response()->json([
             'success' => true,
             'message' => 'Connection requests retrieved successfully.',
             'status' => 'success',
-            'data' => $filteredRequests
+            'data' => $currentPageRequests
                 ->map(function (Connection $connectionRequest) use ($currentUser, $mutualConnections) {
                     return $this->formatConnectionRequest($connectionRequest, $currentUser->id, $mutualConnections, true);
                 })
                 ->values(),
             'stats' => [
                 'total_requests' => $requests->count(),
-                'filtered_requests' => $filteredRequests->count(),
+                'filtered_requests' => $totalFiltered,
             ],
-            'total' => $filteredRequests->count(),
-            'limit' => $filteredRequests->count(),
-            'current_page' => 1,
-            'total_page' => 1,
-            'last_page' => 1,
+            'total' => $totalFiltered,
+            'limit' => $perPage,
+            'current_page' => $page,
+            'total_page' => $lastPage,
+            'last_page' => $lastPage,
             'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
     }
+
+    // public function requests(Request $request): JsonResponse
+    // {
+    //     $currentUser = $request->user();
+    //     $search = trim((string) $request->query('search', ''));
+
+    //     $requests = Connection::query()
+    //         ->pending()
+    //         // ->forUser($currentUser->id)
+    //         ->where('receiver_id', $currentUser->id)
+    //         ->with([
+    //             'sender:id,first_name,last_name,title,profile_image',
+    //             'receiver:id,first_name,last_name,title,profile_image',
+    //         ])
+    //         ->orderByDesc('responded_at')
+    //         ->orderByDesc('created_at')
+    //         ->orderByDesc('id')
+    //         ->get();
+
+    //     if ($requests->isEmpty()) {
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'No pending connection requests found.',
+    //             'status' => 'success',
+    //             'data' => [],
+    //             'stats' => [
+    //                 'total_requests' => 0,
+    //                 'filtered_requests' => 0,
+    //             ],
+    //             'total' => 0,
+    //             'limit' => 0,
+    //             'current_page' => 1,
+    //             'total_page' => 0,
+    //             'last_page' => 0,
+    //             'filters' => [
+    //                 'search' => $search !== '' ? $search : null,
+    //             ],
+    //         ], 200);
+    //     }
+
+    //     $items = $requests->map(function (Connection $connectionRequest) use ($currentUser): array {
+    //         $counterpart = $connectionRequest->sender_id === $currentUser->id
+    //             ? $connectionRequest->receiver
+    //             : $connectionRequest->sender;
+
+    //         return [
+    //             'request' => $connectionRequest,
+    //             'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+    //             'search_title' => (string) ($counterpart->title ?? ''),
+    //         ];
+    //     });
+
+    //     if ($search !== '') {
+    //         $normalizedSearch = mb_strtolower($search);
+
+    //         $items = $items->filter(function (array $item) use ($normalizedSearch): bool {
+    //             return str_contains(mb_strtolower($item['search_name']), $normalizedSearch)
+    //                 || str_contains(mb_strtolower($item['search_title']), $normalizedSearch);
+    //         })->values();
+    //     }
+
+    //     if ($items->isEmpty()) {
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'No pending connection requests found for this search.',
+    //             'status' => 'success',
+    //             'data' => [],
+    //             'stats' => [
+    //                 'total_requests' => $requests->count(),
+    //                 'filtered_requests' => 0,
+    //             ],
+    //             'total' => 0,
+    //             'limit' => 0,
+    //             'current_page' => 1,
+    //             'total_page' => 0,
+    //             'last_page' => 0,
+    //             'filters' => [
+    //                 'search' => $search,
+    //             ],
+    //         ], 200);
+    //     }
+
+    //     $filteredRequests = $items->pluck('request')->values();
+
+    //     $counterpartIds = $filteredRequests
+    //         ->map(function (Connection $connectionRequest) use ($currentUser) {
+    //             return $connectionRequest->sender_id === $currentUser->id
+    //                 ? $connectionRequest->receiver_id
+    //                 : $connectionRequest->sender_id;
+    //         })
+    //         ->unique()
+    //         ->values();
+
+    //     $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Connection requests retrieved successfully.',
+    //         'status' => 'success',
+    //         'data' => $filteredRequests
+    //             ->map(function (Connection $connectionRequest) use ($currentUser, $mutualConnections) {
+    //                 return $this->formatConnectionRequest($connectionRequest, $currentUser->id, $mutualConnections, true);
+    //             })
+    //             ->values(),
+    //         'stats' => [
+    //             'total_requests' => $requests->count(),
+    //             'filtered_requests' => $filteredRequests->count(),
+    //         ],
+    //         'total' => $filteredRequests->count(),
+    //         'limit' => $filteredRequests->count(),
+    //         'current_page' => 1,
+    //         'total_page' => 1,
+    //         'last_page' => 1,
+    //         'filters' => [
+    //             'search' => $search !== '' ? $search : null,
+    //         ],
+    //     ], 200);
+    // }
 
     public function suggestions(Request $request): JsonResponse
     {
