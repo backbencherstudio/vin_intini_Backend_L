@@ -35,6 +35,7 @@ class PostLikedNotification extends Notification implements ShouldQueue
             'sender_id'    => $this->sender->id,
             'sender_name'  => $this->sender->first_name . ' ' . $this->sender->last_name,
             'post_id'      => $this->post->id,
+            'type'         => class_basename(self::class),
             'message'      => 'liked your post',
             'unread_count' => $unreadCount + 1,
         ];

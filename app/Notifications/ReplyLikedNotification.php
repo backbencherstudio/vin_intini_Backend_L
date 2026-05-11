@@ -36,6 +36,7 @@ class ReplyLikedNotification extends Notification implements ShouldQueue
             'sender_name'  => $this->sender->first_name . ' ' . $this->sender->last_name,
             'reply_id'     => $this->reply->id,
             'comment_id'   => $this->reply->comment_id,
+            'type'         => class_basename(self::class),
             'message'      => 'liked your reply',
             'unread_count' => $unreadCount + 1,
         ];
