@@ -478,7 +478,9 @@ class ConnectionController extends Controller
     {
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
-        $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
+        $perPage = $request->integer('limit', $request->integer('per_page', 10));
+        $perPage = max(1, min($perPage, 100));
+        // $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
 
         $pendingQuery = Connection::query()
             ->pending()
