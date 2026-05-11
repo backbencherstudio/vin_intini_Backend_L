@@ -71,6 +71,7 @@ class AcademiaController extends Controller
             'limit' => $paginator->perPage(),
             'current_page' => $paginator->currentPage(),
             'last_page' => $paginator->lastPage(),
+            'total_page' => $paginator->lastPage(),
             'filters' => [
                 'applied_degree' => $degreeFilter,
                 'search' => $search ?: null,
