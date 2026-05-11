@@ -16,61 +16,38 @@ class FollowController extends Controller
     {
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
+
+        $limit = $request->integer('limit', 10);
+        if ($limit > 100) $limit = 100;
+
+        $baseQuery = UserFollow::query()->where('following_id', $currentUser->id);
+
+        $totalFollowersCount = (clone $baseQuery)->count();
+
+        if ($search !== '') {
+            $baseQuery->whereHas('follower', function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('first_name', 'LIKE', "%{$search}%")
+                        ->orWhere('last_name', 'LIKE', "%{$search}%");
+                });
+            });
+        }
+
+        $paginated = $baseQuery->with('follower:id,first_name,last_name,title,profile_image')
+            ->latest('id')
+            ->paginate($limit);
+
         $followingIds = UserFollow::query()
             ->where('follower_id', $currentUser->id)
             ->pluck('following_id')
             ->all();
 
-        $followers = UserFollow::query()
-            ->where('following_id', $currentUser->id)
-            ->with('follower:id,first_name,last_name,title,profile_image')
-            ->latest('id')
-            ->get();
-
-        $totalFollowers = $followers->count();
-
         $mutualConnections = $this->buildMutualConnectionsMap(
             $currentUser->id,
-            $followers->pluck('follower_id')->values()
+            $paginated->pluck('follower_id')->values()
         );
 
-        $filteredFollowers = $followers;
-
-        if ($search !== '') {
-            $normalizedSearch = mb_strtolower($search);
-
-            $filteredFollowers = $followers
-                ->filter(function (UserFollow $follow) use ($normalizedSearch): bool {
-                    $fullName = trim(($follow->follower?->first_name ?? '') . ' ' . ($follow->follower?->last_name ?? ''));
-
-                    return str_contains(mb_strtolower($fullName), $normalizedSearch);
-                })
-                ->values();
-        }
-
-        if ($filteredFollowers->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'message' => $search !== '' ? 'No followers found for this search.' : 'You have no followers yet.',
-                'status' => 'success',
-                'total_followers' => $totalFollowers,
-                'data' => [],
-                'stats' => [
-                    'total_followers' => $totalFollowers,
-                    'filtered_followers' => 0,
-                ],
-                'total' => 0,
-                'limit' => 0,
-                'current_page' => 1,
-                'total_page' => 0,
-                'last_page' => 0,
-                'filters' => [
-                    'search' => $search !== '' ? $search : null,
-                ],
-            ], 200);
-        }
-
-        $data = $filteredFollowers->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
+        $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
             $mutualConnectionData = $mutualConnections[$follow->follower_id] ?? [
                 'count' => 0,
                 'preview' => [],
@@ -86,77 +63,20 @@ class FollowController extends Controller
             ];
         })->values();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Followers retrieved successfully.',
-            'status' => 'success',
-            'total_followers' => $totalFollowers,
-            'data' => $data,
-            'stats' => [
-                'total_followers' => $totalFollowers,
-                'filtered_followers' => $data->count(),
-            ],
-            'total' => $data->count(),
-            'limit' => $data->count(),
-            'current_page' => 1,
-            'total_page' => 1,
-            'last_page' => 1,
-            'filters' => [
-                'search' => $search !== '' ? $search : null,
-            ],
-        ], 200);
-    }
-
-    public function following(Request $request): JsonResponse
-    {
-        $currentUser = $request->user();
-        $search = trim((string) $request->query('search', ''));
-        $followerIds = UserFollow::query()
-            ->where('following_id', $currentUser->id)
-            ->pluck('follower_id')
-            ->all();
-
-        $following = UserFollow::query()
-            ->where('follower_id', $currentUser->id)
-            ->with('following:id,first_name,last_name,title,profile_image')
-            ->latest('id')
-            ->get();
-
-        $totalFollowing = $following->count();
-
-        $mutualConnections = $this->buildMutualConnectionsMap(
-            $currentUser->id,
-            $following->pluck('following_id')->values()
-        );
-
-        $filteredFollowing = $following;
-
-        if ($search !== '') {
-            $normalizedSearch = mb_strtolower($search);
-
-            $filteredFollowing = $following
-                ->filter(function (UserFollow $follow) use ($normalizedSearch): bool {
-                    $fullName = trim(($follow->following?->first_name ?? '') . ' ' . ($follow->following?->last_name ?? ''));
-
-                    return str_contains(mb_strtolower($fullName), $normalizedSearch);
-                })
-                ->values();
-        }
-
-        if ($filteredFollowing->isEmpty()) {
+        if ($paginated->isEmpty()) {
             return response()->json([
                 'success' => true,
-                'message' => $search !== '' ? 'No following users found for this search.' : 'You are not following anyone yet.',
+                'message' => $search !== '' ? 'No followers found for this search.' : 'You have no followers yet.',
                 'status' => 'success',
-                'total_following' => $totalFollowing,
+                'total_followers' => $totalFollowersCount,
                 'data' => [],
                 'stats' => [
-                    'total_following' => $totalFollowing,
-                    'filtered_following' => 0,
+                    'total_followers' => $totalFollowersCount,
+                    'filtered_followers' => 0,
                 ],
                 'total' => 0,
-                'limit' => 0,
-                'current_page' => 1,
+                'limit' => $limit,
+                'current_page' => $paginated->currentPage(),
                 'total_page' => 0,
                 'last_page' => 0,
                 'filters' => [
@@ -165,7 +85,158 @@ class FollowController extends Controller
             ], 200);
         }
 
-        $data = $filteredFollowing->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Followers retrieved successfully.',
+            'status' => 'success',
+            'total_followers' => $totalFollowersCount,
+            'data' => $formattedData,
+            'stats' => [
+                'total_followers' => $totalFollowersCount,
+                'filtered_followers' => $paginated->total(),
+            ],
+            'total' => $paginated->total(),
+            'limit' => $paginated->perPage(),
+            'current_page' => $paginated->currentPage(),
+            'total_page' => $paginated->lastPage(),
+            'last_page' => $paginated->lastPage(),
+            'filters' => [
+                'search' => $search !== '' ? $search : null,
+            ],
+        ], 200);
+    }
+
+    // public function followers(Request $request): JsonResponse
+    // {
+    //     $currentUser = $request->user();
+    //     $search = trim((string) $request->query('search', ''));
+    //     $followingIds = UserFollow::query()
+    //         ->where('follower_id', $currentUser->id)
+    //         ->pluck('following_id')
+    //         ->all();
+
+    //     $followers = UserFollow::query()
+    //         ->where('following_id', $currentUser->id)
+    //         ->with('follower:id,first_name,last_name,title,profile_image')
+    //         ->latest('id')
+    //         ->get();
+
+    //     $totalFollowers = $followers->count();
+
+    //     $mutualConnections = $this->buildMutualConnectionsMap(
+    //         $currentUser->id,
+    //         $followers->pluck('follower_id')->values()
+    //     );
+
+    //     $filteredFollowers = $followers;
+
+    //     if ($search !== '') {
+    //         $normalizedSearch = mb_strtolower($search);
+
+    //         $filteredFollowers = $followers
+    //             ->filter(function (UserFollow $follow) use ($normalizedSearch): bool {
+    //                 $fullName = trim(($follow->follower?->first_name ?? '') . ' ' . ($follow->follower?->last_name ?? ''));
+
+    //                 return str_contains(mb_strtolower($fullName), $normalizedSearch);
+    //             })
+    //             ->values();
+    //     }
+
+    //     if ($filteredFollowers->isEmpty()) {
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => $search !== '' ? 'No followers found for this search.' : 'You have no followers yet.',
+    //             'status' => 'success',
+    //             'total_followers' => $totalFollowers,
+    //             'data' => [],
+    //             'stats' => [
+    //                 'total_followers' => $totalFollowers,
+    //                 'filtered_followers' => 0,
+    //             ],
+    //             'total' => 0,
+    //             'limit' => 0,
+    //             'current_page' => 1,
+    //             'total_page' => 0,
+    //             'last_page' => 0,
+    //             'filters' => [
+    //                 'search' => $search !== '' ? $search : null,
+    //             ],
+    //         ], 200);
+    //     }
+
+    //     $data = $filteredFollowers->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
+    //         $mutualConnectionData = $mutualConnections[$follow->follower_id] ?? [
+    //             'count' => 0,
+    //             'preview' => [],
+    //         ];
+
+    //         return [
+    //             'id' => $follow->id,
+    //             'user' => $this->formatUser($follow->follower),
+    //             'is_following_back' => in_array($follow->follower_id, $followingIds, true),
+    //             'mutual_connections_count' => $mutualConnectionData['count'],
+    //             'mutual_connections' => $mutualConnectionData['preview'],
+    //             'followed_at' => optional($follow->created_at)?->toDateTimeString(),
+    //         ];
+    //     })->values();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Followers retrieved successfully.',
+    //         'status' => 'success',
+    //         'total_followers' => $totalFollowers,
+    //         'data' => $data,
+    //         'stats' => [
+    //             'total_followers' => $totalFollowers,
+    //             'filtered_followers' => $data->count(),
+    //         ],
+    //         'total' => $data->count(),
+    //         'limit' => $data->count(),
+    //         'current_page' => 1,
+    //         'total_page' => 1,
+    //         'last_page' => 1,
+    //         'filters' => [
+    //             'search' => $search !== '' ? $search : null,
+    //         ],
+    //     ], 200);
+    // }
+
+    public function following(Request $request): JsonResponse
+    {
+        $currentUser = $request->user();
+        $search = trim((string) $request->query('search', ''));
+
+        $limit = $request->integer('limit', 10);
+        if ($limit > 100) $limit = 100;
+
+        $baseQuery = UserFollow::query()->where('follower_id', $currentUser->id);
+
+        $totalFollowingCount = (clone $baseQuery)->count();
+
+        if ($search !== '') {
+            $baseQuery->whereHas('following', function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('first_name', 'LIKE', "%{$search}%")
+                        ->orWhere('last_name', 'LIKE', "%{$search}%");
+                });
+            });
+        }
+
+        $paginated = $baseQuery->with('following:id,first_name,last_name,title,profile_image')
+            ->latest('id')
+            ->paginate($limit);
+
+        $followerIds = UserFollow::query()
+            ->where('following_id', $currentUser->id)
+            ->pluck('follower_id')
+            ->all();
+
+        $mutualConnections = $this->buildMutualConnectionsMap(
+            $currentUser->id,
+            $paginated->pluck('following_id')->values()
+        );
+
+        $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
             $mutualConnectionData = $mutualConnections[$follow->following_id] ?? [
                 'count' => 0,
                 'preview' => [],
@@ -181,26 +252,143 @@ class FollowController extends Controller
             ];
         })->values();
 
+        if ($paginated->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => $search !== '' ? 'No following users found for this search.' : 'You are not following anyone yet.',
+                'status' => 'success',
+                'total_following' => $totalFollowingCount,
+                'data' => [],
+                'stats' => [
+                    'total_following' => $totalFollowingCount,
+                    'filtered_following' => 0,
+                ],
+                'total' => 0,
+                'limit' => $limit,
+                'current_page' => $paginated->currentPage(),
+                'total_page' => 0,
+                'last_page' => 0,
+                'filters' => [
+                    'search' => $search !== '' ? $search : null,
+                ],
+            ], 200);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Following users retrieved successfully.',
             'status' => 'success',
-            'total_following' => $totalFollowing,
-            'data' => $data,
+            'total_following' => $totalFollowingCount,
+            'data' => $formattedData,
             'stats' => [
-                'total_following' => $totalFollowing,
-                'filtered_following' => $data->count(),
+                'total_following' => $totalFollowingCount,
+                'filtered_following' => $paginated->total(),
             ],
-            'total' => $data->count(),
-            'limit' => $data->count(),
-            'current_page' => 1,
-            'total_page' => 1,
-            'last_page' => 1,
+            'total' => $paginated->total(),
+            'limit' => $paginated->perPage(),
+            'current_page' => $paginated->currentPage(),
+            'total_page' => $paginated->lastPage(),
+            'last_page' => $paginated->lastPage(),
             'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
     }
+
+    // public function following(Request $request): JsonResponse
+    // {
+    //     $currentUser = $request->user();
+    //     $search = trim((string) $request->query('search', ''));
+    //     $followerIds = UserFollow::query()
+    //         ->where('following_id', $currentUser->id)
+    //         ->pluck('follower_id')
+    //         ->all();
+
+    //     $following = UserFollow::query()
+    //         ->where('follower_id', $currentUser->id)
+    //         ->with('following:id,first_name,last_name,title,profile_image')
+    //         ->latest('id')
+    //         ->get();
+
+    //     $totalFollowing = $following->count();
+
+    //     $mutualConnections = $this->buildMutualConnectionsMap(
+    //         $currentUser->id,
+    //         $following->pluck('following_id')->values()
+    //     );
+
+    //     $filteredFollowing = $following;
+
+    //     if ($search !== '') {
+    //         $normalizedSearch = mb_strtolower($search);
+
+    //         $filteredFollowing = $following
+    //             ->filter(function (UserFollow $follow) use ($normalizedSearch): bool {
+    //                 $fullName = trim(($follow->following?->first_name ?? '') . ' ' . ($follow->following?->last_name ?? ''));
+
+    //                 return str_contains(mb_strtolower($fullName), $normalizedSearch);
+    //             })
+    //             ->values();
+    //     }
+
+    //     if ($filteredFollowing->isEmpty()) {
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => $search !== '' ? 'No following users found for this search.' : 'You are not following anyone yet.',
+    //             'status' => 'success',
+    //             'total_following' => $totalFollowing,
+    //             'data' => [],
+    //             'stats' => [
+    //                 'total_following' => $totalFollowing,
+    //                 'filtered_following' => 0,
+    //             ],
+    //             'total' => 0,
+    //             'limit' => 0,
+    //             'current_page' => 1,
+    //             'total_page' => 0,
+    //             'last_page' => 0,
+    //             'filters' => [
+    //                 'search' => $search !== '' ? $search : null,
+    //             ],
+    //         ], 200);
+    //     }
+
+    //     $data = $filteredFollowing->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
+    //         $mutualConnectionData = $mutualConnections[$follow->following_id] ?? [
+    //             'count' => 0,
+    //             'preview' => [],
+    //         ];
+
+    //         return [
+    //             'id' => $follow->id,
+    //             'user' => $this->formatUser($follow->following),
+    //             'is_followed_back' => in_array($follow->following_id, $followerIds, true),
+    //             'mutual_connections_count' => $mutualConnectionData['count'],
+    //             'mutual_connections' => $mutualConnectionData['preview'],
+    //             'followed_at' => optional($follow->created_at)?->toDateTimeString(),
+    //         ];
+    //     })->values();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Following users retrieved successfully.',
+    //         'status' => 'success',
+    //         'total_following' => $totalFollowing,
+    //         'data' => $data,
+    //         'stats' => [
+    //             'total_following' => $totalFollowing,
+    //             'filtered_following' => $data->count(),
+    //         ],
+    //         'total' => $data->count(),
+    //         'limit' => $data->count(),
+    //         'current_page' => 1,
+    //         'total_page' => 1,
+    //         'last_page' => 1,
+    //         'filters' => [
+    //             'search' => $search !== '' ? $search : null,
+    //         ],
+    //     ], 200);
+    // }
 
     public function unfollow(Request $request, User $user): JsonResponse
     {
