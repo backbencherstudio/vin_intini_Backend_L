@@ -124,17 +124,19 @@ class NotificationController extends Controller
     private function formatNotification(Model $notification): array
     {
         $data = $notification->data;
+
         if (is_string($data)) {
             $data = json_decode($data, true);
         }
 
         return [
             'id' => $notification->id,
-            'type' => $notification->type,
+            'type' => $data['type'] ?? class_basename($notification->type),
             'data' => $data,
             'read_at' => $notification->read_at?->toIso8601String(),
             'is_read' => $notification->read_at !== null,
             'created_at' => $notification->created_at?->toIso8601String(),
         ];
     }
+    
 }
