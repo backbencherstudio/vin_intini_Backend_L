@@ -29,7 +29,7 @@ class GroupController extends Controller
                 'members as total_member',
             ])
             ->inRandomOrder()
-            ->limit(10)
+            ->limit(5)
             ->get([
                 'id',
                 'name',
@@ -55,7 +55,7 @@ class GroupController extends Controller
                     'total_groups' => 0,
                 ],
                 'total' => 0,
-                'limit' => 10,
+                'limit' => 5,
                 'current_page' => 1,
                 'total_page' => 0,
                 'last_page' => 0,
@@ -72,7 +72,7 @@ class GroupController extends Controller
                 'total_groups' => $groups->count(),
             ],
             'total' => $groups->count(),
-            'limit' => 10,
+            'limit' => 5,
             'current_page' => 1,
             'total_page' => 1,
             'last_page' => 1,
