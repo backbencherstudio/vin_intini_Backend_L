@@ -500,6 +500,9 @@ class GroupController extends Controller
     {
         $userId = auth()->id();
 
+        $limit = $request->integer('limit', 10);
+        if ($limit > 100) $limit = 100;
+
         $totalCreatedEver = Group::where('creator_id', $userId)->count();
 
         $query = Group::where('creator_id', $userId)->withCount('members');
@@ -509,7 +512,7 @@ class GroupController extends Controller
             $query->where('name', 'LIKE', "%{$search}%");
         }
 
-        $groups = $query->latest()->paginate(10);
+        $groups = $query->latest()->paginate($limit);
 
         if ($groups->isEmpty()) {
             return response()->json([
@@ -522,7 +525,7 @@ class GroupController extends Controller
                     'total_created_groups_count' => $totalCreatedEver,
                 ],
                 'total' => 0,
-                'limit' => 10,
+                'limit' => $limit,
                 'current_page' => $groups->currentPage(),
                 'total_page' => 0,
                 'last_page' => 0,
@@ -558,6 +561,8 @@ class GroupController extends Controller
     {
         $user = auth('api')->user();
 
+        $limit = $request->integer('limit', 10);
+
         $baseQuery = $user->groups()
             ->wherePivot('status', 'active')
             ->where('groups.creator_id', '!=', $user->id);
@@ -576,7 +581,7 @@ class GroupController extends Controller
             $query->where('name', 'LIKE', "%{$search}%");
         }
 
-        $groups = $query->latest()->paginate(10);
+        $groups = $query->latest()->paginate($limit);
 
         if ($groups->isEmpty()) {
             return response()->json([
@@ -589,7 +594,7 @@ class GroupController extends Controller
                     'total_joined_count' => $totalJoinedEver,
                 ],
                 'total' => 0,
-                'limit' => 10,
+                'limit' => $limit,
                 'current_page' => $groups->currentPage(),
                 'total_page' => 0,
                 'last_page' => 0,
