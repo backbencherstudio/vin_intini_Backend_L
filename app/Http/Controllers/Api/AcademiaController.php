@@ -41,7 +41,9 @@ class AcademiaController extends Controller
     {
         $degreeFilter = $request->query('degree', 'All');
         $search = trim((string) $request->query('search', ''));
-        $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
+        $perPage = $request->integer('limit', $request->integer('per_page', 15));
+        $perPage = max(1, min($perPage, 100));
+        // $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
 
         $state = State::where('code', $code)->first();
 
@@ -66,6 +68,7 @@ class AcademiaController extends Controller
             'message' => 'Universities retrieved successfully.',
             'data' => $paginator->items(),
             'total' => $paginator->total(),
+            'limit' => $paginator->perPage(),
             'current_page' => $paginator->currentPage(),
             'last_page' => $paginator->lastPage(),
             'filters' => [
@@ -78,7 +81,9 @@ class AcademiaController extends Controller
     public function getResidencies(Request $request, $code): JsonResponse
     {
         $search = trim((string) $request->query('search', ''));
-        $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
+        $perPage = $request->integer('limit', $request->integer('per_page', 15));
+        $perPage = max(1, min($perPage, 100));
+        // $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
 
         $state = State::where('code', $code)->first();
 
@@ -121,7 +126,9 @@ class AcademiaController extends Controller
     {
         $type = $request->query('type');
         $search = trim((string) $request->query('search', ''));
-        $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
+        $perPage = $request->integer('limit', $request->integer('per_page', 15));
+        $perPage = max(1, min($perPage, 100));
+        // $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
 
         $state = State::where('code', $code)->first();
 
