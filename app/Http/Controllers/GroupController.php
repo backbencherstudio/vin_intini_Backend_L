@@ -134,7 +134,7 @@ class GroupController extends Controller
             // },
         ])
             // ->withCount('members')
-            ->withCount(['members' => function($query) {
+            ->withCount(['members' => function ($query) {
                 $query->where('group_users.status', 'active');
             }])
             ->find($id);
@@ -571,10 +571,10 @@ class GroupController extends Controller
 
         $query = $baseQuery
             ->with(['creator:id,first_name,last_name,email,profile_image'])
-            ->withCount(['members' => function($query) {
+            ->withCount(['members' => function ($query) {
                 $query->where('group_users.status', 'active');
             }]);
-            // ->withCount('members');
+        // ->withCount('members');
 
         if ($request->has('search')) {
             $search = $request->input('search');
@@ -773,7 +773,9 @@ class GroupController extends Controller
     public function invitationRequests(Request $request)
     {
         $search = trim((string) $request->query('search', ''));
-        $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
+        $perPage = $request->integer('limit', $request->integer('per_page', 10));
+        $perPage = max(1, min($perPage, 100));
+        // $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
         $page = max(1, (int) $request->integer('page', 1));
 
         $invitations = GroupInvitation::query()
@@ -932,10 +934,10 @@ class GroupController extends Controller
         $currentUser = $request->user();
 
         $isAdmin = $group->creator_id === $currentUser->id ||
-                $group->members()
-                        ->where('users.id', $currentUser->id)
-                        ->wherePivot('role', 'admin')
-                        ->exists();
+            $group->members()
+            ->where('users.id', $currentUser->id)
+            ->wherePivot('role', 'admin')
+            ->exists();
 
         if (!$isAdmin) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized! Only admins can ban users.'], 403);
@@ -991,5 +993,4 @@ class GroupController extends Controller
             'data' => $groups
         ]);
     }
-
 }
