@@ -14,21 +14,22 @@ use App\Models\PostGroup;
 use App\Models\Comment;
 use App\Models\Group;
 use App\Models\Notification;
+use App\Services\MediaUploadService;
 
 class PostController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $request, MediaUploadService $mediaService)
     {
         $user = auth('api')->user();
 
         $validated = $request->validate([
-            'description' => 'nullable|string|max:5000',
+            'description' => 'nullable|string',
             'visibility' => 'required|in:public,connections,groups',
             'who_can_comment' => 'required|in:anyone,connections,no_one',
             'group_ids' => 'required_if:visibility,groups|array',
             'group_ids.*' => 'exists:groups,id',
-            'media' => 'nullable|array|max:10',
-            'media.*' => 'file|max:20480',
+            'media' => 'nullable|array|max:20',
+            'media.*' => 'file|max:30720',
         ]);
 
         if ($request->visibility === 'groups') {
@@ -53,16 +54,14 @@ class PostController extends Controller
             $uploadedMedia = [];
 
             if ($request->hasFile('media')) {
+
                 foreach ($request->file('media') as $index => $file) {
 
-                    $mime = $file->getMimeType();
-                    $type = str_contains($mime, 'video') ? 'video' : 'image';
-
-                    $path = $file->store('posts', 'public');
+                    $media = $mediaService->upload($file);
 
                     $uploadedMedia[] = [
-                        'file_path' => $path,
-                        'type' => $type,
+                        'file_path' => $media['file_path'],
+                        'type' => $media['type'],
                         'order' => $index,
                     ];
                 }
