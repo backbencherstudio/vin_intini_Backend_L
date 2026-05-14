@@ -8,6 +8,8 @@ return [
     'allowed_origins' => [
         'https://mindunite.com',
         'https://www.mindunite.com',
+        'https://mindunit.netlify.app/',
+        'https://vin-intini-web-frontend.vercel.app/',
     ],
 
     'allowed_origins_patterns' => [],
