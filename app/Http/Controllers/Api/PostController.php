@@ -386,8 +386,9 @@ class PostController extends Controller
         ]);
     }
 
-    public function updateGroupPost(Request $request, $postId, $groupId)
+    public function updateGroupPost(Request $request, $postId, $groupId, MediaUploadService $mediaService)
     {
+        
         $user = auth('api')->user();
 
         $post = Post::with('media')->findOrFail($postId);
@@ -420,12 +421,9 @@ class PostController extends Controller
 
         $validated = $request->validate([
             'description' => 'nullable|string|max:5000',
-
             'who_can_comment' => 'required|in:anyone,connections,no_one',
-
             'media' => 'nullable|array|max:10',
             'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm|max:20480',
-
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'exists:post_media,id',
         ]);
@@ -463,14 +461,11 @@ class PostController extends Controller
 
                 foreach ($request->file('media') as $index => $file) {
 
-                    $mime = $file->getMimeType();
-                    $type = str_contains($mime, 'video') ? 'video' : 'image';
-
-                    $path = $file->store('posts', 'public');
+                    $media = $mediaService->upload($file);
 
                     $post->media()->create([
-                        'file_path' => $path,
-                        'type' => $type,
+                        'file_path' => $media['file_path'],
+                        'type' => $media['type'],
                         'order' => $existingCount + $index,
                     ]);
                 }
