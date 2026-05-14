@@ -10,6 +10,7 @@ return [
         'https://www.mindunite.com',
         'https://mindunit.netlify.app/',
         'https://vin-intini-web-frontend.vercel.app/',
+        'http://localhost:3000',
     ],
 
     'allowed_origins_patterns' => [],
