@@ -326,7 +326,7 @@ class PostController extends Controller
         }
     }
 
-    public function editGroupPost($postId, $groupId)
+    public function editGroupPost($groupId,$postId)
     {
         $user = auth('api')->user();
 
@@ -386,7 +386,7 @@ class PostController extends Controller
         ]);
     }
 
-    public function updateGroupPost(Request $request, $postId, $groupId, MediaUploadService $mediaService)
+    public function updateGroupPost(Request $request, $groupId, $postId, MediaUploadService $mediaService)
     {
         
         $user = auth('api')->user();
@@ -496,7 +496,7 @@ class PostController extends Controller
         }
     }
 
-    public function destroyGroupPost($postId, $groupId)
+    public function destroyGroupPost($groupId, $postId)
     {
         $user = auth('api')->user();
 
