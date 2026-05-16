@@ -36,6 +36,7 @@ class PostCommentedNotification extends Notification implements ShouldQueue
         return [
             'sender_id'   => $this->sender->id,
             'sender_name' => $this->sender->first_name . ' ' . $this->sender->last_name,
+            'sender_profile_image_url'  => $this->sender->profile_image_url,
             'post_id'     => $this->post->id,
             'comment_id'  => $this->comment->id,
             'type'        => class_basename(self::class),
