@@ -386,9 +386,8 @@ class PostController extends Controller
         ]);
     }
 
-    public function updateGroupPost(Request $request, $groupId, $postId, MediaUploadService $mediaService)
+    public function updateGroupPost(Request $request,MediaUploadService $mediaService, $groupId,$postId)
     {
-        
         $user = auth('api')->user();
 
         $post = Post::with('media')->findOrFail($postId);
@@ -409,7 +408,6 @@ class PostController extends Controller
 
         $postGroup = PostGroup::where('post_id', $postId)
             ->where('group_id', $groupId)
-            ->where('remove_status', 0)
             ->first();
 
         if (!$postGroup) {
