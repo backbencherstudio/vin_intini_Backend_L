@@ -38,6 +38,7 @@ class CommentLikedNotification extends Notification implements ShouldQueue
                 ($this->sender->first_name ?? '') . ' ' .
                 ($this->sender->last_name ?? '')
             ),
+            'sender_profile_image_url'  => $this->sender->profile_image_url,
             'comment_id'   => $this->comment->id,
             'post_id'      => $this->comment->post_id,
             'message'      => 'liked your comment',
