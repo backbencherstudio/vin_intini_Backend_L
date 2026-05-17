@@ -17,24 +17,6 @@ class SocialController extends Controller
 {
     private const ALLOWED_PROVIDERS = ['google', 'facebook', 'apple'];
 
-    // public function redirect($provider)
-    // {
-    //     if (!in_array($provider, self::ALLOWED_PROVIDERS, true)) {
-    //         return response()->json(['success' => false, 'message' => 'Unsupported provider'], 422);
-    //     }
-
-    //     $platform = request('platform', 'app');
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'url' => Socialite::driver($provider)
-    //             ->stateless()
-    //             ->with(['state' => "platform={$platform}"])
-    //             ->redirect()
-    //             ->getTargetUrl()
-    //     ]);
-    // }
-
     public function redirect($provider)
     {
         if (!in_array($provider, self::ALLOWED_PROVIDERS, true)) {
@@ -43,22 +25,13 @@ class SocialController extends Controller
 
         $platform = request('platform', 'app');
 
-        $driver = Socialite::driver($provider)->stateless();
-
-        if ($provider === 'google') {
-            $driver->with([
-                'prompt' => 'select_account',
-                'approval_prompt' => 'force'
-            ]);
-        }
-
-        $url = $driver->with(['state' => "platform={$platform}"])
-            ->redirect()
-            ->getTargetUrl();
-
         return response()->json([
             'success' => true,
-            'url' => $url
+            'url' => Socialite::driver($provider)
+                ->stateless()
+                ->with(['state' => "platform={$platform}"])
+                ->redirect()
+                ->getTargetUrl()
         ]);
     }
 
