@@ -46,7 +46,10 @@ class SocialController extends Controller
         $driver = Socialite::driver($provider)->stateless();
 
         if ($provider === 'google') {
-            $driver->with(['prompt' => 'select_account']);
+            $driver->with([
+                'prompt' => 'select_account',
+                'approval_prompt' => 'force'
+            ]);
         }
 
         $url = $driver->with(['state' => "platform={$platform}"])
