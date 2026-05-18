@@ -20,21 +20,32 @@ class TimelineController extends Controller
 
         $isOwnProfile = $authUser->id == $userId;
 
-        $isConnected = false;
+        $relationshipStatus = 'not_connected';
 
-        if (!$isOwnProfile) {
-            $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
-                ->where(function ($q) use ($authUser, $userId) {
-                    $q->where(function ($q1) use ($authUser, $userId) {
-                        $q1->where('sender_id', $authUser->id)
-                            ->where('receiver_id', $userId);
-                    })->orWhere(function ($q2) use ($authUser, $userId) {
-                        $q2->where('sender_id', $userId)
-                            ->where('receiver_id', $authUser->id);
-                    });
-                })
-                ->exists();
+        if ($isOwnProfile) {
+            $relationshipStatus = 'connected';
+        } else {
+
+            $connection = Connection::where(function ($q) use ($authUser, $userId) {
+                $q->where(function ($q1) use ($authUser, $userId) {
+                    $q1->where('sender_id', $authUser->id)
+                        ->where('receiver_id', $userId);
+                })->orWhere(function ($q2) use ($authUser, $userId) {
+                    $q2->where('sender_id', $userId)
+                        ->where('receiver_id', $authUser->id);
+                });
+            })->first();
+
+            if ($connection) {
+                $relationshipStatus = match ($connection->status) {
+                    Connection::STATUS_ACCEPTED => 'connected',
+                    Connection::STATUS_PENDING => 'pending',
+                    default => 'not_connected',
+                };
+            }
         }
+
+        $isConnected = $relationshipStatus === 'connected';
 
         $postsQuery = Post::query()
             ->with([
@@ -46,15 +57,11 @@ class TimelineController extends Controller
 
                 if ($isOwnProfile) {
                     $query->whereIn('visibility', ['public', 'connections']);
-                }
-
-                else {
+                } else {
 
                     if ($isConnected) {
                         $query->whereIn('visibility', ['public', 'connections']);
-                    }
-
-                    else {
+                    } else {
                         $query->where('visibility', 'public');
                     }
                 }
@@ -67,6 +74,7 @@ class TimelineController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Timeline fetched successfully',
+
             'data' => collect($posts->items())->map(function ($post) use ($authUser) {
                 return [
                     'id' => $post->id,
@@ -83,14 +91,14 @@ class TimelineController extends Controller
                         ->exists(),
 
                     'media' => $post->media,
-                    // 'groups' => $post->groups,
                     'created_at' => $post->created_at,
                 ];
             }),
 
             'meta' => [
                 'is_own_profile' => $isOwnProfile,
-                'is_connected' => $isOwnProfile ? true : $isConnected,
+
+                'relationship_status' => $relationshipStatus,
             ],
 
             'pagination' => [
@@ -130,18 +138,21 @@ class TimelineController extends Controller
             ], 403);
         }
 
-        $connections = Connection::where('status', Connection::STATUS_ACCEPTED)
-            ->where(function ($q) use ($user) {
-                $q->where('sender_id', $user->id)
+        $relationships = Connection::where(function ($q) use ($user) {
+            $q->where('sender_id', $user->id)
                 ->orWhere('receiver_id', $user->id);
-            })
-            ->get()
-            ->map(function ($conn) use ($user) {
-                return $conn->sender_id === $user->id
-                    ? $conn->receiver_id
-                    : $conn->sender_id;
-            })
-            ->flip();
+        })->get();
+
+        $relationshipMap = [];
+
+        foreach ($relationships as $connection) {
+
+            $otherUserId = $connection->sender_id === $user->id
+                ? $connection->receiver_id
+                : $connection->sender_id;
+
+            $relationshipMap[$otherUserId] = $connection->status;
+        }
 
         $posts = Post::query()
             ->with([
@@ -162,10 +173,24 @@ class TimelineController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Group posts fetched successfully',
-            'data' => collect($posts->items())->map(function ($post) use ($user, $connections) {
 
-                $isConnected = $post->user_id === $user->id
-                    || isset($connections[$post->user_id]);
+            'data' => collect($posts->items())->map(function ($post) use (
+                $user,
+                $relationshipMap
+            ) {
+
+                if ($post->user_id === $user->id) {
+                    $relationshipStatus = 'connected';
+                } else {
+
+                    $status = $relationshipMap[$post->user_id] ?? null;
+
+                    $relationshipStatus = match ($status) {
+                        Connection::STATUS_ACCEPTED => 'connected',
+                        Connection::STATUS_PENDING => 'pending',
+                        default => 'not_connected',
+                    };
+                }
 
                 return [
                     'id' => $post->id,
@@ -186,7 +211,7 @@ class TimelineController extends Controller
                     'can_edit' => $post->user_id === $user->id,
                     'can_delete' => $post->user_id === $user->id,
 
-                    'is_connected' => $isConnected,
+                    'relationship_status' => $relationshipStatus,
                 ];
             }),
 
