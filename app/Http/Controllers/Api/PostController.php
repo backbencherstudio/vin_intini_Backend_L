@@ -13,6 +13,7 @@ use App\Models\PostLike;
 use App\Models\PostGroup;
 use App\Models\Comment;
 use App\Models\Group;
+use App\Models\GroupUser;
 use App\Models\Notification;
 use App\Services\MediaUploadService;
 
@@ -507,20 +508,31 @@ class PostController extends Controller
             ], 400);
         }
 
-        if ($post->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only post creator can delete this post'
-            ], 403);
-        }
-
-        $existsInGroup = $post->groups()->where('groups.id', $groupId)->exists();
+        $existsInGroup = $post->groups()
+            ->where('groups.id', $groupId)
+            ->exists();
 
         if (!$existsInGroup) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found in this group'
             ], 404);
+        }
+
+        $groupRole = GroupUser::where('group_id', $groupId)
+            ->where('user_id', $user->id)
+            ->value('role');
+
+        $canDelete = (
+            $post->user_id === $user->id || 
+            in_array($groupRole, ['admin'])
+        );
+
+        if (!$canDelete) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to delete this post'
+            ], 403);
         }
 
         DB::beginTransaction();
@@ -552,7 +564,7 @@ class PostController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Post removed from group successfully'
+                'message' => 'Post removed successfully'
             ]);
 
         } catch (\Throwable $e) {
@@ -561,7 +573,7 @@ class PostController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to remove post from group',
+                'message' => 'Failed to remove post',
                 'error' => app()->environment('local') ? $e->getMessage() : null
             ], 500);
         }
