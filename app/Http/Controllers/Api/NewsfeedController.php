@@ -81,9 +81,12 @@ class NewsfeedController extends Controller
                 $canDelete = ($post->user_id === $user->id);
 
                 foreach ($post->groups as $group) {
-                    $isGroupAdmin = $group->users()->wherePivot('role', 'admin')->wherePivot('user_id', $user->id)->exists();
-                    if ($isGroupAdmin) {
-                        $canEdit = true;
+                    $isGroupAdmin = $group->users()
+                        ->wherePivot('role', 'admin')
+                        ->wherePivot('user_id', $user->id)
+                        ->exists();
+
+                    if ($isGroupAdmin && $post->user_id !== $user->id) {
                         $canDelete = true;
                         break;
                     }
