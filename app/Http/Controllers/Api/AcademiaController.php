@@ -43,8 +43,7 @@ class AcademiaController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
-        // $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
-
+        
         $state = State::where('code', $code)->first();
 
         if (!$state) {
@@ -84,7 +83,6 @@ class AcademiaController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
-        // $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
 
         $state = State::where('code', $code)->first();
 
@@ -129,7 +127,6 @@ class AcademiaController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
-        // $perPage = max(1, min((int) $request->integer('per_page', 15), 100));
 
         $state = State::where('code', $code)->first();
 

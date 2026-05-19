@@ -92,25 +92,20 @@ class AuthController extends Controller
                     'country' => $user->profile->country,
                     'postal_code' => $user->profile->postal_code,
                     'profession' => $user->profile->profession,
-                    // 'degree' => $latestEducation?->degree,
-                    // 'field_study' => $latestEducation?->field_study,
-                    // 'institution' => $latestEducation?->institution?->name,
-                    // 'graduation_year' => $latestEducation?->end_year,
+
                     'interests' => $user->profile->interests,
-                    // 'skills_id' => $user->profile->skills_id,
+
                     'skills' => Skill::query()
                         ->whereIn('id', $user->profile->skills_id ?? [])
                         ->orderBy('name')
                         ->pluck('name')
                         ->values(),
-                    // 'current_position_id' => $user->profile->current_position_id,
 
                     'current_position' => $user->profile->currentPosition ? [
                         'id' => $user->profile->currentPosition->id,
                         'company_name' => $user->profile->currentPosition->name,
                     ] : null,
 
-                    // 'current_institute_id' => $user->profile->current_institute_id,
                     'institution' => $user->profile->currentInstitute ? [
                         'id' => $user->profile->currentInstitute->id,
                         'name' => $user->profile->currentInstitute->name,
