@@ -242,7 +242,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Registration failed.',
-                // 'error' => $e->getMessage(), // enable in local
+                
             ], 500);
         }
     }
