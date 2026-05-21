@@ -775,13 +775,17 @@ class GroupController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 10));
         $perPage = max(1, min($perPage, 100));
-        // $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
         $page = max(1, (int) $request->integer('page', 1));
 
         $invitations = GroupInvitation::query()
             ->where('invited_user_id', $request->user()->id)
             ->with([
-                'group:id,name,type,logo,creator_id',
+                'group' => function ($query) {
+                    $query->select('id', 'name', 'type', 'logo', 'creator_id', 'description')
+                        ->withCount(['members as member_count' => function ($q) {
+                            $q->where('group_users.status', 'active');
+                        }]);
+                },
                 'inviter:id,first_name,last_name,title,profile_image',
             ])
             ->when($search !== '', function ($query) use ($search) {
@@ -803,6 +807,8 @@ class GroupController extends Controller
                         'name' => $invitation->group?->name,
                         'type' => $invitation->group?->type,
                         'logo_url' => $invitation->group?->logo_url,
+                        'description' => $invitation->group?->description,
+                        'member_count' => (int) ($invitation->group?->member_count ?? 0),
                     ],
                     'inviter' => [
                         'id' => $invitation->inviter?->id,
@@ -853,6 +859,90 @@ class GroupController extends Controller
             ],
         ], 200);
     }
+
+    // public function invitationRequests(Request $request)
+    // {
+    //     $search = trim((string) $request->query('search', ''));
+    //     $perPage = $request->integer('limit', $request->integer('per_page', 10));
+    //     $perPage = max(1, min($perPage, 100));
+    //     // $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
+    //     $page = max(1, (int) $request->integer('page', 1));
+
+    //     $invitations = GroupInvitation::query()
+    //         ->where('invited_user_id', $request->user()->id)
+    //         ->with([
+    //             'group:id,name,type,logo,creator_id',
+    //             'inviter:id,first_name,last_name,title,profile_image',
+    //         ])
+    //         ->when($search !== '', function ($query) use ($search) {
+    //             $query->whereHas('group', function ($groupQuery) use ($search) {
+    //                 $groupQuery->where('name', 'like', '%' . $search . '%');
+    //             });
+    //         })
+    //         ->latest('id')
+    //         ->paginate($perPage, page: $page);
+
+    //     $data = $invitations->getCollection()
+    //         ->map(function (GroupInvitation $invitation): array {
+    //             $inviterName = trim(($invitation->inviter?->first_name ?? '') . ' ' . ($invitation->inviter?->last_name ?? ''));
+
+    //             return [
+    //                 'invitation_id' => $invitation->id,
+    //                 'group' => [
+    //                     'id' => $invitation->group?->id,
+    //                     'name' => $invitation->group?->name,
+    //                     'type' => $invitation->group?->type,
+    //                     'logo_url' => $invitation->group?->logo_url,
+    //                 ],
+    //                 'inviter' => [
+    //                     'id' => $invitation->inviter?->id,
+    //                     'name' => $inviterName,
+    //                     'title' => $invitation->inviter?->title,
+    //                     'profile_image_url' => $invitation->inviter?->profile_image_url,
+    //                 ],
+    //                 'requested_at' => $invitation->created_at?->toDateTimeString(),
+    //             ];
+    //         })
+    //         ->values();
+
+    //     if ($invitations->total() === 0) {
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'No pending group invitations found.',
+    //             'status' => 'success',
+    //             'data' => [],
+    //             'stats' => [
+    //                 'total_invitations' => 0,
+    //             ],
+    //             'total' => 0,
+    //             'limit' => $perPage,
+    //             'current_page' => $page,
+    //             'total_page' => 0,
+    //             'last_page' => 0,
+    //             'filters' => [
+    //                 'search' => $search !== '' ? $search : null,
+    //             ],
+    //         ], 200);
+    //     }
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Group invitations retrieved successfully.',
+    //         'status' => 'success',
+    //         'data' => $data,
+    //         'stats' => [
+    //             'total_invitations' => $invitations->total(),
+    //         ],
+    //         'total' => $invitations->total(),
+    //         'limit' => $invitations->perPage(),
+    //         'current_page' => $invitations->currentPage(),
+    //         'total_page' => $invitations->lastPage(),
+    //         'last_page' => $invitations->lastPage(),
+    //         'filters' => [
+    //             'search' => $search !== '' ? $search : null,
+    //         ],
+    //     ], 200);
+    // }
 
     private function canInviteToGroup(Group $group, int $userId): bool
     {
