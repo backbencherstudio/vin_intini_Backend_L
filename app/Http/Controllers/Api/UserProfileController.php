@@ -45,6 +45,7 @@ class UserProfileController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
+                'id' => $user->id,
                 'is_own_profile' => $isOwnProfile,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
