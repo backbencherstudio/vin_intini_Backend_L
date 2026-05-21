@@ -18,23 +18,31 @@ class NewsfeedController extends Controller
 
         $groupIds = $user->groups()->pluck('groups.id');
 
-        $connectionIds = Connection::where('status', Connection::STATUS_ACCEPTED)
-            ->where(function ($q) use ($user) {
-                $q->where('sender_id', $user->id)
-                    ->orWhere('receiver_id', $user->id);
-            })
-            ->selectRaw("
-                CASE
-                    WHEN sender_id = ? THEN receiver_id
-                    ELSE sender_id
-                END as user_id
-            ", [$user->id])
-            ->pluck('user_id');
+        $relationships = Connection::where(function ($q) use ($user) {
+            $q->where('sender_id', $user->id)
+                ->orWhere('receiver_id', $user->id);
+        })->get();
+
+        $relationshipMap = [];
+
+        foreach ($relationships as $connection) {
+
+            $otherUserId = $connection->sender_id == $user->id
+                ? $connection->receiver_id
+                : $connection->sender_id;
+
+            $relationshipMap[$otherUserId] = $connection->status;
+        }
+
+        $connectionIds = collect($relationshipMap)
+            ->filter(fn($status) => $status === Connection::STATUS_ACCEPTED)
+            ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)
             ->pluck('following_id');
 
         $allowedConnectionIds = $connectionIds->intersect($followingIds);
+
         $posts = Post::query()
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
@@ -44,29 +52,37 @@ class NewsfeedController extends Controller
                     $q->where('user_id', $user->id);
                 }
             ])
-            ->where(function ($query) use ($user, $groupIds, $allowedConnectionIds, $followingIds) {
+            ->where(function ($query) use (
+                $user,
+                $groupIds,
+                $allowedConnectionIds
+            ) {
+
                 $query->where('user_id', $user->id)
 
-                    ->orWhere(function ($query) use ($groupIds, $allowedConnectionIds, $followingIds, $user) {
+                    ->orWhere(function ($query) use (
+                        $groupIds,
+                        $allowedConnectionIds,
+                        $user
+                    ) {
 
-                        $query->where(function ($q) use ($followingIds) {
-                            $q->where('visibility', 'public');
-                        })
-                        ->orWhere(function ($q) use ($allowedConnectionIds) {
-                            $q->where('visibility', 'connections')
-                                ->whereIn('user_id', $allowedConnectionIds);
-                        })
-                        ->orWhere(function ($q) use ($groupIds, $user) {
-                            $q->where('visibility', 'groups')
-                                ->whereHas('groups', function ($q2) use ($groupIds, $user) {
-                                    $q2->whereIn('groups.id', $groupIds)
-                                        ->whereHas('users', function ($q3) use ($user) {
-                                            $q3->where('group_users.user_id', $user->id)
-                                                ->where('group_users.status', '!=', 'banned');
-                                        });
-                                });
-                        });
+                        $query->where('visibility', 'public')
 
+                            ->orWhere(function ($q) use ($allowedConnectionIds) {
+                                $q->where('visibility', 'connections')
+                                    ->whereIn('user_id', $allowedConnectionIds);
+                            })
+
+                            ->orWhere(function ($q) use ($groupIds, $user) {
+                                $q->where('visibility', 'groups')
+                                    ->whereHas('groups', function ($q2) use ($groupIds, $user) {
+                                        $q2->whereIn('groups.id', $groupIds)
+                                            ->whereHas('users', function ($q3) use ($user) {
+                                                $q3->where('group_users.user_id', $user->id)
+                                                    ->where('group_users.status', '!=', 'banned');
+                                            });
+                                    });
+                            });
                     });
             })
             ->orderByDesc('id')
@@ -75,7 +91,11 @@ class NewsfeedController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Feed fetched successfully',
-            'data' => collect($posts->items())->map(function ($post) use ($connectionIds, $user) {
+
+            'data' => collect($posts->items())->map(function ($post) use (
+                $user,
+                $relationshipMap
+            ) {
 
                 $canEdit = ($post->user_id === $user->id);
                 $canDelete = ($post->user_id === $user->id);
@@ -92,10 +112,23 @@ class NewsfeedController extends Controller
                     }
                 }
 
+                if ($post->user_id === $user->id) {
+                    $relationshipStatus = 'connected';
+                } else {
+                    $status = $relationshipMap[$post->user_id] ?? null;
+
+                    $relationshipStatus = match ($status) {
+                        Connection::STATUS_ACCEPTED => 'connected',
+                        Connection::STATUS_PENDING => 'pending',
+                        default => 'not_connected',
+                    };
+                }
+
                 return [
                     'id' => $post->id,
                     'user' => $post->user,
                     'description' => $post->description,
+
                     'visibility' => $post->visibility,
                     'who_can_comment' => $post->who_can_comment,
 
@@ -104,14 +137,13 @@ class NewsfeedController extends Controller
 
                     'liked_by_me' => $post->likes->isNotEmpty(),
 
-                    'is_connected' =>
-                        $post->user_id === $user->id
-                            ? true
-                            : $connectionIds->contains($post->user_id),
+                    'relationship_status' => $relationshipStatus,
 
                     'media' => $post->media,
                     'group' => $post->groups->first(),
+
                     'created_at' => $post->created_at,
+
                     'can_edit' => $canEdit,
                     'can_delete' => $canDelete,
                 ];
