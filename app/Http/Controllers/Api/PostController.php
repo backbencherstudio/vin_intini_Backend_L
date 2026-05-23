@@ -30,7 +30,7 @@ class PostController extends Controller
             'group_ids' => 'required_if:visibility,groups|array',
             'group_ids.*' => 'exists:groups,id',
             'media' => 'nullable|array|max:20',
-            'media.*' => 'file|max:30720',
+            'media.*' => 'file|max:204800|mimes:jpg,jpeg,png,heic,heif,mp4,mov,m4v,webm',
         ]);
 
         if ($request->visibility === 'groups') {
@@ -191,8 +191,8 @@ class PostController extends Controller
             'description' => 'nullable|string|max:5000',
             'visibility' => 'required|in:public,connections',
             'who_can_comment' => 'required|in:anyone,connections,no_one',
-            'media' => 'nullable|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm|max:30720',
+            'media' => 'nullable|array|max:20',
+            'media.*' => 'file|max:204800|mimes:jpg,jpeg,png,heic,heif,mp4,mov,m4v,webm',
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'exists:post_media,id',
         ]);
@@ -421,8 +421,8 @@ class PostController extends Controller
         $validated = $request->validate([
             'description' => 'nullable|string|max:5000',
             'who_can_comment' => 'required|in:anyone,connections,no_one',
-            'media' => 'nullable|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm|max:20480',
+            'media' => 'nullable|array|max:20',
+            'media.*' => 'file|mimes:jpg,jpeg,png,heic,heif,mp4,mov,m4v,webm|max:204800',
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'exists:post_media,id',
         ]);
