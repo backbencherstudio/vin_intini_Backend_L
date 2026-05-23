@@ -422,7 +422,7 @@ class PostController extends Controller
             'description' => 'nullable|string|max:5000',
             'who_can_comment' => 'required|in:anyone,connections,no_one',
             'media' => 'nullable|array|max:20',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm|max:20480',
+            'media.*' => 'file|mimes:jpg,jpeg,png,heic,heif,mp4,mov,m4v,webm|max:204800',
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'exists:post_media,id',
         ]);
