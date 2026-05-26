@@ -43,7 +43,7 @@ class AcademiaController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
-        
+
         $state = State::where('code', $code)->first();
 
         if (!$state) {
@@ -61,6 +61,12 @@ class AcademiaController extends Controller
         }
 
         $paginator = $query->paginate($perPage);
+
+        $paginator->getCollection()->transform(function ($university) use ($state) {
+            $university->state_name = $state->name;
+            $university->state_code = $state->code;
+            return $university;
+        });
 
         return response()->json([
             'success' => true,
@@ -101,11 +107,17 @@ class AcademiaController extends Controller
 
         $paginator = $query->paginate($perPage);
 
+        $paginator->getCollection()->transform(function ($residency) use ($state) {
+            $residency->state_name = $state->name;
+            $residency->state_code = $state->code;
+            return $residency;
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Residencies retrieved successfully.',
             'status' => 'success',
-            'state_name' => $state->name,
+            // 'state_name' => $state->name,
             'data' => $paginator->items(),
             'stats' => [
                 'total_residencies' => $paginator->total(),
@@ -149,11 +161,17 @@ class AcademiaController extends Controller
 
         $paginator = $query->paginate($perPage);
 
+        $paginator->getCollection()->transform(function ($facility) use ($state) {
+            $facility->state_name = $state->name;
+            $facility->state_code = $state->code;
+            return $facility;
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Facilities retrieved successfully.',
             'status' => 'success',
-            'state_name' => $state->name,
+            // 'state_name' => $state->name,
             'data' => $paginator->items(),
             'stats' => [
                 'total_facilities' => $paginator->total(),
