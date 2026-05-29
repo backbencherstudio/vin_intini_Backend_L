@@ -7,6 +7,7 @@ use App\Models\Connection;
 use App\Models\Post;
 use App\Models\UserFollow;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class NewsfeedController extends Controller
 {
@@ -53,6 +54,7 @@ class NewsfeedController extends Controller
                 'user.profile:user_id,privacy_profile_activity',
                 'media',
                 'groups:id,name,logo',
+                'industryLink:id,post_id,industry_id', 'industryLink.industry:id,name,slug,tagline,logo',
                 'likes' => function ($q) use ($user) {
                     $q->where('user_id', $user->id);
                 },
@@ -91,6 +93,33 @@ class NewsfeedController extends Controller
                                     ->whereHas('users', function ($q3) use ($user) {
                                         $q3->where('group_users.user_id', $user->id)
                                             ->where('group_users.status', '!=', 'banned');
+                                    });
+                            });
+                    })
+
+                    ->orWhere(function ($q) use ($user) {
+                        $q->whereExists(function ($sub) {
+                            $sub->select(DB::raw(1))
+                                ->from('post_industry')
+                                ->whereColumn('post_industry.post_id', 'posts.id');
+                        })
+                            ->where(function ($q2) use ($user) {
+                                $q2->where('visibility', 'public')
+
+                                    ->orWhere(function ($q3) use ($user) {
+                                        $q3->where('visibility', 'followers')
+                                            ->whereExists(function ($sub) use ($user) {
+                                                $sub->select(DB::raw(1))
+                                                    ->from('industry_follows')
+                                                    ->join(
+                                                        'post_industry',
+                                                        'post_industry.industry_id',
+                                                        '=',
+                                                        'industry_follows.industry_id'
+                                                    )
+                                                    ->whereColumn('post_industry.post_id', 'posts.id')
+                                                    ->where('industry_follows.user_id', $user->id);
+                                            });
                                     });
                             });
                     });
@@ -140,6 +169,7 @@ class NewsfeedController extends Controller
                     'relationship_status' => $relationshipStatus,
                     'media' => $post->media,
                     'group' => $post->groups->first(),
+                    'industry' => $post->industryLink?->industry,
                     'created_at' => $post->created_at,
                     'can_edit' => $canEdit,
                     'can_delete' => $canDelete,
@@ -191,6 +221,7 @@ class NewsfeedController extends Controller
     //             'user:id,first_name,last_name,profile_image,title',
     //             'media',
     //             'groups:id,name,logo',
+    //             'industryLink:id,post_id,industry_id', 'industryLink.industry:id,name,slug,tagline,logo',
     //             'likes' => function ($q) use ($user) {
     //                 $q->where('user_id', $user->id);
     //             },
@@ -279,6 +310,7 @@ class NewsfeedController extends Controller
     //                 'relationship_status' => $relationshipStatus,
     //                 'media' => $post->media,
     //                 'group' => $post->groups->first(),
+    //                 'industry' => $post->industryLink?->industry,
     //                 'created_at' => $post->created_at,
     //                 'can_edit' => $canEdit,
     //                 'can_delete' => $canDelete,
@@ -334,6 +366,7 @@ class NewsfeedController extends Controller
             'user:id,username,first_name,last_name,profile_image,title',
             'media',
             'groups:id,name,logo',
+            'industryLink:id,post_id,industry_id', 'industryLink.industry:id,name,slug,tagline,logo',
             'likes' => function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             },
@@ -367,6 +400,33 @@ class NewsfeedController extends Controller
                                             ->whereHas('users', function ($q3) use ($user) {
                                                 $q3->where('group_users.user_id', $user->id)
                                                     ->where('group_users.status', '!=', 'banned');
+                                            });
+                                    });
+                            })
+
+                            ->orWhere(function ($q) use ($user) {
+                                $q->whereExists(function ($sub) {
+                                    $sub->select(DB::raw(1))
+                                        ->from('post_industry')
+                                        ->whereColumn('post_industry.post_id', 'posts.id');
+                                })
+                                    ->where(function ($q2) use ($user) {
+                                        $q2->where('visibility', 'public')
+
+                                            ->orWhere(function ($q3) use ($user) {
+                                                $q3->where('visibility', 'followers')
+                                                    ->whereExists(function ($sub) use ($user) {
+                                                        $sub->select(DB::raw(1))
+                                                            ->from('industry_follows')
+                                                            ->join(
+                                                                'post_industry',
+                                                                'post_industry.industry_id',
+                                                                '=',
+                                                                'industry_follows.industry_id'
+                                                            )
+                                                            ->whereColumn('post_industry.post_id', 'posts.id')
+                                                            ->where('industry_follows.user_id', $user->id);
+                                                    });
                                             });
                                     });
                             });
@@ -426,6 +486,7 @@ class NewsfeedController extends Controller
                 'relationship_status' => $relationshipStatus,
                 'media' => $post->media,
                 'group' => $post->groups->first(),
+                'industry' => $post->industryLink?->industry,
                 'created_at' => $post->created_at,
                 'can_edit' => $canEdit,
                 'can_delete' => $canDelete,
