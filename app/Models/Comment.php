@@ -15,6 +15,8 @@ class Comment extends Model
         'user_id',
         'comment',
         'image',
+        'like_count',
+        'reply_count',
     ];
 
     public function getImageUrlAttribute()
@@ -54,7 +56,11 @@ class Comment extends Model
                 Storage::disk('public')->delete($comment->image);
             }
 
-            $comment->replies()->get()->each(function ($reply) {
+            $replies = $comment->relationLoaded('replies')
+                ? $comment->replies
+                : $comment->replies()->get();
+
+            $replies->each(function ($reply) {
                 $reply->delete();
             });
         });
