@@ -82,14 +82,12 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 });
 
 Route::middleware('role:user')->group(function () {
-
-    // Recruiter Dashboard.....
     Route::prefix('industry')->group(function () {
         Route::post('create', [IndustryController::class, 'store']);
         Route::get('show/{industryId}', [IndustryController::class, 'show']);
         Route::post('update', [IndustryController::class, 'update']);
         Route::delete('delete', [IndustryController::class, 'deleteCompany']);
-        
+
         Route::post('follow/{industryId}', [IndustryController::class, 'toggleFollow']);
 
         // Industry post
@@ -111,9 +109,9 @@ Route::middleware('role:user')->group(function () {
         Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
         Route::get('post/comment/replies/{commentId}', [IndustryController::class, 'replyList']);
 
+        Route::post('post/comment/reply/like/{replyId}', [IndustryController::class, 'toggleReplyLike']);
+        Route::get('post/comment/reply/likes/{replyId}', [IndustryController::class, 'replyLikeList']);
+
         Route::delete('post/comment/{commentId}', [IndustryController::class, 'deleteComment']);
-
     });
-
-    Route::middleware('profile_completed')->group(function () {});
 });
