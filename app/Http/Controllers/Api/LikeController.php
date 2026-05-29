@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Notifications\CommentLikedNotification;
 use App\Notifications\PostLikedNotification;
 use App\Notifications\ReplyLikedNotification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -24,7 +25,7 @@ class LikeController extends Controller
     {
         $user = auth('api')->user();
 
-        $post = Post::with(['user' => fn ($q) => $q->withTrashed(), 'groups'])->findOrFail($postId);
+        $post = Post::with(['user' => fn ($q) => $q->withTrashed(), 'groups', 'industryLink'])->findOrFail($postId);
 
         if (! $post->user || $post->user->trashed()) {
             return response()->json([
@@ -69,6 +70,13 @@ class LikeController extends Controller
                     return response()->json(['success' => false, 'message' => 'You are not a member of this group'], 403);
                 }
             }
+        }
+
+        if ($post->isCompanyPost() && ! $post->isVisibleTo($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to interact with this post',
+            ], 403);
         }
 
         DB::beginTransaction();
@@ -120,6 +128,15 @@ class LikeController extends Controller
     {
         $perPage = $request->get('per_page', 10);
 
+        $post = Post::with('industryLink')->findOrFail($postId);
+
+        if ($post->isCompanyPost() && ! $post->isVisibleTo(auth('api')->user())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to view likes on this post',
+            ], 403);
+        }
+
         $likes = PostLike::with(['user:id,username,first_name,last_name,profile_image'])
             ->where('post_id', $postId)
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
@@ -156,6 +173,10 @@ class LikeController extends Controller
     {
         $user = auth('api')->user();
         $comment = Comment::findOrFail($commentId);
+
+        if ($error = $this->denyWhenParentPostHidden($user, $comment->post_id)) {
+            return $error;
+        }
 
         try {
             $created = CommentLike::firstOrCreate([
@@ -204,6 +225,10 @@ class LikeController extends Controller
         $user = auth('api')->user();
         $reply = Reply::findOrFail($replyId);
 
+        if ($error = $this->denyWhenParentPostHidden($user, $reply->post_id)) {
+            return $error;
+        }
+
         try {
             $created = ReplyLike::firstOrCreate([
                 'reply_id' => $reply->id,
@@ -250,6 +275,10 @@ class LikeController extends Controller
     {
         $perPage = $request->get('per_page', 10);
 
+        if ($error = $this->denyWhenParentPostHidden(auth('api')->user(), Comment::findOrFail($commentId)->post_id)) {
+            return $error;
+        }
+
         $likes = CommentLike::with(['user:id,username,first_name,last_name,profile_image'])
             ->where('comment_id', $commentId)
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
@@ -285,6 +314,10 @@ class LikeController extends Controller
     public function replyLikedList(Request $request, $replyId)
     {
         $perPage = $request->get('per_page', 10);
+
+        if ($error = $this->denyWhenParentPostHidden(auth('api')->user(), Reply::findOrFail($replyId)->post_id)) {
+            return $error;
+        }
 
         $likes = ReplyLike::with(['user:id,username,first_name,last_name,profile_image'])
             ->where('reply_id', $replyId)
@@ -664,4 +697,26 @@ class LikeController extends Controller
     //         ],
     //     ]);
     // }
+
+    /**
+     * Company comments and replies live in the shared tables, so the generic
+     * comment and reply endpoints must honour company post visibility too.
+     */
+    private function denyWhenParentPostHidden(?User $user, ?int $postId): ?JsonResponse
+    {
+        if (! $postId) {
+            return null;
+        }
+
+        $post = Post::with('industryLink')->find($postId);
+
+        if ($post && $post->isCompanyPost() && ! $post->isVisibleTo($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to interact with this post',
+            ], 403);
+        }
+
+        return null;
+    }
 }

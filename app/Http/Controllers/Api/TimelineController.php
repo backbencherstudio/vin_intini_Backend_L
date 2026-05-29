@@ -55,6 +55,7 @@ class TimelineController extends Controller
         $isConnected = $relationshipStatus === 'connected';
 
         $postsQuery = Post::query()
+            ->forUser()
             ->with([
                 'user:id,username,first_name,last_name,profile_image,title',
                 'media',
