@@ -86,6 +86,7 @@ class AcademiaController extends Controller
 
     public function getResidencies(Request $request, $code): JsonResponse
     {
+        $degreeFilter = $request->query('degree', 'All');
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
@@ -103,6 +104,10 @@ class AcademiaController extends Controller
 
         if ($search !== '') {
             $query->where('program_name', 'like', '%' . $search . '%');
+        }
+
+        if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
+            $query->whereJsonContains('degree_types', $degreeFilter);
         }
 
         $paginator = $query->paginate($perPage);
@@ -128,6 +133,7 @@ class AcademiaController extends Controller
             'total_page' => $paginator->lastPage(),
             'last_page' => $paginator->lastPage(),
             'filters' => [
+                'applied_degree' => $degreeFilter,
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
