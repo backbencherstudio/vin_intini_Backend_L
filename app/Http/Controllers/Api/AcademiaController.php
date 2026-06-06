@@ -41,8 +41,12 @@ class AcademiaController extends Controller
     {
         $degreeFilter = $request->query('degree', 'All');
         $search = trim((string) $request->query('search', ''));
+
+        $sortOrder = strtolower($request->query('sort', 'asc')) === 'desc' ? 'desc' : 'asc';
+
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
+
 
         $state = State::where('code', $code)->first();
 
@@ -53,12 +57,15 @@ class AcademiaController extends Controller
         $query = $state->universities();
 
         if ($search !== '') {
-            $query->where('name', 'like', '%' . $search . '%');
+            $query->where('academia_universities.name', 'like', '%' . $search . '%');
         }
 
         if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
             $query->whereJsonContains('psychology_degrees', $degreeFilter);
         }
+
+        //alphabetical order
+        $query->orderBy('academia_universities.name', $sortOrder);
 
         $paginator = $query->paginate($perPage);
 
@@ -80,6 +87,7 @@ class AcademiaController extends Controller
             'filters' => [
                 'applied_degree' => $degreeFilter,
                 'search' => $search ?: null,
+                'sort' => $sortOrder,
             ],
         ], 200);
     }
@@ -90,6 +98,7 @@ class AcademiaController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
+        $sortOrder = strtolower($request->query('sort', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         $state = State::where('code', $code)->first();
 
@@ -103,12 +112,15 @@ class AcademiaController extends Controller
         $query = $state->residencies();
 
         if ($search !== '') {
-            $query->where('program_name', 'like', '%' . $search . '%');
+            $query->where('academia_medical_residencies.program_name', 'like', '%' . $search . '%');
         }
 
         if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
             $query->whereJsonContains('degree_types', $degreeFilter);
         }
+
+        //alphabetical order
+        $query->orderBy('academia_medical_residencies.program_name', $sortOrder);
 
         $paginator = $query->paginate($perPage);
 
@@ -135,6 +147,7 @@ class AcademiaController extends Controller
             'filters' => [
                 'applied_degree' => $degreeFilter,
                 'search' => $search !== '' ? $search : null,
+                'sort' => $sortOrder,
             ],
         ], 200);
     }
@@ -145,6 +158,7 @@ class AcademiaController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
+        $sortOrder = strtolower($request->query('sort', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         $state = State::where('code', $code)->first();
 
@@ -162,8 +176,11 @@ class AcademiaController extends Controller
         });
 
         $query->when($search !== '', function ($q) use ($search) {
-            return $q->where('name', 'like', '%' . $search . '%');
+            return $q->where('academia_facilities.name', 'like', '%' . $search . '%');
         });
+
+        //alphabetical order
+        $query->orderBy('academia_facilities.name', $sortOrder);
 
         $paginator = $query->paginate($perPage);
 
@@ -190,6 +207,7 @@ class AcademiaController extends Controller
             'filters' => [
                 'type' => $type ?: null,
                 'search' => $search !== '' ? $search : null,
+                'sort' => $sortOrder,
             ],
         ], 200);
     }
