@@ -18,7 +18,7 @@ class ContactUsController extends Controller
             'email'   => 'required|email|max:255',
             'phone'   => 'nullable|string',
             'subject' => 'nullable|string|max:255',
-            'message' => 'nullable|string',
+            'message' => 'required|string',
             'address' => 'nullable|string',
         ]);
 
