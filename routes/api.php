@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\SocialController;
 use App\Http\Controllers\Api\UserController;
@@ -19,7 +20,8 @@ Route::get('/login', function () {
 })->name('login');
 
 Route::post('/login', [AuthController::class, 'login']);
-
+// Contact Us Route
+Route::post('/contact-submit', [ContactUsController::class, 'store']);
 // User Forgot Password Routes
 Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
