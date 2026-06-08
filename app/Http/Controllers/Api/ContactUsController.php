@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ContactUsAutoResponseMail;
 use App\Mail\ContactUsNotificationMail;
 use App\Models\ContactUs;
 use Illuminate\Http\Request;
@@ -31,7 +32,10 @@ class ContactUsController extends Controller
 
         $contact = ContactUs::create($request->all());
 
-        Mail::to('niaz.softvence@gmail.com')->send(new ContactUsNotificationMail($contact));
+        // Mail::to('niaz.softvence@gmail.com')->send(new ContactUsNotificationMail($contact));
+        Mail::to('niaz@softvencedelta.com')->send(new ContactUsNotificationMail($contact));
+
+        Mail::to($contact->email)->send(new ContactUsAutoResponseMail($contact));
 
         return response()->json([
             'status'  => 'success',
