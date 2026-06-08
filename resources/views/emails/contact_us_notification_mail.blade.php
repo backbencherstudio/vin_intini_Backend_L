@@ -90,10 +90,15 @@
 
         .footer {
             background-color: #f9fafb;
-            padding: 20px;
+            padding: 25px;
             text-align: center;
-            font-size: 12px;
-            color: #999999;
+            font-size: 13px;
+            color: #888888;
+            border-top: 1px solid #eeeeee;
+        }
+
+        .footer strong {
+            color: #00c2cb;
         }
     </style>
 </head>
@@ -117,9 +122,18 @@
                     <td class="label">Name:</td>
                     <td class="value">{{ $contactData->name }}</td>
                 </tr>
-                <tr>
+                {{-- <tr>
                     <td class="label">Email:</td>
                     <td class="value">{{ $contactData->email }}</td>
+                </tr> --}}
+                <tr>
+                    <td class="label">Email:</td>
+                    <td class="value">
+                        <a href="mailto:{{ $contactData->email }}"
+                            style="color: #00c2cb; text-decoration: none; font-weight: bold;">
+                            {{ $contactData->email }}
+                        </a>
+                    </td>
                 </tr>
                 <tr>
                     <td class="label">Phone:</td>
@@ -143,7 +157,7 @@
 
         <!-- Footer -->
         <div class="footer">
-            &copy; {{ date('Y') }} MindUnite. All rights reserved.<br>
+            &copy; {{ date('Y') }} <strong>MindUnite</strong>. All rights reserved.<br>
             Psychology and Neuroscience Community.
         </div>
     </div>
