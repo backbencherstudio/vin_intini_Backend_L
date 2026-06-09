@@ -150,8 +150,10 @@
 
         <!-- Footer -->
         <div class="footer">
-            &copy; {{ date('Y') }} <strong>MindUnite</strong>. All rights reserved.<br>
-            Bridging Psychology and Neuroscience.
+            &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
+                style="text-decoration: none; color: #00c2cb; font-weight: bold;">MindUnite</a>. All rights
+            reserved.<br>
+            Psychology and Neuroscience Community.
         </div>
     </div>
 </body>
