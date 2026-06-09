@@ -1,5 +1,138 @@
 <!DOCTYPE html>
 <html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Reset Your Password - MindUnite</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            background-color: #043940;
+            padding: 40px 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .content {
+            padding: 40px 30px;
+            text-align: center;
+            color: #333333;
+        }
+
+        .content h2 {
+            margin-top: 0;
+            color: #043940;
+            font-size: 24px;
+        }
+
+        .content p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .otp-box {
+            display: inline-block;
+            background-color: #f0fdfa;
+            border: 2px dashed #00c2cb;
+            padding: 15px 40px;
+            font-size: 36px;
+            font-weight: bold;
+            color: #008b8b;
+            letter-spacing: 10px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .footer {
+            background-color: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999999;
+        }
+
+        .footer strong {
+            color: #00c2cb;
+        }
+
+        .expiry {
+            color: #ff4d4f;
+            font-weight: bold;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header with Logo -->
+        <div class="header">
+            <a href="https://mindunite.com" target="_blank">
+                <img src="{{ asset('assets/img/logo.svg') }}" alt="MindUnite Logo"
+                    style="max-width: 300px; height: auto; margin-bottom: 0px;">
+            </a>
+        </div>
+
+        <!-- Content Section -->
+        <div class="content">
+            <h2>Password Reset OTP</h2>
+            <p>We received a request to reset your password. Use the following One-Time Password (OTP) to proceed with
+                your password reset.</p>
+
+            <div class="otp-box">
+                {{ $otp }}
+            </div>
+
+            <p class="expiry">This code will expire in 3 minutes.</p>
+
+            <p>If you didn't request a password reset, you can safely ignore this email.</p>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="footer">
+            &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
+                style="text-decoration: none; color: #00c2cb; font-weight: bold;">MindUnite</a>. All rights
+            reserved.<br>
+            Psychology and Neuroscience Community.
+        </div>
+        {{-- <div class="footer">
+            &copy; {{ date('Y') }} <strong>MindUnite</strong>. All rights reserved.<br>
+            Psychology and Neuroscience Community.
+        </div> --}}
+    </div>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+{{-- <!DOCTYPE html>
+<html>
 <head>
     <meta charset="UTF-8">
     <title>Password Reset OTP</title>
@@ -68,4 +201,4 @@
     </tr>
 </table>
 </body>
-</html>
+</html> --}}
