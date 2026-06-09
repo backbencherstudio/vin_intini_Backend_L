@@ -110,7 +110,7 @@
         <!-- Header -->
         <div class="header">
             <a href="https://mindunite.com" target="_blank">
-                <img src="{{ asset('assets/img/logo.svg') }}" alt="MindUnite Logo"
+                <img src="{{ asset('assets/img/logo.png') }}" alt="MindUnite Logo"
                     style="max-width: 300px; height: auto; margin-bottom: 0px;">
             </a>
         </div>
