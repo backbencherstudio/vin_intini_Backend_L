@@ -61,8 +61,16 @@ class AcademiaController extends Controller
         }
 
         if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
-            $query->whereJsonContains('psychology_degrees', $degreeFilter);
+            $query->where(function ($q) use ($degreeFilter) {
+                $q->whereJsonContains('psychology_degrees', $degreeFilter)
+                    ->orWhereJsonContains('counseling_degrees', $degreeFilter)
+                    ->orWhereJsonContains('neuroscience_degrees', $degreeFilter);
+            });
         }
+
+        // if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
+        //     $query->whereJsonContains('psychology_degrees', $degreeFilter);
+        // }
 
         //alphabetical order
         $query->orderBy('academia_universities.name', $sortOrder);

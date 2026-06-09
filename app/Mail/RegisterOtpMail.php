@@ -24,6 +24,6 @@ class RegisterOtpMail extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->subject('Confirm your email - MindUnite')->view('emails.registerOtpMail');
+        return $this->subject('Confirm your email - Mind Unite')->view('emails.registerOtpMail');
     }
 }
