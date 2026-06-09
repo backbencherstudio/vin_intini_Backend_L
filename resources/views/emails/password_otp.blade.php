@@ -90,7 +90,7 @@
     <div class="container">
         <!-- Header with Logo -->
 
-        <div class="header" style="text-align: center; padding: 20px; background-color: #ffffff;">
+        <div class="header" style="text-align: center; padding: 20px;">
             <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
                 <img src="{{ asset('assets/img/logo.png') }}" alt="MindUnite Logo" class="responsive-logo"
                     style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
