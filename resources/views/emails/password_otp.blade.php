@@ -76,18 +76,33 @@
             font-weight: bold;
             font-size: 14px;
         }
+
+        @media only screen and (max-width: 600px) {
+            .responsive-logo {
+                width: 300px !important;
+                max-width: 300px !important;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <!-- Header with Logo -->
-        <div class="header">
+
+        <div class="header" style="text-align: center; padding: 20px; background-color: #ffffff;">
+            <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
+                <img src="{{ asset('assets/img/logo.png') }}" alt="MindUnite Logo" class="responsive-logo"
+                    style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
+            </a>
+        </div>
+
+        {{-- <div class="header">
             <a href="https://mindunite.com" target="_blank">
                 <img src="{{ asset('assets/img/logo.png') }}" alt="MindUnite Logo"
                     style="max-width: 350px; height: auto; margin-bottom: 0px;">
             </a>
-        </div>
+        </div> --}}
 
         <!-- Content Section -->
         <div class="content">
