@@ -22,7 +22,7 @@
         }
 
         .header {
-            background-color: #00c2cb;
+            background-color: #043940;
             padding: 40px 20px;
             text-align: center;
             color: #ffffff;
@@ -67,6 +67,10 @@
             color: #999999;
         }
 
+        .footer strong {
+            color: #00c2cb;
+        }
+
         .expiry {
             color: #ff4d4f;
             font-weight: bold;
@@ -79,9 +83,15 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
+            <a href="https://mindunite.com" target="_blank">
+                <img src="{{ asset('assets/img/logo.svg') }}" alt="MindUnite Logo"
+                    style="max-width: 300px; height: auto; margin-bottom: 0px;">
+            </a>
+        </div>
+        {{-- <div class="header">
             <h1>MindUnite</h1>
             <p>Connecting the minds shaping Psychology and Neuroscience.</p>
-        </div>
+        </div> --}}
 
         <!-- Content -->
         <div class="content">
@@ -100,9 +110,15 @@
 
         <!-- Footer -->
         <div class="footer">
-            &copy; {{ date('Y') }} MindUnite. All rights reserved.<br>
+            &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
+                style="text-decoration: none; color: #00c2cb; font-weight: bold;">MindUnite</a>. All rights
+            reserved.<br>
             Psychology and Neuroscience Community.
         </div>
+        {{-- <div class="footer">
+            &copy; {{ date('Y') }} <strong>MindUnite</strong>. All rights reserved.<br>
+            Psychology and Neuroscience Community.
+        </div> --}}
     </div>
 </body>
 
