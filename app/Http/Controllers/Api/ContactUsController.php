@@ -33,8 +33,8 @@ class ContactUsController extends Controller
         $contact = ContactUs::create($request->all());
 
         // Notification to admin
-        // Mail::to('contact@mindunite.com')->send(new ContactUsNotificationMail($contact));
-        Mail::to('niaz.softvence@gmail.com')->send(new ContactUsNotificationMail($contact));
+        Mail::to('contact@mindunite.com')->send(new ContactUsNotificationMail($contact));
+        // Mail::to('niaz.softvence@gmail.com')->send(new ContactUsNotificationMail($contact));
 
         //auto response to user
         Mail::to($contact->email)->send(new ContactUsAutoResponseMail($contact));
