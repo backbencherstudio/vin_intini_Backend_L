@@ -24,7 +24,7 @@ class ContactUsAutoResponseMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Thank you for contacting MindUnite',
+            subject: 'Thank you for contacting Mind Unite',
         );
     }
 
