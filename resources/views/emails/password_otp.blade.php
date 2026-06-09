@@ -22,7 +22,8 @@
         }
 
         .header {
-            background-color: #043940;
+            /* background-color: #043940; */
+            background-color: #ffffff;
             padding: 40px 20px;
             text-align: center;
             color: #ffffff;
@@ -84,7 +85,7 @@
         <!-- Header with Logo -->
         <div class="header">
             <a href="https://mindunite.com" target="_blank">
-                <img src="{{ asset('assets/img/logo.png') }}" alt="MindUnite Logo"
+                <img src="{{ asset('assets/img/w-logo.jpeg') }}" alt="MindUnite Logo"
                     style="max-width: 300px; height: auto; margin-bottom: 0px;">
             </a>
         </div>
