@@ -100,27 +100,31 @@
         .footer strong {
             color: #00c2cb;
         }
+
+        @media only screen and (max-width: 600px) {
+            .responsive-logo {
+                width: 300px !important;
+                max-width: 300px !important;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <!-- Header -->
-        <div class="header">
-            <a href="https://mindunite.com" target="_blank">
-                <img src="{{ asset('assets/img/logo.png') }}" alt="MindUnite Logo"
-                    style="max-width: 300px; height: auto; margin-bottom: 0px;">
+        <div class="header" style="text-align: center; padding: 20px;">
+            <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
+                <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
+                    style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
             </a>
         </div>
-        {{-- <div class="header">
-            <h1>MindUnite</h1>
-            <p>Connecting the minds shaping Psychology and Neuroscience.</p>
-        </div> --}}
 
         <!-- Content -->
         <div class="content">
             <h2>New Inquiry Received</h2>
-            <p style="text-align: center;">Hello Admin, you have received a new message through the website contact form.
+            <p style="text-align: center;">Hello Admin, you have received a new message through the website contact
+                form.
             </p>
 
             <table class="info-table">
@@ -128,10 +132,6 @@
                     <td class="label">Name:</td>
                     <td class="value">{{ $contactData->name }}</td>
                 </tr>
-                {{-- <tr>
-                    <td class="label">Email:</td>
-                    <td class="value">{{ $contactData->email }}</td>
-                </tr> --}}
                 <tr>
                     <td class="label">Email:</td>
                     <td class="value">
@@ -164,7 +164,7 @@
         <!-- Footer -->
         <div class="footer">
             &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
-                style="text-decoration: none; color: #00c2cb; font-weight: bold;">MindUnite</a>. All rights
+                style="text-decoration: none; color: #00c2cb; font-weight: bold;">Mind Unite</a>. All rights
             reserved.<br>
             Psychology and Neuroscience Community.
         </div>

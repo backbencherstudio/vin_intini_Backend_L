@@ -76,27 +76,30 @@
             font-weight: bold;
             font-size: 14px;
         }
+
+        @media only screen and (max-width: 600px) {
+            .responsive-logo {
+                width: 300px !important;
+                max-width: 300px !important;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <!-- Header -->
-        <div class="header">
-            <a href="https://mindunite.com" target="_blank">
-                <img src="{{ asset('assets/img/logo.png') }}" alt="MindUnite Logo"
-                    style="max-width: 300px; height: auto; margin-bottom: 0px;">
+        <div class="header" style="text-align: center; padding: 20px;">
+            <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
+                <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
+                    style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
             </a>
         </div>
-        {{-- <div class="header">
-            <h1>MindUnite</h1>
-            <p>Connecting the minds shaping Psychology and Neuroscience.</p>
-        </div> --}}
 
         <!-- Content -->
         <div class="content">
             <h2>Confirm your email</h2>
-            <p>Thank you for joining MindUnite! Please use the following verification code to complete your
+            <p>Thank you for joining Mind Unite! Please use the following verification code to complete your
                 registration.</p>
 
             <div class="otp-box">
@@ -111,14 +114,10 @@
         <!-- Footer -->
         <div class="footer">
             &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
-                style="text-decoration: none; color: #00c2cb; font-weight: bold;">MindUnite</a>. All rights
+                style="text-decoration: none; color: #00c2cb; font-weight: bold;">Mind Unite</a>. All rights
             reserved.<br>
             Psychology and Neuroscience Community.
         </div>
-        {{-- <div class="footer">
-            &copy; {{ date('Y') }} <strong>MindUnite</strong>. All rights reserved.<br>
-            Psychology and Neuroscience Community.
-        </div> --}}
     </div>
 </body>
 
