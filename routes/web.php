@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\AcademiaAdminController;
+use App\Http\Controllers\Admin\BiotechController;
+use App\Http\Controllers\Admin\PartnerController;
+use App\Http\Controllers\Admin\IndustryCategoryController;
+use App\Http\Controllers\Admin\IndustryPharmaController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
@@ -40,5 +44,28 @@ Route::get('/clear', function () {
 
 // });
 
+Route::prefix('admin/partners')->group(function () {
+    Route::get('/', [PartnerController::class, 'index'])->name('admin.partners.index');
+    Route::post('/store', [PartnerController::class, 'store'])->name('admin.partners.store'); // Create & Update handles here
+    Route::get('/delete/{id}', [PartnerController::class, 'destroy'])->name('admin.partners.delete');
+});
+
+Route::prefix('admin/categories')->group(function () {
+    Route::get('/', [IndustryCategoryController::class, 'index'])->name('admin.categories.index');
+    Route::post('/store', [IndustryCategoryController::class, 'store'])->name('admin.categories.store');
+    Route::get('/delete/{id}', [IndustryCategoryController::class, 'destroy'])->name('admin.categories.delete');
+});
+
+Route::prefix('admin/biotech')->group(function () {
+    Route::get('/', [BiotechController::class, 'index'])->name('admin.biotech.index');
+    Route::post('/store', [BiotechController::class, 'store'])->name('admin.biotech.store');
+    Route::get('/delete/{id}', [BiotechController::class, 'destroy'])->name('admin.biotech.delete');
+});
+
+Route::prefix('admin/pharma')->group(function () {
+    Route::get('/', [IndustryPharmaController::class, 'index'])->name('admin.pharma.index');
+    Route::post('/store', [IndustryPharmaController::class, 'store'])->name('admin.pharma.store');
+    Route::get('/delete/{id}', [IndustryPharmaController::class, 'destroy'])->name('admin.pharma.delete');
+});
 
 require __DIR__ . '/auth.php';
