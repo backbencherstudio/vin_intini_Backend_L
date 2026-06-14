@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BiotechController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Admin\IndustryCategoryController;
 use App\Http\Controllers\Admin\IndustryPharmaController;
+use App\Http\Controllers\Admin\IndustryPublicationController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
@@ -66,6 +67,12 @@ Route::prefix('admin/pharma')->group(function () {
     Route::get('/', [IndustryPharmaController::class, 'index'])->name('admin.pharma.index');
     Route::post('/store', [IndustryPharmaController::class, 'store'])->name('admin.pharma.store');
     Route::get('/delete/{id}', [IndustryPharmaController::class, 'destroy'])->name('admin.pharma.delete');
+});
+
+Route::prefix('admin/publications')->group(function () {
+    Route::get('/', [IndustryPublicationController::class, 'index'])->name('admin.publications.index');
+    Route::post('/store', [IndustryPublicationController::class, 'store'])->name('admin.publications.store');
+    Route::get('/delete/{id}', [IndustryPublicationController::class, 'destroy'])->name('admin.publications.delete');
 });
 
 require __DIR__ . '/auth.php';

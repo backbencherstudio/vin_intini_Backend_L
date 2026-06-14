@@ -100,7 +100,7 @@
             </a>
 
             <!-- Publications Tab -->
-            <a class="nav-link {{ request()->is('admin/publications*') ? 'active' : '' }}" href="#">
+            <a class="nav-link {{ request()->is('admin/publications*') ? 'active' : '' }}" href="{{ route('admin.publications.index') }}">
                 <i class="fa-solid fa-book-open"></i> <span>Publications</span>
             </a>
 
