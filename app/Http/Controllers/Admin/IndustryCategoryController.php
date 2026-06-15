@@ -4,54 +4,82 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\IndustryCategory;
+use App\Models\IndustrySections;
 use Illuminate\Http\Request;
 
 class IndustryCategoryController extends Controller
 {
-    public function index(Request $request)
+    public function psychology(Request $request)
     {
-        $query = IndustryCategory::query();
-
-        if ($request->filled('search')) {
-            $query->where('category_name', 'like', '%' . $request->search . '%');
-        }
-        if ($request->filled('network')) {
-            $query->where('network_type', $request->network);
-        }
-        if ($request->filled('industry')) {
-            $query->where('industry_type', $request->industry);
-        }
-
-        $categories = $query->latest()->paginate(20)->withQueryString();
-
-       $uniqueSections = IndustryCategory::whereNotNull('section_name')
-                  ->where('section_name', '!=', '')
-                  ->distinct()
-                  ->pluck('section_name');
-
-        return view('admin.industry.category', compact('categories', 'uniqueSections'));
+        return $this->renderView($request, 'psychology');
     }
 
-    public function store(Request $request)
+    public function neuroscience(Request $request)
+    {
+        return $this->renderView($request, 'neuroscience');
+    }
+
+    private function renderView($request, $network)
+    {
+        $sections = IndustrySections::where('network_type', $network)
+            ->with('IndustryCategory')
+            ->latest()
+            ->get();
+
+        return view('admin.industry.category', compact('sections', 'network'));
+    }
+
+    public function storeSection(Request $request)
     {
         $request->validate([
-            'network_type' => 'required',
+            'name' => 'required|string|max:255',
             'industry_type' => 'required',
-            'section_name' => 'required',
-            'category_name' => 'nullable',
+            'network_type' => 'required',
+        ]);
+
+        $section = IndustrySections::updateOrCreate(
+            ['id' => $request->id],
+            $request->except('id')
+        );
+
+        IndustryCategory::firstOrCreate(
+            ['section_id' => $section->id, 'category_name' => 'All']
+        );
+
+        return back()->with('success', 'Section structure updated successfully!');
+    }
+
+    public function storeCategory(Request $request)
+    {
+        $request->validate([
+            'category_name' => 'required|string|max:255',
+            'section_id'    => 'required',
         ]);
 
         IndustryCategory::updateOrCreate(
-            ['id' => $request->category_id],
-            $request->only(['network_type', 'industry_type', 'section_name', 'category_name'])
+            ['id' => $request->id],
+            $request->except('id')
         );
 
-        return back()->with('success', 'Category saved successfully!');
+        return back()->with('success', 'Category Tab saved successfully!');
     }
 
-    public function destroy($id)
+    public function destroySection($id)
     {
-        IndustryCategory::findOrFail($id)->delete();
-        return back()->with('success', 'Category deleted successfully!');
+        $section = IndustrySections::findOrFail($id);
+        $section->delete();
+        return back()->with('success', 'Section and associated data removed.');
+    }
+
+    public function destroyCategory($id)
+    {
+        $category = IndustryCategory::findOrFail($id);
+
+        if ($category->category_name == 'All') {
+            return back()->with('error', 'Default category cannot be deleted.');
+        }
+
+        $category->delete();
+        return back()->with('success', 'Category Tab removed.');
     }
 }
