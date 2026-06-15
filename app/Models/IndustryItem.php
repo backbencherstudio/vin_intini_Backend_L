@@ -14,4 +14,6 @@ class IndustryItem extends Model
     public function IndustryCategory() {
         return $this->belongsTo(IndustryCategory::class, 'category_id');
     }
+
+    protected $hidden = ['created_at', 'updated_at'];
 }
