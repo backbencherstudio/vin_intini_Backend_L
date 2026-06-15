@@ -3,77 +3,60 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\IndustryCategory;
 use App\Models\IndustryItem;
+use App\Models\IndustrySections;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class BiotechController extends Controller
 {
-    public function index(Request $request)
+    public function psychology(Request $request) { return $this->renderView($request, 'psychology'); }
+    public function neuroscience(Request $request) { return $this->renderView($request, 'neuroscience'); }
+
+    private function renderView($request, $network)
     {
-        $query = IndustryItem::whereHas('IndustryCategory', function ($q) {
-            $q->where('industry_type', 'biotechnology');
+        $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network) {
+            $q->where('industry_type', 'biotechnology')->where('network_type', $network);
         });
-
-        if ($request->filled('network')) {
-            $query->whereHas('IndustryCategory', function ($q) use ($request) {
-                $q->where('network_type', $request->network);
-            });
-        }
-
-        if ($request->filled('section')) {
-            $query->whereHas('IndustryCategory', function ($q) use ($request) {
-                $q->where('section_name', $request->section);
-            });
-        }
-
-        if ($request->filled('category')) {
-            $query->where('category_id', $request->category);
-        }
 
         if ($request->filled('search')) {
             $query->where('title', 'like', '%' . $request->search . '%');
         }
 
-        $items = $query->with('IndustryCategory')->latest()->paginate(20)->withQueryString();
+        $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
 
-        $sections = IndustryCategory::where('industry_type', 'biotechnology')
-            ->distinct()
-            ->pluck('section_name');
+        $sections = IndustrySections::where('industry_type', 'biotechnology')
+                    ->where('network_type', $network)
+                    ->with('IndustryCategory')
+                    ->get();
 
-        $catQuery = IndustryCategory::where('industry_type', 'biotechnology');
-        if ($request->filled('network')) $catQuery->where('network_type', $request->network);
-        if ($request->filled('section')) $catQuery->where('section_name', $request->section);
-        $categories = $catQuery->get();
-
-        return view('admin.industry.biotech', compact('items', 'categories', 'sections'));
+        return view('admin.industry.biotech', compact('items', 'sections', 'network'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'category_id' => 'required',
-            'title' => 'required',
-        ]);
-
+        $request->validate(['category_id' => 'required', 'title' => 'required']);
         $data = $request->only(['category_id', 'title', 'tag', 'sub_title', 'description', 'link']);
 
         if ($request->hasFile('image')) {
-            $imageName = time() . '.' . $request->image->extension();
-            $request->image->move(public_path('uploads/industry'), $imageName);
-            $data['image'] = $imageName;
+            if ($request->item_id) {
+                $oldItem = IndustryItem::find($request->item_id);
+                if ($oldItem && $oldItem->image) {
+                    Storage::disk('public')->delete($oldItem->image);
+                }
+            }
+            $data['image'] = $request->file('image')->store('industry', 'public');
         }
 
         IndustryItem::updateOrCreate(['id' => $request->item_id], $data);
-
-        return back()->with('success', 'Biotechnology item saved successfully!');
+        return back()->with('success', 'Operation successful!');
     }
 
     public function destroy($id)
     {
         $item = IndustryItem::findOrFail($id);
-        if ($item->image && file_exists(public_path('uploads/industry/' . $item->image))) {
-            unlink(public_path('uploads/industry/' . $item->image));
+        if ($item->image) {
+            Storage::disk('public')->delete($item->image);
         }
         $item->delete();
         return back()->with('success', 'Item deleted successfully!');
