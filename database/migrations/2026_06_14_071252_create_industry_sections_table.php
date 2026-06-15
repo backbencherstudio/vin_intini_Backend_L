@@ -11,10 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('industry_categories', function (Blueprint $table) {
+        Schema::create('industry_sections', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('section_id')->constrained('industry_sections')->onDelete('cascade');
-            $table->string('category_name')->nullable();
+            $table->string('network_type'); // psychology, neuroscience
+            $table->string('industry_type'); // biotechnology, psychopharmacology, publications
+            $table->string('name');
             $table->timestamps();
         });
     }
@@ -24,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('industry_categories');
+        Schema::dropIfExists('industry_sections');
     }
 };
