@@ -5,63 +5,67 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\IndustryCategory;
 use App\Models\IndustryItem;
+use App\Models\IndustrySections;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class IndustryPharmaController extends Controller
 {
-    public function index(Request $request)
+    public function psychology(Request $request)
     {
-        $query = IndustryItem::whereHas('IndustryCategory', function ($q) {
-            $q->where('industry_type', 'psychopharmacology');
+        return $this->renderView($request, 'psychology');
+    }
+    public function neuroscience(Request $request)
+    {
+        return $this->renderView($request, 'neuroscience');
+    }
+
+    private function renderView($request, $network)
+    {
+        $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network) {
+            $q->where('industry_type', 'psychopharmacology')->where('network_type', $network);
         });
 
-        if ($request->filled('network')) {
-            $query->whereHas('IndustryCategory', function ($q) use ($request) {
-                $q->where('network_type', $request->network);
-            });
-        }
-        if ($request->filled('section')) {
-            $query->whereHas('IndustryCategory', function ($q) use ($request) {
-                $q->where('section_name', $request->section);
-            });
-        }
         if ($request->filled('search')) {
             $query->where('title', 'like', '%' . $request->search . '%');
         }
 
-        $items = $query->with('IndustryCategory')->latest()->paginate(20)->withQueryString();
+        $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
 
-        $sections = IndustryCategory::where('industry_type', 'psychopharmacology')
-            ->distinct()
-            ->pluck('section_name');
+        $sections = IndustrySections::where('industry_type', 'psychopharmacology')
+            ->where('network_type', $network)
+            ->with('IndustryCategory')
+            ->get();
 
-        $categories = IndustryCategory::where('industry_type', 'psychopharmacology')
-            ->get()
-            ->unique('section_name');
-
-        return view('admin.industry.pharma', compact('items', 'categories', 'sections'));
+        return view('admin.industry.pharma', compact('items', 'sections', 'network'));
     }
 
     public function store(Request $request)
     {
         $request->validate(['category_id' => 'required', 'title' => 'required']);
-
         $data = $request->only(['category_id', 'title', 'tag', 'sub_title', 'indication', 'moa', 'description', 'link']);
 
         if ($request->hasFile('image')) {
-            $imageName = time() . '.' . $request->image->extension();
-            $request->image->move(public_path('uploads/industry'), $imageName);
-            $data['image'] = $imageName;
+            if ($request->item_id) {
+                $oldItem = IndustryItem::find($request->item_id);
+                if ($oldItem && $oldItem->image) {
+                    Storage::disk('public')->delete($oldItem->image);
+                }
+            }
+            $data['image'] = $request->file('image')->store('industry', 'public');
         }
 
         IndustryItem::updateOrCreate(['id' => $request->item_id], $data);
-
-        return back()->with('success', 'Psychopharmacology item saved successfully!');
+        return back()->with('success', 'Information saved successfully!');
     }
 
     public function destroy($id)
     {
-        IndustryItem::findOrFail($id)->delete();
-        return back()->with('success', 'Item deleted successfully!');
+        $item = IndustryItem::findOrFail($id);
+        if ($item->image) {
+            Storage::disk('public')->delete($item->image);
+        }
+        $item->delete();
+        return back()->with('success', 'Deleted successfully!');
     }
 }
