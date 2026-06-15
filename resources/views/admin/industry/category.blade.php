@@ -1,251 +1,243 @@
-@extends('admin.industry.layouts')
+{{-- @extends('admin.industry.layouts') --}}
+@extends('admin.layout')
 
 @section('content')
-    <div class="container-fluid mt-4">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 border-bottom">
-                <div class="row align-items-center">
-                    <div class="col-md-3">
-                        <h4 class="mb-0 fw-bold">Tab Categories</h4>
-                    </div>
-                    <!-- Filtering Section -->
-                    <div class="col-md-7">
-                        <form action="{{ route('admin.categories.index') }}" method="GET" class="row g-2">
-                            <div class="col-md-3">
-                                <select name="network" class="form-select form-select-sm" onchange="this.form.submit()">
-                                    <option value="">All Networks</option>
-                                    <option value="psychology" {{ request('network') == 'psychology' ? 'selected' : '' }}>
-                                        Psychology</option>
-                                    <option value="neuroscience" {{ request('network') == 'neuroscience' ? 'selected' : '' }}>
-                                        Neuroscience</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <select name="industry" class="form-select form-select-sm" onchange="this.form.submit()">
-                                    <option value="">All Industries</option>
-                                    <option value="biotechnology" {{ request('industry') == 'biotechnology' ? 'selected' : '' }}>
-                                        Biotech</option>
-                                    <option value="psychopharmacology"
-                                        {{ request('industry') == 'psychopharmacology' ? 'selected' : '' }}>Pharma</option>
-                                    <option value="publications" {{ request('industry') == 'publications' ? 'selected' : '' }}>
-                                        Pubs</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <input type="text" name="search" class="form-control form-control-sm"
-                                    placeholder="Search tab name..." value="{{ request('search') }}">
-                            </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-sm btn-secondary w-100 text-uppercase fw-bold"
-                                    style="font-size: 11px;">Filter</button>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="col-md-2 text-end">
-                        <button class="btn btn-primary btn-sm shadow-sm fw-bold" onclick="openModal()">+ Add New
-                            Tab</button>
-                    </div>
-                </div>
-            </div>
+    <div class="container-fluid mt-4 pb-5">
 
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light text-uppercase small fw-bold">
-                            <tr>
-                                <th class="ps-4">Network</th>
-                                <th>Industry Type</th>
-                                <th>Section (Heading)</th>
-                                <th>Category (Tab Name)</th>
-                                <th class="text-end pe-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($categories as $cat)
-                                <tr>
-                                    <td class="ps-4"><span
-                                            class="badge bg-dark-subtle text-dark border px-2 py-1">{{ ucfirst($cat->network_type) }}</span>
-                                    </td>
-                                    <td><span
-                                            class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">{{ ucfirst($cat->industry_type) }}</span>
-                                    </td>
-                                    <td><span class="text-muted fw-semibold">{{ $cat->section_name }}</span></td>
-                                    <td>
-                                        @if ($cat->category_name == 'All' && $cat->industry_type == 'psychopharmacology')
-                                            <span class="text-muted italic small">(No Tabs)</span>
-                                        @else
-                                            <strong>{{ $cat->category_name }}</strong>
-                                        @endif
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        <button class="btn btn-sm btn-light border text-warning shadow-sm"
-                                            onclick="editCategory({{ $cat }})"><i class="fa fa-edit"></i>
-                                            Edit</button>
-                                        <a href="{{ route('admin.categories.delete', $cat->id) }}"
-                                            class="btn btn-sm btn-light border text-danger ms-1 shadow-sm"
-                                            onclick="return confirm('Delete this category? Items under it will also be deleted.')"><i
-                                                class="fa fa-trash"></i></a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">No categories found.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+        {{-- Header --}}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-layer-group text-primary me-2"></i>
+                    Manage <span class="text-primary">{{ ucfirst($network) }}</span> Structure
+                </h4>
+                <p class="text-muted small mb-0">Configure Biotech and Pharma sections. (Publications are auto-managed)</p>
+            </div>
+            <button class="btn btn-primary shadow-sm fw-bold px-4 rounded-pill" onclick="openSectionModal()">
+                <i class="fa-solid fa-plus me-1"></i> New Section
+            </button>
+        </div>
+
+        {{-- Grid View --}}
+        <div class="row g-4">
+            @forelse ($sections as $section)
+                @if ($section->industry_type !== 'publications')
+                    <div class="col-xl-4 col-lg-6">
+                        <div class="card shadow-sm border-0 h-100 {{ $section->industry_type == 'psychopharmacology' ? 'border-start border-info border-4' : '' }}"
+                            style="border-radius: 16px; background: #fff;">
+
+                            <div
+                                class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span
+                                        class="badge {{ $section->industry_type == 'biotechnology' ? 'bg-success-subtle text-success' : 'bg-info-subtle text-info' }} text-uppercase mb-1"
+                                        style="font-size: 10px; font-weight: 700;">
+                                        {{ $section->industry_type }}
+                                    </span>
+                                    <h5 class="fw-bold text-dark mb-0">{{ $section->name }}</h5>
+                                </div>
+
+                                <div class="dropdown">
+                                    <button class="btn btn-link text-muted p-0" data-bs-toggle="dropdown"><i
+                                            class="fa-solid fa-ellipsis-vertical"></i></button>
+                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg">
+                                        <li><a class="dropdown-item small fw-bold text-warning" href="javascript:void(0)"
+                                                onclick="editSection({{ $section }})"><i
+                                                    class="fa-solid fa-pen me-2"></i>Rename Section</a></li>
+                                        <li>
+                                            <hr class="dropdown-divider">
+                                        </li>
+                                        <li><a class="dropdown-item small fw-bold text-danger"
+                                                href="{{ route('admin.sections.delete', $section->id) }}"
+                                                onclick="return confirm('Delete this section and all its contents?')"><i
+                                                    class="fa-solid fa-trash me-2"></i>Delete Section</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="card-body px-4 pb-4">
+                                <label class="small fw-bold text-muted text-uppercase mb-3 d-block"
+                                    style="font-size: 9px; opacity: 0.6;">
+                                    {{ $section->industry_type == 'psychopharmacology' ? 'Fixed Configuration' : 'Sub-Tabs / Categories' }}
+                                </label>
+
+                                <div class="d-flex flex-wrap gap-2 mb-4" style="min-height: 40px;">
+                                    @php
+                                        $customTabs = $section->IndustryCategory->where('category_name', '!=', 'All');
+                                    @endphp
+
+                                    @forelse ($customTabs as $cat)
+                                        <div
+                                            class="d-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-xs border-light-subtle">
+                                            <span class="text-dark small fw-semibold">{{ $cat->category_name }}</span>
+
+                                            @if ($section->industry_type == 'biotechnology')
+                                                <div class="ms-2 ps-2 border-start d-flex gap-2">
+                                                    <button class="btn btn-link btn-sm p-0 text-warning"
+                                                        onclick="editCategory({{ $cat }}, '{{ $section->name }}')"><i
+                                                            class="fa-solid fa-pencil"
+                                                            style="font-size: 10px;"></i></button>
+                                                    <a href="{{ route('admin.categories.delete', $cat->id) }}"
+                                                        class="btn btn-link btn-sm p-0 text-danger"
+                                                        onclick="return confirm('Delete tab?')"><i class="fa-solid fa-xmark"
+                                                            style="font-size: 11px;"></i></a>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @empty
+                                        <div class="text-muted small italic py-1 opacity-50">
+                                            {{ $section->industry_type == 'psychopharmacology' ? 'Direct medication list (No tabs needed)' : 'No custom tabs added.' }}
+                                        </div>
+                                    @endforelse
+                                </div>
+
+                                @if ($section->industry_type == 'biotechnology')
+                                    <button class="btn btn-outline-primary btn-sm w-100 rounded-pill fw-bold"
+                                        style="font-size: 10px;"
+                                        onclick="openCategoryModal({{ $section->id }}, '{{ $section->name }}')">
+                                        <i class="fa-solid fa-plus me-1"></i> ADD CUSTOM TAB
+                                    </button>
+                                @else
+                                    <div class="text-center py-2 bg-light rounded border border-light-subtle">
+                                        <small class="text-muted fw-bold" style="font-size: 9px;"><i
+                                                class="fa-solid fa-lock me-1"></i> TABS DISABLED FOR PHARMA</small>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            @empty
+                <div class="col-12 text-center py-5">
+                    <p class="text-muted small">No sections created yet.</p>
                 </div>
-            </div>
-            <div class="card-footer bg-white border-0 py-3">
-                {{ $categories->links('pagination::bootstrap-5') }}
-            </div>
+            @endforelse
         </div>
     </div>
 
-    <!-- Add/Edit Modal -->
-    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+    {{-- Section Modal --}}
+    <div class="modal fade" id="sectionModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
-            <form action="{{ route('admin.categories.store') }}" method="POST" id="categoryForm"
-                class="modal-content border-0 shadow-lg">
+            <form action="{{ route('admin.sections.store') }}" method="POST" id="sectionForm"
+                class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
                 @csrf
-                <div class="modal-header bg-light border-bottom-0">
-                    <h5 class="modal-title fw-bold" id="modalTitle">Add Category Tab</h5>
+                <div class="modal-header border-0 bg-light px-4">
+                    <h5 class="modal-title fw-bold" id="secModalTitle">Manage Section</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <input type="hidden" name="category_id" id="category_id">
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold small text-uppercase">Network</label>
-                            <select name="network_type" id="network_type" class="form-select shadow-sm" required>
-                                <option value="psychology">Psychology Network</option>
-                                <option value="neuroscience">Neuroscience Network</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold small text-uppercase">Industry Type</label>
-                            <select name="industry_type" id="industry_type" class="form-select shadow-sm" required
-                                onchange="handleIndustryChange()">
-                                <option value="biotechnology">Biotechnology</option>
-                                <option value="psychopharmacology">Psychopharmacology</option>
-                                {{-- <option value="publications">Publications</option> --}}
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Section Name Selection Logic -->
+                    <input type="hidden" name="id" id="sec_id">
+                    <input type="hidden" name="network_type" value="{{ $network }}">
                     <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label fw-semibold small text-uppercase mb-0">Section Name (Main
-                                Heading)</label>
-                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-bold"
-                                id="toggleSectionBtn" onclick="toggleNewSection(true)">+ Create New</button>
-                        </div>
-
-                        <div id="existing_section_wrapper">
-                            <select id="section_name_select" class="form-select shadow-sm">
-                                <option value="">-- Select Existing Section --</option>
-                                @foreach ($uniqueSections as $section)
-                                    <option value="{{ $section }}">{{ $section }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div id="new_section_wrapper" style="display: none;">
-                            <div class="input-group">
-                                <input type="text" id="section_name_new" class="form-control shadow-sm"
-                                    placeholder="e.g. Psychotropic Medications">
-                                <button type="button" class="btn btn-outline-secondary shadow-sm"
-                                    onclick="toggleNewSection(false)">Back</button>
-                            </div>
-                        </div>
-                        <input type="hidden" name="section_name" id="final_section_name">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Industry Type</label>
+                        <select name="industry_type" id="sec_industry" class="form-select border-0 bg-light" required>
+                            <option value="biotechnology">Biotechnology</option>
+                            <option value="psychopharmacology">Psychopharmacology</option>
+                        </select>
                     </div>
-
-                    <!-- Category Name Input (Conditional Visibility) -->
-                    <div class="mb-2" id="category_name_wrapper">
-                        <label class="form-label fw-semibold small text-uppercase">Category Name (Tab Name)</label>
-                        <input type="text" name="category_name" id="category_name" class="form-control shadow-sm"
-                            placeholder="e.g. fMRI, Diagnostic Ultrasounds">
+                    <div class="mb-1">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Section Heading</label>
+                        <input type="text" name="name" id="sec_name" class="form-control border-0 bg-light" required
+                            placeholder="e.g. Diagnostic Imaging">
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 p-4 pt-0">
-                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow">Save Tab Category</button>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="submit" class="btn btn-success w-100 py-3 fw-bold shadow-sm rounded-3">Save Section
+                        Information</button>
                 </div>
             </form>
         </div>
     </div>
 
+    {{-- Category Modal --}}
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form action="{{ route('admin.categories.store') }}" method="POST" id="categoryForm"
+                class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                @csrf
+                <div class="modal-header border-0 bg-light px-4">
+                    <h5 class="modal-title fw-bold" id="catModalTitle">Add Tab</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" name="id" id="cat_id">
+                    <input type="hidden" name="section_id" id="cat_section_id">
+                    <div class="mb-3 bg-light p-2 rounded border border-light-subtle">
+                        <small class="text-muted fw-bold d-block text-uppercase" style="font-size: 9px;">Targeting
+                            Section:</small>
+                        <span id="target_section_display" class="fw-bold text-dark"></span>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Tab Label (Category Name)</label>
+                        <input type="text" name="category_name" id="cat_name"
+                            class="form-control border-0 bg-light shadow-none" required
+                            placeholder="e.g. fMRI, Diagnostic Ultrasounds">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm rounded-3">Save Tab
+                        Information</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        body {
+            background-color: #fcfcfc;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .shadow-xs {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .italic {
+            font-style: italic;
+        }
+    </style>
+
     @push('scripts')
         <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const catModal = new bootstrap.Modal(document.getElementById('categoryModal'));
-                const catForm = document.getElementById('categoryForm');
+            const secModal = new bootstrap.Modal(document.getElementById('sectionModal'));
+            const catModal = new bootstrap.Modal(document.getElementById('categoryModal'));
 
-                window.handleIndustryChange = function() {
-                    const industryType = document.getElementById('industry_type').value;
-                    const catWrapper = document.getElementById('category_name_wrapper');
-                    const catInput = document.getElementById('category_name');
+            window.openSectionModal = () => {
+                document.getElementById('secModalTitle').innerText = "Create New Section";
+                document.getElementById('sectionForm').reset();
+                document.getElementById('sec_id').value = "";
+                secModal.show();
+            }
 
-                    if (industryType === 'psychopharmacology') {
-                        catWrapper.style.display = 'none';
-                        catInput.value = 'All';
-                        catInput.required = false;
-                    } else {
-                        catWrapper.style.display = 'block';
-                        if (catInput.value === 'All') catInput.value = '';
-                        catInput.required = true;
-                    }
-                }
+            window.editSection = (data) => {
+                document.getElementById('secModalTitle').innerText = "Rename Section";
+                document.getElementById('sec_id').value = data.id;
+                document.getElementById('sec_name').value = data.name;
+                document.getElementById('sec_industry').value = data.industry_type;
+                secModal.show();
+            }
 
-                window.toggleNewSection = function(isNew = true) {
-                    const existingWrapper = document.getElementById('existing_section_wrapper');
-                    const newWrapper = document.getElementById('new_section_wrapper');
-                    const toggleBtn = document.getElementById('toggleSectionBtn');
-                    const newInput = document.getElementById('section_name_new');
+            window.openCategoryModal = (secId, secName) => {
+                document.getElementById('catModalTitle').innerText = "Add Sub-Tab";
+                document.getElementById('categoryForm').reset();
+                document.getElementById('cat_id').value = "";
+                document.getElementById('cat_section_id').value = secId;
+                document.getElementById('target_section_display').innerText = secName;
+                catModal.show();
+            }
 
-                    if (isNew) {
-                        existingWrapper.style.display = 'none';
-                        newWrapper.style.display = 'block';
-                        toggleBtn.style.display = 'none';
-                        newInput.focus();
-                    } else {
-                        existingWrapper.style.display = 'block';
-                        newWrapper.style.display = 'none';
-                        toggleBtn.style.display = 'block';
-                        newInput.value = '';
-                    }
-                }
-
-                catForm.addEventListener('submit', function() {
-                    const selectVal = document.getElementById('section_name_select').value;
-                    const newVal = document.getElementById('section_name_new').value;
-                    document.getElementById('final_section_name').value = newVal || selectVal;
-                });
-
-                window.openModal = function() {
-                    document.getElementById('modalTitle').innerText = "Add New Category Tab";
-                    catForm.reset();
-                    document.getElementById('category_id').value = "";
-                    toggleNewSection(false);
-                    handleIndustryChange();
-                    catModal.show();
-                }
-
-                window.editCategory = function(data) {
-                    document.getElementById('modalTitle').innerText = "Edit Tab: " + data.category_name;
-                    document.getElementById('category_id').value = data.id;
-                    document.getElementById('network_type').value = data.network_type;
-                    document.getElementById('industry_type').value = data.industry_type;
-                    document.getElementById('category_name').value = data.category_name;
-                    document.getElementById('section_name_select').value = data.section_name;
-
-                    toggleNewSection(false);
-                    handleIndustryChange(); 
-                    catModal.show();
-                }
-            });
+            window.editCategory = (data, secName) => {
+                document.getElementById('catModalTitle').innerText = "Edit Tab Context";
+                document.getElementById('cat_id').value = data.id;
+                document.getElementById('cat_name').value = data.category_name;
+                document.getElementById('cat_section_id').value = data.section_id;
+                document.getElementById('target_section_display').innerText = secName;
+                catModal.show();
+            }
         </script>
     @endpush
 @endsection

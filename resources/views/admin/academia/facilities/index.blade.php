@@ -1,4 +1,5 @@
-@extends('admin.academia.layout')
+@extends('admin.layout')
+{{-- @extends('admin.academia.layout') --}}
 
 @section('content')
 <div class="container-fluid">
