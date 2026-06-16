@@ -42,8 +42,10 @@ Route::prefix('/academia')->group(function () {
     Route::delete('/facilities/{id}', [AcademiaAdminController::class, 'destroyFacility'])->name('admin.facilities.destroy');
 
     // ৪. Jobs (List)
-    // Route::get('/jobs', [AcademiaAdminController::class, 'indexJobs'])->name('admin.jobs.index');
-
+    Route::get('/jobs', [AcademiaAdminController::class, 'indexJobs'])->name('admin.jobs.index');
+    Route::post('/jobs', [AcademiaAdminController::class, 'storeJob'])->name('admin.jobs.store');
+    Route::put('/jobs/{id}', [AcademiaAdminController::class, 'updateJob'])->name('admin.jobs.update');
+    Route::delete('/jobs/{id}', [AcademiaAdminController::class, 'destroyJob'])->name('admin.jobs.destroy');
 });
 
 Route::prefix('admin/partners')->group(function () {
