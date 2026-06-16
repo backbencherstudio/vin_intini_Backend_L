@@ -20,6 +20,8 @@ return new class extends Migration
             $table->decimal('salary_min', 10, 2)->nullable();
             $table->decimal('salary_max', 10, 2)->nullable();
             $table->enum('category', ['state_institution', 'private_practice']);
+            $table->string('employment_type')->nullable(); // Full Time, Part Time, Contract
+            $table->string('work_mode')->nullable();
 
             // GPS Location
             $table->string('latitude', 20)->nullable();
