@@ -22,6 +22,7 @@ class IndustryPharmaController extends Controller
 
     private function renderView($request, $network)
     {
+        // ১. মেইন আইটেম কুয়েরি (Item -> Category -> Section Filter)
         $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network) {
             $q->where('industry_type', 'psychopharmacology')->where('network_type', $network);
         });
@@ -32,9 +33,10 @@ class IndustryPharmaController extends Controller
 
         $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
 
+        // ২. ড্রপডাউনের জন্য ওই নেটওয়ার্কের সেকশন এবং ক্যাটাগরিগুলো লোড করা
         $sections = IndustrySections::where('industry_type', 'psychopharmacology')
             ->where('network_type', $network)
-            ->with('IndustryCategory')
+            ->with('IndustryCategory') // hasMany রিলেশন
             ->get();
 
         return view('admin.industry.pharma', compact('items', 'sections', 'network'));
@@ -45,27 +47,71 @@ class IndustryPharmaController extends Controller
         $request->validate(['category_id' => 'required', 'title' => 'required']);
         $data = $request->only(['category_id', 'title', 'tag', 'sub_title', 'indication', 'moa', 'description', 'link']);
 
-        if ($request->hasFile('image')) {
-            if ($request->item_id) {
-                $oldItem = IndustryItem::find($request->item_id);
-                if ($oldItem && $oldItem->image) {
-                    Storage::disk('public')->delete($oldItem->image);
-                }
-            }
-            $data['image'] = $request->file('image')->store('industry', 'public');
-        }
-
         IndustryItem::updateOrCreate(['id' => $request->item_id], $data);
-        return back()->with('success', 'Information saved successfully!');
+        return back()->with('success', 'Information updated successfully!');
     }
 
     public function destroy($id)
     {
-        $item = IndustryItem::findOrFail($id);
-        if ($item->image) {
-            Storage::disk('public')->delete($item->image);
-        }
-        $item->delete();
+        IndustryItem::findOrFail($id)->delete();
         return back()->with('success', 'Deleted successfully!');
     }
+
+    // public function psychology(Request $request)
+    // {
+    //     return $this->renderView($request, 'psychology');
+    // }
+    // public function neuroscience(Request $request)
+    // {
+    //     return $this->renderView($request, 'neuroscience');
+    // }
+
+    // private function renderView($request, $network)
+    // {
+    //     $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network) {
+    //         $q->where('industry_type', 'psychopharmacology')->where('network_type', $network);
+    //     });
+
+    //     if ($request->filled('search')) {
+    //         $query->where('title', 'like', '%' . $request->search . '%');
+    //     }
+
+    //     $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
+
+    //     $sections = IndustrySections::where('industry_type', 'psychopharmacology')
+    //         ->where('network_type', $network)
+    //         ->with('IndustryCategory')
+    //         ->get();
+
+    //     return view('admin.industry.pharma', compact('items', 'sections', 'network'));
+    // }
+
+    // public function store(Request $request)
+    // {
+    //     $request->validate(['category_id' => 'required', 'title' => 'required']);
+    //     $data = $request->only(['category_id', 'title', 'tag', 'sub_title', 'indication', 'moa', 'description', 'link']);
+
+    //     if ($request->hasFile('image')) {
+    //         if ($request->item_id) {
+    //             $oldItem = IndustryItem::find($request->item_id);
+    //             if ($oldItem && $oldItem->image) {
+    //                 Storage::disk('public')->delete($oldItem->image);
+    //             }
+    //         }
+    //         $data['image'] = $request->file('image')->store('industry', 'public');
+    //     }
+
+    //     IndustryItem::updateOrCreate(['id' => $request->item_id], $data);
+    //     return back()->with('success', 'Information saved successfully!');
+    // }
+
+    // public function destroy($id)
+    // {
+    //     $item = IndustryItem::findOrFail($id);
+    //     if ($item->image) {
+    //         Storage::disk('public')->delete($item->image);
+    //     }
+    //     $item->delete();
+    //     return back()->with('success', 'Deleted successfully!');
+    // }
 }

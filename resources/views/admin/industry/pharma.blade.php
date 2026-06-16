@@ -1,31 +1,34 @@
-{{-- @extends('admin.industry.layouts') --}}
 @extends('admin.layout')
 
 @section('content')
     <div class="container-fluid mt-4 pb-5">
 
-        {{-- Dynamic Header --}}
+        {{-- Header Section --}}
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h4 class="fw-bold text-dark mb-0">
+                <h3 class="fw-bold text-dark mb-0">
                     <span class="text-primary">{{ ucfirst($network) }}</span> Psychopharmacology
-                </h4>
-                <p class="text-muted small mb-0">Managing Medications and clinical data for {{ $network }} network.</p>
+                </h3>
+                <p class="text-muted small mb-0">Managing Medications and clinical data for the community.</p>
             </div>
-            <button class="btn btn-success px-3 fw-bold btn-sm shadow-sm" onclick="openModal()">
-                <i class="fa-solid fa-plus me-1"></i> Add Medication
+            <button class="btn btn-success px-4 fw-bold btn-sm shadow-sm" onclick="openModal()" style="border-radius: 8px;">
+                <i class="fa-solid fa-plus me-2"></i> Add Medication
             </button>
         </div>
 
-        {{-- Filter Card --}}
-        <div class="card shadow-sm border-0 mb-4 p-2 bg-white" style="border-radius: 10px;">
+        {{-- Global Search Filter --}}
+        <div class="card shadow-sm border-0 mb-5 p-2 bg-white" style="border-radius: 12px;">
             <form action="{{ url()->current() }}" method="GET" class="row g-2 align-items-center">
                 <div class="col-md-5">
-                    <input type="text" name="search" class="form-control form-select-sm"
-                        placeholder="Search by medication name..." value="{{ request('search') }}">
+                    <div class="input-group input-group-sm bg-light rounded border border-light px-2 overflow-hidden">
+                        <span class="input-group-text border-0 bg-transparent text-muted"><i
+                                class="fa fa-search"></i></span>
+                        <input type="text" name="search" class="form-control border-0 bg-transparent"
+                            placeholder="Search medication..." value="{{ request('search') }}">
+                    </div>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-sm btn-secondary w-100">Search</button>
+                    <button type="submit" class="btn btn-sm btn-secondary w-100 fw-bold">Search</button>
                 </div>
                 <div class="col-md-1 text-center">
                     <a href="{{ url()->current() }}"
@@ -34,162 +37,169 @@
             </form>
         </div>
 
-        {{-- Content Rendering --}}
+        {{-- Section Wise View --}}
         @forelse ($sections as $section)
-            <div class="pharma-section mb-5">
-                <div class="mb-4">
-                    <h6
-                        class="fw-bold text-dark d-inline-block border-bottom border-primary border-3 pb-1 text-uppercase small">
-                        {{ $section->name }}
-                    </h6>
+            <div class="pharma-section-block mb-5" data-section="{{ Str::slug($section->name) }}">
+
+                <div class="mb-3 d-flex align-items-center">
+                    <h5 class="fw-bold text-dark mb-0 text-uppercase" style="letter-spacing: 0.5px;">{{ $section->name }}
+                    </h5>
+                    <hr class="flex-grow-1 ms-3 opacity-10">
                 </div>
 
-                <div class="row g-2">
+                @php
+                    $customTabs = $section->IndustryCategory->where('category_name', '!=', 'All');
+                @endphp
+
+                @if ($customTabs->count() > 0)
+                    <div class="mb-4">
+                        <ul class="nav nav-pills compact-tab-bar p-1 bg-white border rounded shadow-sm flex-nowrap overflow-auto"
+                            style="width: fit-content;">
+                            <li class="nav-item">
+                                <button class="nav-link active btn-filter" onclick="filterPharma(this, 'all')">All
+                                    Articles</button>
+                            </li>
+                            @foreach ($customTabs as $cat)
+                                <li class="nav-item">
+                                    <button class="nav-link text-muted btn-filter"
+                                        onclick="filterPharma(this, 'cat-{{ $cat->id }}')">{{ $cat->category_name }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                {{-- Cards Grid (4 per row: col-xl-3) --}}
+                <div class="row g-4 product-grid">
                     @php
                         $catIds = $section->IndustryCategory->pluck('id')->toArray();
                         $sectionItems = $items->whereIn('category_id', $catIds);
                     @endphp
 
                     @forelse ($sectionItems as $item)
-                        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                            <div class="card h-100 pharma-ui-card border-0 shadow-sm position-relative">
+                        <div class="col-xl-3 col-lg-4 col-md-6 product-card cat-{{ $item->category_id }}">
+                            <div class="card h-100 pharma-premium-card border-0 shadow-sm position-relative">
+
                                 <div class="admin-btns">
-                                    <button class="btn btn-xs btn-white shadow-sm text-warning"
+                                    <button class="btn btn-sm btn-white shadow text-warning rounded-circle mb-1"
                                         onclick="editItem({{ $item }})"><i class="fa fa-pen"></i></button>
                                     <a href="{{ route('admin.pharma.delete', $item->id) }}"
-                                        class="btn btn-xs btn-white shadow-sm text-danger ms-1"
+                                        class="btn btn-sm btn-white shadow text-danger rounded-circle"
                                         onclick="return confirm('Delete?')"><i class="fa fa-trash"></i></a>
                                 </div>
 
-                                <div class="card-body p-3 d-flex flex-column">
+                                <div class="card-body p-4 d-flex flex-column">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <h6 class="fw-bold text-dark mb-0 pe-1 text-truncate" style="font-size: 0.9rem;"
-                                            title="{{ $item->title }}">{{ $item->title }}</h6>
-                                        <span class="badge pharma-tag-badge">{{ $item->tag ?? 'Approved' }}</span>
+                                        <h5 class="fw-bold text-dark mb-0 lh-sm pe-2">{{ $item->title }}</h5>
+                                        <span class="badge pharma-tag-pill">{{ $item->tag ?? 'Approved' }}</span>
                                     </div>
-                                    <p class="text-muted mb-3 x-small text-truncate">({{ $item->sub_title }})</p>
-                                    <div class="pharma-details mb-3">
-                                        <div class="mb-2">
-                                            <span class="detail-label text-uppercase">Indication:</span>
-                                            <span class="detail-value">{{ Str::limit($item->indication, 35) }}</span>
+                                    <p class="text-muted small mb-3 italic">({{ $item->sub_title }})</p>
+
+                                    <div class="clinical-box mb-4">
+                                        <div class="mb-2"><label class="label-heading">INDICATION</label>
+                                            <div class="content-text">{{ $item->indication ?? 'N/A' }}</div>
                                         </div>
-                                        <div>
-                                            <span class="detail-label text-uppercase">MOA:</span>
-                                            <span class="detail-value">{{ Str::limit($item->moa, 35) }}</span>
+                                        <div><label class="label-heading">MOA</label>
+                                            <div class="content-text">{{ Str::limit($item->moa, 60) }}</div>
                                         </div>
                                     </div>
-                                    <div class="mt-auto pt-2 border-top">
+
+                                    <div class="mt-auto pt-3 border-top text-center">
                                         <a href="{{ $item->link ?? '#' }}" target="_blank"
-                                            class="pharma-link text-decoration-none fw-bold d-flex align-items-center">
-                                            Learn more <i class="fa-solid fa-arrow-up-right-from-square ms-1"
-                                                style="font-size: 0.6rem;"></i>
+                                            class="pharma-link text-decoration-none fw-bold small d-flex align-items-center">
+                                            LEARN MORE <i class="fa-solid fa-arrow-up-right-from-square ms-2"></i>
                                         </a>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     @empty
-                        <div class="col-12 py-3 text-center text-muted small border-dashed rounded">No medications in this
-                            section for the current page.</div>
+                        <div class="col-12 py-4 text-center text-muted border border-dashed rounded-4 bg-light">No
+                            medications in this section on this page.</div>
                     @endforelse
+                    <div class="col-12 category-empty-msg" style="display: none;">
+                        <div class="py-5 text-center bg-white rounded border border-dashed">
+                            <h6 class="text-muted">No data found in this category.</h6>
+                        </div>
+                    </div>
                 </div>
             </div>
         @empty
-            <div class="text-center py-5 bg-white rounded border">
-                <h6 class="text-muted mb-3">No structure found for {{ ucfirst($network) }}.</h6>
-                <a href="{{ route('admin.categories.' . $network) }}" class="btn btn-sm btn-primary px-3 fw-bold">Go Create
-                    a Section First</a>
-            </div>
+            <div class="text-center py-5 bg-white rounded border">No structure found. Go to Category Management first.</div>
         @endforelse
 
         <div class="mt-4">{{ $items->links('pagination::bootstrap-5') }}</div>
     </div>
 
-    {{-- Add/Edit Modal --}}
+    {{-- Add/Edit Modal (Filtered to block sections with only 'All' tab) --}}
     <div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <form action="{{ route('admin.pharma.store') }}" method="POST" id="itemForm" enctype="multipart/form-data"
-                class="modal-content shadow-lg border-0">
+                class="modal-content shadow-lg border-0" style="border-radius: 20px;">
                 @csrf
-                <div class="modal-header border-0 bg-light px-4">
+                <div class="modal-header border-0 bg-light px-4 py-3">
                     <h5 class="modal-title fw-bold" id="modalTitle">Manage Medication</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     <input type="hidden" name="item_id" id="item_id">
                     <div class="row g-3">
-                        {{-- Section Selection Fix --}}
                         <div class="col-md-12">
-                            <label class="form-label fw-bold small text-uppercase">Select Section Heading</label>
+                            <label class="form-label fw-bold small text-uppercase text-muted">Placement (Section > Category
+                                Tab)</label>
                             <select name="category_id" id="category_id" class="form-select shadow-sm" required>
-                                <option value="">-- Choose Section --</option>
+                                <option value="">-- Choose Category --</option>
                                 @foreach ($sections as $section)
                                     @php
-                                        $defaultTab = $section->IndustryCategory
-                                            ->where('category_name', 'All')
-                                            ->first();
+                                        // 'All' বাদে অন্য ক্যাটাগরি আছে কিনা চেক করা
+                                        $customTabs = $section->IndustryCategory->where('category_name', '!=', 'All');
                                     @endphp
-                                    @if ($defaultTab)
-                                        <option value="{{ $defaultTab->id }}">
-                                            {{ ucwords($section->name) }}
-                                        </option>
+
+                                    {{-- যদি অন্তত ১টি কাস্টম ট্যাব থাকে তবেই এই সেকশনটি ড্রপডাউনে দেখাবে --}}
+                                    @if ($customTabs->count() > 0)
+                                        <optgroup label="{{ ucwords($section->name) }}">
+                                            @foreach ($customTabs as $tab)
+                                                <option value="{{ $tab->id }}">{{ $tab->category_name }}</option>
+                                            @endforeach
+                                        </optgroup>
                                     @endif
                                 @endforeach
                             </select>
-                            <small class="text-muted" style="font-size: 0.65rem;">Note: Sections are managed in the Category
-                                Management section.</small>
+                            <div class="mt-2 p-2 bg-light rounded border border-light-subtle">
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">
+                                    <strong>Note:</strong> A section will only appear here if you have added at least one
+                                    custom tab in Category Management.
+                                </small>
+                            </div>
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-uppercase">Medication Name</label>
-                            <input type="text" name="title" id="title" class="form-control shadow-sm" required
-                                placeholder="e.g. Cobenfy">
+                        <div class="col-md-6"><label class="form-label fw-bold small">Medication Name</label><input
+                                type="text" name="title" id="title" class="form-control shadow-sm border-light"
+                                required placeholder="e.g. Cobenfy"></div>
+                        <div class="col-md-6"><label class="form-label fw-bold small">Tag</label><input type="text"
+                                name="tag" id="tag" class="form-control shadow-sm border-light"
+                                placeholder="e.g. FDA Approved, OTC"></div>
+                        <div class="col-md-12"><label class="form-label fw-bold small">Ingredients /
+                                Sub-title</label><input type="text" name="sub_title" id="sub_title"
+                                class="form-control shadow-sm border-light" placeholder="e.g. xanomeline + trospium">
                         </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-uppercase">Tag</label>
-                            <input type="text" name="tag" id="tag" class="form-control shadow-sm"
-                                placeholder="e.g. FDA Approved, OTC">
-                        </div>
-
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold small text-uppercase">Ingredients / Sub-title</label>
-                            <input type="text" name="sub_title" id="sub_title" class="form-control shadow-sm"
-                                placeholder="e.g. xanomeline + trospium">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-uppercase">Indication</label>
-                            <input type="text" name="indication" id="indication" class="form-control shadow-sm"
-                                placeholder="e.g. Schizophrenia">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-uppercase">Mechanism of Action (MOA)</label>
-                            <input type="text" name="moa" id="moa" class="form-control shadow-sm"
-                                placeholder="e.g. Muscarinic M1/M4 Agonist">
-                        </div>
-
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold small text-uppercase">Learn More Link (URL)</label>
-                            <input type="url" name="link" id="link" class="form-control shadow-sm"
-                                placeholder="https://example.com/medication-info">
-                        </div>
-
-                        {{-- <div class="col-md-12">
-                            <label class="form-label fw-bold small text-uppercase">Image Upload (Standard Storage)</label>
-                            <input type="file" name="image" class="form-control shadow-sm border-light">
-                        </div> --}}
-
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold small text-uppercase">Short Description (Optional)</label>
-                            <textarea name="description" id="description" class="form-control shadow-sm" rows="2"
-                                placeholder="Briefly describe the medication summary..."></textarea>
+                        <div class="col-md-6"><label class="form-label fw-bold small">Indication</label><input
+                                type="text" name="indication" id="indication"
+                                class="form-control shadow-sm border-light" placeholder="e.g. Schizophrenia"></div>
+                        <div class="col-md-6"><label class="form-label fw-bold small">MOA</label><input type="text"
+                                name="moa" id="moa" class="form-control shadow-sm border-light"
+                                placeholder="Mechanism of action..."></div>
+                        <div class="col-md-12"><label class="form-label fw-bold small">Learn More Link</label><input
+                                type="url" name="link" id="link" class="form-control shadow-sm border-light"
+                                placeholder="https://..."></div>
+                        <div class="col-md-12"><label class="form-label fw-bold small">Short Description</label>
+                            <textarea name="description" id="description" class="form-control shadow-sm border-light" rows="2"
+                                placeholder="Brief summary..."></textarea>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4 pt-0">
-                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow">Save Medication
+                    <button type="submit" class="btn btn-success w-100 py-3 fw-bold shadow">Save Medication
                         Information</button>
                 </div>
             </form>
@@ -197,101 +207,144 @@
     </div>
 
     <style>
-        .x-small {
-            font-size: 0.65rem;
-        }
-
-        .pharma-ui-card {
-            border-radius: 14px !important;
-            border: 1px solid #f0f3f5 !important;
-            background: #fff;
-            transition: 0.2s;
-        }
-
-        .pharma-ui-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.06) !important;
-            border-color: #00bcd4 !important;
-        }
-
-        .pharma-tag-badge {
-            background-color: #e6f7f7 !important;
-            color: #00bcd4 !important;
+        .pharma-premium-card {
             border-radius: 20px !important;
-            font-weight: 600 !important;
-            font-size: 0.6rem !important;
-            padding: 4px 10px !important;
+            border: 1px solid #f1f5f9 !important;
+            transition: 0.3s;
+            background: #fff;
         }
 
-        .detail-label {
-            color: #8898aa;
-            font-size: 0.65rem;
-            font-weight: 700;
+        .pharma-premium-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.06) !important;
+            border-color: #0ea5e9 !important;
+        }
+
+        .pharma-tag-pill {
+            background-color: #f0f9ff !important;
+            color: #0ea5e9 !important;
+            border-radius: 30px !important;
+            padding: 5px 12px !important;
+            font-size: 0.62rem !important;
+            font-weight: 800 !important;
+        }
+
+        .clinical-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #f1f5f9;
+        }
+
+        .label-heading {
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: #94a3b8;
+            letter-spacing: 1px;
             display: block;
-            margin-bottom: 1px;
+            margin-bottom: 4px;
         }
 
-        .detail-value {
-            color: #444;
-            font-size: 0.78rem;
+        .content-text {
+            font-size: 0.88rem;
+            color: #334155;
             font-weight: 500;
-            display: block;
+            line-height: 1.4;
         }
 
         .pharma-link {
-            color: #00bcd4 !important;
-            font-size: 0.78rem;
+            color: #0ea5e9 !important;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .compact-tab-bar .nav-link {
+            font-size: 0.8rem;
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            background: none;
+        }
+
+        .compact-tab-bar .nav-link.active {
+            background: #1e293b !important;
+            color: #fff !important;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
 
         .admin-btns {
             position: absolute;
-            top: 8px;
-            right: 8px;
+            top: 15px;
+            right: 15px;
             z-index: 10;
             opacity: 0;
             transition: 0.3s;
         }
 
-        .pharma-ui-card:hover .admin-btns {
+        .pharma-premium-card:hover .admin-btns {
             opacity: 1;
         }
 
-        .btn-xs {
-            padding: 1px 5px;
-            font-size: 0.6rem;
-            border-radius: 4px;
-            background: white;
-            border: 1px solid #eee;
-        }
-
-        .border-dashed {
-            border-style: dashed !important;
-            border-width: 2px !important;
+        .btn-white {
+            background: #fff;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #f1f5f9;
         }
 
         .italic {
             font-style: italic;
         }
+
+        .border-dashed {
+            border-style: dashed !important;
+            border-width: 2px !important;
+            border-color: #e2e8f0 !important;
+        }
     </style>
 
     @push('scripts')
         <script>
+            function filterPharma(btn, filterClass) {
+                const section = btn.closest('.pharma-section-block');
+                section.querySelectorAll('.btn-filter').forEach(b => {
+                    b.classList.remove('active', 'bg-dark', 'text-white');
+                });
+                btn.classList.add('active', 'bg-dark', 'text-white');
+                const cards = section.querySelectorAll('.product-card');
+                const emptyMsg = section.querySelector('.category-empty-msg');
+                let count = 0;
+                cards.forEach(card => {
+                    if (filterClass === 'all' || card.classList.contains(filterClass)) {
+                        card.style.display = 'block';
+                        count++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                emptyMsg.style.display = (count === 0) ? 'block' : 'none';
+            }
             document.addEventListener('DOMContentLoaded', function() {
                 const itemModal = new bootstrap.Modal(document.getElementById('itemModal'));
                 const itemForm = document.getElementById('itemForm');
                 window.openModal = () => {
-                    document.getElementById('modalTitle').innerText = "Add Medication ({{ ucfirst($network) }})";
+                    document.getElementById('modalTitle').innerText = "Add Medication";
                     itemForm.reset();
                     document.getElementById('item_id').value = "";
                     itemModal.show();
                 }
                 window.editItem = (data) => {
-                    document.getElementById('modalTitle').innerText = "Edit: " + data.title;
+                    document.getElementById('modalTitle').innerText = "Edit Medication Data";
                     document.getElementById('item_id').value = data.id;
                     document.getElementById('category_id').value = data.category_id;
                     document.getElementById('title').value = data.title;
-                    document.getElementById('tag').value = data.tag;
                     document.getElementById('sub_title').value = data.sub_title;
+                    document.getElementById('tag').value = data.tag;
                     document.getElementById('indication').value = data.indication;
                     document.getElementById('moa').value = data.moa;
                     document.getElementById('link').value = data.link;

@@ -21,13 +21,29 @@ class IndustryCategoryController extends Controller
 
     private function renderView($request, $network)
     {
-        $sections = IndustrySections::where('network_type', $network)
-            ->with('IndustryCategory')
+        $query = IndustrySections::where('network_type', $network)
+            ->where('industry_type', '!=', 'publications');
+
+        if ($request->filled('type')) {
+            $query->where('industry_type', $request->type);
+        }
+
+        $sections = $query->with('IndustryCategory')
             ->latest()
             ->get();
 
         return view('admin.industry.category', compact('sections', 'network'));
     }
+
+    // private function renderView($request, $network)
+    // {
+    //     $sections = IndustrySections::where('network_type', $network)
+    //         ->with('IndustryCategory')
+    //         ->latest()
+    //         ->get();
+
+    //     return view('admin.industry.category', compact('sections', 'network'));
+    // }
 
     public function storeSection(Request $request)
     {
