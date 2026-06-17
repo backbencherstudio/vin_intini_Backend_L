@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaJob;
 use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaUniversity;
 use App\Models\State;
@@ -253,5 +254,100 @@ class AcademiaAdminController extends Controller
         $residency->delete();
 
         return redirect()->back()->with('success', 'Medical Residency program deleted successfully!');
+    }
+
+    // Jobs List
+    public function indexJobs(Request $request)
+    {
+        $query = AcademiaJob::with('state');
+
+        // Search by Title or Company Name
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'LIKE', "%$search%")
+                    ->orWhere('company_name', 'LIKE', "%$search%");
+            });
+        }
+
+        // Filter by State
+        if ($request->filled('state_id')) {
+            $query->where('state_id', $request->state_id);
+        }
+
+        // Filter by Category (state_institution / private_practice)
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        $data = $query->latest()->paginate(20)->withQueryString();
+        $states = State::orderBy('name')->get();
+
+        return view('admin.academia.employment.index', compact('data', 'states'));
+    }
+
+    // Store New Job
+    public function storeJob(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'company_name' => 'required|string|max:255',
+            'state_id' => 'required|exists:states,id',
+            'category' => 'required|in:state_institution,private_practice',
+            'salary_min' => 'nullable|numeric',
+            'salary_max' => 'nullable|numeric',
+        ]);
+
+        AcademiaJob::create([
+            'state_id'     => $request->state_id,
+            'title'        => $request->title,
+            'company_name' => $request->company_name,
+            'location'     => $request->location,
+            'salary_min'   => $request->salary_min,
+            'salary_max'   => $request->salary_max,
+            'category'     => $request->category,
+            'latitude'     => $request->latitude ?? 0,
+            'longitude'    => $request->longitude ?? 0,
+            'employment_type' => $request->employment_type,
+            'work_mode'       => $request->work_mode,
+        ]);
+
+        return redirect()->back()->with('success', 'New Job Opening added successfully!');
+    }
+
+    public function updateJob(Request $request, $id)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'company_name' => 'required|string|max:255',
+            'state_id' => 'required|exists:states,id',
+            'category' => 'required|in:state_institution,private_practice',
+        ]);
+
+        $job = AcademiaJob::findOrFail($id);
+
+        $job->update([
+            'state_id'     => $request->state_id,
+            'title'        => $request->title,
+            'company_name' => $request->company_name,
+            'location'     => $request->location,
+            'salary_min'   => $request->salary_min,
+            'salary_max'   => $request->salary_max,
+            'category'     => $request->category,
+            'latitude'     => $request->latitude,
+            'longitude'    => $request->longitude,
+            'employment_type' => $request->employment_type,
+            'work_mode'       => $request->work_mode,
+        ]);
+
+        return redirect()->back()->with('success', 'Job information updated successfully!');
+    }
+
+    public function destroyJob($id)
+    {
+        $job = AcademiaJob::findOrFail($id);
+        $job->delete();
+
+        return redirect()->back()->with('success', 'Job deleted successfully!');
     }
 }

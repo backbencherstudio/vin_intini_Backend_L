@@ -1,4 +1,5 @@
-@extends('admin.academia.layout')
+@extends('admin.layout')
+{{-- @extends('admin.academia.layout') --}}
 
 @section('content')
 <div class="container-fluid">
@@ -229,7 +230,7 @@
         editModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
             const form = document.getElementById('editFacilityForm');
-            form.action = `/academia/facilities/${button.getAttribute('data-id')}`;
+            form.action = `facilities/${button.getAttribute('data-id')}`;
             document.getElementById('fac_name').value = button.getAttribute('data-name');
             document.getElementById('fac_state').value = button.getAttribute('data-state');
             document.getElementById('fac_type').value = button.getAttribute('data-type');

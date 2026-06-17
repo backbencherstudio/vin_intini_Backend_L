@@ -1,4 +1,5 @@
-@extends('admin.academia.layout')
+{{-- @extends('admin.academia.layout') --}}
+@extends('admin.layout')
 
 @section('content')
     <div class="container-fluid">
@@ -373,7 +374,7 @@
                 const button = event.relatedTarget;
                 const id = button.getAttribute('data-id');
                 const form = document.getElementById('editForm');
-                form.action = `/academia/universities/${id}`;
+                form.action = `universities/${id}`;
 
                 document.getElementById('modal_name').value = button.getAttribute('data-name');
                 document.getElementById('modal_state').value = button.getAttribute('data-state');

@@ -220,19 +220,132 @@ class AcademiaController extends Controller
         ], 200);
     }
 
-    public function getJobs($code, Request $request): JsonResponse
-    {
-        $category = $request->query('category');
-        $state = State::where('code', $code)->firstOrFail();
+    // public function getJobs(Request $request, $code): JsonResponse
+    // {
+    //     $category = $request->query('category'); // state_institution, private_practice
+    //     $search = trim((string) $request->query('search', ''));
+    //     $perPage = $request->integer('limit', $request->integer('per_page', 15));
+    //     $perPage = max(1, min($perPage, 100));
+    //     $sortOrder = strtolower($request->query('sort', 'asc')) === 'desc' ? 'desc' : 'asc';
 
-        $jobs = $state->jobs()
-            ->when($category, function ($query) use ($category) {
-                return $query->where('category', $category);
-            })->get();
+    //     $state = State::where('code', $code)->first();
+
+    //     if (!$state) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'State not found',
+    //         ], 404);
+    //     }
+
+    //     $query = $state->jobs();
+
+    //     $query->when($category, function ($q) use ($category) {
+    //         return $q->where('category', $category);
+    //     });
+
+    //     $query->when($search !== '', function ($q) use ($search) {
+    //         return $q->where(function ($sub) use ($search) {
+    //             $sub->where('title', 'like', '%' . $search . '%')
+    //                 ->orWhere('company_name', 'like', '%' . $search . '%');
+    //         });
+    //     });
+
+    //     $query->orderBy('title', $sortOrder);
+
+    //     $paginator = $query->paginate($perPage);
+
+    //     $paginator->getCollection()->transform(function ($job) use ($state) {
+    //         $job->state_name = $state->name;
+    //         $job->state_code = $state->code;
+    //         return $job;
+    //     });
+
+    //     $stateInstitutionCount = $state->jobs()->where('category', 'state_institution')->count();
+    //     $privatePracticeCount = $state->jobs()->where('category', 'private_practice')->count();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Jobs retrieved successfully.',
+    //         'status' => 'success',
+    //         'data' => $paginator->items(),
+    //         'stats' => [
+    //             'total_jobs' => $paginator->total(),
+    //             'state_institution_offerings' => $stateInstitutionCount,
+    //             'private_practice_offerings' => $privatePracticeCount,
+    //         ],
+    //         'total' => $paginator->total(),
+    //         'limit' => $paginator->perPage(),
+    //         'current_page' => $paginator->currentPage(),
+    //         'total_page' => $paginator->lastPage(),
+    //         'last_page' => $paginator->lastPage(),
+    //         'filters' => [
+    //             'category' => $category ?: null,
+    //             'search' => $search !== '' ? $search : null,
+    //             'sort' => $sortOrder,
+    //         ],
+    //     ], 200);
+    // }
+
+    public function getJobs(Request $request, $code): JsonResponse
+    {
+        $search = trim((string) $request->query('search', ''));
+        $perPage = $request->integer('limit', $request->integer('per_page', 15));
+        $perPage = max(1, min($perPage, 100));
+        $sortOrder = strtolower($request->query('sort', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $state = State::where('code', $code)->first();
+
+        if (!$state) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'State not found',
+            ], 404);
+        }
+
+        $baseQuery = $state->jobs();
+        if ($search !== '') {
+            $baseQuery->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%$search%")
+                    ->orWhere('company_name', 'like', "%$search%");
+            });
+        }
+
+        $stateTotalCount = (clone $baseQuery)->where('category', 'state_institution')->count();
+        $privateTotalCount = (clone $baseQuery)->where('category', 'private_practice')->count();
+
+        $statePaginator = (clone $baseQuery)->where('category', 'state_institution')
+            ->orderBy('title', $sortOrder)
+            ->paginate($perPage, ['*'], 'page');
+
+        $privatePaginator = (clone $baseQuery)->where('category', 'private_practice')
+            ->orderBy('title', $sortOrder)
+            ->paginate($perPage, ['*'], 'page');
+
+        $lastPage = max($statePaginator->lastPage(), $privatePaginator->lastPage());
 
         return response()->json([
             'success' => true,
-            'data' => $jobs
-        ]);
+            'message' => 'Jobs retrieved successfully.',
+            'status' => 'success',
+            'data' => [
+                'state_institution' => [
+                    'total_offerings' => $stateTotalCount,
+                    'items' => $statePaginator->items(),
+                ],
+                'private_practice' => [
+                    'total_offerings' => $privateTotalCount,
+                    'items' => $privatePaginator->items(),
+                ]
+            ],
+            'total' => $stateTotalCount + $privateTotalCount,
+            'limit' => $perPage,
+            'current_page' => $statePaginator->currentPage(),
+            'total_page' => $lastPage,
+            'last_page' => $lastPage,
+            'filters' => [
+                'search' => $search !== '' ? $search : null,
+                'sort' => $sortOrder,
+            ],
+        ], 200);
     }
 }
