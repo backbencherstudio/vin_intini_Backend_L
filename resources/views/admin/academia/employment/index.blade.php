@@ -359,7 +359,7 @@
                 const id = button.getAttribute('data-id');
                 const form = document.getElementById('editJobForm');
 
-                form.action = `/academia/jobs/${id}`;
+                form.action = `jobs/${id}`;
 
                 document.getElementById('edit_title').value = button.getAttribute('data-title');
                 document.getElementById('edit_company').value = button.getAttribute('data-company');

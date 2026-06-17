@@ -309,7 +309,7 @@
         </nav>
 
         <div class="logout-section">
-            <form action="{{ route('logout') }}" method="POST">
+            <form action="{{ route('admin.logout') }}" method="POST">
                 @csrf
                 <button type="submit" class="btn-logout shadow-xs">
                     <i class="fa-solid fa-power-off me-2"></i> <span>Logout Dashboard</span>

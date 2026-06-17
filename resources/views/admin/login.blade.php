@@ -57,16 +57,17 @@
 
     <div class="login-card shadow">
         <div class="brand-header">
-            <h3 class="fw-bold mb-0"><i class="fa-solid fa-brain me-2 text-info"></i>MindUnite</h3>
+            <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
+                    style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
             <small class="opacity-50">Admin Control Panel</small>
         </div>
         <div class="card-body p-4">
-            <form action="{{ route('admin.login') }}" method="POST">
+            <form action="{{ route('admin.login.submit') }}" method="POST">
                 @csrf
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-muted">EMAIL ADDRESS</label>
                     <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
-                        placeholder="admin@gmail.com" required autofocus>
+                        placeholder="email@example.com" required autofocus>
                     @error('email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
