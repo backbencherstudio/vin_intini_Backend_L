@@ -22,9 +22,8 @@ class IndustryPharmaController extends Controller
 
     private function renderView($request, $network)
     {
-        // ১. মেইন আইটেম কুয়েরি (Item -> Category -> Section Filter)
         $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network) {
-            $q->where('industry_type', 'psychopharmacology')->where('network_type', $network);
+            $q->where('industry_type', 'psychotropics')->where('network_type', $network);
         });
 
         if ($request->filled('search')) {
@@ -33,10 +32,9 @@ class IndustryPharmaController extends Controller
 
         $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
 
-        // ২. ড্রপডাউনের জন্য ওই নেটওয়ার্কের সেকশন এবং ক্যাটাগরিগুলো লোড করা
-        $sections = IndustrySections::where('industry_type', 'psychopharmacology')
+        $sections = IndustrySections::where('industry_type', 'psychotropics')
             ->where('network_type', $network)
-            ->with('IndustryCategory') // hasMany রিলেশন
+            ->with('IndustryCategory') 
             ->get();
 
         return view('admin.industry.pharma', compact('items', 'sections', 'network'));
@@ -69,7 +67,7 @@ class IndustryPharmaController extends Controller
     // private function renderView($request, $network)
     // {
     //     $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network) {
-    //         $q->where('industry_type', 'psychopharmacology')->where('network_type', $network);
+    //         $q->where('industry_type', 'psychotropics')->where('network_type', $network);
     //     });
 
     //     if ($request->filled('search')) {
@@ -78,7 +76,7 @@ class IndustryPharmaController extends Controller
 
     //     $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
 
-    //     $sections = IndustrySections::where('industry_type', 'psychopharmacology')
+    //     $sections = IndustrySections::where('industry_type', 'psychotropics')
     //         ->where('network_type', $network)
     //         ->with('IndustryCategory')
     //         ->get();
