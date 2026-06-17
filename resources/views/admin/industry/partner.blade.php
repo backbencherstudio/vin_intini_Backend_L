@@ -27,9 +27,9 @@
                                     <option value="biotechnology"
                                         {{ request('industry') == 'biotechnology' ? 'selected' : '' }}>Biotechnology
                                     </option>
-                                    <option value="psychopharmacology"
-                                        {{ request('industry') == 'psychopharmacology' ? 'selected' : '' }}>
-                                        Psychopharmacology</option>
+                                    <option value="psychotropics"
+                                        {{ request('industry') == 'psychotropics' ? 'selected' : '' }}>
+                                        Psychotropics</option>
                                     <option value="publications"
                                         {{ request('industry') == 'publications' ? 'selected' : '' }}>Publications</option>
                                 </select>
@@ -165,7 +165,7 @@
                             <label class="form-label small fw-bold">Industry Type</label>
                             <select name="industry_type" id="industry_type" class="form-select" required>
                                 <option value="biotechnology">Biotechnology</option>
-                                <option value="psychopharmacology">Psychopharmacology</option>
+                                <option value="psychotropics">Psychotropics</option>
                                 <option value="publications">Publications</option>
                             </select>
                         </div>

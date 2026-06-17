@@ -7,7 +7,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="fw-bold text-dark mb-0">
-                    <span class="text-primary">{{ ucfirst($network) }}</span> Psychopharmacology
+                    <span class="text-primary">{{ ucfirst($network) }}</span> Psychotropics
                 </h3>
                 <p class="text-muted small mb-0">Managing Medications and clinical data for the community.</p>
             </div>
@@ -151,11 +151,9 @@
                                 <option value="">-- Choose Category --</option>
                                 @foreach ($sections as $section)
                                     @php
-                                        // 'All' বাদে অন্য ক্যাটাগরি আছে কিনা চেক করা
                                         $customTabs = $section->IndustryCategory->where('category_name', '!=', 'All');
                                     @endphp
 
-                                    {{-- যদি অন্তত ১টি কাস্টম ট্যাব থাকে তবেই এই সেকশনটি ড্রপডাউনে দেখাবে --}}
                                     @if ($customTabs->count() > 0)
                                         <optgroup label="{{ ucwords($section->name) }}">
                                             @foreach ($customTabs as $tab)

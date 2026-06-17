@@ -198,7 +198,9 @@
     <div class="sidebar shadow-sm">
         <div class="brand-section">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <i class="fa-solid fa-brain me-2 text-info"></i><span>MindUnite</span>
+                {{-- <i class="fa-solid fa-brain me-2 text-info"></i><span>MindUnite</span> --}}
+                <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
+                    style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
             </a>
         </div>
 
@@ -268,7 +270,7 @@
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.pharma.psychology') ? 'active' : '' }}"
                         href="{{ route('admin.pharma.psychology') }}">
-                        <i class="fa-solid fa-capsules"></i> <span>Pharmacology</span>
+                        <i class="fa-solid fa-capsules"></i> <span>Psychotropics</span>
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.publications.psychology') ? 'active' : '' }}"
                         href="{{ route('admin.publications.psychology') }}">
@@ -291,7 +293,7 @@
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.pharma.neuroscience') ? 'active' : '' }}"
                         href="{{ route('admin.pharma.neuroscience') }}">
-                        <i class="fa-solid fa-capsules"></i> <span>Pharmacology</span>
+                        <i class="fa-solid fa-capsules"></i> <span>Psychotropics</span>
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.publications.neuroscience') ? 'active' : '' }}"
                         href="{{ route('admin.publications.neuroscience') }}">

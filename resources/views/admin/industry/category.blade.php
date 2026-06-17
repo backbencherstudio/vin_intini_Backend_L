@@ -24,9 +24,9 @@
                        class="btn btn-sm rounded-pill px-3 {{ request('type') == 'biotechnology' ? 'btn-success text-white' : 'btn-light border-0' }}">
                        Biotechnology
                     </a>
-                    <a href="{{ url()->current() }}?type=psychopharmacology"
-                       class="btn btn-sm rounded-pill px-3 {{ request('type') == 'psychopharmacology' ? 'btn-info text-white' : 'btn-light border-0' }}">
-                       Pharma
+                    <a href="{{ url()->current() }}?type=psychotropics"
+                       class="btn btn-sm rounded-pill px-3 {{ request('type') == 'psychotropics' ? 'btn-info text-white' : 'btn-light border-0' }}">
+                       Psychotropics
                     </a>
                 </div>
             </div>
@@ -121,7 +121,7 @@
                         <label class="form-label fw-bold small text-muted text-uppercase">Industry Type</label>
                         <select name="industry_type" id="sec_industry" class="form-select border-0 bg-light" required>
                             <option value="biotechnology">Biotechnology</option>
-                            <option value="psychopharmacology">Psychopharmacology</option>
+                            <option value="psychotropics">Psychotropics</option>
                         </select>
                     </div>
                     <div class="mb-1">
