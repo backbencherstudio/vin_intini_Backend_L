@@ -89,12 +89,20 @@ Route::prefix('api/psychology-network/industry')->group(function () {
     Route::get('/biotech', [IndustryApiController::class, 'getPsychologyBiotech']);
     Route::get('/pharma', [IndustryApiController::class, 'getPsychologyPharma']);
     Route::get('/publications', [IndustryApiController::class, 'getPsychologyPublications']);
+    // Partners (Separate)
+    Route::get('/biotech-partners', [IndustryApiController::class, 'getPsychologyBiotechPartners']);
+    Route::get('/pharma-partners', [IndustryApiController::class, 'getPsychologyPharmaPartners']);
+    Route::get('/pub-partners', [IndustryApiController::class, 'getPsychologyPubPartners']);
 });
 
 Route::prefix('api/neuroscience-network/industry')->group(function () {
     Route::get('/biotech', [IndustryApiController::class, 'getNeuroscienceBiotech']);
     Route::get('/pharma', [IndustryApiController::class, 'getNeurosciencePharma']);
     Route::get('/publications', [IndustryApiController::class, 'getNeurosciencePublications']);
+    // Partners (Separate)
+    Route::get('/biotech-partners', [IndustryApiController::class, 'getNeuroscienceBiotechPartners']);
+    Route::get('/pharma-partners', [IndustryApiController::class, 'getNeurosciencePharmaPartners']);
+    Route::get('/pub-partners', [IndustryApiController::class, 'getNeurosciencePubPartners']);
 });
 
 require __DIR__ . '/auth.php';
