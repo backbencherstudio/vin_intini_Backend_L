@@ -79,7 +79,7 @@
                                 <th>Category</th>
                                 <th>Type & Mode</th>
                                 <th>Salary Range</th>
-                                <th>GPS Pin</th>
+                                {{-- <th>GPS Pin</th> --}}
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -119,13 +119,13 @@
                                             <span class="text-muted">N/A</span>
                                         @endif
                                     </td>
-                                    <td>
+                                    {{-- <td>
                                         @if ($job->latitude && $job->latitude != 0)
                                             <code class="text-primary x-small">{{ $job->latitude }}, {{ $job->longitude }}</code>
                                         @else
                                             <span class="text-danger x-small fw-bold">No GPS</span>
                                         @endif
-                                    </td>
+                                    </td> --}}
                                     <td>
                                         <div class="d-flex justify-content-center gap-2">
                                             <button type="button" class="btn btn-sm btn-warning px-3 shadow-sm"
@@ -241,7 +241,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="row bg-light p-3 rounded border mx-0">
+                        {{-- <div class="row bg-light p-3 rounded border mx-0">
                             <h6 class="fw-bold text-secondary mb-3 small">GPS Coordinates (Optional)</h6>
                             <div class="col-md-6">
                                 <label class="small text-muted">Latitude</label>
@@ -251,7 +251,7 @@
                                 <label class="small text-muted">Longitude</label>
                                 <input type="text" name="longitude" class="form-control" placeholder="e.g. -118.24">
                             </div>
-                        </div>
+                        </div> --}}
                     </div>
                     <div class="modal-footer bg-light border-0">
                         <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
@@ -331,7 +331,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="row bg-light p-3 rounded border mx-0">
+                        {{-- <div class="row bg-light p-3 rounded border mx-0">
                             <div class="col-md-6">
                                 <label class="small text-muted">Latitude</label>
                                 <input type="text" name="latitude" id="edit_lat" class="form-control">
@@ -340,7 +340,7 @@
                                 <label class="small text-muted">Longitude</label>
                                 <input type="text" name="longitude" id="edit_long" class="form-control">
                             </div>
-                        </div>
+                        </div> --}}
                     </div>
                     <div class="modal-footer bg-light border-0">
                         <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
