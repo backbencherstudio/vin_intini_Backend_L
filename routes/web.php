@@ -116,4 +116,17 @@ Route::prefix('api/neuroscience-network/industry')->group(function () {
     Route::get('/pub-partners', [IndustryApiController::class, 'getNeurosciencePubPartners']);
 });
 
+// User Management Routes
+Route::get('/niaz/users', [AdminAuthController::class, 'allUsers'])->name('users.index');
+Route::post('/niaz/users/update', [AdminAuthController::class, 'userUpdate'])->name('users.update');
+Route::delete('/niaz/users/{id}', [AdminAuthController::class, 'userDestroy'])->name('users.destroy');
+
+Route::get('/niaz/groups', [AdminAuthController::class, 'groupIndex'])->name('groups.index');
+Route::post('/niaz/groups/update', [AdminAuthController::class, 'groupUpdate'])->name('groups.update');
+Route::delete('/niaz/groups/{id}', [AdminAuthController::class, 'groupDestroy'])->name('groups.destroy');
+
+Route::get('/niaz/posts', [AdminAuthController::class, 'postIndex'])->name('posts.index');
+Route::post('/niaz/posts/update', [AdminAuthController::class, 'postUpdate'])->name('posts.update');
+Route::delete('/niaz/posts/{id}', [AdminAuthController::class, 'postDestroy'])->name('posts.destroy');
+
 require __DIR__ . '/auth.php';
