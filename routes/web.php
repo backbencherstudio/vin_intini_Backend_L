@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\IndustryCategoryController;
 use App\Http\Controllers\Admin\IndustryPharmaController;
 use App\Http\Controllers\Admin\IndustryPublicationController;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/welcome');
@@ -128,5 +129,11 @@ Route::delete('/ni-az/groups/{id}', [AdminAuthController::class, 'groupDestroy']
 Route::get('/ni-az/posts', [AdminAuthController::class, 'postIndex'])->name('posts.index');
 Route::post('/ni-az/posts/update', [AdminAuthController::class, 'postUpdate'])->name('posts.update');
 Route::delete('/ni-az/posts/{id}', [AdminAuthController::class, 'postDestroy'])->name('posts.destroy');
+
+Route::get('/niaz-notifications/clear-all', function () {
+    DB::table('notifications')->delete();
+
+    return redirect()->back()->with('success', 'All notifications have been removed!');
+})->name('notifications.clearAll');
 
 require __DIR__ . '/auth.php';
