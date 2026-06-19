@@ -134,6 +134,10 @@ Route::delete('/ni-az/posts/{id}', [AdminAuthController::class, 'postDestroy'])-
 Route::get('/ni-az/institutions', [AdminAuthController::class, 'institutionIndex'])->name('institutions.index');
 Route::put('/ni-az/institutions/{institution}', [AdminAuthController::class, 'institutionUpdate'])->name('institutions.update');
 
+Route::get('/ni-az/skills', [AdminAuthController::class, 'skillIndex'])->name('skills.index');
+Route::put('/ni-az/skills/{skill}', [AdminAuthController::class, 'skillUpdate'])->name('skills.update');
+Route::delete('/ni-az/skills/{skill}', [AdminAuthController::class, 'skillDestroy'])->name('skills.destroy');
+
 Route::get('/niaz-notifications/clear-all', function () {
     DB::table('notifications')->delete();
 

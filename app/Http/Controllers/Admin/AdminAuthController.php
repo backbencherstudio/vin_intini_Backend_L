@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Group;
 use App\Models\Post;
 use App\Models\Institution;
+use App\Models\Skill;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -180,5 +181,28 @@ class AdminAuthController extends Controller
         $institution->update($request->all());
 
         return redirect()->back()->with('success', 'Institution updated successfully!');
+    }
+
+    public function skillIndex()
+    {
+        $skills = Skill::latest()->paginate(10);
+        return view('admin.skill.index', compact('skills'));
+    }
+
+    public function skillUpdate(Request $request, Skill $skill)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|unique:skills,name,' . $skill->id,
+        ]);
+
+        $skill->update($request->all());
+
+        return redirect()->back()->with('success', 'Skill updated successfully!');
+    }
+
+    public function skillDestroy(Skill $skill)
+    {
+        $skill->delete();
+        return redirect()->back()->with('success', 'Skill deleted successfully!');
     }
 }
