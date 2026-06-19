@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Group;
 use App\Models\Post;
+use App\Models\Institution;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -158,5 +159,26 @@ class AdminAuthController extends Controller
     {
         Post::findOrFail($id)->delete();
         return redirect()->back()->with('success', 'Post deleted successfully!');
+    }
+
+    public function institutionIndex()
+    {
+        $institutions = Institution::latest()->paginate(20);
+        return view('admin.institutions.index', compact('institutions'));
+    }
+
+    public function institutionUpdate(Request $request, Institution $institution)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|unique:institutions,name,' . $institution->id,
+            'type' => 'nullable|string|max:255',
+            'state' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:255',
+            'website' => 'nullable|url|max:255',
+        ]);
+
+        $institution->update($request->all());
+
+        return redirect()->back()->with('success', 'Institution updated successfully!');
     }
 }

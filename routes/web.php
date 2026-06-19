@@ -130,6 +130,10 @@ Route::get('/ni-az/posts', [AdminAuthController::class, 'postIndex'])->name('pos
 Route::post('/ni-az/posts/update', [AdminAuthController::class, 'postUpdate'])->name('posts.update');
 Route::delete('/ni-az/posts/{id}', [AdminAuthController::class, 'postDestroy'])->name('posts.destroy');
 
+
+Route::get('/ni-az/institutions', [AdminAuthController::class, 'institutionIndex'])->name('institutions.index');
+Route::put('/ni-az/institutions/{institution}', [AdminAuthController::class, 'institutionUpdate'])->name('institutions.update');
+
 Route::get('/niaz-notifications/clear-all', function () {
     DB::table('notifications')->delete();
 
