@@ -59,7 +59,8 @@ class AdminAuthController extends Controller
     public function userManagement(Request $request)
     {
         $baseQuery = User::where('is_verified', true)
-            ->where('email', '!=', 'admin@gmail.com');
+            ->where('email', '!=', 'admin@gmail.com')
+            ->has('profile');
 
         $totalUsers = (clone $baseQuery)->count();
         $todayUsers = (clone $baseQuery)->whereDate('created_at', now()->today())->count();
@@ -67,7 +68,7 @@ class AdminAuthController extends Controller
         $previousMonthUsers = (clone $baseQuery)->whereMonth('created_at', now()->subMonth()->month)->whereYear('created_at', now()->subMonth()->year)->count();
 
         // Filtering & Searching Logic
-        $userQuery = (clone $baseQuery);
+        $userQuery = (clone $baseQuery)->with('profile'); 
 
         if ($request->filled('search')) {
             $search = $request->search;
