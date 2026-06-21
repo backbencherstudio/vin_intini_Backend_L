@@ -146,9 +146,26 @@
                                 <tr>
                                     <td class="ps-4 text-muted small fw-bold">
                                         {{ ($users->currentPage() - 1) * $users->perPage() + $loop->iteration }}</td>
-                                    <td>
+                                    {{-- <td>
                                         <img src="{{ $user->profile_image_url }}" class="rounded-circle border"
                                             style="width: 42px; height: 42px; object-fit: cover; border: 2px solid #fff !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    </td> --}}
+                                    <td>
+                                        @if ($user->profile_image)
+                                            <img src="{{ $user->profile_image_url }}" class="rounded-circle border"
+                                                style="width: 42px; height: 42px; object-fit: cover; border: 2px solid #fff !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        @else
+                                            @php
+                                                $fullName = trim($user->first_name . ' ' . $user->last_name);
+                                                $displayName = $fullName ?: 'User';
+                                                $avatarUrl =
+                                                    'https://ui-avatars.com/api/?name=' .
+                                                    urlencode($displayName) .
+                                                    '&background=random&color=fff&size=128';
+                                            @endphp
+                                            <img src="{{ $avatarUrl }}" class="rounded-circle border"
+                                                style="width: 42px; height: 42px; object-fit: cover; border: 2px solid #fff !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        @endif
                                     </td>
                                     <td class="text-start">
                                         <div class="fw-bold text-dark">
