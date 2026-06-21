@@ -206,10 +206,18 @@
 
         <nav class="nav flex-column mb-4">
 
+            <div class="nav-section-label">User Management</div>
+            <div class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.user.*') ? 'active' : '' }}"
+                    href="{{ route('admin.user.management') }}">
+                    <i class="fas fa-users"></i> <span>Users</span>
+                </a>
+            </div>
+
+
             <div class="nav-section-label">Educational</div>
             <div class="nav-item">
-                @php $isAcademiaActive = request()->is('*universities*') || request()->is('*residencies*') || request()->is('*facilities*')
-                || request()->is('*jobs*'); @endphp
+                @php $isAcademiaActive = request()->is('*universities*') || request()->is('*residencies*') || request()->is('*facilities*') || request()->is('*jobs*'); @endphp
                 <a class="nav-link d-flex align-items-center {{ $isAcademiaActive ? '' : 'collapsed' }}"
                     data-bs-toggle="collapse" href="#academiaMenu">
                     <i class="fa-solid fa-graduation-cap"></i> <span>Academia</span>

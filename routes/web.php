@@ -30,6 +30,8 @@ Route::middleware('guest:web')->group(function () {
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], function () {
 
+    Route::get('/user-management', [AdminAuthController::class, 'userManagement'])->name('admin.user.management');
+
     Route::prefix('/academia')->group(function () {
         // 1. Universities (List, Edit, Update)
         Route::get('/universities', [AcademiaAdminController::class, 'indexUniversities'])->name('admin.universities.index');

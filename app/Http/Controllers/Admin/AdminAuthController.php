@@ -8,6 +8,7 @@ use App\Models\Group;
 use App\Models\Post;
 use App\Models\Institution;
 use App\Models\Skill;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,7 +17,7 @@ class AdminAuthController extends Controller
     public function showLoginForm()
     {
         if (Auth::check()) {
-            return redirect()->route('admin.universities.index');
+            return redirect()->route('admin.user.management');
         }
         return view('admin.login');
     }
@@ -36,7 +37,7 @@ class AdminAuthController extends Controller
 
             if ($user->email === 'admin@gmail.com') {
                 $request->session()->regenerate();
-                return redirect()->intended(route('admin.universities.index'));
+                return redirect()->intended(route('admin.user.management'));
             }
 
             Auth::guard('web')->logout();
@@ -53,6 +54,38 @@ class AdminAuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/admin/login');
+    }
+
+    public function userManagement(Request $request)
+    {
+        $baseQuery = User::where('is_verified', true)
+            ->where('email', '!=', 'admin@gmail.com');
+
+        $totalUsers = (clone $baseQuery)->count();
+        $todayUsers = (clone $baseQuery)->whereDate('created_at', now()->today())->count();
+        $currentMonthUsers = (clone $baseQuery)->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count();
+        $previousMonthUsers = (clone $baseQuery)->whereMonth('created_at', now()->subMonth()->month)->whereYear('created_at', now()->subMonth()->year)->count();
+
+        // Filtering & Searching Logic
+        $userQuery = (clone $baseQuery);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $userQuery->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%$search%")
+                    ->orWhere('last_name', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%");
+            });
+        }
+
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $userQuery->whereBetween('created_at', [$request->from_date . ' 00:00:00', $request->to_date . ' 23:59:59']);
+        }
+
+        $filterCount = (clone $userQuery)->count();
+        $users = $userQuery->latest()->paginate(10);
+
+        return view('admin.user_management.index', compact('totalUsers', 'todayUsers', 'currentMonthUsers', 'previousMonthUsers', 'users', 'filterCount'));
     }
 
 
