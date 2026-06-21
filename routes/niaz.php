@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\Admin\IndustryApiController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:api', 'role:admin'])->group(function () {});
@@ -92,4 +93,25 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
     Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
     Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
+
+    // industry routes
+    Route::prefix('psychology-network/industry')->group(function () {
+        Route::get('/biotech', [IndustryApiController::class, 'getPsychologyBiotech']);
+        Route::get('/pharma', [IndustryApiController::class, 'getPsychologyPharma']);
+        Route::get('/publications', [IndustryApiController::class, 'getPsychologyPublications']);
+        // Partners (Separate)
+        Route::get('/biotech-partners', [IndustryApiController::class, 'getPsychologyBiotechPartners']);
+        Route::get('/pharma-partners', [IndustryApiController::class, 'getPsychologyPharmaPartners']);
+        Route::get('/pub-partners', [IndustryApiController::class, 'getPsychologyPubPartners']);
+    });
+
+    Route::prefix('neuroscience-network/industry')->group(function () {
+        Route::get('/biotech', [IndustryApiController::class, 'getNeuroscienceBiotech']);
+        Route::get('/pharma', [IndustryApiController::class, 'getNeurosciencePharma']);
+        Route::get('/publications', [IndustryApiController::class, 'getNeurosciencePublications']);
+        // Partners (Separate)
+        Route::get('/biotech-partners', [IndustryApiController::class, 'getNeuroscienceBiotechPartners']);
+        Route::get('/pharma-partners', [IndustryApiController::class, 'getNeurosciencePharmaPartners']);
+        Route::get('/pub-partners', [IndustryApiController::class, 'getNeurosciencePubPartners']);
+    });
 });
