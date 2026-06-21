@@ -68,7 +68,7 @@ class AdminAuthController extends Controller
         $previousMonthUsers = (clone $baseQuery)->whereMonth('created_at', now()->subMonth()->month)->whereYear('created_at', now()->subMonth()->year)->count();
 
         // Filtering & Searching Logic
-        $userQuery = (clone $baseQuery)->with('profile'); 
+        $userQuery = (clone $baseQuery)->with('profile');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -91,152 +91,152 @@ class AdminAuthController extends Controller
 
 
     //user management functions
-    public function allUsers()
-    {
-        $users = User::all();
-        return view('admin.user.index', compact('users'));
-    }
+    // public function allUsers()
+    // {
+    //     $users = User::all();
+    //     return view('admin.user.index', compact('users'));
+    // }
 
-    public function userUpdate(Request $request)
-    {
-        $request->validate([
-            'id' => 'required',
-            'fname' => 'required|string|max:255',
-            'lname' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $request->id,
-        ]);
+    // public function userUpdate(Request $request)
+    // {
+    //     $request->validate([
+    //         'id' => 'required',
+    //         'fname' => 'required|string|max:255',
+    //         'lname' => 'required|string|max:255',
+    //         'email' => 'required|email|unique:users,email,' . $request->id,
+    //     ]);
 
-        $user = User::findOrFail($request->id);
-        $user->update([
-            'first_name' => $request->fname,
-            'last_name' => $request->lname,
-            'email' => $request->email,
-        ]);
+    //     $user = User::findOrFail($request->id);
+    //     $user->update([
+    //         'first_name' => $request->fname,
+    //         'last_name' => $request->lname,
+    //         'email' => $request->email,
+    //     ]);
 
-        return redirect()->back()->with('success', 'User updated successfully');
-    }
+    //     return redirect()->back()->with('success', 'User updated successfully');
+    // }
 
-    public function userDestroy($id)
-    {
-        User::findOrFail($id)->delete();
-        return redirect()->back()->with('success', 'User deleted successfully');
-    }
+    // public function userDestroy($id)
+    // {
+    //     User::findOrFail($id)->delete();
+    //     return redirect()->back()->with('success', 'User deleted successfully');
+    // }
 
 
-    public function groupIndex()
-    {
-        $groups = Group::all();
-        return view('admin.group.index', compact('groups'));
-    }
+    // public function groupIndex()
+    // {
+    //     $groups = Group::all();
+    //     return view('admin.group.index', compact('groups'));
+    // }
 
-    public function groupUpdate(Request $request)
-    {
-        $group = Group::findOrFail($request->id);
+    // public function groupUpdate(Request $request)
+    // {
+    //     $group = Group::findOrFail($request->id);
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'industry' => 'nullable|array|max:3',
-            'logo' => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
-            'cover_photo' => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
-        ]);
+    //     $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'industry' => 'nullable|array|max:3',
+    //         'logo' => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
+    //         'cover_photo' => 'nullable|image|mimes:jpg,png,jpeg|max:2048',
+    //     ]);
 
-        $data = $request->all();
+    //     $data = $request->all();
 
-        // Handle Checkboxes (Boolean)
-        $data['allow_member_invites'] = $request->has('allow_member_invites') ? 1 : 0;
-        $data['require_post_approval'] = $request->has('require_post_approval') ? 1 : 0;
+    //     // Handle Checkboxes (Boolean)
+    //     $data['allow_member_invites'] = $request->has('allow_member_invites') ? 1 : 0;
+    //     $data['require_post_approval'] = $request->has('require_post_approval') ? 1 : 0;
 
-        // Image Upload
-        if ($request->hasFile('logo')) {
-            $data['logo'] = $request->file('logo')->store('logos', 'public');
-        }
-        if ($request->hasFile('cover_photo')) {
-            $data['cover_photo'] = $request->file('cover_photo')->store('covers', 'public');
-        }
+    //     // Image Upload
+    //     if ($request->hasFile('logo')) {
+    //         $data['logo'] = $request->file('logo')->store('logos', 'public');
+    //     }
+    //     if ($request->hasFile('cover_photo')) {
+    //         $data['cover_photo'] = $request->file('cover_photo')->store('covers', 'public');
+    //     }
 
-        $group->update($data);
+    //     $group->update($data);
 
-        return redirect()->back()->with('success', 'Group updated successfully!');
-    }
+    //     return redirect()->back()->with('success', 'Group updated successfully!');
+    // }
 
-    public function groupDestroy($id)
-    {
-        Group::findOrFail($id)->delete();
-        return redirect()->back()->with('success', 'Group deleted successfully!');
-    }
+    // public function groupDestroy($id)
+    // {
+    //     Group::findOrFail($id)->delete();
+    //     return redirect()->back()->with('success', 'Group deleted successfully!');
+    // }
 
-    public function postIndex()
-    {
-        $posts = Post::with('user')->latest()->get();
-        return view('admin.post.index', compact('posts'));
-    }
+    // public function postIndex()
+    // {
+    //     $posts = Post::with('user')->latest()->get();
+    //     return view('admin.post.index', compact('posts'));
+    // }
 
-    public function postUpdate(Request $request)
-    {
-        $request->validate([
-            'id' => 'required',
-            'description' => 'nullable|string',
-            'visibility' => 'required|in:public,connections,groups',
-            'who_can_comment' => 'required|in:anyone,connections,no_one',
-        ]);
+    // public function postUpdate(Request $request)
+    // {
+    //     $request->validate([
+    //         'id' => 'required',
+    //         'description' => 'nullable|string',
+    //         'visibility' => 'required|in:public,connections,groups',
+    //         'who_can_comment' => 'required|in:anyone,connections,no_one',
+    //     ]);
 
-        $post = Post::findOrFail($request->id);
-        $post->update([
-            'description' => $request->description,
-            'visibility' => $request->visibility,
-            'who_can_comment' => $request->who_can_comment,
-        ]);
+    //     $post = Post::findOrFail($request->id);
+    //     $post->update([
+    //         'description' => $request->description,
+    //         'visibility' => $request->visibility,
+    //         'who_can_comment' => $request->who_can_comment,
+    //     ]);
 
-        return redirect()->back()->with('success', 'Post updated successfully!');
-    }
+    //     return redirect()->back()->with('success', 'Post updated successfully!');
+    // }
 
-    public function postDestroy($id)
-    {
-        Post::findOrFail($id)->delete();
-        return redirect()->back()->with('success', 'Post deleted successfully!');
-    }
+    // public function postDestroy($id)
+    // {
+    //     Post::findOrFail($id)->delete();
+    //     return redirect()->back()->with('success', 'Post deleted successfully!');
+    // }
 
-    public function institutionIndex()
-    {
-        $institutions = Institution::latest()->paginate(20);
-        return view('admin.institutions.index', compact('institutions'));
-    }
+    // public function institutionIndex()
+    // {
+    //     $institutions = Institution::latest()->paginate(20);
+    //     return view('admin.institutions.index', compact('institutions'));
+    // }
 
-    public function institutionUpdate(Request $request, Institution $institution)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:institutions,name,' . $institution->id,
-            'type' => 'nullable|string|max:255',
-            'state' => 'nullable|string|max:255',
-            'country' => 'nullable|string|max:255',
-            'website' => 'nullable|url|max:255',
-        ]);
+    // public function institutionUpdate(Request $request, Institution $institution)
+    // {
+    //     $request->validate([
+    //         'name' => 'required|string|max:255|unique:institutions,name,' . $institution->id,
+    //         'type' => 'nullable|string|max:255',
+    //         'state' => 'nullable|string|max:255',
+    //         'country' => 'nullable|string|max:255',
+    //         'website' => 'nullable|url|max:255',
+    //     ]);
 
-        $institution->update($request->all());
+    //     $institution->update($request->all());
 
-        return redirect()->back()->with('success', 'Institution updated successfully!');
-    }
+    //     return redirect()->back()->with('success', 'Institution updated successfully!');
+    // }
 
-    public function skillIndex()
-    {
-        $skills = Skill::latest()->paginate(10);
-        return view('admin.skill.index', compact('skills'));
-    }
+    // public function skillIndex()
+    // {
+    //     $skills = Skill::latest()->paginate(10);
+    //     return view('admin.skill.index', compact('skills'));
+    // }
 
-    public function skillUpdate(Request $request, Skill $skill)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:skills,name,' . $skill->id,
-        ]);
+    // public function skillUpdate(Request $request, Skill $skill)
+    // {
+    //     $request->validate([
+    //         'name' => 'required|string|max:255|unique:skills,name,' . $skill->id,
+    //     ]);
 
-        $skill->update($request->all());
+    //     $skill->update($request->all());
 
-        return redirect()->back()->with('success', 'Skill updated successfully!');
-    }
+    //     return redirect()->back()->with('success', 'Skill updated successfully!');
+    // }
 
-    public function skillDestroy(Skill $skill)
-    {
-        $skill->delete();
-        return redirect()->back()->with('success', 'Skill deleted successfully!');
-    }
+    // public function skillDestroy(Skill $skill)
+    // {
+    //     $skill->delete();
+    //     return redirect()->back()->with('success', 'Skill deleted successfully!');
+    // }
 }
