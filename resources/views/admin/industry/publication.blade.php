@@ -50,7 +50,6 @@
                         <tbody>
                             @forelse ($items as $item)
                                 <tr class="bg-white">
-                                    {{-- বাম পাশের কালার স্ট্রাইপ সহ কলাম --}}
                                     <td class="ps-4 py-3 {{ $network == 'psychology' ? 'stripe-psychology' : 'stripe-neuroscience' }}"
                                         style="max-width: 400px;">
                                         <div class="fw-bold text-dark h6 mb-1">{{ $item->title }}</div>
@@ -61,7 +60,7 @@
                                     <td>
                                         <span class="badge bg-secondary-subtle text-secondary border px-2 py-1"
                                             style="font-size: 0.65rem;">
-                                            {{ $item->tag ?? 'JOURNAL' }}
+                                            {{ $item->tag ?? 'N/A' }}
                                         </span>
                                     </td>
                                     <td>
@@ -184,7 +183,6 @@
     </div>
 
     <style>
-        /* টেবিলের বাম পাশের বর্ডার লাইন */
         .stripe-psychology {
             border-left: 4px solid #007bff !important;
         }
@@ -205,7 +203,6 @@
             font-style: italic;
         }
 
-        /* মোডালের ইনপুট বর্ডার স্টাইল */
         .form-control {
             border: 1px solid #ced4da !important;
             transition: border-color 0.2s;
