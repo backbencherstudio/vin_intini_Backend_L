@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ConnectionRequestMail;
 use App\Models\Connection;
 use App\Models\GroupInvitation;
 use App\Models\User;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class ConnectionController extends Controller
@@ -741,7 +743,11 @@ class ConnectionController extends Controller
         }
 
         if ((int) $result['code'] === 201 && $result['connection']->receiver_id === $targetUser->id) {
+            // Notify the target user about the new connection request
             $targetUser->notify(new ConnectionRequestReceivedNotification($result['connection'], $currentUser));
+
+            // Optionally, send an email notification for the connection request
+            Mail::to($targetUser->email)->queue(new ConnectionRequestMail($currentUser, $targetUser, $result['connection']));
         }
 
         return response()->json([
