@@ -13,6 +13,9 @@ use App\Models\User;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 
 class UserProfileController extends Controller
 {
@@ -580,5 +583,45 @@ class UserProfileController extends Controller
         }
 
         return (int) $currentInstituteId;
+    }
+
+    public function changePassword(Request $request)
+    {
+        // 1. Validation
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required',
+            'new_password' => [
+                'required',
+                'confirmed',
+                Password::min(8)->mixedCase()->numbers() // Minimum 8 chars, mixed case, and numbers
+            ],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+
+        // 2. Check if current password matches
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'The current password you entered is incorrect.'
+            ], 400);
+        }
+
+        // 3. Update the password
+        $user->update([
+            'password' => Hash::make($request->new_password)
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Password changed successfully.'
+        ], 200);
     }
 }
