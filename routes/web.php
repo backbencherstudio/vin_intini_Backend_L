@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Admin\IndustryCategoryController;
 use App\Http\Controllers\Admin\IndustryPharmaController;
 use App\Http\Controllers\Admin\IndustryPublicationController;
+use App\Http\Controllers\Admin\PagesController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -91,6 +92,11 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], 
         Route::get('/neuroscience', [IndustryPublicationController::class, 'neuroscience'])->name('admin.publications.neuroscience');
         Route::post('/store', [IndustryPublicationController::class, 'store'])->name('admin.publications.store');
         Route::get('/delete/{id}', [IndustryPublicationController::class, 'destroy'])->name('admin.publications.delete');
+    });
+
+    Route::prefix('pages')->group(function () {
+        Route::get('/{slug}', [PagesController::class, 'edit'])->name('admin.pages.edit');
+        Route::post('/update/{id}', [PagesController::class, 'update'])->name('admin.pages.update');
     });
 
 
