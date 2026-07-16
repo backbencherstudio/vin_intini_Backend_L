@@ -314,6 +314,44 @@
                 <i class="fa-solid fa-handshake-angle"></i> <span>Partners</span>
             </a>
 
+
+            <div class="nav-section-label">Page Settings</div>
+
+            <div class="nav-item">
+                @php
+                    $isPageActive = request()->is('admin/pages/*');
+                @endphp
+
+                <a class="nav-link d-flex align-items-center {{ $isPageActive ? '' : 'collapsed' }}"
+                    data-bs-toggle="collapse" href="#pagesMenu"
+                    aria-expanded="{{ $isPageActive ? 'true' : 'false' }}">
+                    <i class="fa-solid fa-book"></i> <span>Pages</span>
+                    <i class="fa-solid fa-chevron-down submenu-icon ms-auto"></i>
+                </a>
+
+                <div class="collapse submenu {{ $isPageActive ? 'show' : '' }}" id="pagesMenu">
+
+                    <!-- About Us -->
+                    <a class="nav-link {{ request()->is('admin/pages/about-us') ? 'active' : '' }}"
+                        href="{{ route('admin.pages.edit', 'about-us') }}">
+                        <i class="fa-solid fa-circle-info"></i> <span>About Us</span>
+                    </a>
+
+                    <!-- Privacy Policy -->
+                    <a class="nav-link {{ request()->is('admin/pages/privacy-policy') ? 'active' : '' }}"
+                        href="{{ route('admin.pages.edit', 'privacy-policy') }}">
+                        <i class="fa-solid fa-file-shield"></i> <span>Privacy Policy</span>
+                    </a>
+
+                    <!-- Terms & Conditions -->
+                    <a class="nav-link {{ request()->is('admin/pages/terms-and-conditions') ? 'active' : '' }}"
+                        href="{{ route('admin.pages.edit', 'terms-and-conditions') }}">
+                        <i class="fa-solid fa-file-lines"></i> <span>Terms & Conditions</span>
+                    </a>
+
+                </div>
+            </div>
+
         </nav>
 
         <div class="logout-section">
