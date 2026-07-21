@@ -40,7 +40,7 @@ class PagesController extends Controller
             'title' => 'required|string|max:255',
             'what_we_do_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'team.*.photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'videos.*.file' => 'nullable|mimes:mp4,mov,avi,wmv|max:102400',         
+            'videos.*.file' => 'nullable|mimes:mp4,mov,avi,wmv|max:102400',
         ], [
             'team.*.photo.max' => 'The image must not be larger than 5MB.',
             'what_we_do_image.max' => 'The diagram image must not be larger than 5MB.',
@@ -117,6 +117,20 @@ class PagesController extends Controller
             }
         }
         $page->features_videos = $newVideoData;
+
+        // FAQ Management
+        $newFaqData = [];
+        if ($request->has('faqs')) {
+            foreach ($request->faqs as $faq) {
+                if (!empty($faq['question']) && !empty($faq['answer'])) {
+                    $newFaqData[] = [
+                        'question' => $faq['question'],
+                        'answer' => $faq['answer'],
+                    ];
+                }
+            }
+        }
+        $page->faqs = $newFaqData;
 
         $page->save();
 
