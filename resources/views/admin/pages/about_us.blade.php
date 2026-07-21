@@ -10,7 +10,7 @@
             <div class="card shadow-sm border-0 mb-3 rounded-3 flex-shrink-0">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <div>
-                        <h4 class="mb-0 fw-bold text-primary"><i class="fa-solid fa-pen-to-square me-2"></i>Edit About Us</h4>
+                        <h4 class="mb-0 fw-bold text-primary"><i class="fa-solid fa-pen-to-square me-2"></i>Edit About Us Page</h4>
                         <small class="text-muted">Slug: {{ $page->slug }} | Fill all required fields carefully.</small>
                     </div>
                     <div class="d-flex align-items-center gap-3">
@@ -39,7 +39,7 @@
                     <div class="card border-0 shadow-sm rounded-3 h-100">
                         <div class="card-body p-2">
                             <div class="nav flex-column nav-pills h-100" id="v-pills-tab" role="tablist">
-                                <button class="nav-link active text-start py-3 mb-2" data-bs-toggle="pill"
+                                {{-- <button class="nav-link active text-start py-3 mb-2" data-bs-toggle="pill"
                                     data-bs-target="#tab-who" type="button">
                                     <i class="fa-solid fa-bullseye me-2"></i> Who We Are
                                     @if ($errors->has('title') || $errors->has('vision') || $errors->has('mission') || $errors->has('strategy'))
@@ -52,18 +52,28 @@
                                     @if ($errors->has('content') || $errors->has('what_we_do_image'))
                                         <i class="fa-solid fa-circle-exclamation text-danger float-end mt-1"></i>
                                     @endif
-                                </button>
+                                </button> --}}
                                 <button class="nav-link text-start py-3 mb-2" data-bs-toggle="pill"
                                     data-bs-target="#tab-team" type="button">
-                                    <i class="fa-solid fa-users-gear me-2"></i> Meet The Team (<strong>{{ count($page->team_members ?? []) }}</strong>)
+                                    <i class="fa-solid fa-users-gear me-2"></i> Meet The Team
+                                    (<strong>{{ count($page->team_members ?? []) }}</strong>)
                                     @if ($errors->has('team.*'))
                                         <i class="fa-solid fa-circle-exclamation text-danger float-end mt-1"></i>
                                     @endif
                                 </button>
                                 <button class="nav-link text-start py-3" data-bs-toggle="pill" data-bs-target="#tab-video"
                                     type="button">
-                                    <i class="fa-solid fa-clapperboard me-2"></i> Key Features (<strong>{{ count($page->features_videos ?? []) }}</strong>)
+                                    <i class="fa-solid fa-clapperboard me-2"></i> Key Features
+                                    (<strong>{{ count($page->features_videos ?? []) }}</strong>)
                                     @if ($errors->has('videos.*'))
+                                        <i class="fa-solid fa-circle-exclamation text-danger float-end mt-1"></i>
+                                    @endif
+                                </button>
+                                <button class="nav-link text-start py-3 mb-2" data-bs-toggle="pill"
+                                    data-bs-target="#tab-faq" type="button">
+                                    <i class="fa-solid fa-circle-question me-2"></i> FAQ Management
+                                    (<strong>{{ count($page->faqs ?? []) }}</strong>)
+                                    @if ($errors->has('faqs.*'))
                                         <i class="fa-solid fa-circle-exclamation text-danger float-end mt-1"></i>
                                     @endif
                                 </button>
@@ -77,7 +87,8 @@
                     <div class="tab-content h-100 scrollable-content p-1">
 
                         <!-- Tab 1: Who We Are -->
-                        <div class="tab-pane fade show active" id="tab-who">
+                        <input type="text" name="title" value="About Us" class="d-none">
+                        {{-- <div class="tab-pane fade show active" id="tab-who">
                             <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
                                 <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">1. Vision, Mission & Strategy</h5>
                                 <div class="mb-4">
@@ -112,15 +123,15 @@
                                     @enderror
                                 </div>
                             </div>
-                        </div>
+                        </div> --}}
 
                         <!-- Tab 2: What We Do -->
-                        <div class="tab-pane fade" id="tab-what">
+                        {{-- <div class="tab-pane fade" id="tab-what">
                             <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
                                 <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">2. Description & Diagram</h5>
                                 <div class="mb-4">
                                     <label class="form-label fw-semibold">Description Content</label>
-                                    <textarea name="content" id="summernote" class="form-control @error('content') is-invalid @enderror">{{ old('content', $page->content) }}</textarea>
+                                    <textarea name="content" class="form-control @error('content') is-invalid @enderror">{{ old('content', $page->content) }}</textarea>
                                     @error('content')
                                         <div class="text-danger small mt-1">{{ $message }}</div>
                                     @enderror
@@ -144,7 +155,7 @@
                                     @enderror
                                 </div>
                             </div>
-                        </div>
+                        </div> --}}
 
                         <!-- Tab 3: Meet The Team (Repeater with Error Highlights) -->
                         <div class="tab-pane fade h-100" id="tab-team">
@@ -226,8 +237,8 @@
                                                 </div>
                                                 <div class="col-md-1 text-center">
                                                     <button type="button"
-                                                        class="btn btn-danger btn-sm remove-item rounded-circle shadow-sm"><i
-                                                            class="fa fa-trash"></i></button>
+                                                        class="btn btn-danger btn-sm remove-item shadow-sm"><i
+                                                            class="fa-solid fa-xmark"></i></button>
                                                 </div>
                                             </div>
                                         </div>
@@ -249,7 +260,7 @@
                                     </div>
                                     <button type="button" id="add-video"
                                         class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">
-                                        <i class="fa fa-plus me-1"></i> Add Video Card
+                                        <i class="fa-solid fa-plus me-1"></i> Add Video Card
                                     </button>
                                 </div>
                                 <div id="video-repeater" class="row g-3">
@@ -297,7 +308,7 @@
                                                     @enderror
 
                                                     @if (isset($video['path']) && $video['path'])
-                                                        <small class="text-success"><i class="fa fa-circle-check"></i>
+                                                        <small class="text-success"><i class="fa-solid fa-circle-check"></i>
                                                             File Uploaded</small>
                                                         <input type="hidden" name="videos[{{ $vIndex }}][path]"
                                                             value="{{ $video['path'] }}">
@@ -308,7 +319,7 @@
                                                     class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
                                                     <button type="button"
                                                         class="btn btn-sm btn-link text-danger remove-item p-0 text-decoration-none fw-bold"><i
-                                                            class="fa fa-trash me-1"></i>Remove</button>
+                                                            class="fa-solid fa-xmark me-1"></i>Remove</button>
 
                                                     @if (($video['url'] ?? '') || ($video['path'] ?? ''))
                                                         <button type="button"
@@ -322,6 +333,42 @@
                                                     @endif
                                                 </div>
                                             </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- Tab 5: FAQ Management -->
+                        <div class="tab-pane fade h-100" id="tab-faq">
+                            <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+                                    <div>
+                                        <h5 class="fw-bold m-0 text-dark">5. Frequently Asked Questions</h5>
+                                        <small class="text-muted mt-1 d-block">Manage the FAQ section for this
+                                            page.</small>
+                                    </div>
+                                    <button type="button" id="add-faq"
+                                        class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">
+                                        <i class="fa-solid fa-plus me-1"></i> Add FAQ
+                                    </button>
+                                </div>
+
+                                <div id="faq-repeater">
+                                    @php $faqs = old('faqs', $page->faqs ?? []); @endphp
+                                    @foreach ($faqs as $fIndex => $faq)
+                                        <div class="faq-item border rounded-3 p-3 mb-3 bg-light shadow-sm">
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <label class="fw-bold text-primary">Question #{{ $fIndex + 1 }}</label>
+                                                <button type="button"
+                                                    class="btn btn-danger btn-sm remove-item"><i class="fa-solid fa-xmark"></i></button>
+                                            </div>
+                                            <input type="text" name="faqs[{{ $fIndex }}][question]"
+                                                class="form-control mb-2" placeholder="Enter Question"
+                                                value="{{ $faq['question'] ?? '' }}" required>
+                                            <textarea name="faqs[{{ $fIndex }}][answer]" class="form-control" rows="3" placeholder="Enter Answer"
+                                                required>{{ $faq['answer'] ?? '' }}</textarea>
                                         </div>
                                     @endforeach
                                 </div>
@@ -521,11 +568,11 @@
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <input type="text" name="team[${idx}][name]" class="form-control mb-2" placeholder="Full Name">
-                        <input type="text" name="team[${idx}][title]" class="form-control" placeholder="Designation">
+                        <input type="text" name="team[${idx}][name]" class="form-control mb-2" placeholder="Full Name" required>
+                        <input type="text" name="team[${idx}][title]" class="form-control" placeholder="Designation" required>
                     </div>
                     <div class="col-md-6"><textarea name="team[${idx}][bio]" class="form-control" rows="3" placeholder="Bio..."></textarea></div>
-                    <div class="col-md-1 text-center"><button type="button" class="btn btn-danger btn-sm remove-item rounded-circle shadow-sm"><i class="fa fa-trash"></i></button></div>
+                    <div class="col-md-1 text-center"><button type="button" class="btn btn-danger btn-sm remove-item shadow-sm"><i class="fa-solid fa-xmark"></i></button></div>
                 </div>
             </div>`;
             container.insertAdjacentHTML('beforeend', html);
@@ -538,38 +585,70 @@
             let html = `
             <div class="col-md-6 video-item">
                 <div class="card border p-3 h-100 shadow-sm bg-light">
-                    <input type="text" name="videos[${idx}][title]" class="form-control mb-2" placeholder="Video Title">
+                    <input type="text" name="videos[${idx}][title]" class="form-control mb-2" placeholder="Video Title" required>
                     <select name="videos[${idx}][source]" class="form-select form-select-sm mb-2" onchange="toggleVideoInput(this)">
                         <option value="url">YouTube/Embed URL</option>
                         <option value="file">Upload Video File</option>
                     </select>
                     <div class="url-input-div"><input type="text" name="videos[${idx}][url]" class="form-control mb-2" placeholder="URL"></div>
                     <div class="file-input-div d-none"><input type="file" name="videos[${idx}][file]" class="form-control mb-2" accept="video/*"></div>
-                    <button type="button" class="btn btn-sm btn-link text-danger remove-item p-0 mt-auto text-start text-decoration-none fw-bold"><i class="fa fa-trash"></i> Remove Card</button>
+                    <button type="button" class="btn btn-sm btn-link text-danger remove-item p-0 mt-auto text-start text-decoration-none fw-bold"><i class="fa-solid fa-xmark"></i> Remove Card</button>
                 </div>
             </div>`;
             container.insertAdjacentHTML('beforeend', html);
         });
 
+        // FAQ Repeater
+        document.getElementById('add-faq').addEventListener('click', function() {
+            let container = document.getElementById('faq-repeater');
+            let idx = container.querySelectorAll('.faq-item').length;
+            let html = `
+            <div class="faq-item border rounded-3 p-3 mb-3 bg-light shadow-sm animate__animated animate__fadeIn">
+                <div class="d-flex justify-content-between mb-2">
+                    <label class="fw-bold text-primary">Question #${idx + 1}</label>
+                    <button type="button" class="btn btn-danger btn-sm remove-item"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <input type="text" name="faqs[${idx}][question]" class="form-control mb-2" placeholder="Enter Question" required>
+                <textarea name="faqs[${idx}][answer]" class="form-control" rows="3" placeholder="Enter Answer" required></textarea>
+            </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+
+        // Error focus persistence for FAQ
+        @if ($errors->has('faqs.*'))
+            var activeTab = '#tab-faq';
+        @endif
+
         document.addEventListener('click', function(e) {
-            if (e.target.closest('.remove-item')) {
+            const removeBtn = e.target.closest('.remove-item');
+
+            if (removeBtn) {
                 if (confirm('Are you sure?')) {
-                    e.target.closest('.team-item, .video-item').remove();
+                    const itemToRemove = removeBtn.closest('.team-item, .video-item, .faq-item');
+
+                    if (itemToRemove) {
+                        // is it a FAQ item? If yes, we need to update the serial numbers after removal
+                        const isFaq = itemToRemove.classList.contains('faq-item');
+
+                        // Remove the item from the DOM
+                        itemToRemove.remove();
+
+                        // Update serial numbers if it was an FAQ item
+                        if (isFaq) {
+                            const faqItems = document.querySelectorAll('#faq-repeater .faq-item');
+                            faqItems.forEach((el, index) => {
+                                const questionLabel = el.querySelector('.fw-bold.text-primary');
+                                if (questionLabel) {
+                                    questionLabel.innerText = `Question #${index + 1}`;
+                                }
+                            });
+                        }
+                    }
                 }
             }
         });
+
     </script>
 
-    <!-- Summernote -->
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#summernote').summernote({
-                height: 200,
-                placeholder: 'Mind Unite description...'
-            });
-        });
-    </script>
 @endsection
