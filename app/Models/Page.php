@@ -19,12 +19,13 @@ class Page extends Model
         'what_we_do_image',
         'team_members',
         'features_videos',
+        'faqs',
         'is_active'
     ];
 
     protected $casts = [
         'team_members' => 'array',
         'features_videos' => 'array',
-        'images' => 'array',
+        'faqs' => 'array',
     ];
 }

@@ -28,6 +28,8 @@ return new class extends Migration
 
             $table->json('features_videos')->nullable();
 
+            $table->json('faqs')->nullable();
+
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
