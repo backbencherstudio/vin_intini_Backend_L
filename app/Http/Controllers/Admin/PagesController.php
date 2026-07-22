@@ -38,10 +38,12 @@ class PagesController extends Controller
 
         $request->validate([
             'title' => 'required|string|max:255',
+            'founder_photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'what_we_do_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'team.*.photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'videos.*.file' => 'nullable|mimes:mp4,mov,avi,wmv|max:102400',
         ], [
+            'founder_photo.max' => 'The founder photo must not be larger than 5MB.',
             'team.*.photo.max' => 'The image must not be larger than 5MB.',
             'what_we_do_image.max' => 'The diagram image must not be larger than 5MB.',
         ]);
@@ -54,6 +56,15 @@ class PagesController extends Controller
         $page->vision = $request->vision;
         $page->mission = $request->mission;
         $page->strategy = $request->strategy;
+
+        $page->founder_bio = $request->founder_bio;
+
+        if ($request->hasFile('founder_photo')) {
+            if ($page->founder_photo) {
+                Storage::disk('public')->delete($page->founder_photo);
+            }
+            $page->founder_photo = $request->file('founder_photo')->store('pages/founder', 'public');
+        }
 
         if ($request->hasFile('what_we_do_image')) {
             if ($page->what_we_do_image) {
