@@ -10,7 +10,8 @@
             <div class="card shadow-sm border-0 mb-3 rounded-3 flex-shrink-0">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <div>
-                        <h4 class="mb-0 fw-bold text-primary"><i class="fa-solid fa-pen-to-square me-2"></i>Edit About Us Page</h4>
+                        <h4 class="mb-0 fw-bold text-primary"><i class="fa-solid fa-pen-to-square me-2"></i>Edit About Us Page
+                        </h4>
                         <small class="text-muted">Slug: {{ $page->slug }} | Fill all required fields carefully.</small>
                     </div>
                     <div class="d-flex align-items-center gap-3">
@@ -39,7 +40,7 @@
                     <div class="card border-0 shadow-sm rounded-3 h-100">
                         <div class="card-body p-2">
                             <div class="nav flex-column nav-pills h-100" id="v-pills-tab" role="tablist">
-                                {{-- <button class="nav-link active text-start py-3 mb-2" data-bs-toggle="pill"
+                                <button class="nav-link active text-start py-3 mb-2" data-bs-toggle="pill"
                                     data-bs-target="#tab-who" type="button">
                                     <i class="fa-solid fa-bullseye me-2"></i> Who We Are
                                     @if ($errors->has('title') || $errors->has('vision') || $errors->has('mission') || $errors->has('strategy'))
@@ -52,7 +53,7 @@
                                     @if ($errors->has('content') || $errors->has('what_we_do_image'))
                                         <i class="fa-solid fa-circle-exclamation text-danger float-end mt-1"></i>
                                     @endif
-                                </button> --}}
+                                </button>
                                 <button class="nav-link text-start py-3 mb-2" data-bs-toggle="pill"
                                     data-bs-target="#tab-team" type="button">
                                     <i class="fa-solid fa-users-gear me-2"></i> Meet The Team
@@ -88,6 +89,64 @@
 
                         <!-- Tab 1: Who We Are -->
                         <input type="text" name="title" value="About Us" class="d-none">
+
+                        <!-- Tab 1: Who We Are (Founder Section Added) -->
+                        <div class="tab-pane fade show active" id="tab-who">
+                            <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
+                                <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">1. Founder Details & Core Values</h5>
+
+                                <!-- Founder Photo & Bio Row -->
+                                <div class="row mb-4 pb-4 border-bottom">
+                                    <div class="col-md-4 text-center">
+                                        <label class="form-label fw-bold d-block">Founder Photo</label>
+                                        <div class="image-upload-wrapper">
+                                            @php
+                                                $founderImg = $page->founder_photo
+                                                    ? asset('storage/' . $page->founder_photo)
+                                                    : 'https://placehold.co/300x300?text=Founder+Photo';
+                                            @endphp
+                                            <label for="founder_photo_input" class="cursor-pointer">
+                                                <img src="{{ $founderImg }}" id="founder_preview"
+                                                    class="img-fluid rounded shadow-sm border preview-img"
+                                                    style="width: 200px; height: 200px; object-fit: cover; cursor: pointer;">
+                                            </label>
+                                            <input type="file" name="founder_photo" id="founder_photo_input"
+                                                class="d-none" onchange="previewImage(this)">
+                                        </div>
+
+                                        @error('founder_photo')
+                                            <div class="text-danger fw-bold mt-2" style="font-size: 12px;">
+                                                <i class="fa-solid fa-circle-exclamation me-1"></i> {{ $message }}
+                                            </div>
+                                        @else
+                                            <small class="text-muted mt-2 d-block">Max size: 5MB (Click to upload)</small>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold">Founder Bio / Introduction</label>
+                                        <textarea name="founder_bio" class="form-control" rows="7" placeholder="Hello, my name is Vanni Intini...">{{ old('founder_bio', $page->founder_bio) }}</textarea>
+                                        <small class="text-muted">This text appears next to the founder's photo.</small>
+                                    </div>
+                                </div>
+
+                                <!-- Vision, Mission, Strategy -->
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label fw-semibold text-muted small">Vision Statement</label>
+                                        <textarea name="vision" class="form-control" rows="6">{{ old('vision', $page->vision) }}</textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label fw-semibold text-muted small">Mission Statement</label>
+                                        <textarea name="mission" class="form-control" rows="6">{{ old('mission', $page->mission) }}</textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label fw-semibold text-muted small">Strategy Plan</label>
+                                        <textarea name="strategy" class="form-control" rows="6">{{ old('strategy', $page->strategy) }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- <div class="tab-pane fade show active" id="tab-who">
                             <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
                                 <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">1. Vision, Mission & Strategy</h5>
@@ -126,7 +185,7 @@
                         </div> --}}
 
                         <!-- Tab 2: What We Do -->
-                        {{-- <div class="tab-pane fade" id="tab-what">
+                        <div class="tab-pane fade" id="tab-what">
                             <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
                                 <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">2. Description & Diagram</h5>
                                 <div class="mb-4">
@@ -155,7 +214,7 @@
                                     @enderror
                                 </div>
                             </div>
-                        </div> --}}
+                        </div>
 
                         <!-- Tab 3: Meet The Team (Repeater with Error Highlights) -->
                         <div class="tab-pane fade h-100" id="tab-team">
@@ -308,7 +367,8 @@
                                                     @enderror
 
                                                     @if (isset($video['path']) && $video['path'])
-                                                        <small class="text-success"><i class="fa-solid fa-circle-check"></i>
+                                                        <small class="text-success"><i
+                                                                class="fa-solid fa-circle-check"></i>
                                                             File Uploaded</small>
                                                         <input type="hidden" name="videos[{{ $vIndex }}][path]"
                                                             value="{{ $video['path'] }}">
@@ -361,8 +421,8 @@
                                         <div class="faq-item border rounded-3 p-3 mb-3 bg-light shadow-sm">
                                             <div class="d-flex justify-content-between mb-2">
                                                 <label class="fw-bold text-primary">Question #{{ $fIndex + 1 }}</label>
-                                                <button type="button"
-                                                    class="btn btn-danger btn-sm remove-item"><i class="fa-solid fa-xmark"></i></button>
+                                                <button type="button" class="btn btn-danger btn-sm remove-item"><i
+                                                        class="fa-solid fa-xmark"></i></button>
                                             </div>
                                             <input type="text" name="faqs[{{ $fIndex }}][question]"
                                                 class="form-control mb-2" placeholder="Enter Question"
@@ -647,7 +707,6 @@
                 }
             }
         });
-
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
