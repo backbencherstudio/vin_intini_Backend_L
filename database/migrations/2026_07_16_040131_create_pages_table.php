@@ -22,6 +22,9 @@ return new class extends Migration
             $table->longText('mission')->nullable();
             $table->longText('strategy')->nullable();
 
+            $table->string('founder_photo')->nullable();
+            $table->longText('founder_bio')->nullable();
+
             $table->string('what_we_do_image')->nullable();
 
             $table->json('team_members')->nullable();

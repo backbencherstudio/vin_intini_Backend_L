@@ -16,6 +16,8 @@ class Page extends Model
         'vision',
         'mission',
         'strategy',
+        'founder_photo', 
+        'founder_bio',
         'what_we_do_image',
         'team_members',
         'features_videos',
