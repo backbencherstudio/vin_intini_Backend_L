@@ -14,6 +14,8 @@ class PageSeeder extends Seeder
             [
                 'title' => 'About Us',
                 'slug'  => 'about-us',
+                'founder_photo' => null, 
+                'founder_bio' => 'Hello, my name is Vanni Intini and I am the founder and CEO of Mind Unite. I created Mind Unite to bridge the gap between brain health professionals and industry partners, fostering a community of collaboration and innovation.',
                 'content' => 'At Mind Unite, we attract Brain Health professionals and partner with Biotech, Psychotropic, and Publication Companies to create an environment for collaboration, resource optimization, and opportunity sharing in one location.',
                 'vision'  => 'To create and grow a brain health professionals networking platform into a global collaboration and resource sharing enterprise.',
                 'mission' => 'To connect current and future brain health professionals to information, resources, and opportunities.',
