@@ -66,8 +66,6 @@ class AlaskaDataSeeder extends Seeder
             );
         }
 
-        // 3. Alaska তে বর্তমানে MD / DO / MD-PhD Residency নেই
-        // তাই এখানে residency insert করা হয়নি
 
         // 4. State Institutions
         $stateInstitutions = [
