@@ -155,6 +155,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'success' => true,
+            'is_onboarding' => $user->profile()->exists(),
             'user' => $user,
             'token' => $token,
             'token_type' => 'bearer',
@@ -242,7 +243,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Registration failed.',
-                
+
             ], 500);
         }
     }
@@ -269,6 +270,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'status' => true,
+                'is_onboarding' => $user->profile()->exists(),
                 'message' => 'Email already verified.',
                 'user' => $user,
                 'token' => $token,
@@ -302,6 +304,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => true,
+            'is_onboarding' => $user->profile()->exists(),
             'message' => 'Email verified successfully.',
             'user' => $user,
             'token' => $token,
