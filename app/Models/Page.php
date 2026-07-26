@@ -16,8 +16,7 @@ class Page extends Model
         'vision',
         'mission',
         'strategy',
-        'founder_photo', 
-        'founder_bio',
+        'founder_info',
         'what_we_do_image',
         'team_members',
         'features_videos',
@@ -26,6 +25,7 @@ class Page extends Model
     ];
 
     protected $casts = [
+        'founder_info' => 'array',
         'team_members' => 'array',
         'features_videos' => 'array',
         'faqs' => 'array',

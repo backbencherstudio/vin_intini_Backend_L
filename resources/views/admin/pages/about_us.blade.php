@@ -90,25 +90,29 @@
                         <!-- Tab 1: Who We Are -->
                         <input type="text" name="title" value="About Us" class="d-none">
 
-                        <!-- Tab 1: Who We Are (Founder Section Added) -->
                         <div class="tab-pane fade show active" id="tab-who">
                             <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
-                                <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">1. Founder Details & Core Values</h5>
+                                <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">1. Founder Profile & Core Values</h5>
 
-                                <!-- Founder Photo & Bio Row -->
+                                <!-- Founder Photo & Basic Info Row -->
                                 <div class="row mb-4 pb-4 border-bottom">
-                                    <div class="col-md-4 text-center">
+                                    @php
+                                        $founder = $page->founder_info ?? [];
+                                    @endphp
+
+                                    <!-- Left: Photo -->
+                                    <div class="col-md-4 text-center border-end">
                                         <label class="form-label fw-bold d-block">Founder Photo</label>
                                         <div class="image-upload-wrapper">
                                             @php
-                                                $founderImg = $page->founder_photo
-                                                    ? asset('storage/' . $page->founder_photo)
+                                                $founderImg = !empty($founder['photo'])
+                                                    ? asset('storage/' . $founder['photo'])
                                                     : 'https://placehold.co/300x300?text=Founder+Photo';
                                             @endphp
                                             <label for="founder_photo_input" class="cursor-pointer">
                                                 <img src="{{ $founderImg }}" id="founder_preview"
                                                     class="img-fluid rounded shadow-sm border preview-img"
-                                                    style="width: 200px; height: 200px; object-fit: cover; cursor: pointer;">
+                                                    style="width: 220px; height: 260px; object-fit: cover; cursor: pointer;">
                                             </label>
                                             <input type="file" name="founder_photo" id="founder_photo_input"
                                                 class="d-none" onchange="previewImage(this)">
@@ -119,70 +123,75 @@
                                                 <i class="fa-solid fa-circle-exclamation me-1"></i> {{ $message }}
                                             </div>
                                         @else
-                                            <small class="text-muted mt-2 d-block">Max size: 5MB (Click to upload)</small>
+                                            <small class="text-muted mt-2 d-block">Recommended size: 500x600px</small>
                                         @enderror
                                     </div>
+
+                                    <!-- Right: Details -->
                                     <div class="col-md-8">
-                                        <label class="form-label fw-bold">Founder Bio / Introduction</label>
-                                        <textarea name="founder_bio" class="form-control" rows="7" placeholder="Hello, my name is Vanni Intini...">{{ old('founder_bio', $page->founder_bio) }}</textarea>
-                                        <small class="text-muted">This text appears next to the founder's photo.</small>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold small">Founder Name</label>
+                                                <input type="text" name="founder_name" class="form-control"
+                                                    value="{{ old('founder_name', $founder['name'] ?? '') }}"
+                                                    placeholder="e.g. Vanni Intini">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold small">Designation</label>
+                                                <input type="text" name="founder_designation" class="form-control"
+                                                    value="{{ old('founder_designation', $founder['designation'] ?? '') }}"
+                                                    placeholder="e.g. Founder & CEO">
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-bold small">Biography / Intro
+                                                    Text</label>
+                                                <textarea name="founder_bio" class="form-control" rows="4" placeholder="Hello, I created Mind unite...">{{ old('founder_bio', $founder['bio'] ?? '') }}</textarea>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-bold small">Signature
+                                                    (Text)</label>
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <input type="text" name="founder_signature" id="signature_input"
+                                                        class="form-control w-50"
+                                                        value="{{ old('founder_signature', $founder['signature'] ?? '') }}"
+                                                        placeholder="Type name for signature">
+
+                                                    <div class="signature-preview px-3 py-1 border rounded bg-white shadow-sm"
+                                                        style="font-family: 'Great Vibes', cursive; font-size: 28px; color: #555; min-width: 180px; text-align: center;">
+                                                        <span
+                                                            id="signature_preview_text">{{ $founder['signature'] ?? 'Your Signature' }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <!-- Vision, Mission, Strategy -->
-                                <div class="row">
+                                <div class="row mt-2">
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label fw-semibold text-muted small">Vision Statement</label>
+                                        <label class="form-label fw-semibold fw-bold text-muted small">Our Vision</label>
                                         <textarea name="vision" class="form-control" rows="6">{{ old('vision', $page->vision) }}</textarea>
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label fw-semibold text-muted small">Mission Statement</label>
+                                        <label class="form-label fw-semibold fw-bold text-muted small">Our Mission</label>
                                         <textarea name="mission" class="form-control" rows="6">{{ old('mission', $page->mission) }}</textarea>
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label fw-semibold text-muted small">Strategy Plan</label>
+                                        <label class="form-label fw-semibold fw-bold text-muted small">Our Strategy</label>
                                         <textarea name="strategy" class="form-control" rows="6">{{ old('strategy', $page->strategy) }}</textarea>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- <div class="tab-pane fade show active" id="tab-who">
-                            <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
-                                <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">1. Vision, Mission & Strategy</h5>
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold">Page Header Title <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" name="title"
-                                        class="form-control @error('title') is-invalid @enderror"
-                                        value="{{ old('title', $page->title) }}" required>
-                                    @error('title')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold text-muted small">Vision Statement</label>
-                                    <textarea name="vision" class="form-control @error('vision') is-invalid @enderror" rows="3">{{ old('vision', $page->vision) }}</textarea>
-                                    @error('vision')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold text-muted small">Mission Statement</label>
-                                    <textarea name="mission" class="form-control @error('mission') is-invalid @enderror" rows="3">{{ old('mission', $page->mission) }}</textarea>
-                                    @error('mission')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold text-muted small">Strategy Plan</label>
-                                    <textarea name="strategy" class="form-control @error('strategy') is-invalid @enderror" rows="3">{{ old('strategy', $page->strategy) }}</textarea>
-                                    @error('strategy')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div> --}}
+                        <!-- Signature Font & Logic -->
+                        <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+                        <script>
+                            document.getElementById('signature_input').addEventListener('input', function() {
+                                document.getElementById('signature_preview_text').innerText = this.value || 'Your Signature';
+                            });
+                        </script>
 
                         <!-- Tab 2: What We Do -->
                         <div class="tab-pane fade" id="tab-what">
@@ -334,15 +343,22 @@
                                                     <label class="small fw-bold d-block">Video Thumbnail</label>
                                                     <div class="image-upload-wrapper">
                                                         @php
-                                                            $thumbUrl = isset($video['thumbnail']) && $video['thumbnail']
-                                                                ? asset('storage/' . $video['thumbnail'])
-                                                                : 'https://placehold.co/320x180?text=No+Thumbnail';
+                                                            $thumbUrl =
+                                                                isset($video['thumbnail']) && $video['thumbnail']
+                                                                    ? asset('storage/' . $video['thumbnail'])
+                                                                    : 'https://placehold.co/320x180?text=No+Thumbnail';
                                                         @endphp
                                                         <label class="cursor-pointer">
-                                                            <img src="{{ $thumbUrl }}" class="img-fluid rounded border preview-img" style="width: 100%; height: 120px; object-fit: cover;">
-                                                            <input type="file" name="videos[{{ $vIndex }}][thumbnail]" class="d-none" onchange="previewImage(this)">
+                                                            <img src="{{ $thumbUrl }}"
+                                                                class="img-fluid rounded border preview-img"
+                                                                style="width: 100%; height: 120px; object-fit: cover;">
+                                                            <input type="file"
+                                                                name="videos[{{ $vIndex }}][thumbnail]"
+                                                                class="d-none" onchange="previewImage(this)">
                                                         </label>
-                                                        <input type="hidden" name="videos[{{ $vIndex }}][old_thumbnail]" value="{{ $video['thumbnail'] ?? '' }}">
+                                                        <input type="hidden"
+                                                            name="videos[{{ $vIndex }}][old_thumbnail]"
+                                                            value="{{ $video['thumbnail'] ?? '' }}">
                                                     </div>
                                                 </div>
 
@@ -674,7 +690,7 @@
                             </label>
                         </div>
                     </div>
-                    
+
                     <input type="text" name="videos[${idx}][title]" class="form-control mb-2" placeholder="Video Title" required>
                     <select name="videos[${idx}][source]" class="form-select form-select-sm mb-2" onchange="toggleVideoInput(this)">
                         <option value="url">YouTube/Embed URL</option>

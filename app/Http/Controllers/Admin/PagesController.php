@@ -59,15 +59,20 @@ class PagesController extends Controller
         $page->mission = $request->mission;
         $page->strategy = $request->strategy;
 
-        $page->founder_bio = $request->founder_bio;
+        $founder = $page->founder_info ?? [];
+        $founder['name'] = $request->founder_name;
+        $founder['designation'] = $request->founder_designation;
+        $founder['bio'] = $request->founder_bio;
+        $founder['signature'] = $request->founder_signature;
 
         if ($request->hasFile('founder_photo')) {
-            if ($page->founder_photo) {
-                Storage::disk('public')->delete($page->founder_photo);
+            if (isset($founder['photo'])) {
+                Storage::disk('public')->delete($founder['photo']);
             }
-            $page->founder_photo = $request->file('founder_photo')->store('pages/founder', 'public');
+            $founder['photo'] = $request->file('founder_photo')->store('pages/founder', 'public');
         }
 
+        $page->founder_info = $founder;
         if ($request->hasFile('what_we_do_image')) {
             if ($page->what_we_do_image) {
                 Storage::disk('public')->delete($page->what_we_do_image);
