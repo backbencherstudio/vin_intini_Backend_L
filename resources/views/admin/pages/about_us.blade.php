@@ -328,6 +328,25 @@
                                         <div class="col-md-6 video-item">
                                             <div
                                                 class="card border p-3 h-100 shadow-sm bg-light @if ($errors->has("videos.$vIndex.*")) border-danger @endif">
+
+                                                <!-- Thumbnail Section -->
+                                                <div class="mb-3 text-center">
+                                                    <label class="small fw-bold d-block">Video Thumbnail</label>
+                                                    <div class="image-upload-wrapper">
+                                                        @php
+                                                            $thumbUrl = isset($video['thumbnail']) && $video['thumbnail']
+                                                                ? asset('storage/' . $video['thumbnail'])
+                                                                : 'https://placehold.co/320x180?text=No+Thumbnail';
+                                                        @endphp
+                                                        <label class="cursor-pointer">
+                                                            <img src="{{ $thumbUrl }}" class="img-fluid rounded border preview-img" style="width: 100%; height: 120px; object-fit: cover;">
+                                                            <input type="file" name="videos[{{ $vIndex }}][thumbnail]" class="d-none" onchange="previewImage(this)">
+                                                        </label>
+                                                        <input type="hidden" name="videos[{{ $vIndex }}][old_thumbnail]" value="{{ $video['thumbnail'] ?? '' }}">
+                                                    </div>
+                                                </div>
+
+
                                                 <input type="text" name="videos[{{ $vIndex }}][title]"
                                                     class="form-control mb-2 @error("videos.$vIndex.title") is-invalid @enderror"
                                                     placeholder="Video Title" value="{{ $video['title'] ?? '' }}">
@@ -645,6 +664,17 @@
             let html = `
             <div class="col-md-6 video-item">
                 <div class="card border p-3 h-100 shadow-sm bg-light">
+
+                     <div class="mb-3 text-center">
+                        <label class="small fw-bold d-block">Video Thumbnail</label>
+                        <div class="image-upload-wrapper">
+                            <label class="cursor-pointer">
+                                <img src="https://placehold.co/320x180?text=Click+to+Upload" class="img-fluid rounded border preview-img" style="width: 100%; height: 120px; object-fit: cover;">
+                                <input type="file" name="videos[${idx}][thumbnail]" class="d-none" onchange="previewImage(this)">
+                            </label>
+                        </div>
+                    </div>
+                    
                     <input type="text" name="videos[${idx}][title]" class="form-control mb-2" placeholder="Video Title" required>
                     <select name="videos[${idx}][source]" class="form-select form-select-sm mb-2" onchange="toggleVideoInput(this)">
                         <option value="url">YouTube/Embed URL</option>

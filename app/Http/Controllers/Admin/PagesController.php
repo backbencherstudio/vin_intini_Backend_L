@@ -42,10 +42,12 @@ class PagesController extends Controller
             'what_we_do_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'team.*.photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'videos.*.file' => 'nullable|mimes:mp4,mov,avi,wmv|max:102400',
+            'videos.*.thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ], [
             'founder_photo.max' => 'The founder photo must not be larger than 5MB.',
             'team.*.photo.max' => 'The image must not be larger than 5MB.',
             'what_we_do_image.max' => 'The diagram image must not be larger than 5MB.',
+            'videos.*.thumbnail.max' => 'Video thumbnail must not be larger than 2MB.',
         ]);
 
         $oldVideos = $page->features_videos ?? [];
@@ -102,6 +104,16 @@ class PagesController extends Controller
         if ($request->has('videos')) {
             foreach ($request->videos as $vKey => $video) {
                 $item = ['title' => $video['title'], 'source' => $video['source']];
+
+                $thumbPath = $video['old_thumbnail'] ?? null;
+                if ($request->hasFile("videos.$vKey.thumbnail")) {
+                    if ($thumbPath) {
+                        Storage::disk('public')->delete($thumbPath);
+                    }
+                    $thumbPath = $request->file("videos.$vKey.thumbnail")->store('pages/videos/thumbnails', 'public');
+                }
+                $item['thumbnail'] = $thumbPath;
+
                 if ($video['source'] == 'url') {
                     $item['url'] = $video['url'];
                     $item['path'] = null;
@@ -125,6 +137,9 @@ class PagesController extends Controller
                 if (!collect($newVideoData)->contains('path', $oVideo['path'])) {
                     Storage::disk('public')->delete($oVideo['path']);
                 }
+            }
+            if (isset($oVideo['thumbnail']) && !collect($newVideoData)->contains('thumbnail', $oVideo['thumbnail'])) {
+                Storage::disk('public')->delete($oVideo['thumbnail']);
             }
         }
         $page->features_videos = $newVideoData;
