@@ -334,7 +334,129 @@
                                 <div id="video-repeater" class="row g-3">
                                     @php $videos = old('videos', $page->features_videos ?? []); @endphp
                                     @foreach ($videos as $vIndex => $video)
-                                        <div class="col-md-6 video-item">
+
+
+
+                                        {{-- <div class="col-md-4 video-item">
+                                            <div
+                                                class="card h-100 border-0 shadow-sm rounded-3 @if ($errors->has("videos.$vIndex.*")) border border-danger @endif">
+
+                                                <!-- Thumbnail -->
+                                                <div class="p-3 pb-0">
+                                                    <div class="position-relative rounded-3 overflow-hidden"
+                                                        style="height: 150px;">
+                                                        @php
+                                                            $thumbUrl =
+                                                                isset($video['thumbnail']) && $video['thumbnail']
+                                                                    ? asset('storage/' . $video['thumbnail'])
+                                                                    : 'https://placehold.co/400x225?text=No+Thumbnail';
+                                                        @endphp
+
+                                                        <label class="d-block w-100 h-100 m-0 cursor-pointer">
+                                                            <img src="{{ $thumbUrl }}"
+                                                                class="w-100 h-100 object-fit-cover preview-img"
+                                                                alt="Thumbnail">
+                                                            <input type="file"
+                                                                name="videos[{{ $vIndex }}][thumbnail]"
+                                                                class="d-none" onchange="previewImage(this)">
+                                                        </label>
+
+                                                        <input type="hidden"
+                                                            name="videos[{{ $vIndex }}][old_thumbnail]"
+                                                            value="{{ $video['thumbnail'] ?? '' }}">
+
+                                                        <div
+                                                            class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-60 text-white text-center py-1 small">
+                                                            <i class="fa-solid fa-camera me-1"></i> Change Thumbnail
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Body -->
+                                                <div class="card-body d-flex flex-column">
+
+                                                    <!-- Title -->
+                                                    <input type="text" name="videos[{{ $vIndex }}][title]"
+                                                        class="form-control form-control-sm mb-3 @error("videos.$vIndex.title") is-invalid @enderror"
+                                                        placeholder="Video Title" value="{{ $video['title'] ?? '' }}">
+                                                    @error("videos.$vIndex.title")
+                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                    @enderror
+
+                                                    <!-- Source -->
+                                                    <select name="videos[{{ $vIndex }}][source]"
+                                                        class="form-select form-select-sm mb-3"
+                                                        onchange="toggleVideoInput(this)">
+                                                        <option value="url"
+                                                            {{ ($video['source'] ?? 'url') == 'url' ? 'selected' : '' }}>
+                                                            YouTube / Embed URL
+                                                        </option>
+                                                        <option value="file"
+                                                            {{ ($video['source'] ?? '') == 'file' ? 'selected' : '' }}>
+                                                            Upload Video File
+                                                        </option>
+                                                    </select>
+
+                                                    <!-- URL -->
+                                                    <div
+                                                        class="url-input-div mb-3 {{ ($video['source'] ?? 'url') == 'file' ? 'd-none' : '' }}">
+                                                        <input type="text" name="videos[{{ $vIndex }}][url]"
+                                                            class="form-control form-control-sm @error("videos.$vIndex.url") is-invalid @enderror"
+                                                            placeholder="Paste Embed URL"
+                                                            value="{{ $video['url'] ?? '' }}">
+                                                        @error("videos.$vIndex.url")
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+
+                                                    <!-- File -->
+                                                    <div
+                                                        class="file-input-div mb-3 {{ ($video['source'] ?? 'url') == 'url' ? 'd-none' : '' }}">
+                                                        <input type="file" name="videos[{{ $vIndex }}][file]"
+                                                            class="form-control form-control-sm @error("videos.$vIndex.file") is-invalid @enderror"
+                                                            accept="video/*">
+                                                        @error("videos.$vIndex.file")
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
+
+                                                        @if (isset($video['path']) && $video['path'])
+                                                            <div class="mt-2">
+                                                                <span class="badge bg-success rounded-pill">
+                                                                    <i class="fa-solid fa-circle-check me-1"></i> File
+                                                                    Uploaded
+                                                                </span>
+                                                                <input type="hidden"
+                                                                    name="videos[{{ $vIndex }}][path]"
+                                                                    value="{{ $video['path'] }}">
+                                                            </div>
+                                                        @endif
+                                                    </div>
+
+                                                    <!-- Actions -->
+                                                    <div
+                                                        class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top">
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-danger remove-item">
+                                                            <i class="fa-solid fa-trash-can me-1"></i> Remove
+                                                        </button>
+
+                                                        @if (($video['url'] ?? '') || ($video['path'] ?? ''))
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-primary view-video-btn"
+                                                                data-title="{{ $video['title'] }}"
+                                                                data-source="{{ $video['source'] ?? 'url' }}"
+                                                                data-url="{{ $video['url'] ?? '' }}"
+                                                                data-path="{{ isset($video['path']) ? asset('storage/' . $video['path']) : '' }}">
+                                                                <i class="fa-solid fa-play me-1"></i> View
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div> --}}
+
+
+                                        <div class="col-md-4 video-item">
                                             <div
                                                 class="card border p-3 h-100 shadow-sm bg-light @if ($errors->has("videos.$vIndex.*")) border-danger @endif">
 
@@ -678,7 +800,7 @@
             let container = document.getElementById('video-repeater');
             let idx = container.querySelectorAll('.video-item').length;
             let html = `
-            <div class="col-md-6 video-item">
+            <div class="col-md-4 video-item">
                 <div class="card border p-3 h-100 shadow-sm bg-light">
 
                      <div class="mb-3 text-center">
