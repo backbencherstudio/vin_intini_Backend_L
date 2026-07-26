@@ -104,7 +104,11 @@ class PagesController extends Controller
         $newVideoData = [];
         if ($request->has('videos')) {
             foreach ($request->videos as $vKey => $video) {
-                $item = ['title' => $video['title'], 'source' => $video['source']];
+                $item = [
+                    'title' => $video['title'],
+                    'source' => $video['source'],
+                    'type'   => ($video['source'] == 'url') ? 'youtube_video' : 'local_video'
+                ];
 
                 $thumbPath = $video['old_thumbnail'] ?? null;
                 if ($request->hasFile("videos.$vKey.thumbnail")) {
@@ -161,7 +165,7 @@ class PagesController extends Controller
 
         $page->save();
 
-        return back()->with('success', 'Page info updated successfully!');
+        return back()->with('success', 'Page content updated successfully!');
     }
 
     //get page data for API
@@ -232,6 +236,7 @@ class PagesController extends Controller
                 return [
                     'title' => $video['title'] ?? '',
                     'source' => $video['source'] ?? '',
+                    'type'          => $video['type'] ?? '',
                     'url' => $video['url'] ?? null,
                     'file_url' => isset($video['path']) ? asset('storage/' . $video['path']) : null,
                     'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/' . $video['thumbnail']) : null,
