@@ -69,12 +69,13 @@ class PagesController extends Controller
         }
 
         $page->founder_info = $founder;
-        if ($request->hasFile('what_we_do_image')) {
-            if ($page->what_we_do_image) {
-                Storage::disk('public')->delete($page->what_we_do_image);
-            }
-            $page->what_we_do_image = $request->file('what_we_do_image')->store('pages/about', 'public');
-        }
+        
+        // if ($request->hasFile('what_we_do_image')) {
+        //     if ($page->what_we_do_image) {
+        //         Storage::disk('public')->delete($page->what_we_do_image);
+        //     }
+        //     $page->what_we_do_image = $request->file('what_we_do_image')->store('pages/about', 'public');
+        // }
 
         $newTeamData = [];
         if ($request->has('team')) {

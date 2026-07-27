@@ -24,8 +24,6 @@ return new class extends Migration
 
             $table->json('founder_info')->nullable();
 
-            $table->string('what_we_do_image')->nullable();
-
             $table->json('team_members')->nullable();
 
             $table->json('features_videos')->nullable();

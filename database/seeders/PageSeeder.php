@@ -27,8 +27,6 @@ class PageSeeder extends Seeder
                     'signature'   => 'Vanni Intini'
                 ],
 
-                'what_we_do_image' => null,
-
                 'team_members' => [
                     [
                         'name' => 'Vanni Intini',

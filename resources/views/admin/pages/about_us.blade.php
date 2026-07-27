@@ -118,7 +118,7 @@
                                                 <i class="fa-solid fa-circle-exclamation me-1"></i> {{ $message }}
                                             </div>
                                         @else
-                                            <small class="text-muted mt-2 d-block">Recommended size: 500x600px</small>
+                                            {{-- <small class="text-muted mt-2 d-block">Recommended size: 500x600px</small> --}}
                                         @enderror
                                     </div>
 
@@ -189,7 +189,7 @@
                         </script>
 
                         <!-- Tab 2: What We Do -->
-                        <div class="tab-pane fade" id="tab-what">
+                        {{-- <div class="tab-pane fade" id="tab-what">
                             <div class="card border-0 shadow-sm rounded-3 p-4 mb-3">
                                 <h5 class="fw-bold mb-4 border-bottom pb-2 text-dark">2. Description & Diagram</h5>
                                 <div class="mb-4">
@@ -218,7 +218,7 @@
                                     @enderror
                                 </div>
                             </div>
-                        </div>
+                        </div> --}}
 
                         <!-- Tab 3: Meet The Team (Repeater with Error Highlights) -->
                         <div class="tab-pane fade h-100" id="tab-team">
