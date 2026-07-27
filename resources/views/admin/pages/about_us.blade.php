@@ -47,13 +47,13 @@
                                         <i class="fa-solid fa-circle-exclamation text-danger float-end mt-1"></i>
                                     @endif
                                 </button>
-                                <button class="nav-link text-start py-3 mb-2" data-bs-toggle="pill"
+                                {{-- <button class="nav-link text-start py-3 mb-2" data-bs-toggle="pill"
                                     data-bs-target="#tab-what" type="button">
                                     <i class="fa-solid fa-briefcase me-2"></i> What We Do
                                     @if ($errors->has('content') || $errors->has('what_we_do_image'))
                                         <i class="fa-solid fa-circle-exclamation text-danger float-end mt-1"></i>
                                     @endif
-                                </button>
+                                </button> --}}
                                 <button class="nav-link text-start py-3 mb-2" data-bs-toggle="pill"
                                     data-bs-target="#tab-team" type="button">
                                     <i class="fa-solid fa-users-gear me-2"></i> Meet The Team

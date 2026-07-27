@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\Admin\PagesController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', function () {
@@ -35,6 +36,9 @@ Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp']
 Route::get('/auth/{provider}', [SocialController::class, 'redirect']);
 Route::get('/auth/{provider}/callback', [SocialController::class, 'callback']);
 Route::post('/refresh', [AuthController::class, 'refresh']);
+
+// pages routes
+Route::get('/pages/{slug}', [PagesController::class, 'getPageData']);
 
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

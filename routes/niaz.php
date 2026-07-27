@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\Admin\IndustryApiController;
-use App\Http\Controllers\Admin\PagesController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:api', 'role:admin'])->group(function () {});
@@ -117,6 +116,4 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
         Route::get('/pub-partners', [IndustryApiController::class, 'getNeurosciencePubPartners']);
     });
 
-    // pages routes
-    Route::get('/pages/{slug}', [PagesController::class, 'getPageData']);
 });
