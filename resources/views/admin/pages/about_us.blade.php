@@ -26,11 +26,6 @@
                 </div>
             </div>
 
-            {{-- @if (session('success'))
-                <div class="alert alert-success border-0 shadow-sm mb-3 py-2 flex-shrink-0">
-                    {{ session('success') }}
-                </div>
-            @endif --}}
 
             <!-- 2. MAIN CONTENT AREA -->
             <div class="row flex-grow-1 overflow-hidden g-3 mb-2">
@@ -334,115 +329,97 @@
                                 <div id="video-repeater" class="row g-3">
                                     @php $videos = old('videos', $page->features_videos ?? []); @endphp
                                     @foreach ($videos as $vIndex => $video)
-
-
-
-                                        {{-- <div class="col-md-4 video-item">
+                                        <div class="col-md-4 video-item">
                                             <div
-                                                class="card h-100 border-0 shadow-sm rounded-3 @if ($errors->has("videos.$vIndex.*")) border border-danger @endif">
+                                                class="card border-0 h-100 shadow bg-white overflow-hidden @if ($errors->has("videos.$vIndex.*")) border border-danger @endif">
 
-                                                <!-- Thumbnail -->
-                                                <div class="p-3 pb-0">
-                                                    <div class="position-relative rounded-3 overflow-hidden"
-                                                        style="height: 150px;">
-                                                        @php
-                                                            $thumbUrl =
-                                                                isset($video['thumbnail']) && $video['thumbnail']
-                                                                    ? asset('storage/' . $video['thumbnail'])
-                                                                    : 'https://placehold.co/400x225?text=No+Thumbnail';
-                                                        @endphp
+                                                <!-- Full Width Thumbnail Section -->
+                                                <div class="position-relative bg-dark image-upload-wrapper"
+                                                    style="aspect-ratio: 16/9; overflow: hidden;">
+                                                    @php
+                                                        $thumbUrl =
+                                                            isset($video['thumbnail']) && $video['thumbnail']
+                                                                ? asset('storage/' . $video['thumbnail'])
+                                                                : 'https://placehold.co/640x360?text=No+Thumbnail';
+                                                    @endphp
+                                                    <label class="cursor-pointer m-0 w-100 h-100">
+                                                        <img src="{{ $thumbUrl }}" class="w-100 h-100 preview-img"
+                                                            style="object-fit: cover;">
+                                                        <input type="file"
+                                                            name="videos[{{ $vIndex }}][thumbnail]" class="d-none"
+                                                            onchange="previewImage(this)">
 
-                                                        <label class="d-block w-100 h-100 m-0 cursor-pointer">
-                                                            <img src="{{ $thumbUrl }}"
-                                                                class="w-100 h-100 object-fit-cover preview-img"
-                                                                alt="Thumbnail">
-                                                            <input type="file"
-                                                                name="videos[{{ $vIndex }}][thumbnail]"
-                                                                class="d-none" onchange="previewImage(this)">
-                                                        </label>
-
-                                                        <input type="hidden"
-                                                            name="videos[{{ $vIndex }}][old_thumbnail]"
-                                                            value="{{ $video['thumbnail'] ?? '' }}">
-
+                                                        <!-- Overlay on Hover -->
                                                         <div
-                                                            class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-60 text-white text-center py-1 small">
-                                                            <i class="fa-solid fa-camera me-1"></i> Change Thumbnail
+                                                            class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black bg-opacity-25 opacity-hover">
+                                                            <i class="fa-solid fa-camera text-white fs-4 mt-5"></i>
                                                         </div>
-                                                    </div>
+                                                    </label>
+                                                    <input type="hidden"
+                                                        name="videos[{{ $vIndex }}][old_thumbnail]"
+                                                        value="{{ $video['thumbnail'] ?? '' }}">
                                                 </div>
 
-                                                <!-- Body -->
-                                                <div class="card-body d-flex flex-column">
-
-                                                    <!-- Title -->
+                                                <!-- Card Body with Padding -->
+                                                <div class="card-body p-3 d-flex flex-column bg-light ">
                                                     <input type="text" name="videos[{{ $vIndex }}][title]"
-                                                        class="form-control form-control-sm mb-3 @error("videos.$vIndex.title") is-invalid @enderror"
+                                                        class="form-control mb-2 fw-bold @error("videos.$vIndex.title") is-invalid @enderror"
                                                         placeholder="Video Title" value="{{ $video['title'] ?? '' }}">
-                                                    @error("videos.$vIndex.title")
-                                                        <div class="invalid-feedback">{{ $message }}</div>
-                                                    @enderror
 
-                                                    <!-- Source -->
-                                                    <select name="videos[{{ $vIndex }}][source]"
-                                                        class="form-select form-select-sm mb-3"
-                                                        onchange="toggleVideoInput(this)">
-                                                        <option value="url"
-                                                            {{ ($video['source'] ?? 'url') == 'url' ? 'selected' : '' }}>
-                                                            YouTube / Embed URL
-                                                        </option>
-                                                        <option value="file"
-                                                            {{ ($video['source'] ?? '') == 'file' ? 'selected' : '' }}>
-                                                            Upload Video File
-                                                        </option>
-                                                    </select>
-
-                                                    <!-- URL -->
-                                                    <div
-                                                        class="url-input-div mb-3 {{ ($video['source'] ?? 'url') == 'file' ? 'd-none' : '' }}">
-                                                        <input type="text" name="videos[{{ $vIndex }}][url]"
-                                                            class="form-control form-control-sm @error("videos.$vIndex.url") is-invalid @enderror"
-                                                            placeholder="Paste Embed URL"
-                                                            value="{{ $video['url'] ?? '' }}">
-                                                        @error("videos.$vIndex.url")
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
+                                                    <div class="mb-2">
+                                                        <label class="small fw-bold text-muted">Video Source:</label>
+                                                        <select name="videos[{{ $vIndex }}][source]"
+                                                            class="form-select form-select-sm"
+                                                            onchange="toggleVideoInput(this)">
+                                                            <option value="url"
+                                                                {{ ($video['source'] ?? 'url') == 'url' ? 'selected' : '' }}>
+                                                                YouTube Embed URL</option>
+                                                            <option value="file"
+                                                                {{ ($video['source'] ?? '') == 'file' ? 'selected' : '' }}>
+                                                                Local File Upload</option>
+                                                        </select>
                                                     </div>
 
-                                                    <!-- File -->
+                                                    <!-- URL Input -->
                                                     <div
-                                                        class="file-input-div mb-3 {{ ($video['source'] ?? 'url') == 'url' ? 'd-none' : '' }}">
-                                                        <input type="file" name="videos[{{ $vIndex }}][file]"
-                                                            class="form-control form-control-sm @error("videos.$vIndex.file") is-invalid @enderror"
-                                                            accept="video/*">
-                                                        @error("videos.$vIndex.file")
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
+                                                        class="url-input-div {{ ($video['source'] ?? 'url') == 'file' ? 'd-none' : '' }}">
+                                                        <input type="text" name="videos[{{ $vIndex }}][url]"
+                                                            class="form-control form-control-sm mb-2"
+                                                            placeholder="Paste youtube embed link here"
+                                                            value="{{ $video['url'] ?? '' }}">
+                                                    </div>
 
-                                                        @if (isset($video['path']) && $video['path'])
-                                                            <div class="mt-2">
-                                                                <span class="badge bg-success rounded-pill">
-                                                                    <i class="fa-solid fa-circle-check me-1"></i> File
-                                                                    Uploaded
-                                                                </span>
+                                                    <!-- File Input -->
+                                                    <div
+                                                        class="file-input-div {{ ($video['source'] ?? 'url') == 'url' ? 'd-none' : '' }}">
+                                                        <input type="file" name="videos[{{ $vIndex }}][file]"
+                                                            class="form-control form-control-sm mb-2" accept="video/*">
+                                                    </div>
+
+                                                    <!-- Footer / Status Area -->
+                                                    <div
+                                                        class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-link text-danger remove-item p-0 text-decoration-none fw-bold">
+                                                            <i class="fa-solid fa-xmark me-1"></i> Remove
+                                                        </button>
+
+                                                        <div class="video-type-indicator">
+                                                            @if (($video['source'] ?? 'url') == 'url' && !empty($video['url']))
+                                                                <small class="text-danger fw-bold"><i
+                                                                        class="fa-brands fa-youtube"></i> YouTube</small>
+                                                            @elseif(($video['source'] ?? '') == 'file' && !empty($video['path']))
+                                                                <small class="text-success fw-bold"><i
+                                                                        class="fa-solid fa-folder-open"></i> Local</small>
                                                                 <input type="hidden"
                                                                     name="videos[{{ $vIndex }}][path]"
                                                                     value="{{ $video['path'] }}">
-                                                            </div>
-                                                        @endif
-                                                    </div>
-
-                                                    <!-- Actions -->
-                                                    <div
-                                                        class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top">
-                                                        <button type="button"
-                                                            class="btn btn-sm btn-outline-danger remove-item">
-                                                            <i class="fa-solid fa-trash-can me-1"></i> Remove
-                                                        </button>
+                                                            @endif
+                                                        </div>
 
                                                         @if (($video['url'] ?? '') || ($video['path'] ?? ''))
                                                             <button type="button"
-                                                                class="btn btn-sm btn-primary view-video-btn"
+                                                                class="btn btn-sm btn-primary rounded-pill px-3 view-video-btn"
                                                                 data-title="{{ $video['title'] }}"
                                                                 data-source="{{ $video['source'] ?? 'url' }}"
                                                                 data-url="{{ $video['url'] ?? '' }}"
@@ -451,103 +428,6 @@
                                                             </button>
                                                         @endif
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </div> --}}
-
-
-                                        <div class="col-md-4 video-item">
-                                            <div
-                                                class="card border p-3 h-100 shadow-sm bg-light @if ($errors->has("videos.$vIndex.*")) border-danger @endif">
-
-                                                <!-- Thumbnail Section -->
-                                                <div class="mb-3 text-center">
-                                                    <label class="small fw-bold d-block">Video Thumbnail</label>
-                                                    <div class="image-upload-wrapper">
-                                                        @php
-                                                            $thumbUrl =
-                                                                isset($video['thumbnail']) && $video['thumbnail']
-                                                                    ? asset('storage/' . $video['thumbnail'])
-                                                                    : 'https://placehold.co/320x180?text=No+Thumbnail';
-                                                        @endphp
-                                                        <label class="cursor-pointer">
-                                                            <img src="{{ $thumbUrl }}"
-                                                                class="img-fluid rounded border preview-img"
-                                                                style="width: 100%; height: 120px; object-fit: cover;">
-                                                            <input type="file"
-                                                                name="videos[{{ $vIndex }}][thumbnail]"
-                                                                class="d-none" onchange="previewImage(this)">
-                                                        </label>
-                                                        <input type="hidden"
-                                                            name="videos[{{ $vIndex }}][old_thumbnail]"
-                                                            value="{{ $video['thumbnail'] ?? '' }}">
-                                                    </div>
-                                                </div>
-
-
-                                                <input type="text" name="videos[{{ $vIndex }}][title]"
-                                                    class="form-control mb-2 @error("videos.$vIndex.title") is-invalid @enderror"
-                                                    placeholder="Video Title" value="{{ $video['title'] ?? '' }}">
-                                                @error("videos.$vIndex.title")
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-
-                                                <label class="small fw-bold">Video Source:</label>
-                                                <select name="videos[{{ $vIndex }}][source]"
-                                                    class="form-select form-select-sm mb-2"
-                                                    onchange="toggleVideoInput(this)">
-                                                    <option value="url"
-                                                        {{ ($video['source'] ?? 'url') == 'url' ? 'selected' : '' }}>
-                                                        YouTube/Embed URL</option>
-                                                    <option value="file"
-                                                        {{ ($video['source'] ?? '') == 'file' ? 'selected' : '' }}>Upload
-                                                        Video File</option>
-                                                </select>
-
-                                                <div
-                                                    class="url-input-div {{ ($video['source'] ?? 'url') == 'file' ? 'd-none' : '' }}">
-                                                    <input type="text" name="videos[{{ $vIndex }}][url]"
-                                                        class="form-control mb-2 @error("videos.$vIndex.url") is-invalid @enderror"
-                                                        placeholder="Embed URL" value="{{ $video['url'] ?? '' }}">
-                                                    @error("videos.$vIndex.url")
-                                                        <div class="invalid-feedback">{{ $message }}</div>
-                                                    @enderror
-                                                </div>
-
-                                                <div
-                                                    class="file-input-div {{ ($video['source'] ?? 'url') == 'url' ? 'd-none' : '' }}">
-                                                    <input type="file" name="videos[{{ $vIndex }}][file]"
-                                                        class="form-control mb-2 @error("videos.$vIndex.file") is-invalid @enderror"
-                                                        accept="video/*">
-                                                    @error("videos.$vIndex.file")
-                                                        <div class="invalid-feedback">{{ $message }}</div>
-                                                    @enderror
-
-                                                    @if (isset($video['path']) && $video['path'])
-                                                        <small class="text-success"><i
-                                                                class="fa-solid fa-circle-check"></i>
-                                                            File Uploaded</small>
-                                                        <input type="hidden" name="videos[{{ $vIndex }}][path]"
-                                                            value="{{ $video['path'] }}">
-                                                    @endif
-                                                </div>
-
-                                                <div
-                                                    class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
-                                                    <button type="button"
-                                                        class="btn btn-sm btn-link text-danger remove-item p-0 text-decoration-none fw-bold"><i
-                                                            class="fa-solid fa-xmark me-1"></i>Remove</button>
-
-                                                    @if (($video['url'] ?? '') || ($video['path'] ?? ''))
-                                                        <button type="button"
-                                                            class="btn btn-sm btn-outline-primary px-3 rounded-pill view-video-btn"
-                                                            data-title="{{ $video['title'] }}"
-                                                            data-source="{{ $video['source'] ?? 'url' }}"
-                                                            data-url="{{ $video['url'] ?? '' }}"
-                                                            data-path="{{ isset($video['path']) ? asset('storage/' . $video['path']) : '' }}">
-                                                            <i class="fa-solid fa-play-circle me-1"></i> View
-                                                        </button>
-                                                    @endif
                                                 </div>
                                             </div>
                                         </div>
@@ -780,7 +660,7 @@
                         <div class="image-upload-wrapper position-relative">
                             <label class="mb-0 cursor-pointer">
                                 <img src="https://ui-avatars.com/api/?name=New" class="rounded-circle shadow border preview-img" style="width: 85px; height: 85px; object-fit: cover; cursor: pointer;">
-                                <input type="file" name="team[${idx}][photo]" class="d-none" onchange="previewImage(this)">
+                                <input type="file" name="team[${idx}][photo]" class="d-none" accept="image/*" onchange="previewImage(this)">
                             </label>
                         </div>
                     </div>
@@ -801,26 +681,45 @@
             let idx = container.querySelectorAll('.video-item').length;
             let html = `
             <div class="col-md-4 video-item">
-                <div class="card border p-3 h-100 shadow-sm bg-light">
+                <div class="card border-0 h-100 shadow bg-white overflow-hidden">
 
-                     <div class="mb-3 text-center">
-                        <label class="small fw-bold d-block">Video Thumbnail</label>
-                        <div class="image-upload-wrapper">
-                            <label class="cursor-pointer">
-                                <img src="https://placehold.co/320x180?text=Click+to+Upload" class="img-fluid rounded border preview-img" style="width: 100%; height: 120px; object-fit: cover;">
-                                <input type="file" name="videos[${idx}][thumbnail]" class="d-none" onchange="previewImage(this)">
-                            </label>
-                        </div>
+                    <!-- Full Width Thumbnail Section -->
+                    <div class="position-relative bg-dark image-upload-wrapper" style="aspect-ratio: 16/9; overflow: hidden;">
+                        <label class="cursor-pointer m-0 w-100 h-100">
+                            <img src="https://placehold.co/640x360?text=Click+to+Upload+Thumbnail" class="w-100 h-100 preview-img" style="object-fit: cover;">
+                            <input type="file" name="videos[${idx}][thumbnail]" class="d-none" accept="image/*" onchange="previewImage(this)">
+
+                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black bg-opacity-25 opacity-hover">
+                                <i class="fa-solid fa-camera text-white fs-4 mt-5"></i>
+                            </div>
+                        </label>
                     </div>
 
-                    <input type="text" name="videos[${idx}][title]" class="form-control mb-2" placeholder="Video Title" required>
-                    <select name="videos[${idx}][source]" class="form-select form-select-sm mb-2" onchange="toggleVideoInput(this)">
-                        <option value="url">YouTube/Embed URL</option>
-                        <option value="file">Upload Video File</option>
-                    </select>
-                    <div class="url-input-div"><input type="text" name="videos[${idx}][url]" class="form-control mb-2" placeholder="URL"></div>
-                    <div class="file-input-div d-none"><input type="file" name="videos[${idx}][file]" class="form-control mb-2" accept="video/*"></div>
-                    <button type="button" class="btn btn-sm btn-link text-danger remove-item p-0 mt-auto text-start text-decoration-none fw-bold"><i class="fa-solid fa-xmark"></i> Remove Card</button>
+                    <div class="card-body p-3 d-flex flex-column bg-light">
+                        <input type="text" name="videos[${idx}][title]" class="form-control mb-2 fw-bold" placeholder="Video Title" required>
+
+                        <div class="mb-2">
+                            <label class="small fw-bold text-muted">Video Source:</label>
+                            <select name="videos[${idx}][source]" class="form-select form-select-sm" onchange="toggleVideoInput(this)">
+                                <option value="url">YouTube Embed URL</option>
+                                <option value="file">Local File Upload</option>
+                            </select>
+                        </div>
+
+                        <div class="url-input-div">
+                            <input type="text" name="videos[${idx}][url]" class="form-control form-control-sm mb-2" placeholder="Paste youtube embed link here">
+                        </div>
+
+                        <div class="file-input-div d-none">
+                            <input type="file" name="videos[${idx}][file]" class="form-control form-control-sm mb-2" accept="video/*">
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
+                            <button type="button" class="btn btn-sm btn-link text-danger remove-item p-0 text-decoration-none fw-bold">
+                                <i class="fa-solid fa-xmark me-1"></i> Remove
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>`;
             container.insertAdjacentHTML('beforeend', html);
