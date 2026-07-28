@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\LikeController;
+use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NewsfeedController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\TimelineController;
@@ -46,5 +48,15 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/reply/{id}', [CommentController::class, 'deleteReply']);
 
     Route::get('/my-comment-list', [CommentController::class, 'myComments']);
+
+    // conversation routes
+    Route::get('/conversations', [ConversationController::class, 'index']);
+    Route::post('/conversations/{conversation}/mark-read', [ConversationController::class, 'markAsRead']);
+    Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy']);
+
+    // message routes
+    Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
+    Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
+    Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
 
 });
