@@ -81,7 +81,20 @@
                                     <td><span
                                             class="text-muted small fw-bold">{{ ucfirst($partner->industry_type) }}</span>
                                     </td>
-                                    <td><span class="fw-bold text-dark">{{ $partner->partner_name }}</span></td>
+                                    {{-- <td><span class="fw-bold text-dark">{{ $partner->partner_name }}</span></td> --}}
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            @if($partner->partner_logo)
+                                                <img src="{{ asset('storage/' . $partner->partner_logo) }}" alt="" class="rounded border me-2" style="width: 40px; height: 40px; object-fit: contain; background: #f8f9fa;">
+                                            @else
+                                                <div class="rounded border me-2 bg-light d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                    <i class="fa fa-image text-muted" style="font-size: 10px;"></i>
+                                                </div>
+                                            @endif
+                                            <span class="fw-bold text-dark">{{ $partner->partner_name }}</span>
+                                        </div>
+                                    </td>
+
                                     <td><span
                                             class="badge border text-info bg-info-subtle px-2">{{ $partner->partner_tag ?? 'N/A' }}</span>
                                     </td>
@@ -143,7 +156,7 @@
     <!-- Modal: Add/Edit Partner -->
     <div class="modal fade" id="partnerModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <form action="{{ route('admin.partners.store') }}" method="POST" id="partnerForm"
+            <form action="{{ route('admin.partners.store') }}" method="POST" id="partnerForm" enctype="multipart/form-data"
                 class="modal-content border-0 shadow">
                 @csrf
                 <div class="modal-header border-0 pb-0">
@@ -173,6 +186,11 @@
                             <label class="form-label small fw-bold">Partner Name</label>
                             <input type="text" name="partner_name" id="partner_name" class="form-control"
                                 placeholder="Enter company name" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">Partner Logo</label>
+                            <input type="file" name="partner_logo" class="form-control">
+                            <small class="text-muted">Recommended size: 200x200px (Max 2MB)</small>
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-bold">Partner Tag</label>
