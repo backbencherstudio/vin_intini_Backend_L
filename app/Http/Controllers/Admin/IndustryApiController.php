@@ -158,8 +158,15 @@ class IndustryApiController extends Controller
         try {
             $partners = IndustryPartner::where('network_type', $network)
                 ->where('industry_type', $industry)
-                ->select('id', 'partner_name', 'partner_tag', 'partner_desc', 'partner_link')
-                ->get();
+                ->select('id', 'partner_name', 'partner_tag', 'partner_desc', 'partner_link', 'partner_logo')
+                ->get()
+                ->map(function ($partner) {
+                $partner->partner_logo = $partner->partner_logo
+                    ? asset('storage/' . $partner->partner_logo)
+                    : null;
+                return $partner;
+            });
+
             return response()->json(['success' => true, 'partners' => $partners], 200);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\IndustryPartner;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 
 class PartnerController extends Controller
@@ -35,26 +36,41 @@ class PartnerController extends Controller
             'partner_name' => 'required',
             'network_type' => 'required',
             'industry_type' => 'required',
+            'partner_logo' => 'nullable|file|mimes:jpeg,png,jpg,webp,svg|max:2048',
         ]);
 
-        IndustryPartner::updateOrCreate(
-            ['id' => $request->partner_id],
-            [
-                'network_type'  => $request->network_type,
-                'industry_type' => $request->industry_type,
-                'partner_name'  => $request->partner_name,
-                'partner_tag'   => $request->partner_tag,
-                'partner_desc'  => $request->partner_desc,
-                'partner_link'  => $request->partner_link,
-            ]
-        );
+        $data = [
+            'network_type'  => $request->network_type,
+            'industry_type' => $request->industry_type,
+            'partner_name'  => $request->partner_name,
+            'partner_tag'   => $request->partner_tag,
+            'partner_desc'  => $request->partner_desc,
+            'partner_link'  => $request->partner_link,
+        ];
+
+        if ($request->hasFile('partner_logo')) {
+            if ($request->partner_id) {
+                $oldPartner = IndustryPartner::find($request->partner_id);
+                if ($oldPartner && $oldPartner->partner_logo) {
+                    Storage::disk('public')->delete($oldPartner->partner_logo);
+                }
+            }
+            $path = $request->file('partner_logo')->store('partners', 'public');
+            $data['partner_logo'] = $path;
+        }
+
+        IndustryPartner::updateOrCreate(['id' => $request->partner_id], $data);
 
         return back()->with('success', 'Partner data saved successfully!');
     }
 
     public function destroy($id)
     {
-        IndustryPartner::findOrFail($id)->delete();
+        $partner = IndustryPartner::findOrFail($id);
+        if ($partner->partner_logo) {
+            Storage::disk('public')->delete($partner->partner_logo);
+        }
+        $partner->delete();
         return back()->with('success', 'Partner removed successfully!');
     }
 }

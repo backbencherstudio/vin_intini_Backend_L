@@ -291,7 +291,6 @@ class PagesController extends Controller
                     return [
                         'name' => $item['name'],
                         'logo_url' => ! empty($item['logo']) ? asset('storage/'.$item['logo']) : null,
-                        'order' => (int) $item['order'],
                     ];
                 })->values();
         }
