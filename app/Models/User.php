@@ -95,6 +95,16 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Experience::class);
     }
 
+    public function fcmTokens(): HasMany
+    {
+        return $this->hasMany(FcmToken::class);
+    }
+
+    public function routeNotificationForFcm($notification): array
+    {
+        return $this->fcmTokens()->pluck('fcm_token')->toArray();
+    }
+
     public function connectionRequestsSent(): HasMany
     {
         return $this->hasMany(Connection::class, 'sender_id');
