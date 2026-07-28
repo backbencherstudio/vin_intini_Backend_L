@@ -2,11 +2,11 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class NevadaDataSeeder extends Seeder
 {
@@ -26,13 +26,13 @@ class NevadaDataSeeder extends Seeder
                 'name' => 'University of Nevada, Las Vegas',
                 'psych' => ['BS', 'BS (OL)', 'BA', 'BA (OL)', 'MS', 'PhD'],
                 'neuro' => ['BS', 'PhD'],
-                'ol' => true
+                'ol' => true,
             ],
             [
                 'name' => 'University of Nevada, Reno',
                 'psych' => ['BS', 'BA', 'MS', 'MA', 'PhD'],
                 'neuro' => ['BS', 'MS', 'PhD'],
-                'ol' => false
+                'ol' => false,
             ],
             ['name' => 'Western Nevada College', 'psych' => [], 'neuro' => [], 'ol' => false],
         ];
@@ -51,27 +51,27 @@ class NevadaDataSeeder extends Seeder
             [
                 'name' => 'Kirk Kerkorian School of Medicine at UNLV Psychiatry Residency Program',
                 'loc' => 'Las Vegas',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'University of Nevada Reno School of Medicine',
                 'loc' => 'Reno',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'HCA Healthcare Sunrise Health GME/Southern Hills Psychiatry Residency',
                 'loc' => 'Las Vegas',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'Valley Health Psychiatry Residency Program',
                 'loc' => 'Las Vegas',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'University of Nevada School of Medicine',
                 'loc' => 'Reno',
-                'deg' => ['MD-PhD']
+                'deg' => ['MD-PhD'],
             ],
         ];
 

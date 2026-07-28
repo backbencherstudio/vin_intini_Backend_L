@@ -3,15 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Permission;
-use App\Models\PermissionGroup;
-use Spatie\Permission\Models\Role;
-use App\Models\RoleHasPermission;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -60,7 +57,7 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
-        $validator=Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'name' => [
                 'required',
                 'string',
@@ -69,14 +66,14 @@ class RoleController extends Controller
                     fn ($q) => $q->where('guard_name', 'api')
                 ),
             ],
-            'permissions'   => 'required|array|min:1',
+            'permissions' => 'required|array|min:1',
             'permissions.*' => 'exists:permissions,id',
         ]);
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation errors',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -85,7 +82,7 @@ class RoleController extends Controller
         try {
             DB::transaction(function () use ($validated, &$role) {
                 $role = Role::create([
-                    'name'       => strtolower($validated['name']),
+                    'name' => strtolower($validated['name']),
                     'guard_name' => 'api',
                 ]);
 
@@ -95,9 +92,9 @@ class RoleController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Role created successfully.',
-                'data'    => [
-                    'id'         => $role->id,
-                    'name'       => $role->name,
+                'data' => [
+                    'id' => $role->id,
+                    'name' => $role->name,
                 ],
             ], 201);
 
@@ -105,7 +102,7 @@ class RoleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create role.',
-                'error'   => app()->environment('production') ? null : $e->getMessage(),
+                'error' => app()->environment('production') ? null : $e->getMessage(),
             ], 500);
         }
     }
@@ -125,8 +122,8 @@ class RoleController extends Controller
                     'guard_name' => $role->guard_name,
                     'permissions' => $role->permissions->pluck('id'),
                 ],
-                'permissions' => $permissions
-            ]
+                'permissions' => $permissions,
+            ],
         ]);
     }
 
@@ -143,7 +140,7 @@ class RoleController extends Controller
                     ->where(fn ($q) => $q->where('guard_name', 'api'))
                     ->ignore($role->id),
             ],
-            'permissions'   => 'required|array|min:1',
+            'permissions' => 'required|array|min:1',
             'permissions.*' => 'exists:permissions,id',
         ]);
 
@@ -151,7 +148,7 @@ class RoleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation errors',
-                'errors'  => $validator->errors(),
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -169,8 +166,8 @@ class RoleController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Role updated successfully.',
-                'data'    => [
-                    'id'   => $role->id,
+                'data' => [
+                    'id' => $role->id,
                     'name' => $role->name,
                 ],
             ], 200);
@@ -179,7 +176,7 @@ class RoleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update role.',
-                'error'   => app()->environment('production') ? null : $e->getMessage(),
+                'error' => app()->environment('production') ? null : $e->getMessage(),
             ], 500);
         }
     }
@@ -211,9 +208,8 @@ class RoleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete role.',
-                'error'   => app()->environment('production') ? null : $e->getMessage(),
+                'error' => app()->environment('production') ? null : $e->getMessage(),
             ], 500);
         }
     }
-
 }

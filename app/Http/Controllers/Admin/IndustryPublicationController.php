@@ -14,6 +14,7 @@ class IndustryPublicationController extends Controller
     {
         return $this->renderView($request, 'psychology');
     }
+
     public function neuroscience(Request $request)
     {
         return $this->renderView($request, 'neuroscience');
@@ -26,7 +27,7 @@ class IndustryPublicationController extends Controller
         });
 
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->search . '%');
+            $query->where('title', 'like', '%'.$request->search.'%');
         }
 
         $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
@@ -38,7 +39,7 @@ class IndustryPublicationController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'network_type' => 'required'
+            'network_type' => 'required',
         ]);
 
         $section = IndustrySections::firstOrCreate(
@@ -60,6 +61,7 @@ class IndustryPublicationController extends Controller
     public function destroy($id)
     {
         IndustryItem::findOrFail($id)->delete();
+
         return back()->with('success', 'Article deleted successfully!');
     }
 }

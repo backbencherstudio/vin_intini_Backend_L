@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Group;
-use App\Models\Post;
 use App\Models\Institution;
+use App\Models\Post;
 use App\Models\Skill;
-use Carbon\Carbon;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -19,6 +18,7 @@ class AdminAuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('admin.user.management');
         }
+
         return view('admin.login');
     }
 
@@ -37,10 +37,12 @@ class AdminAuthController extends Controller
 
             if ($user->email === 'admin@gmail.com') {
                 $request->session()->regenerate();
+
                 return redirect()->intended(route('admin.user.management'));
             }
 
             Auth::guard('web')->logout();
+
             return back()->withErrors(['email' => 'You do not have permission to access the admin panel.']);
         }
 
@@ -80,7 +82,7 @@ class AdminAuthController extends Controller
         }
 
         if ($request->filled('from_date') && $request->filled('to_date')) {
-            $userQuery->whereBetween('created_at', [$request->from_date . ' 00:00:00', $request->to_date . ' 23:59:59']);
+            $userQuery->whereBetween('created_at', [$request->from_date.' 00:00:00', $request->to_date.' 23:59:59']);
         }
 
         $filterCount = (clone $userQuery)->count();
@@ -89,8 +91,7 @@ class AdminAuthController extends Controller
         return view('admin.user_management.index', compact('totalUsers', 'todayUsers', 'currentMonthUsers', 'previousMonthUsers', 'users', 'filterCount'));
     }
 
-
-    //user management functions
+    // user management functions
     // public function allUsers()
     // {
     //     $users = User::all();
@@ -121,7 +122,6 @@ class AdminAuthController extends Controller
     //     User::findOrFail($id)->delete();
     //     return redirect()->back()->with('success', 'User deleted successfully');
     // }
-
 
     // public function groupIndex()
     // {

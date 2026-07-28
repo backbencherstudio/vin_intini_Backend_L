@@ -5,8 +5,6 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
 
 class MediaUploadService
 {
@@ -23,7 +21,7 @@ class MediaUploadService
 
     private function processImage(UploadedFile $file): array
     {
-        $filename = 'posts/' . Str::uuid() . '.jpg';
+        $filename = 'posts/'.Str::uuid().'.jpg';
 
         $image = imagecreatefromstring(file_get_contents($file));
 
@@ -49,12 +47,12 @@ class MediaUploadService
 
     private function processVideo(UploadedFile $file): array
     {
-        $filename = 'posts/' . Str::uuid() . '.mp4';
+        $filename = 'posts/'.Str::uuid().'.mp4';
 
         $inputPath = $file->getRealPath();
 
         $outputPath = storage_path(
-            'app/public/' . $filename
+            'app/public/'.$filename
         );
 
         $command = sprintf(
@@ -67,7 +65,7 @@ class MediaUploadService
 
         if ($status !== 0) {
             throw new \Exception(
-                'Video compression failed: ' . implode("\n", $output)
+                'Video compression failed: '.implode("\n", $output)
             );
         }
 

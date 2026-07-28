@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Institution;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class NewInstitutionSeeder extends Seeder
@@ -1706,7 +1705,7 @@ class NewInstitutionSeeder extends Seeder
         foreach ($names as $name) {
             $trimmedName = trim($name);
 
-            if (!empty($trimmedName)) {
+            if (! empty($trimmedName)) {
                 Institution::updateOrCreate(
                     ['name' => $trimmedName],
                     []

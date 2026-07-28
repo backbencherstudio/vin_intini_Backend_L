@@ -3,15 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Connection;
 use App\Models\Post;
 use App\Models\UserFollow;
-
+use Illuminate\Http\Request;
 
 class NewsfeedController extends Controller
 {
-
     public function newsFeed(Request $request)
     {
         $user = auth('api')->user();
@@ -35,7 +33,7 @@ class NewsfeedController extends Controller
         }
 
         $connectionIds = collect($relationshipMap)
-            ->filter(fn($status) => $status === Connection::STATUS_ACCEPTED)
+            ->filter(fn ($status) => $status === Connection::STATUS_ACCEPTED)
             ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)
@@ -50,7 +48,7 @@ class NewsfeedController extends Controller
                 'groups:id,name,logo',
                 'likes' => function ($q) use ($user) {
                     $q->where('user_id', $user->id);
-                }
+                },
             ])
             ->where(function ($query) use (
                 $user,
@@ -144,10 +142,10 @@ class NewsfeedController extends Controller
 
             'pagination' => [
                 'current_page' => $posts->currentPage(),
-                'per_page'     => $posts->perPage(),
-                'total'        => $posts->total(),
-                'last_page'    => $posts->lastPage(),
-            ]
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+                'last_page' => $posts->lastPage(),
+            ],
         ]);
     }
 
@@ -174,7 +172,7 @@ class NewsfeedController extends Controller
         }
 
         $connectionIds = collect($relationshipMap)
-            ->filter(fn($status) => $status === Connection::STATUS_ACCEPTED)
+            ->filter(fn ($status) => $status === Connection::STATUS_ACCEPTED)
             ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)
@@ -183,13 +181,13 @@ class NewsfeedController extends Controller
         $allowedConnectionIds = $connectionIds->intersect($followingIds);
 
         $post = Post::with([
-                'user:id,first_name,last_name,profile_image,title',
-                'media',
-                'groups:id,name,logo',
-                'likes' => function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
-                }
-            ])
+            'user:id,first_name,last_name,profile_image,title',
+            'media',
+            'groups:id,name,logo',
+            'likes' => function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            },
+        ])
             ->where('id', $id)
             ->where(function ($query) use (
                 $user,
@@ -225,10 +223,10 @@ class NewsfeedController extends Controller
             })
             ->first();
 
-        if (!$post) {
+        if (! $post) {
             return response()->json([
                 'success' => false,
-                'message' => 'Post not found or access denied'
+                'message' => 'Post not found or access denied',
             ], 404);
         }
 
@@ -281,8 +279,7 @@ class NewsfeedController extends Controller
                 'created_at' => $post->created_at,
                 'can_edit' => $canEdit,
                 'can_delete' => $canDelete,
-            ]
+            ],
         ]);
     }
-
 }

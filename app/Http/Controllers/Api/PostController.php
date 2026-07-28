@@ -3,19 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
-use App\Models\Post;
-use App\Models\PostMedia;
-use App\Models\PostLike;
-use App\Models\PostGroup;
 use App\Models\Comment;
 use App\Models\Group;
 use App\Models\GroupUser;
-use App\Models\Notification;
+use App\Models\Post;
+use App\Models\PostGroup;
+use App\Models\PostLike;
+use App\Models\PostMedia;
 use App\Services\MediaUploadService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -37,10 +35,10 @@ class PostController extends Controller
             $userGroupIds = $user->groups()->pluck('groups.id')->toArray();
 
             foreach ($request->group_ids as $gid) {
-                if (!in_array($gid, $userGroupIds)) {
+                if (! in_array($gid, $userGroupIds)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Unauthorized group selected'
+                        'message' => 'Unauthorized group selected',
                     ], 403);
                 }
             }
@@ -109,7 +107,7 @@ class PostController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Post(s) created successfully',
-                'data' => $posts
+                'data' => $posts,
             ], 200);
 
         } catch (\Throwable $e) {
@@ -119,7 +117,7 @@ class PostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Post creation failed',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -129,20 +127,20 @@ class PostController extends Controller
         $user = auth('api')->user();
 
         $post = Post::with([
-            'media:id,post_id,file_path,type,order'
+            'media:id,post_id,file_path,type,order',
         ])->findOrFail($id);
 
         if ($post->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized',
             ], 403);
         }
 
-        if (!in_array($post->visibility, ['public', 'connections'])) {
+        if (! in_array($post->visibility, ['public', 'connections'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Group posts cannot be edited from here'
+                'message' => 'Group posts cannot be edited from here',
             ], 403);
         }
 
@@ -162,13 +160,13 @@ class PostController extends Controller
                         'order' => $media->order,
                     ];
                 }),
-            ]
+            ],
         ]);
     }
 
     public function updateProfilePost(Request $request, $id, MediaUploadService $mediaService)
     {
-        
+
         $user = auth('api')->user();
 
         $post = Post::with('media')->findOrFail($id);
@@ -176,14 +174,14 @@ class PostController extends Controller
         if ($post->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized',
             ], 403);
         }
 
-        if (!in_array($post->visibility, ['public', 'connections'])) {
+        if (! in_array($post->visibility, ['public', 'connections'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Group posts cannot be updated from profile'
+                'message' => 'Group posts cannot be updated from profile',
             ], 403);
         }
 
@@ -245,13 +243,13 @@ class PostController extends Controller
 
             $post->load([
                 'user:id,first_name,last_name,profile_image',
-                'media'
+                'media',
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Post updated successfully',
-                'data' => $post
+                'data' => $post,
             ]);
 
         } catch (\Throwable $e) {
@@ -261,7 +259,7 @@ class PostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Post update failed',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -275,14 +273,14 @@ class PostController extends Controller
         if ($post->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized',
             ], 403);
         }
 
-        if (!in_array($post->visibility, ['public', 'connections'])) {
+        if (! in_array($post->visibility, ['public', 'connections'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Group posts cannot be deleted from profile'
+                'message' => 'Group posts cannot be deleted from profile',
             ], 403);
         }
 
@@ -312,7 +310,7 @@ class PostController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Post deleted successfully'
+                'message' => 'Post deleted successfully',
             ]);
 
         } catch (\Throwable $e) {
@@ -322,23 +320,23 @@ class PostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Post deletion failed',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
 
-    public function editGroupPost($groupId,$postId)
+    public function editGroupPost($groupId, $postId)
     {
         $user = auth('api')->user();
 
         $post = Post::with([
-            'media:id,post_id,file_path,type,order'
+            'media:id,post_id,file_path,type,order',
         ])->findOrFail($postId);
 
         if ($post->visibility !== 'groups') {
             return response()->json([
                 'success' => false,
-                'message' => 'This is not a group post'
+                'message' => 'This is not a group post',
             ], 400);
         }
 
@@ -346,10 +344,10 @@ class PostController extends Controller
             ->where('group_id', $groupId)
             ->first();
 
-        if (!$postGroup) {
+        if (! $postGroup) {
             return response()->json([
                 'success' => false,
-                'message' => 'Post not found in this group'
+                'message' => 'Post not found in this group',
             ], 404);
         }
 
@@ -358,7 +356,7 @@ class PostController extends Controller
         if ($post->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only post creator can edit this post'
+                'message' => 'Only post creator can edit this post',
             ], 403);
         }
 
@@ -383,11 +381,11 @@ class PostController extends Controller
                         'order' => $media->order,
                     ];
                 }),
-            ]
+            ],
         ]);
     }
 
-    public function updateGroupPost(Request $request,MediaUploadService $mediaService, $groupId,$postId)
+    public function updateGroupPost(Request $request, MediaUploadService $mediaService, $groupId, $postId)
     {
         $user = auth('api')->user();
 
@@ -396,14 +394,14 @@ class PostController extends Controller
         if ($post->visibility !== 'groups') {
             return response()->json([
                 'success' => false,
-                'message' => 'This is not a group post'
+                'message' => 'This is not a group post',
             ], 400);
         }
 
         if ($post->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only post creator can update this post'
+                'message' => 'Only post creator can update this post',
             ], 403);
         }
 
@@ -411,10 +409,10 @@ class PostController extends Controller
             ->where('group_id', $groupId)
             ->first();
 
-        if (!$postGroup) {
+        if (! $postGroup) {
             return response()->json([
                 'success' => false,
-                'message' => 'Post not found in this group'
+                'message' => 'Post not found in this group',
             ], 404);
         }
 
@@ -474,13 +472,13 @@ class PostController extends Controller
 
             $post->load([
                 'user:id,first_name,last_name,profile_image',
-                'media'
+                'media',
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Group post updated successfully',
-                'data' => $post
+                'data' => $post,
             ]);
 
         } catch (\Throwable $e) {
@@ -490,7 +488,7 @@ class PostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Group post update failed',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -504,7 +502,7 @@ class PostController extends Controller
         if ($post->visibility !== 'groups') {
             return response()->json([
                 'success' => false,
-                'message' => 'This is not a group post'
+                'message' => 'This is not a group post',
             ], 400);
         }
 
@@ -512,10 +510,10 @@ class PostController extends Controller
             ->where('groups.id', $groupId)
             ->exists();
 
-        if (!$existsInGroup) {
+        if (! $existsInGroup) {
             return response()->json([
                 'success' => false,
-                'message' => 'Post not found in this group'
+                'message' => 'Post not found in this group',
             ], 404);
         }
 
@@ -524,14 +522,14 @@ class PostController extends Controller
             ->value('role');
 
         $canDelete = (
-            $post->user_id === $user->id || 
+            $post->user_id === $user->id ||
             in_array($groupRole, ['admin'])
         );
 
-        if (!$canDelete) {
+        if (! $canDelete) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not authorized to delete this post'
+                'message' => 'You are not authorized to delete this post',
             ], 403);
         }
 
@@ -564,7 +562,7 @@ class PostController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Post removed successfully'
+                'message' => 'Post removed successfully',
             ]);
 
         } catch (\Throwable $e) {
@@ -574,9 +572,8 @@ class PostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to remove post',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
-
 }

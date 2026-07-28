@@ -17,9 +17,9 @@ class AcademiaJob extends Model
         'salary_max',
         'category',
         'employment_type',
-        'work_mode',      
+        'work_mode',
         'latitude',
-        'longitude'
+        'longitude',
     ];
 
     public function state()

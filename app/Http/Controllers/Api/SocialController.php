@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Laravel\Socialite\Facades\Socialite;
-use App\Models\User;
 use App\Models\SocialAccount;
+use App\Models\User;
+use App\Services\ProfileImageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Services\ProfileImageService;
+use Laravel\Socialite\Facades\Socialite;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -19,7 +18,7 @@ class SocialController extends Controller
 
     public function redirect($provider)
     {
-        if (!in_array($provider, self::ALLOWED_PROVIDERS, true)) {
+        if (! in_array($provider, self::ALLOWED_PROVIDERS, true)) {
             return response()->json(['success' => false, 'message' => 'Unsupported provider'], 422);
         }
 
@@ -31,14 +30,14 @@ class SocialController extends Controller
                 ->stateless()
                 ->with(['state' => "platform={$platform}"])
                 ->redirect()
-                ->getTargetUrl()
+                ->getTargetUrl(),
         ]);
     }
 
     public function callback($provider, ProfileImageService $profileImageService)
     {
         try {
-            if (!in_array($provider, self::ALLOWED_PROVIDERS, true)) {
+            if (! in_array($provider, self::ALLOWED_PROVIDERS, true)) {
                 return response()->json(['success' => false, 'message' => 'Unsupported provider'], 422);
             }
 
@@ -64,7 +63,7 @@ class SocialController extends Controller
                 $email = $socialUser->getEmail();
                 $user = $email ? User::where('email', $email)->first() : null;
 
-                if (!$user) {
+                if (! $user) {
                     $name = trim((string) $socialUser->getName());
                     $parts = $name !== '' ? preg_split('/\s+/', $name) : [];
 
@@ -80,7 +79,7 @@ class SocialController extends Controller
 
                 // Role and Social Account logic
                 $role = Role::where('name', 'user')->where('guard_name', 'api')->first();
-                if ($role && !$user->hasRole('user')) {
+                if ($role && ! $user->hasRole('user')) {
                     $user->assignRole($role);
                 }
 
@@ -92,7 +91,7 @@ class SocialController extends Controller
                 return $user;
             });
 
-            if ($avatarUrl !== '' && (!$user->profile_image || preg_match('/^https?:\\/\\//i', (string) $user->profile_image) === 1)) {
+            if ($avatarUrl !== '' && (! $user->profile_image || preg_match('/^https?:\\/\\//i', (string) $user->profile_image) === 1)) {
                 $storedAvatarPath = $profileImageService->storeFromUrl($avatarUrl, $user->profile_image);
                 if ($storedAvatarPath) {
                     $user->update(['profile_image' => $storedAvatarPath]);
@@ -106,12 +105,12 @@ class SocialController extends Controller
                 $frontendUrl = rtrim(config('app.frontend_url'), '/');
 
                 $payload = [
-                    'token'      => $token,
-                    'id'         => $user->id,
+                    'token' => $token,
+                    'id' => $user->id,
                     'first_name' => $user->first_name,
-                    'last_name'  => $user->last_name,
-                    'image'      => $user->profile_image_url,
-                    'role'       => $user->roles->first()?->name,
+                    'last_name' => $user->last_name,
+                    'image' => $user->profile_image_url,
+                    'role' => $user->roles->first()?->name,
                     'is_onboarding' => $user->profile ? true : false,
                 ];
 
@@ -132,20 +131,17 @@ class SocialController extends Controller
                     'is_onboarding' => $user->profile ? true : false,
                     'user' => $user,
                     'token' => $token,
-                    'token_type' => 'bearer'
-                ]
+                    'token_type' => 'bearer',
+                ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Social login failed',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
-
-
-
 
     // public function redirect($provider)
     // {

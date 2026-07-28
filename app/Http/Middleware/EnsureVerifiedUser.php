@@ -12,14 +12,14 @@ class EnsureVerifiedUser
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthenticated',
             ], 401);
         }
 
-        if (!$user->is_verified) {
+        if (! $user->is_verified) {
             return response()->json([
                 'success' => false,
                 'message' => 'Please verify your email before setting up your profile.',
@@ -29,4 +29,3 @@ class EnsureVerifiedUser
         return $next($request);
     }
 }
-

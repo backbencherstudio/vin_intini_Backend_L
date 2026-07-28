@@ -2,11 +2,11 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class IdahoDataSeeder extends Seeder
 {
@@ -42,12 +42,12 @@ class IdahoDataSeeder extends Seeder
             [
                 'name' => 'University of Washington (Boise)',
                 'loc' => 'Boise',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'HCA/Healthcare/Eastern Idaho Regional Medical Center',
                 'loc' => 'Idaho Falls',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
         ];
 

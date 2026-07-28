@@ -18,7 +18,7 @@ class AcademiaAdminController extends Controller
         $query = AcademiaUniversity::with('state');
 
         if ($request->filled('search')) {
-            $query->where('name', 'LIKE', '%' . $request->search . '%');
+            $query->where('name', 'LIKE', '%'.$request->search.'%');
         }
 
         if ($request->filled('state_id')) {
@@ -27,6 +27,7 @@ class AcademiaAdminController extends Controller
 
         $data = $query->paginate(20)->withQueryString();
         $states = State::orderBy('name')->get();
+
         return view('admin.academia.universities.index', compact('data', 'states'));
     }
 
@@ -124,6 +125,7 @@ class AcademiaAdminController extends Controller
 
         $data = $query->paginate(20)->withQueryString();
         $states = State::orderBy('name')->get();
+
         return view('admin.academia.facilities.index', compact('data', 'states'));
     }
 
@@ -175,7 +177,6 @@ class AcademiaAdminController extends Controller
         return redirect()->back()->with('success', 'Facility deleted successfully!');
     }
 
-
     // Residencies List
     public function indexResidencies(Request $request)
     {
@@ -195,6 +196,7 @@ class AcademiaAdminController extends Controller
 
         $data = $query->paginate(20)->withQueryString();
         $states = State::orderBy('name')->get();
+
         return view('admin.academia.residencies.index', compact('data', 'states'));
     }
 
@@ -299,17 +301,17 @@ class AcademiaAdminController extends Controller
         ]);
 
         AcademiaJob::create([
-            'state_id'     => $request->state_id,
-            'title'        => $request->title,
+            'state_id' => $request->state_id,
+            'title' => $request->title,
             'company_name' => $request->company_name,
-            'location'     => $request->location,
-            'salary_min'   => $request->salary_min,
-            'salary_max'   => $request->salary_max,
-            'category'     => $request->category,
-            'latitude'     => $request->latitude ?? 0,
-            'longitude'    => $request->longitude ?? 0,
+            'location' => $request->location,
+            'salary_min' => $request->salary_min,
+            'salary_max' => $request->salary_max,
+            'category' => $request->category,
+            'latitude' => $request->latitude ?? 0,
+            'longitude' => $request->longitude ?? 0,
             'employment_type' => $request->employment_type,
-            'work_mode'       => $request->work_mode,
+            'work_mode' => $request->work_mode,
         ]);
 
         return redirect()->back()->with('success', 'New Job Opening added successfully!');
@@ -327,17 +329,17 @@ class AcademiaAdminController extends Controller
         $job = AcademiaJob::findOrFail($id);
 
         $job->update([
-            'state_id'     => $request->state_id,
-            'title'        => $request->title,
+            'state_id' => $request->state_id,
+            'title' => $request->title,
             'company_name' => $request->company_name,
-            'location'     => $request->location,
-            'salary_min'   => $request->salary_min,
-            'salary_max'   => $request->salary_max,
-            'category'     => $request->category,
-            'latitude'     => $request->latitude,
-            'longitude'    => $request->longitude,
+            'location' => $request->location,
+            'salary_min' => $request->salary_min,
+            'salary_max' => $request->salary_max,
+            'category' => $request->category,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
             'employment_type' => $request->employment_type,
-            'work_mode'       => $request->work_mode,
+            'work_mode' => $request->work_mode,
         ]);
 
         return redirect()->back()->with('success', 'Job information updated successfully!');

@@ -69,7 +69,7 @@ class IndustryCategoryController extends Controller
     {
         $request->validate([
             'category_name' => 'required|string|max:255',
-            'section_id'    => 'required',
+            'section_id' => 'required',
         ]);
 
         IndustryCategory::updateOrCreate(
@@ -84,6 +84,7 @@ class IndustryCategoryController extends Controller
     {
         $section = IndustrySections::findOrFail($id);
         $section->delete();
+
         return back()->with('success', 'Section and associated data removed.');
     }
 
@@ -96,6 +97,7 @@ class IndustryCategoryController extends Controller
         }
 
         $category->delete();
+
         return back()->with('success', 'Category Tab removed.');
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class AcademiaUniversity extends Model
 {
     protected $table = 'academia_universities';
+
     protected $fillable = [
         'state_id',
         'name',
@@ -18,14 +19,14 @@ class AcademiaUniversity extends Model
         'longitude',
         'phone',
         'location',
-        'website'
+        'website',
     ];
 
     protected $casts = [
         'psychology_degrees' => 'array',
         'neuroscience_degrees' => 'array',
         'counseling_degrees' => 'array',
-        'has_online_options' => 'boolean'
+        'has_online_options' => 'boolean',
     ];
 
     public function state()

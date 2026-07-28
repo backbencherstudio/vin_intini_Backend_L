@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 class ProfileImageService
 {
     private const DEFAULT_FOLDER = 'profile_photos';
+
     private const MAX_BYTES = 5_242_880; // 5MB
 
     public function storeUploaded(
@@ -28,7 +29,7 @@ class ProfileImageService
         string $folder = self::DEFAULT_FOLDER
     ): ?string {
         $url = trim($url);
-        if ($url === '' || !preg_match('/^https?:\\/\\//i', $url)) {
+        if ($url === '' || ! preg_match('/^https?:\\/\\//i', $url)) {
             return null;
         }
 
@@ -37,12 +38,12 @@ class ProfileImageService
             ->withHeaders(['Accept' => 'image/*'])
             ->get($url);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return null;
         }
 
         $contentType = (string) $response->header('Content-Type', '');
-        if ($contentType === '' || !Str::startsWith(Str::lower($contentType), 'image/')) {
+        if ($contentType === '' || ! Str::startsWith(Str::lower($contentType), 'image/')) {
             return null;
         }
 
@@ -56,8 +57,8 @@ class ProfileImageService
         }
 
         $extension = $this->guessExtensionFromContentType($contentType) ?? 'jpg';
-        $filename = Str::uuid() . '.' . $extension;
-        $path = trim($folder, '/') . '/' . $filename;
+        $filename = Str::uuid().'.'.$extension;
+        $path = trim($folder, '/').'/'.$filename;
 
         Storage::disk('public')->put($path, $body);
 
@@ -68,7 +69,7 @@ class ProfileImageService
 
     public function deleteIfLocal(?string $path): void
     {
-        if (!$path || $this->isRemote($path)) {
+        if (! $path || $this->isRemote($path)) {
             return;
         }
 
@@ -97,4 +98,3 @@ class ProfileImageService
         };
     }
 }
-

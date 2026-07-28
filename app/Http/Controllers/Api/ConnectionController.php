@@ -85,7 +85,7 @@ class ConnectionController extends Controller
 
             return [
                 'payload' => $this->formatConnectionRequest($connectionRequest, $currentUser->id, []),
-                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+                'search_name' => trim(($counterpart->first_name ?? '').' '.($counterpart->last_name ?? '')),
                 'connected_at' => $connectionRequest->responded_at?->timestamp ?? $connectionRequest->created_at?->timestamp ?? 0,
             ];
         });
@@ -328,7 +328,7 @@ class ConnectionController extends Controller
 
             return [
                 'request' => $connectionRequest,
-                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+                'search_name' => trim(($counterpart->first_name ?? '').' '.($counterpart->last_name ?? '')),
                 'search_title' => (string) ($counterpart->title ?? ''),
             ];
         });
@@ -401,7 +401,6 @@ class ConnectionController extends Controller
         ], 200);
     }
 
-
     public function suggestions(Request $request): JsonResponse
     {
         $currentUser = $request->user();
@@ -438,9 +437,9 @@ class ConnectionController extends Controller
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
-                    $query->where('first_name', 'like', '%' . $search . '%')
-                        ->orWhere('last_name', 'like', '%' . $search . '%')
-                        ->orWhere('title', 'like', '%' . $search . '%');
+                    $query->where('first_name', 'like', '%'.$search.'%')
+                        ->orWhere('last_name', 'like', '%'.$search.'%')
+                        ->orWhere('title', 'like', '%'.$search.'%');
                 });
             })
             ->select(['id', 'first_name', 'last_name', 'title', 'profile_image', 'cover_image'])
@@ -501,9 +500,9 @@ class ConnectionController extends Controller
                 $query->whereHas('profile');
                 if ($search !== '') {
                     $query->where(function ($q) use ($search) {
-                        $q->where('first_name', 'like', '%' . $search . '%')
-                            ->orWhere('last_name', 'like', '%' . $search . '%')
-                            ->orWhere('title', 'like', '%' . $search . '%');
+                        $q->where('first_name', 'like', '%'.$search.'%')
+                            ->orWhere('last_name', 'like', '%'.$search.'%')
+                            ->orWhere('title', 'like', '%'.$search.'%');
                     });
                 }
             })
@@ -1027,20 +1026,20 @@ class ConnectionController extends Controller
 
         if ($connectionRequest->status === Connection::STATUS_IGNORED) {
             return $connectionRequest->receiver_id === $currentUserId
-                ? 'You ignored ' . $counterpartName . '\'s invitation'
-                : $counterpartName . ' ignored your invitation';
+                ? 'You ignored '.$counterpartName.'\'s invitation'
+                : $counterpartName.' ignored your invitation';
         }
 
         return $connectionRequest->sender_id === $currentUserId
             ? 'Connection request sent'
-            : $counterpartName . ' sent you a connection request';
+            : $counterpartName.' sent you a connection request';
     }
 
     private function formatUser(User $user): array
     {
         return [
             'id' => $user->id,
-            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'title' => $user->title,

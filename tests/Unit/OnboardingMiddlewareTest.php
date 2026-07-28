@@ -14,7 +14,7 @@ class OnboardingMiddlewareTest extends TestCase
 {
     public function test_verified_user_middleware_blocks_unverified_user(): void
     {
-        $middleware = new EnsureVerifiedUser();
+        $middleware = new EnsureVerifiedUser;
 
         $user = new User(['is_verified' => false]);
         $request = Request::create('/api/setup-profile', 'POST');
@@ -28,9 +28,9 @@ class OnboardingMiddlewareTest extends TestCase
 
     public function test_profile_completed_middleware_blocks_when_profile_missing(): void
     {
-        $middleware = new EnsureProfileCompleted();
+        $middleware = new EnsureProfileCompleted;
 
-        $user = new User();
+        $user = new User;
         $user->setRelation('profile', null);
 
         $request = Request::create('/api/groups', 'GET');
@@ -44,10 +44,10 @@ class OnboardingMiddlewareTest extends TestCase
 
     public function test_profile_completed_middleware_allows_when_profile_exists(): void
     {
-        $middleware = new EnsureProfileCompleted();
+        $middleware = new EnsureProfileCompleted;
 
-        $user = new User();
-        $user->setRelation('profile', new UserProfile());
+        $user = new User;
+        $user->setRelation('profile', new UserProfile);
 
         $request = Request::create('/api/groups', 'GET');
         $request->setUserResolver(fn () => $user);
@@ -58,4 +58,3 @@ class OnboardingMiddlewareTest extends TestCase
         $this->assertSame('ok', (string) $response->getContent());
     }
 }
-

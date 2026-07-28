@@ -25,8 +25,8 @@ class GroupIndexTest extends TestCase
 
         for ($index = 1; $index <= 15; $index++) {
             $eligibleGroups->push(Group::create([
-                'name' => 'Public Listed Group ' . $index,
-                'description' => 'Group description ' . $index,
+                'name' => 'Public Listed Group '.$index,
+                'description' => 'Group description '.$index,
                 'industry' => ['Technology'],
                 'creator_id' => $creator->id,
                 'type' => 'public',
@@ -79,7 +79,7 @@ class GroupIndexTest extends TestCase
 
         $returnedGroups = collect($response->json('data'));
 
-        $this->assertFalse($returnedGroups->contains(fn(array $group) => (int) $group['id'] === $joinedGroup->id));
+        $this->assertFalse($returnedGroups->contains(fn (array $group) => (int) $group['id'] === $joinedGroup->id));
 
         $returnedGroups->each(function (array $group) use ($eligibleGroups): void {
             $this->assertArrayHasKey('name', $group);
@@ -121,7 +121,7 @@ class GroupIndexTest extends TestCase
         Storage::disk('public')->put('group_logos/old-logo.png', 'old-logo');
         Storage::disk('public')->put('group_covers/old-cover.png', 'old-cover');
 
-        $response = $this->actingAs($creator, 'api')->postJson('/api/group-images/' . $group->id, [
+        $response = $this->actingAs($creator, 'api')->postJson('/api/group-images/'.$group->id, [
             'logo' => UploadedFile::fake()->image('logo.png'),
             'cover_photo' => UploadedFile::fake()->image('cover.png'),
         ]);
@@ -130,8 +130,8 @@ class GroupIndexTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Group images updated successfully!')
-            ->assertJsonPath('data.logo', fn(?string $value) => is_string($value) && str_starts_with($value, 'group_logos/'))
-            ->assertJsonPath('data.cover_photo', fn(?string $value) => is_string($value) && str_starts_with($value, 'group_covers/'));
+            ->assertJsonPath('data.logo', fn (?string $value) => is_string($value) && str_starts_with($value, 'group_logos/'))
+            ->assertJsonPath('data.cover_photo', fn (?string $value) => is_string($value) && str_starts_with($value, 'group_covers/'));
 
         $group->refresh();
 

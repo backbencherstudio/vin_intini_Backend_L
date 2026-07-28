@@ -5,18 +5,18 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\CommentLike;
-use Illuminate\Http\Request;
-use App\Models\PostLike;
-use App\Models\Post;
-use Illuminate\Support\Facades\DB;
 use App\Models\Connection;
 use App\Models\GroupUser;
+use App\Models\Post;
+use App\Models\PostLike;
 use App\Models\Reply;
 use App\Models\ReplyLike;
 use App\Models\User;
 use App\Notifications\CommentLikedNotification;
 use App\Notifications\PostLikedNotification;
 use App\Notifications\ReplyLikedNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LikeController extends Controller
 {
@@ -40,10 +40,10 @@ class LikeController extends Controller
                 })
                 ->exists();
 
-            if (!$isConnected) {
+            if (! $isConnected) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You are not connected to like this post'
+                    'message' => 'You are not connected to like this post',
                 ], 403);
             }
         }
@@ -52,10 +52,10 @@ class LikeController extends Controller
 
             $group = $post->groups->first();
 
-            if (!$group) {
+            if (! $group) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid group post'
+                    'message' => 'Invalid group post',
                 ], 400);
             }
 
@@ -64,10 +64,10 @@ class LikeController extends Controller
                     ->where('group_id', $group->id)
                     ->exists();
 
-                if (!$isMember) {
+                if (! $isMember) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'You are not a member of this group'
+                        'message' => 'You are not a member of this group',
                     ], 403);
                 }
             }
@@ -99,7 +99,7 @@ class LikeController extends Controller
                     'message' => 'Post unliked',
                     'liked' => false,
                     'liked_by_me' => false,
-                    'total_like' => $post->total_like
+                    'total_like' => $post->total_like,
                 ]);
             }
 
@@ -122,7 +122,7 @@ class LikeController extends Controller
                 'message' => 'Post liked',
                 'liked' => true,
                 'liked_by_me' => true,
-                'total_like' => $post->total_like
+                'total_like' => $post->total_like,
             ]);
 
         } catch (\Throwable $e) {
@@ -131,7 +131,7 @@ class LikeController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Something went wrong'
+                'message' => 'Something went wrong',
             ], 500);
         }
     }
@@ -148,7 +148,7 @@ class LikeController extends Controller
         $users = collect($likes->items())->map(function ($like) {
             return [
                 'id' => $like->user->id,
-                'name' => $like->user->first_name . ' ' . $like->user->last_name,
+                'name' => $like->user->first_name.' '.$like->user->last_name,
                 'profile_image' => $like->user->profile_image_url,
             ];
         });
@@ -159,13 +159,13 @@ class LikeController extends Controller
             'data' => $users,
             'pagination' => [
                 'current_page' => $likes->currentPage(),
-                'per_page'     => $likes->perPage(),
-                'total'        => $likes->total(),
-                'last_page'    => $likes->lastPage(),
-            ]
+                'per_page' => $likes->perPage(),
+                'total' => $likes->total(),
+                'last_page' => $likes->lastPage(),
+            ],
         ]);
     }
-    
+
     public function likeComment($commentId)
     {
         $user = auth('api')->user();
@@ -176,18 +176,18 @@ class LikeController extends Controller
 
             $created = CommentLike::firstOrCreate([
                 'comment_id' => $comment->id,
-                'user_id'    => $user->id,
+                'user_id' => $user->id,
             ]);
 
             if ($created->wasRecentlyCreated) {
 
                 Comment::where('id', $comment->id)
                     ->update([
-                        'like_count' => DB::raw('like_count + 1')
+                        'like_count' => DB::raw('like_count + 1'),
                     ]);
 
                 if ($comment->user_id != $user->id) {
-                    
+
                     $commentOwner = User::find($comment->user_id);
 
                     if ($commentOwner) {
@@ -198,28 +198,28 @@ class LikeController extends Controller
                 }
 
                 return response()->json([
-                    'success'    => true,
-                    'message'    => 'Comment liked',
-                    'liked'      => true,
+                    'success' => true,
+                    'message' => 'Comment liked',
+                    'liked' => true,
                     'like_count' => $comment->like_count + 1,
                 ]);
             }
 
             CommentLike::where([
                 'comment_id' => $comment->id,
-                'user_id'    => $user->id,
+                'user_id' => $user->id,
             ])->delete();
 
             Comment::where('id', $comment->id)
                 ->where('like_count', '>', 0)
                 ->update([
-                    'like_count' => DB::raw('like_count - 1')
+                    'like_count' => DB::raw('like_count - 1'),
                 ]);
 
             return response()->json([
-                'success'    => true,
-                'message'    => 'Comment unliked',
-                'liked'      => false,
+                'success' => true,
+                'message' => 'Comment unliked',
+                'liked' => false,
                 'like_count' => max(0, $comment->like_count - 1),
             ]);
 
@@ -228,7 +228,7 @@ class LikeController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong',
-                'error'   => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -243,14 +243,14 @@ class LikeController extends Controller
 
             $created = ReplyLike::firstOrCreate([
                 'reply_id' => $reply->id,
-                'user_id'  => $user->id,
+                'user_id' => $user->id,
             ]);
 
             if ($created->wasRecentlyCreated) {
 
                 Reply::where('id', $reply->id)
                     ->update([
-                        'like_count' => DB::raw('like_count + 1')
+                        'like_count' => DB::raw('like_count + 1'),
                     ]);
 
                 if ($reply->user_id != $user->id) {
@@ -265,28 +265,28 @@ class LikeController extends Controller
                 }
 
                 return response()->json([
-                    'success'    => true,
-                    'message'    => 'Reply liked',
-                    'liked'      => true,
+                    'success' => true,
+                    'message' => 'Reply liked',
+                    'liked' => true,
                     'like_count' => $reply->like_count + 1,
                 ]);
             }
 
             ReplyLike::where([
                 'reply_id' => $reply->id,
-                'user_id'  => $user->id,
+                'user_id' => $user->id,
             ])->delete();
 
             Reply::where('id', $reply->id)
                 ->where('like_count', '>', 0)
                 ->update([
-                    'like_count' => DB::raw('like_count - 1')
+                    'like_count' => DB::raw('like_count - 1'),
                 ]);
 
             return response()->json([
-                'success'    => true,
-                'message'    => 'Reply unliked',
-                'liked'      => false,
+                'success' => true,
+                'message' => 'Reply unliked',
+                'liked' => false,
                 'like_count' => max(0, $reply->like_count - 1),
             ]);
 
@@ -295,7 +295,7 @@ class LikeController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong',
-                'error'   => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -305,8 +305,8 @@ class LikeController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $likes = CommentLike::with([
-                'user:id,first_name,last_name,profile_image'
-            ])
+            'user:id,first_name,last_name,profile_image',
+        ])
             ->where('comment_id', $commentId)
             ->latest()
             ->paginate($perPage);
@@ -314,7 +314,7 @@ class LikeController extends Controller
         $users = collect($likes->items())->map(function ($like) {
             return [
                 'id' => $like->user->id,
-                'name' => $like->user->first_name . ' ' . $like->user->last_name,
+                'name' => $like->user->first_name.' '.$like->user->last_name,
                 'profile_image' => $like->user->profile_image_url,
             ];
         });
@@ -325,10 +325,10 @@ class LikeController extends Controller
             'data' => $users,
             'pagination' => [
                 'current_page' => $likes->currentPage(),
-                'per_page'     => $likes->perPage(),
-                'total'        => $likes->total(),
-                'last_page'    => $likes->lastPage(),
-            ]
+                'per_page' => $likes->perPage(),
+                'total' => $likes->total(),
+                'last_page' => $likes->lastPage(),
+            ],
         ]);
     }
 
@@ -337,8 +337,8 @@ class LikeController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $likes = ReplyLike::with([
-                'user:id,first_name,last_name,profile_image'
-            ])
+            'user:id,first_name,last_name,profile_image',
+        ])
             ->where('reply_id', $replyId)
             ->latest()
             ->paginate($perPage);
@@ -346,7 +346,7 @@ class LikeController extends Controller
         $users = $likes->map(function ($like) {
             return [
                 'id' => $like->user->id,
-                'name' => $like->user->first_name . ' ' . $like->user->last_name,
+                'name' => $like->user->first_name.' '.$like->user->last_name,
                 'profile_image' => $like->user->profile_image_url,
             ];
         });
@@ -357,11 +357,10 @@ class LikeController extends Controller
             'data' => $users,
             'pagination' => [
                 'current_page' => $likes->currentPage(),
-                'per_page'     => $likes->perPage(),
-                'total'        => $likes->total(),
-                'last_page'    => $likes->lastPage(),
-            ]
+                'per_page' => $likes->perPage(),
+                'total' => $likes->total(),
+                'last_page' => $likes->lastPage(),
+            ],
         ]);
     }
-
 }

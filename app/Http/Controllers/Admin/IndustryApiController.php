@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\IndustryCategory;
 use App\Models\IndustryPartner;
 use App\Models\IndustrySections;
-use Illuminate\Http\Request;
 
 class IndustryApiController extends Controller
 {
@@ -129,10 +128,12 @@ class IndustryApiController extends Controller
     {
         return $this->getPartners('psychology', 'biotechnology');
     }
+
     public function getPsychologyPharmaPartners()
     {
         return $this->getPartners('psychology', 'psychotropics');
     }
+
     public function getPsychologyPubPartners()
     {
         return $this->getPartners('psychology', 'publications');
@@ -143,10 +144,12 @@ class IndustryApiController extends Controller
     {
         return $this->getPartners('neuroscience', 'biotechnology');
     }
+
     public function getNeurosciencePharmaPartners()
     {
         return $this->getPartners('neuroscience', 'psychotropics');
     }
+
     public function getNeurosciencePubPartners()
     {
         return $this->getPartners('neuroscience', 'publications');
@@ -161,25 +164,18 @@ class IndustryApiController extends Controller
                 ->select('id', 'partner_name', 'partner_tag', 'partner_desc', 'partner_link', 'partner_logo')
                 ->get()
                 ->map(function ($partner) {
-                $partner->partner_logo = $partner->partner_logo
-                    ? asset('storage/' . $partner->partner_logo)
-                    : null;
-                return $partner;
-            });
+                    $partner->partner_logo = $partner->partner_logo
+                        ? asset('storage/'.$partner->partner_logo)
+                        : null;
+
+                    return $partner;
+                });
 
             return response()->json(['success' => true, 'partners' => $partners], 200);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
-
-
-
-
-
-
-
-
 
     // public function getPsychologyBiotech()
     // {

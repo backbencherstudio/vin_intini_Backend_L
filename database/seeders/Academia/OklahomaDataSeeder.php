@@ -2,11 +2,11 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class OklahomaDataSeeder extends Seeder
 {

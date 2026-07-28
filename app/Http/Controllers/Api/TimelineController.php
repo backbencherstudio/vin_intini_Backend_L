@@ -3,14 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Post;
 use App\Models\Connection;
-use App\Models\Comment;
 use App\Models\Group;
 use App\Models\GroupUser;
-use Illuminate\Support\Facades\DB;
-
+use App\Models\Post;
+use Illuminate\Http\Request;
 
 class TimelineController extends Controller
 {
@@ -50,7 +47,7 @@ class TimelineController extends Controller
         $postsQuery = Post::query()
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
-                'media'
+                'media',
             ])
             ->where('user_id', $userId)
             ->where(function ($query) use ($isOwnProfile, $isConnected) {
@@ -103,10 +100,10 @@ class TimelineController extends Controller
 
             'pagination' => [
                 'current_page' => $posts->currentPage(),
-                'per_page'     => $posts->perPage(),
-                'total'        => $posts->total(),
-                'last_page'    => $posts->lastPage(),
-            ]
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+                'last_page' => $posts->lastPage(),
+            ],
         ]);
     }
 
@@ -124,17 +121,17 @@ class TimelineController extends Controller
 
         $isMember = $isCreator || ($membership && $membership->status !== 'banned');
 
-        if ($group->type === 'private' && !$isMember) {
+        if ($group->type === 'private' && ! $isMember) {
             return response()->json([
                 'success' => false,
-                'message' => 'This group is private'
+                'message' => 'This group is private',
             ], 403);
         }
 
-        if (!$isCreator && $membership && $membership->status === 'banned') {
+        if (! $isCreator && $membership && $membership->status === 'banned') {
             return response()->json([
                 'success' => false,
-                'message' => 'You are banned from this group'
+                'message' => 'You are banned from this group',
             ], 403);
         }
 
@@ -161,7 +158,7 @@ class TimelineController extends Controller
                 'groups:id,name',
                 'likes' => function ($q) use ($user) {
                     $q->where('user_id', $user->id);
-                }
+                },
             ])
             ->where('visibility', 'groups')
             ->whereHas('groups', function ($q) use ($groupId) {
@@ -227,8 +224,7 @@ class TimelineController extends Controller
                 'per_page' => $posts->perPage(),
                 'total' => $posts->total(),
                 'last_page' => $posts->lastPage(),
-            ]
+            ],
         ]);
     }
-
 }

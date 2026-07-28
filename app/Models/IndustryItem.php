@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Model;
 
 class IndustryItem extends Model
 {
@@ -18,7 +18,7 @@ class IndustryItem extends Model
         'extra_tag',
         'image',
         'description',
-        'link'
+        'link',
     ];
 
     public function IndustryCategory()
@@ -31,7 +31,7 @@ class IndustryItem extends Model
     protected function imageUrl(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->image ? asset('storage/' . $this->image) : null,
+            get: fn () => $this->image ? asset('storage/'.$this->image) : null,
         );
     }
 

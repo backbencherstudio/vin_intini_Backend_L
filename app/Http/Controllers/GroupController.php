@@ -165,7 +165,7 @@ class GroupController extends Controller
                     return response()->json([
                         'status' => 'error',
                         'message' => 'You are banned from this group.',
-                        'is_banned' => true
+                        'is_banned' => true,
                     ], 403);
                 }
 
@@ -250,7 +250,7 @@ class GroupController extends Controller
         }
 
         $inviteableUserIds = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
             ->diff($this->pendingInvitationUserIds($group->id))
             ->values();
 
@@ -263,9 +263,9 @@ class GroupController extends Controller
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery
-                        ->where('first_name', 'like', '%' . $search . '%')
-                        ->orWhere('last_name', 'like', '%' . $search . '%')
-                        ->orWhere('title', 'like', '%' . $search . '%');
+                        ->where('first_name', 'like', '%'.$search.'%')
+                        ->orWhere('last_name', 'like', '%'.$search.'%')
+                        ->orWhere('title', 'like', '%'.$search.'%');
                 });
             })
             ->orderBy('first_name')
@@ -309,14 +309,14 @@ class GroupController extends Controller
             ->withCount('members')
             ->find($id);
 
-        if (!$group) {
+        if (! $group) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Group not found',
             ], 404);
         }
 
-        if (!$this->canInviteToGroup($group, $request->user()->id)) {
+        if (! $this->canInviteToGroup($group, $request->user()->id)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'You are not allowed to invite users to this group.',
@@ -331,11 +331,11 @@ class GroupController extends Controller
         $requestedUserId = (int) $validated['user_id'];
 
         $isInviteable = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
             ->diff($this->pendingInvitationUserIds($group->id))
             ->contains($requestedUserId);
 
-        if (!$isInviteable) {
+        if (! $isInviteable) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'This user is not eligible for invitation.',
@@ -391,7 +391,7 @@ class GroupController extends Controller
         $request->merge($input);
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255|unique:groups,name,' . $id,
+            'name' => 'sometimes|required|string|max:255|unique:groups,name,'.$id,
             'description' => 'sometimes|required|string|max:2500',
             'industry' => 'nullable|array|max:3',
             'location' => 'nullable|string|max:255',
@@ -501,7 +501,9 @@ class GroupController extends Controller
         $userId = auth()->id();
 
         $limit = $request->integer('limit', 10);
-        if ($limit > 100) $limit = 100;
+        if ($limit > 100) {
+            $limit = 100;
+        }
 
         $totalCreatedEver = Group::where('creator_id', $userId)->count();
 
@@ -656,7 +658,7 @@ class GroupController extends Controller
 
         $group->members()->attach($userId, [
             'role' => 'member',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         // if ($group->members()->where('user_id', auth()->id())->exists()) {
@@ -790,7 +792,7 @@ class GroupController extends Controller
             ])
             ->when($search !== '', function ($query) use ($search) {
                 $query->whereHas('group', function ($groupQuery) use ($search) {
-                    $groupQuery->where('name', 'like', '%' . $search . '%');
+                    $groupQuery->where('name', 'like', '%'.$search.'%');
                 });
             })
             ->latest('id')
@@ -798,7 +800,7 @@ class GroupController extends Controller
 
         $data = $invitations->getCollection()
             ->map(function (GroupInvitation $invitation): array {
-                $inviterName = trim(($invitation->inviter?->first_name ?? '') . ' ' . ($invitation->inviter?->last_name ?? ''));
+                $inviterName = trim(($invitation->inviter?->first_name ?? '').' '.($invitation->inviter?->last_name ?? ''));
 
                 return [
                     'invitation_id' => $invitation->id,
@@ -949,9 +951,9 @@ class GroupController extends Controller
         if ($group->type === 'private') {
             return $group->creator_id === $userId
                 || $group->members()
-                ->where('user_id', $userId)
-                ->wherePivot('role', 'admin')
-                ->exists();
+                    ->where('user_id', $userId)
+                    ->wherePivot('role', 'admin')
+                    ->exists();
         }
 
         return $group->creator_id === $userId
@@ -963,7 +965,7 @@ class GroupController extends Controller
         return GroupInvitation::query()
             ->where('group_id', $groupId)
             ->pluck('invited_user_id')
-            ->map(fn($userId) => (int) $userId)
+            ->map(fn ($userId) => (int) $userId)
             ->values();
     }
 
@@ -1025,11 +1027,11 @@ class GroupController extends Controller
 
         $isAdmin = $group->creator_id === $currentUser->id ||
             $group->members()
-            ->where('users.id', $currentUser->id)
-            ->wherePivot('role', 'admin')
-            ->exists();
+                ->where('users.id', $currentUser->id)
+                ->wherePivot('role', 'admin')
+                ->exists();
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized! Only admins can ban users.'], 403);
         }
 
@@ -1039,17 +1041,17 @@ class GroupController extends Controller
 
         $membership = $group->members()->where('users.id', $userId)->first();
 
-        if (!$membership) {
+        if (! $membership) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'This user is not a member of this group.'
+                'message' => 'This user is not a member of this group.',
             ], 404);
         }
 
         if ($membership->pivot->status === 'banned') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'User is already banned.'
+                'message' => 'User is already banned.',
             ], 400);
         }
 
@@ -1080,7 +1082,7 @@ class GroupController extends Controller
 
         return response()->json([
             'status' => true,
-            'data' => $groups
+            'data' => $groups,
         ]);
     }
 }

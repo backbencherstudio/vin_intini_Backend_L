@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class PostMedia extends Model
 {
@@ -25,6 +25,6 @@ class PostMedia extends Model
 
     public function getUrlAttribute()
     {
-        return asset('storage/' . ltrim($this->file_path, '/'));
+        return asset('storage/'.ltrim($this->file_path, '/'));
     }
 }

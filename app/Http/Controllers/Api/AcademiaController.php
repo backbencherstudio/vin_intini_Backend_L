@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\State;
 use App\Http\Resources\StateResource;
-use Illuminate\Http\Request;
+use App\Models\State;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AcademiaController extends Controller
 {
@@ -16,12 +16,12 @@ class AcademiaController extends Controller
             'universities',
             'residencies',
             'facilities',
-            'jobs'
+            'jobs',
         ])->get();
 
         return response()->json([
             'success' => true,
-            'data' => StateResource::collection($states)
+            'data' => StateResource::collection($states),
         ]);
     }
 
@@ -33,7 +33,7 @@ class AcademiaController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => new StateResource($state)
+            'data' => new StateResource($state),
         ]);
     }
 
@@ -47,20 +47,19 @@ class AcademiaController extends Controller
         $perPage = $request->integer('limit', $request->integer('per_page', 15));
         $perPage = max(1, min($perPage, 100));
 
-
         $state = State::where('code', $code)->first();
 
-        if (!$state) {
+        if (! $state) {
             return response()->json(['status' => 'error', 'message' => 'State not found'], 404);
         }
 
         $query = $state->universities();
 
         if ($search !== '') {
-            $query->where('academia_universities.name', 'like', '%' . $search . '%');
+            $query->where('academia_universities.name', 'like', '%'.$search.'%');
         }
 
-        if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
+        if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
             $query->where(function ($q) use ($degreeFilter) {
                 $q->whereJsonContains('psychology_degrees', $degreeFilter)
                     ->orWhereJsonContains('counseling_degrees', $degreeFilter)
@@ -72,7 +71,7 @@ class AcademiaController extends Controller
         //     $query->whereJsonContains('psychology_degrees', $degreeFilter);
         // }
 
-        //alphabetical order
+        // alphabetical order
         $query->orderBy('academia_universities.name', $sortOrder);
 
         $paginator = $query->paginate($perPage);
@@ -80,6 +79,7 @@ class AcademiaController extends Controller
         $paginator->getCollection()->transform(function ($university) use ($state) {
             $university->state_name = $state->name;
             $university->state_code = $state->code;
+
             return $university;
         });
 
@@ -110,7 +110,7 @@ class AcademiaController extends Controller
 
         $state = State::where('code', $code)->first();
 
-        if (!$state) {
+        if (! $state) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'State not found',
@@ -120,14 +120,14 @@ class AcademiaController extends Controller
         $query = $state->residencies();
 
         if ($search !== '') {
-            $query->where('academia_medical_residencies.program_name', 'like', '%' . $search . '%');
+            $query->where('academia_medical_residencies.program_name', 'like', '%'.$search.'%');
         }
 
-        if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
+        if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
             $query->whereJsonContains('degree_types', $degreeFilter);
         }
 
-        //alphabetical order
+        // alphabetical order
         $query->orderBy('academia_medical_residencies.program_name', $sortOrder);
 
         $paginator = $query->paginate($perPage);
@@ -135,6 +135,7 @@ class AcademiaController extends Controller
         $paginator->getCollection()->transform(function ($residency) use ($state) {
             $residency->state_name = $state->name;
             $residency->state_code = $state->code;
+
             return $residency;
         });
 
@@ -170,7 +171,7 @@ class AcademiaController extends Controller
 
         $state = State::where('code', $code)->first();
 
-        if (!$state) {
+        if (! $state) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'State not found',
@@ -184,10 +185,10 @@ class AcademiaController extends Controller
         });
 
         $query->when($search !== '', function ($q) use ($search) {
-            return $q->where('academia_facilities.name', 'like', '%' . $search . '%');
+            return $q->where('academia_facilities.name', 'like', '%'.$search.'%');
         });
 
-        //alphabetical order
+        // alphabetical order
         $query->orderBy('academia_facilities.name', $sortOrder);
 
         $paginator = $query->paginate($perPage);
@@ -195,6 +196,7 @@ class AcademiaController extends Controller
         $paginator->getCollection()->transform(function ($facility) use ($state) {
             $facility->state_name = $state->name;
             $facility->state_code = $state->code;
+
             return $facility;
         });
 
@@ -295,7 +297,7 @@ class AcademiaController extends Controller
 
         $state = State::where('code', $code)->first();
 
-        if (!$state) {
+        if (! $state) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'State not found',
@@ -335,7 +337,7 @@ class AcademiaController extends Controller
                 'private_practice' => [
                     'total_offerings' => $privateTotalCount,
                     'items' => $privatePaginator->items(),
-                ]
+                ],
             ],
             'total' => $stateTotalCount + $privateTotalCount,
             'limit' => $perPage,

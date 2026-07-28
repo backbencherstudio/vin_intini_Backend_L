@@ -4,15 +4,17 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\BroadcastMessage;
+use Illuminate\Notifications\Notification;
 
 class PostCommentedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
     protected $sender;
+
     protected $post;
+
     protected $comment;
 
     public function __construct($sender, $post, $comment)
@@ -34,14 +36,14 @@ class PostCommentedNotification extends Notification implements ShouldQueue
             ->count();
 
         return [
-            'sender_id'   => $this->sender->id,
-            'sender_name' => $this->sender->first_name . ' ' . $this->sender->last_name,
-            'sender_profile_image_url'  => $this->sender->profile_image_url,
-            'post_id'     => $this->post->id,
-            'comment_id'  => $this->comment->id,
-            'type'        => class_basename(self::class),
-            'message'     => 'commented on your post',
-            'unread_count'=> $unreadCount + 1,
+            'sender_id' => $this->sender->id,
+            'sender_name' => $this->sender->first_name.' '.$this->sender->last_name,
+            'sender_profile_image_url' => $this->sender->profile_image_url,
+            'post_id' => $this->post->id,
+            'comment_id' => $this->comment->id,
+            'type' => class_basename(self::class),
+            'message' => 'commented on your post',
+            'unread_count' => $unreadCount + 1,
         ];
     }
 

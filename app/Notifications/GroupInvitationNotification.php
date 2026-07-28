@@ -5,12 +5,11 @@ namespace App\Notifications;
 use App\Models\Group;
 use App\Models\GroupInvitation;
 use App\Models\User;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
 class GroupInvitationNotification extends Notification implements ShouldQueue
 {
@@ -40,25 +39,25 @@ class GroupInvitationNotification extends Notification implements ShouldQueue
             ->count();
 
         $inviterName = trim(
-            ($this->inviter->first_name ?? '') . ' ' .
+            ($this->inviter->first_name ?? '').' '.
             ($this->inviter->last_name ?? '')
         );
 
         return [
             'invitation_id' => $this->invitation->id,
-            'group_id'      => $this->group->id,
-            'group_name'    => $this->group->name,
-            'group_logo_url'=> $this->group->logo_url,
-            'inviter_id'    => $this->inviter->id,
-            'inviter_name'  => $inviterName,
+            'group_id' => $this->group->id,
+            'group_name' => $this->group->name,
+            'group_logo_url' => $this->group->logo_url,
+            'inviter_id' => $this->inviter->id,
+            'inviter_name' => $inviterName,
             // Fallback to a default profile image URL if the inviter doesn't have one
-            'sender_name'  => $inviterName,
-            'sender_profile_image_url'  => $this->inviter->profile_image_url,
+            'sender_name' => $inviterName,
+            'sender_profile_image_url' => $this->inviter->profile_image_url,
 
-            'message'       => 'invited you to join ' . $this->group->name,
-            'type'          => class_basename(self::class),
-            'sent_at'       => now()->toIso8601String(),
-            'unread_count'  => $unreadCount + 1,
+            'message' => 'invited you to join '.$this->group->name,
+            'type' => class_basename(self::class),
+            'sent_at' => now()->toIso8601String(),
+            'unread_count' => $unreadCount + 1,
         ];
     }
 
@@ -77,7 +76,7 @@ class GroupInvitationNotification extends Notification implements ShouldQueue
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('App.Models.User.' . $this->invitation->user_id)
+            new PrivateChannel('App.Models.User.'.$this->invitation->user_id),
         ];
     }
 

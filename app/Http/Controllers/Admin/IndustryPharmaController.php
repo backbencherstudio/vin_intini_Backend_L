@@ -15,6 +15,7 @@ class IndustryPharmaController extends Controller
     {
         return $this->renderView($request, 'psychology');
     }
+
     public function neuroscience(Request $request)
     {
         return $this->renderView($request, 'neuroscience');
@@ -27,14 +28,14 @@ class IndustryPharmaController extends Controller
         });
 
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->search . '%');
+            $query->where('title', 'like', '%'.$request->search.'%');
         }
 
         $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
 
         $sections = IndustrySections::where('industry_type', 'psychotropics')
             ->where('network_type', $network)
-            ->with('IndustryCategory') 
+            ->with('IndustryCategory')
             ->get();
 
         return view('admin.industry.pharma', compact('items', 'sections', 'network'));
@@ -46,12 +47,14 @@ class IndustryPharmaController extends Controller
         $data = $request->only(['category_id', 'title', 'tag', 'sub_title', 'indication', 'moa', 'description', 'link']);
 
         IndustryItem::updateOrCreate(['id' => $request->item_id], $data);
+
         return back()->with('success', 'Information updated successfully!');
     }
 
     public function destroy($id)
     {
         IndustryItem::findOrFail($id)->delete();
+
         return back()->with('success', 'Deleted successfully!');
     }
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\IndustryApiController;
 use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\ConnectionController;
 use App\Http\Controllers\Api\FollowController;
@@ -8,7 +9,6 @@ use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
-use App\Http\Controllers\Admin\IndustryApiController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:api', 'role:admin'])->group(function () {});
@@ -37,18 +37,18 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/group-invitations/requests', [GroupController::class, 'invitationRequests']);
     Route::post('/group-invitations/{invitationId}/accept', [GroupController::class, 'acceptInvitation']);
     Route::post('/group-invitations/{invitationId}/ignore', [GroupController::class, 'ignoreInvitation']);
-    //ban user route
+    // ban user route
     Route::post('/groups/{groupId}/ban/{userId}', [GroupController::class, 'banUser']);
 
     // user profile routes
-    Route::get('/profile/{id}', [UserProfileController::class, 'showUserProfile']); //others user profile
-    Route::get('/profile', [UserProfileController::class, 'show']); //current user profile
+    Route::get('/profile/{id}', [UserProfileController::class, 'showUserProfile']); // others user profile
+    Route::get('/profile', [UserProfileController::class, 'show']); // current user profile
     Route::put('/profile/update', [UserProfileController::class, 'update']);
     Route::post('/profile/images', [UserProfileController::class, 'updateImages']);
     Route::post('/profile/change-password', [UserProfileController::class, 'changePassword']);
 
     // user experience routes
-    Route::get('/experience/list', [UserExperienceController::class, 'index']); //list of user experience (auth user)
+    Route::get('/experience/list', [UserExperienceController::class, 'index']); // list of user experience (auth user)
     Route::post('/experience/add', [UserExperienceController::class, 'store']);
     Route::get('/experience/edit/{id}', [UserExperienceController::class, 'edit']);
     Route::post('/experience/update/{id}', [UserExperienceController::class, 'update']);
@@ -56,7 +56,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/user-experiences/{id}', [UserExperienceController::class, 'showExperienceByUserId']);
 
     // user education routes
-    Route::get('/education/list', [UserEducationController::class, 'index']); //list of user education (auth user)
+    Route::get('/education/list', [UserEducationController::class, 'index']); // list of user education (auth user)
     Route::post('/education/add', [UserEducationController::class, 'store']);
     Route::get('/education/edit/{id}', [UserEducationController::class, 'edit']);
     Route::post('/education/update/{id}', [UserEducationController::class, 'update']);
@@ -87,12 +87,12 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/notifications/{notificationId}', [NotificationController::class, 'delete']);
     Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
 
-    //academia routes
+    // academia routes
     Route::get('/states', [AcademiaController::class, 'getStates']);
     Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
     Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
     Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
-    Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
+    Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); // medical facilities
     Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
 
     // industry routes

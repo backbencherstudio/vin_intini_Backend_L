@@ -2,11 +2,11 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class UtahDataSeeder extends Seeder
 {
@@ -42,12 +42,12 @@ class UtahDataSeeder extends Seeder
             [
                 'name' => 'University of Utah Health Psychiatry Residency Program',
                 'loc' => 'Salt Lake City',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'University of Utah School of Medicine',
                 'loc' => 'Salt Lake City',
-                'deg' => ['MD-PhD']
+                'deg' => ['MD-PhD'],
             ],
         ];
 

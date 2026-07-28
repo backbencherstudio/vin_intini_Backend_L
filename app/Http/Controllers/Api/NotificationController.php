@@ -25,8 +25,8 @@ class NotificationController extends Controller
         if ($search !== '') {
             $query = $query->where(function ($notificationQuery) use ($search) {
                 $notificationQuery
-                    ->where('type', 'like', '%' . $search . '%')
-                    ->orWhere('data', 'like', '%' . $search . '%');
+                    ->where('type', 'like', '%'.$search.'%')
+                    ->orWhere('data', 'like', '%'.$search.'%');
             });
         }
 
@@ -44,7 +44,7 @@ class NotificationController extends Controller
                 'total_notifications' => $totalNotifications,
                 'unread_notifications' => $unreadNotifications,
             ],
-            'data' => $notifications->getCollection()->map(fn($notification) => $this->formatNotification($notification))->values(),
+            'data' => $notifications->getCollection()->map(fn ($notification) => $this->formatNotification($notification))->values(),
             'total' => $notifications->total(),
             'limit' => $notifications->perPage(),
             'current_page' => $notifications->currentPage(),
@@ -138,5 +138,4 @@ class NotificationController extends Controller
             'created_at' => $notification->created_at?->toIso8601String(),
         ];
     }
-    
 }

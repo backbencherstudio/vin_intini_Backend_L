@@ -10,8 +10,15 @@ use Illuminate\Support\Facades\Storage;
 
 class BiotechController extends Controller
 {
-    public function psychology(Request $request) { return $this->renderView($request, 'psychology'); }
-    public function neuroscience(Request $request) { return $this->renderView($request, 'neuroscience'); }
+    public function psychology(Request $request)
+    {
+        return $this->renderView($request, 'psychology');
+    }
+
+    public function neuroscience(Request $request)
+    {
+        return $this->renderView($request, 'neuroscience');
+    }
 
     private function renderView($request, $network)
     {
@@ -20,15 +27,15 @@ class BiotechController extends Controller
         });
 
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->search . '%');
+            $query->where('title', 'like', '%'.$request->search.'%');
         }
 
         $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
 
         $sections = IndustrySections::where('industry_type', 'biotechnology')
-                    ->where('network_type', $network)
-                    ->with('IndustryCategory')
-                    ->get();
+            ->where('network_type', $network)
+            ->with('IndustryCategory')
+            ->get();
 
         return view('admin.industry.biotech', compact('items', 'sections', 'network'));
     }
@@ -49,6 +56,7 @@ class BiotechController extends Controller
         }
 
         IndustryItem::updateOrCreate(['id' => $request->item_id], $data);
+
         return back()->with('success', 'Operation successful!');
     }
 
@@ -59,6 +67,7 @@ class BiotechController extends Controller
             Storage::disk('public')->delete($item->image);
         }
         $item->delete();
+
         return back()->with('success', 'Item deleted successfully!');
     }
 }

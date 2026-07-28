@@ -115,7 +115,7 @@ class UserConnectionFlowTest extends TestCase
             'status' => Connection::STATUS_PENDING,
         ]);
 
-        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/' . $connectionRequest->id . '/accept');
+        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/'.$connectionRequest->id.'/accept');
 
         $response
             ->assertOk()
@@ -164,7 +164,7 @@ class UserConnectionFlowTest extends TestCase
             'status' => Connection::STATUS_PENDING,
         ]);
 
-        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/' . $connectionRequest->id . '/ignore');
+        $response = $this->actingAs($receiver, 'api')->postJson('/api/connections/requests/'.$connectionRequest->id.'/ignore');
 
         $response
             ->assertOk()
@@ -244,7 +244,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('data.0.mutual_connections_count', 1)
             ->assertJsonPath('data.0.mutual_connections.0.id', $mutualUser->id);
 
-        $followersSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/followers?search=' . strtolower($secondUser->first_name));
+        $followersSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/followers?search='.strtolower($secondUser->first_name));
 
         $followersSearchResponse
             ->assertOk()
@@ -283,7 +283,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('last_page', 1)
             ->assertJsonCount(2, 'data');
 
-        $followingSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following?search=' . strtolower($secondUser->first_name));
+        $followingSearchResponse = $this->actingAs($firstUser, 'api')->getJson('/api/connections/following?search='.strtolower($secondUser->first_name));
 
         $followingSearchResponse
             ->assertOk()
@@ -317,7 +317,7 @@ class UserConnectionFlowTest extends TestCase
         $this->assertSame(1, $followedItem['mutual_connections_count']);
         $this->assertSame($mutualUser->id, $followedItem['mutual_connections'][0]['id']);
 
-        $unfollowResponse = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/' . $secondUser->id . '/unfollow');
+        $unfollowResponse = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/'.$secondUser->id.'/unfollow');
 
         $unfollowResponse
             ->assertOk()
@@ -330,7 +330,7 @@ class UserConnectionFlowTest extends TestCase
             'following_id' => $secondUser->id,
         ]);
 
-        $refollowResponse = $this->actingAs($firstUser, 'api')->postJson('/api/connections/' . $secondUser->id . '/follow');
+        $refollowResponse = $this->actingAs($firstUser, 'api')->postJson('/api/connections/'.$secondUser->id.'/follow');
 
         $refollowResponse
             ->assertCreated()
@@ -371,7 +371,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.status', Connection::STATUS_PENDING)
-            ->assertJsonPath('data.0.message', $sender->first_name . ' ' . $sender->last_name . ' sent you a connection request')
+            ->assertJsonPath('data.0.message', $sender->first_name.' '.$sender->last_name.' sent you a connection request')
             ->assertJsonPath('data.0.can_accept', true)
             ->assertJsonPath('data.0.can_ignore', true);
 
@@ -456,7 +456,7 @@ class UserConnectionFlowTest extends TestCase
             'following_id' => $firstUser->id,
         ]);
 
-        $response = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/' . $secondUser->id . '/remove');
+        $response = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/'.$secondUser->id.'/remove');
 
         $response
             ->assertOk()
@@ -609,25 +609,25 @@ class UserConnectionFlowTest extends TestCase
 
         $suggestions = collect($response->json('data'));
 
-        $this->assertFalse($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $connectedUser->id));
-        $this->assertFalse($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $userWithoutProfile->id));
-        $this->assertTrue($suggestions->contains(fn(array $item) => (int) $item['user']['id'] === $unverifiedWithProfile->id));
+        $this->assertFalse($suggestions->contains(fn (array $item) => (int) $item['user']['id'] === $connectedUser->id));
+        $this->assertFalse($suggestions->contains(fn (array $item) => (int) $item['user']['id'] === $userWithoutProfile->id));
+        $this->assertTrue($suggestions->contains(fn (array $item) => (int) $item['user']['id'] === $unverifiedWithProfile->id));
 
-        $pendingSentItem = $suggestions->first(fn(array $item) => (int) $item['user']['id'] === $pendingSentUser->id);
+        $pendingSentItem = $suggestions->first(fn (array $item) => (int) $item['user']['id'] === $pendingSentUser->id);
         $this->assertNotNull($pendingSentItem);
         $this->assertSame('pending_sent', $pendingSentItem['state']);
         $this->assertSame('Pending', $pendingSentItem['action_label']);
         $this->assertSame($pendingSentRequest->id, $pendingSentItem['pending_request_id']);
         $this->assertFalse($pendingSentItem['is_connectable']);
 
-        $pendingReceivedItem = $suggestions->first(fn(array $item) => (int) $item['user']['id'] === $pendingReceivedUser->id);
+        $pendingReceivedItem = $suggestions->first(fn (array $item) => (int) $item['user']['id'] === $pendingReceivedUser->id);
         $this->assertNotNull($pendingReceivedItem);
         $this->assertSame('pending_received', $pendingReceivedItem['state']);
         $this->assertSame('Accept', $pendingReceivedItem['action_label']);
         $this->assertSame($pendingReceivedRequest->id, $pendingReceivedItem['pending_request_id']);
         $this->assertFalse($pendingReceivedItem['is_connectable']);
 
-        $newSuggestionItem = $suggestions->first(fn(array $item) => (int) $item['user']['id'] === $newSuggestionUser->id);
+        $newSuggestionItem = $suggestions->first(fn (array $item) => (int) $item['user']['id'] === $newSuggestionUser->id);
         $this->assertNotNull($newSuggestionItem);
         $this->assertSame('not_connected', $newSuggestionItem['state']);
         $this->assertSame('Connect', $newSuggestionItem['action_label']);

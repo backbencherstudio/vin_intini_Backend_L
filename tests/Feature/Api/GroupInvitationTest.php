@@ -57,7 +57,7 @@ class GroupInvitationTest extends TestCase
         $group->members()->attach($groupMember->id, ['role' => 'member']);
 
         $response = $this->actingAs($this->creator, 'api')
-            ->getJson('/api/group-invite-users/' . $group->id);
+            ->getJson('/api/group-invite-users/'.$group->id);
 
         $response
             ->assertOk()
@@ -69,7 +69,7 @@ class GroupInvitationTest extends TestCase
             ->assertJsonPath('total_page', 1)
             ->assertJsonPath('last_page', 1);
 
-        $returnedIds = collect($response->json('data'))->pluck('id')->map(fn($id) => (int) $id)->all();
+        $returnedIds = collect($response->json('data'))->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $this->assertContains($inviteeOne->id, $returnedIds);
         $this->assertContains($inviteeTwo->id, $returnedIds);
@@ -89,7 +89,7 @@ class GroupInvitationTest extends TestCase
         $this->acceptConnection($this->creator, $inviteeTwo);
 
         $response = $this->actingAs($this->creator, 'api')
-            ->postJson('/api/group-invite-users/' . $group->id, [
+            ->postJson('/api/group-invite-users/'.$group->id, [
                 'user_ids' => [$inviteeOne->id, $inviteeTwo->id],
             ]);
 
@@ -143,7 +143,7 @@ class GroupInvitationTest extends TestCase
         $group->members()->attach($alreadyMember->id, ['role' => 'member']);
 
         $response = $this->actingAs($this->creator, 'api')
-            ->postJson('/api/group-invite-users/' . $group->id, [
+            ->postJson('/api/group-invite-users/'.$group->id, [
                 'user_ids' => [$invitee->id, $alreadyMember->id, $unrelatedUser->id],
             ]);
 
@@ -152,7 +152,7 @@ class GroupInvitationTest extends TestCase
             ->assertJsonPath('status', 'error')
             ->assertJsonPath('message', 'Some selected users are not eligible for invitation.');
 
-        $invalidIds = collect($response->json('data.invalid_user_ids'))->map(fn($id) => (int) $id)->all();
+        $invalidIds = collect($response->json('data.invalid_user_ids'))->map(fn ($id) => (int) $id)->all();
 
         $this->assertContains($alreadyMember->id, $invalidIds);
         $this->assertContains($unrelatedUser->id, $invalidIds);
@@ -171,7 +171,7 @@ class GroupInvitationTest extends TestCase
         $this->acceptConnection($groupMember, $invitee);
 
         $listResponse = $this->actingAs($groupMember, 'api')
-            ->getJson('/api/group-invite-users/' . $group->id);
+            ->getJson('/api/group-invite-users/'.$group->id);
 
         $listResponse
             ->assertOk()
@@ -179,7 +179,7 @@ class GroupInvitationTest extends TestCase
             ->assertJsonCount(1, 'data');
 
         $sendResponse = $this->actingAs($groupMember, 'api')
-            ->postJson('/api/group-invite-users/' . $group->id, [
+            ->postJson('/api/group-invite-users/'.$group->id, [
                 'user_ids' => [$invitee->id],
             ]);
 
@@ -201,7 +201,7 @@ class GroupInvitationTest extends TestCase
         $this->acceptConnection($this->creator, $invitee);
 
         $this->actingAs($this->creator, 'api')
-            ->postJson('/api/group-invite-users/' . $group->id, [
+            ->postJson('/api/group-invite-users/'.$group->id, [
                 'user_ids' => [$invitee->id],
             ])
             ->assertOk();
@@ -212,7 +212,7 @@ class GroupInvitationTest extends TestCase
             ->firstOrFail();
 
         $response = $this->actingAs($invitee, 'api')
-            ->postJson('/api/group-invitations/' . $invitation->id . '/accept');
+            ->postJson('/api/group-invitations/'.$invitation->id.'/accept');
 
         $response
             ->assertOk()
@@ -237,7 +237,7 @@ class GroupInvitationTest extends TestCase
         $this->acceptConnection($this->creator, $invitee);
 
         $this->actingAs($this->creator, 'api')
-            ->postJson('/api/group-invite-users/' . $group->id, [
+            ->postJson('/api/group-invite-users/'.$group->id, [
                 'user_ids' => [$invitee->id],
             ])
             ->assertOk();
@@ -248,7 +248,7 @@ class GroupInvitationTest extends TestCase
             ->firstOrFail();
 
         $ignoreResponse = $this->actingAs($invitee, 'api')
-            ->postJson('/api/group-invitations/' . $invitation->id . '/ignore');
+            ->postJson('/api/group-invitations/'.$invitation->id.'/ignore');
 
         $ignoreResponse
             ->assertOk()
@@ -260,7 +260,7 @@ class GroupInvitationTest extends TestCase
         ]);
 
         $resendResponse = $this->actingAs($this->creator, 'api')
-            ->postJson('/api/group-invite-users/' . $group->id, [
+            ->postJson('/api/group-invite-users/'.$group->id, [
                 'user_ids' => [$invitee->id],
             ]);
 
@@ -285,7 +285,7 @@ class GroupInvitationTest extends TestCase
         $this->acceptConnection($member, $invitee);
 
         $listResponse = $this->actingAs($member, 'api')
-            ->getJson('/api/group-invite-users/' . $group->id);
+            ->getJson('/api/group-invite-users/'.$group->id);
 
         $listResponse
             ->assertStatus(403)
@@ -293,7 +293,7 @@ class GroupInvitationTest extends TestCase
             ->assertJsonPath('message', 'You are not allowed to invite users to this group.');
 
         $sendResponse = $this->actingAs($member, 'api')
-            ->postJson('/api/group-invite-users/' . $group->id, [
+            ->postJson('/api/group-invite-users/'.$group->id, [
                 'user_ids' => [$invitee->id],
             ]);
 
@@ -311,7 +311,7 @@ class GroupInvitationTest extends TestCase
         $this->acceptConnection($this->creator, $invitee);
 
         $this->actingAs($this->creator, 'api')
-            ->postJson('/api/group-invite-users/' . $group->id, [
+            ->postJson('/api/group-invite-users/'.$group->id, [
                 'user_ids' => [$invitee->id],
             ])
             ->assertOk();
@@ -364,13 +364,13 @@ class GroupInvitationTest extends TestCase
         $this->acceptConnection($this->creator, $invitee);
 
         $this->actingAs($this->creator, 'api')
-            ->postJson('/api/group-invite-users/' . $groupOne->id, [
+            ->postJson('/api/group-invite-users/'.$groupOne->id, [
                 'user_ids' => [$invitee->id],
             ])
             ->assertOk();
 
         $this->actingAs($this->creator, 'api')
-            ->postJson('/api/group-invite-users/' . $groupTwo->id, [
+            ->postJson('/api/group-invite-users/'.$groupTwo->id, [
                 'user_ids' => [$invitee->id],
             ])
             ->assertOk();

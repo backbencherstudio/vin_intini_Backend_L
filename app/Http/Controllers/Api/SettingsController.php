@@ -3,13 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Throwable;
-use App\Models\Settings;
-use App\Http\Requests\Settings\UpdatePlatformSettingsRequest;
 use App\Models\User;
 use App\Services\ProfileImageService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Throwable;
 
 class SettingsController extends Controller
 {
@@ -22,19 +20,19 @@ class SettingsController extends Controller
                 'success' => true,
                 'data' => [
                     'user_settings' => [
-                        'first_name'    => $user->first_name,
-                        'last_name'     => $user->last_name,
-                        'email'         => $user->email,
+                        'first_name' => $user->first_name,
+                        'last_name' => $user->last_name,
+                        'email' => $user->email,
                         'profile_image' => $user->profile_image_url,
                         'new_order_e_notification' => $user->new_order_e_notification ?? false,
                     ],
-                ]
+                ],
             ], 200);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch settings',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -47,8 +45,8 @@ class SettingsController extends Controller
             $validated = $request->validate([
                 'first_name' => ['string', 'max:255'],
                 'last_name' => ['string', 'max:255'],
-                'email' => ['email', 'max:255', 'unique:users,email,' . $user->id],
-                'mobile' => ['unique:users,mobile,' . $user->id],
+                'email' => ['email', 'max:255', 'unique:users,email,'.$user->id],
+                'mobile' => ['unique:users,mobile,'.$user->id],
                 'profile_image' => ['sometimes', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
                 'remove_image' => ['sometimes', 'boolean'],
             ]);
@@ -77,18 +75,17 @@ class SettingsController extends Controller
                     'email' => $user->email,
                     'mobile' => $user->mobile,
                     'profile_image' => $user->profile_image_url,
-                ]
+                ],
             ], 200);
         } catch (Throwable $e) {
 
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update settings',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
-
 
     public function updateNotificationSettings(Request $request): JsonResponse
     {
@@ -102,7 +99,7 @@ class SettingsController extends Controller
             if (empty($validated)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'At least one notification setting must be provided.'
+                    'message' => 'At least one notification setting must be provided.',
                 ], 422);
             }
 
@@ -112,11 +109,11 @@ class SettingsController extends Controller
                 'success' => true,
                 'message' => 'Notification settings updated successfully.',
             ], 200);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update notification settings.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

@@ -4,12 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Connection;
 use App\Models\User;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
 class ConnectionRequestReceivedNotification extends Notification implements ShouldQueue
 {
@@ -39,17 +38,17 @@ class ConnectionRequestReceivedNotification extends Notification implements Shou
 
         return [
             'connection_request_id' => $this->connectionRequest->id,
-            'sender_id'             => $this->sender->id,
-            'sender_name'           => trim(
-                ($this->sender->first_name ?? '') . ' ' .
+            'sender_id' => $this->sender->id,
+            'sender_name' => trim(
+                ($this->sender->first_name ?? '').' '.
                 ($this->sender->last_name ?? '')
             ),
-            'sender_profile_image'      => $this->sender->profile_image,
-            'sender_profile_image_url'  => $this->sender->profile_image_url,
-            'message'               => 'sent you a connection request',
-            'type'                  => class_basename(self::class),
-            'requested_at'          => $this->connectionRequest->created_at?->toIso8601String(),
-            'unread_count'          => $unreadCount + 1,
+            'sender_profile_image' => $this->sender->profile_image,
+            'sender_profile_image_url' => $this->sender->profile_image_url,
+            'message' => 'sent you a connection request',
+            'type' => class_basename(self::class),
+            'requested_at' => $this->connectionRequest->created_at?->toIso8601String(),
+            'unread_count' => $unreadCount + 1,
         ];
     }
 
@@ -69,8 +68,8 @@ class ConnectionRequestReceivedNotification extends Notification implements Shou
     {
         return [
             new PrivateChannel(
-                'App.Models.User.' . $this->connectionRequest->receiver_id
-            )
+                'App.Models.User.'.$this->connectionRequest->receiver_id
+            ),
         ];
     }
 

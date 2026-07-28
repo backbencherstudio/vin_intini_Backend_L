@@ -15,9 +15,9 @@ class ContactUsController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'    => 'required|string|max:255',
-            'email'   => 'required|email|max:255',
-            'phone'   => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'nullable|string',
             'subject' => 'nullable|string|max:255',
             'message' => 'required|string',
             'address' => 'nullable|string',
@@ -26,7 +26,7 @@ class ContactUsController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -36,13 +36,13 @@ class ContactUsController extends Controller
         Mail::to('contact@mindunite.com')->send(new ContactUsNotificationMail($contact));
         // Mail::to('niaz.softvence@gmail.com')->send(new ContactUsNotificationMail($contact));
 
-        //auto response to user
+        // auto response to user
         Mail::to($contact->email)->send(new ContactUsAutoResponseMail($contact));
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Your message has been received. We will contact you soon!',
-            'data'    => $contact
+            'data' => $contact,
         ], 201);
     }
 }

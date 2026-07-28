@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Validation\Rule;
 use App\Models\Connection;
 use App\Models\Education;
 use App\Models\Experience;
@@ -12,10 +11,11 @@ use App\Models\Skill;
 use App\Models\User;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class UserProfileController extends Controller
 {
@@ -25,7 +25,7 @@ class UserProfileController extends Controller
             'profile.currentPosition',
             'profile.currentInstitute',
             'educations.institution',
-            'experiences.company'
+            'experiences.company',
         ]);
 
         $isOwnProfile = true;
@@ -127,10 +127,10 @@ class UserProfileController extends Controller
             'profile.currentPosition',
             'profile.currentInstitute',
             'educations.institution',
-            'experiences.company'
+            'experiences.company',
         ])->find($id);
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'User profile not found',
@@ -266,7 +266,7 @@ class UserProfileController extends Controller
     {
         if ($request->has('group_ids') && is_string($request->group_ids)) {
             $request->merge([
-                'group_ids' => explode(',', $request->group_ids)
+                'group_ids' => explode(',', $request->group_ids),
             ]);
         }
 
@@ -297,12 +297,12 @@ class UserProfileController extends Controller
             'current_position_id' => 'nullable|integer|exists:experiences,id',
             'current_institute_id' => 'nullable|integer|exists:institutions,id',
 
-            'notify_jobs'         => 'nullable|boolean',
+            'notify_jobs' => 'nullable|boolean',
             'notify_publications' => 'nullable|boolean',
-            'notify_residency'    => 'nullable|boolean',
-            'notify_offers'       => 'nullable|boolean',
-            'group_ids'           => 'nullable|array',
-            'group_ids.*'         => 'exists:groups,id'
+            'notify_residency' => 'nullable|boolean',
+            'notify_offers' => 'nullable|boolean',
+            'group_ids' => 'nullable|array',
+            'group_ids.*' => 'exists:groups,id',
         ]);
 
         $user = $request->user();
@@ -353,10 +353,10 @@ class UserProfileController extends Controller
                 'current_institute_id' => $currentInstituteId,
                 'about' => $request->about,
 
-                'notify_jobs'         => $request->boolean('notify_jobs'),
+                'notify_jobs' => $request->boolean('notify_jobs'),
                 'notify_publications' => $request->boolean('notify_publications'),
-                'notify_residency'    => $request->boolean('notify_residency'),
-                'notify_offers'       => $request->boolean('notify_offers'),
+                'notify_residency' => $request->boolean('notify_residency'),
+                'notify_offers' => $request->boolean('notify_offers'),
             ]
         );
 
@@ -593,35 +593,35 @@ class UserProfileController extends Controller
             'new_password' => [
                 'required',
                 'confirmed',
-                Password::min(8)->mixedCase()->numbers() // Minimum 8 chars, mixed case, and numbers
+                Password::min(8)->mixedCase()->numbers(), // Minimum 8 chars, mixed case, and numbers
             ],
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $user = $request->user();
 
         // 2. Check if current password matches
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'The current password you entered is incorrect.'
+                'message' => 'The current password you entered is incorrect.',
             ], 400);
         }
 
         // 3. Update the password
         $user->update([
-            'password' => Hash::make($request->new_password)
+            'password' => Hash::make($request->new_password),
         ]);
 
         return response()->json([
             'status' => true,
-            'message' => 'Password changed successfully.'
+            'message' => 'Password changed successfully.',
         ], 200);
     }
 }

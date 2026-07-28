@@ -2,11 +2,11 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class RhodeIslandDataSeeder extends Seeder
 {
@@ -45,12 +45,12 @@ class RhodeIslandDataSeeder extends Seeder
             [
                 'name' => 'Butler Hospital/Brown University Psychiatry Residency Program',
                 'loc' => 'Providence',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'Brown University School of Medicine',
                 'loc' => 'Providence',
-                'deg' => ['MD-PhD']
+                'deg' => ['MD-PhD'],
             ],
         ];
 

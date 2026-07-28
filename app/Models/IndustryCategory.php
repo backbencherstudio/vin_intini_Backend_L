@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class IndustryCategory extends Model
 {
     protected $fillable = ['section_id', 'category_name'];
-    
+
     public function IndustrySection()
     {
         return $this->belongsTo(IndustrySections::class, 'section_id');

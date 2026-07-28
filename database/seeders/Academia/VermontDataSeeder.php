@@ -2,11 +2,11 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class VermontDataSeeder extends Seeder
 {
@@ -46,12 +46,12 @@ class VermontDataSeeder extends Seeder
             [
                 'name' => 'University of Vermont Medical Center',
                 'loc' => 'Burlington',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'University of Vermont College of Medicine',
                 'loc' => 'Burlington',
-                'deg' => ['MD-PhD']
+                'deg' => ['MD-PhD'],
             ],
         ];
 

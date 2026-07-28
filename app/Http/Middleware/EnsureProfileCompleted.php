@@ -12,7 +12,7 @@ class EnsureProfileCompleted
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthenticated',
@@ -23,7 +23,7 @@ class EnsureProfileCompleted
             ? $user->profile !== null
             : $user->profile()->exists();
 
-        if (!$hasProfile) {
+        if (! $hasProfile) {
             return response()->json([
                 'success' => false,
                 'message' => 'Profile setup required.',

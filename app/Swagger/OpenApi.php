@@ -11,6 +11,4 @@ use OpenApi\Attributes as OA;
     scheme: 'bearer',
     bearerFormat: 'JWT'
 )]
-final class OpenApi
-{
-}
+final class OpenApi {}

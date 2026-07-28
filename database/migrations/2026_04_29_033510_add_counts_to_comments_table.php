@@ -20,7 +20,7 @@ return new class extends Migration
             $table->dropColumn([
                 'like_count',
                 'reply_count',
-                'reply_like_count'
+                'reply_like_count',
             ]);
         });
     }

@@ -2,11 +2,10 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class WyomingDataSeeder extends Seeder
 {
@@ -22,7 +21,7 @@ class WyomingDataSeeder extends Seeder
                 'name' => 'University of Wyoming',
                 'psych' => ['BS', 'BS (OL)', 'MS', 'MS (OL)', 'PhD'],
                 'neuro' => ['PhD'],
-                'ol' => true
+                'ol' => true,
             ],
         ];
 
@@ -35,7 +34,6 @@ class WyomingDataSeeder extends Seeder
                 'has_online_options' => $uni['ol'],
             ]);
         }
-
 
         $facilities = [
             // State Institutions

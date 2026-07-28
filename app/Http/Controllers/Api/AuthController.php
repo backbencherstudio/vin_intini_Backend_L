@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RegisterOtpMail;
-use App\Models\Connection;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -67,7 +66,7 @@ class AuthController extends Controller
     {
         $user = auth('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
 
@@ -116,7 +115,6 @@ class AuthController extends Controller
             ],
         ]);
     }
-
 
     public function logout()
     {

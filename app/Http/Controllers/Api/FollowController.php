@@ -18,7 +18,9 @@ class FollowController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $limit = $request->integer('limit', 10);
-        if ($limit > 100) $limit = 100;
+        if ($limit > 100) {
+            $limit = 100;
+        }
 
         $baseQuery = UserFollow::query()->where('following_id', $currentUser->id);
 
@@ -207,7 +209,9 @@ class FollowController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $limit = $request->integer('limit', 10);
-        if ($limit > 100) $limit = 100;
+        if ($limit > 100) {
+            $limit = 100;
+        }
 
         $baseQuery = UserFollow::query()->where('follower_id', $currentUser->id);
 
@@ -440,7 +444,7 @@ class FollowController extends Controller
     {
         return [
             'id' => $user->id,
-            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'title' => $user->title,

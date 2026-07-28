@@ -6,7 +6,6 @@ use App\Models\AcademiaFacility;
 use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaUniversity;
 use App\Models\State;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class AlabamaDataSeeder extends Seeder

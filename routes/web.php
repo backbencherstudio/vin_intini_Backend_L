@@ -3,11 +3,11 @@
 use App\Http\Controllers\Admin\AcademiaAdminController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\BiotechController;
-use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Admin\IndustryCategoryController;
 use App\Http\Controllers\Admin\IndustryPharmaController;
 use App\Http\Controllers\Admin\IndustryPublicationController;
 use App\Http\Controllers\Admin\PagesController;
+use App\Http\Controllers\Admin\PartnerController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -19,7 +19,8 @@ Route::get('/welcome', function () {
 
 Route::get('/clear', function () {
     Artisan::call('optimize:clear');
-    return "Cleared!";
+
+    return 'Cleared!';
 });
 
 Route::middleware('guest:web')->group(function () {
@@ -99,12 +100,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], 
         Route::post('/update/{id}', [PagesController::class, 'update'])->name('admin.pages.update');
     });
 
-
     Route::post('admin/logout', [AdminAuthController::class, 'adminLogout'])->name('admin.logout');
 });
-
-
-
 
 // User Management Routes
 // Route::get('/ni-az/users', [AdminAuthController::class, 'allUsers'])->name('users.index');
@@ -119,7 +116,6 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], 
 // Route::post('/ni-az/posts/update', [AdminAuthController::class, 'postUpdate'])->name('posts.update');
 // Route::delete('/ni-az/posts/{id}', [AdminAuthController::class, 'postDestroy'])->name('posts.destroy');
 
-
 // Route::get('/ni-az/institutions', [AdminAuthController::class, 'institutionIndex'])->name('institutions.index');
 // Route::put('/ni-az/institutions/{institution}', [AdminAuthController::class, 'institutionUpdate'])->name('institutions.update');
 
@@ -133,4 +129,4 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], 
 //     return redirect()->back()->with('success', 'All notifications have been removed!');
 // })->name('notifications.clearAll');
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

@@ -4,14 +4,15 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\BroadcastMessage;
+use Illuminate\Notifications\Notification;
 
 class CommentLikedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
     protected $sender;
+
     protected $comment;
 
     public function __construct($sender, $comment)
@@ -25,7 +26,6 @@ class CommentLikedNotification extends Notification implements ShouldQueue
         return ['database', 'broadcast'];
     }
 
-
     private function notificationData($notifiable): array
     {
         $unreadCount = $notifiable
@@ -33,16 +33,16 @@ class CommentLikedNotification extends Notification implements ShouldQueue
             ->count();
 
         return [
-            'sender_id'    => $this->sender->id,
-            'sender_name'  => trim(
-                ($this->sender->first_name ?? '') . ' ' .
+            'sender_id' => $this->sender->id,
+            'sender_name' => trim(
+                ($this->sender->first_name ?? '').' '.
                 ($this->sender->last_name ?? '')
             ),
-            'sender_profile_image_url'  => $this->sender->profile_image_url,
-            'comment_id'   => $this->comment->id,
-            'post_id'      => $this->comment->post_id,
-            'message'      => 'liked your comment',
-            'type'         => class_basename(self::class),
+            'sender_profile_image_url' => $this->sender->profile_image_url,
+            'comment_id' => $this->comment->id,
+            'post_id' => $this->comment->post_id,
+            'message' => 'liked your comment',
+            'type' => class_basename(self::class),
             'unread_count' => $unreadCount + 1,
         ];
     }

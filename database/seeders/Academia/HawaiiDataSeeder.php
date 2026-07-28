@@ -2,11 +2,11 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class HawaiiDataSeeder extends Seeder
 {
@@ -22,37 +22,37 @@ class HawaiiDataSeeder extends Seeder
                 'name' => 'Brigham Young University – Hawaii',
                 'psych' => ['BS'],
                 'neuro' => [],
-                'ol' => false
+                'ol' => false,
             ],
             [
                 'name' => 'Chaminade University',
                 'psych' => ['BS', 'MS', 'PsyD', 'EdD', 'DMFT'],
                 'neuro' => [],
-                'ol' => false
+                'ol' => false,
             ],
             [
                 'name' => 'Hawaii Pacific University',
                 'psych' => ['BA', 'MA (OL)', 'PsyD'],
                 'neuro' => [],
-                'ol' => true
+                'ol' => true,
             ],
             [
                 'name' => 'University of Hawaii at Hilo',
                 'psych' => ['BA', 'MA'],
                 'neuro' => [],
-                'ol' => false
+                'ol' => false,
             ],
             [
                 'name' => 'University of Hawaii at Manoa',
                 'psych' => ['BS', 'BA', 'PhD'],
                 'neuro' => [],
-                'ol' => false
+                'ol' => false,
             ],
             [
                 'name' => 'University of Hawaii at West Oahu',
                 'psych' => [],
                 'neuro' => [],
-                'ol' => false
+                'ol' => false,
             ],
         ];
 
@@ -70,12 +70,12 @@ class HawaiiDataSeeder extends Seeder
             [
                 'name' => 'University of Hawai\'i Psychiatry Residency Program',
                 'loc' => 'Honolulu',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'Tripler Army Medical Center',
                 'loc' => 'Tripler AMC',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
         ];
 

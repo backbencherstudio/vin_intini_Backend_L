@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\IndustryPartner;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PartnerController extends Controller
 {
@@ -14,7 +14,7 @@ class PartnerController extends Controller
         $query = IndustryPartner::query();
 
         if ($request->filled('search')) {
-            $query->where('partner_name', 'like', '%' . $request->search . '%');
+            $query->where('partner_name', 'like', '%'.$request->search.'%');
         }
 
         if ($request->filled('network')) {
@@ -40,12 +40,12 @@ class PartnerController extends Controller
         ]);
 
         $data = [
-            'network_type'  => $request->network_type,
+            'network_type' => $request->network_type,
             'industry_type' => $request->industry_type,
-            'partner_name'  => $request->partner_name,
-            'partner_tag'   => $request->partner_tag,
-            'partner_desc'  => $request->partner_desc,
-            'partner_link'  => $request->partner_link,
+            'partner_name' => $request->partner_name,
+            'partner_tag' => $request->partner_tag,
+            'partner_desc' => $request->partner_desc,
+            'partner_link' => $request->partner_link,
         ];
 
         if ($request->hasFile('partner_logo')) {
@@ -71,6 +71,7 @@ class PartnerController extends Controller
             Storage::disk('public')->delete($partner->partner_logo);
         }
         $partner->delete();
+
         return back()->with('success', 'Partner removed successfully!');
     }
 }

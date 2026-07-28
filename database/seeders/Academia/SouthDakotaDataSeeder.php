@@ -2,11 +2,11 @@
 
 namespace Database\Seeders\Academia;
 
-use Illuminate\Database\Seeder;
-use App\Models\State;
-use App\Models\AcademiaUniversity;
-use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
+use App\Models\AcademiaUniversity;
+use App\Models\State;
+use Illuminate\Database\Seeder;
 
 class SouthDakotaDataSeeder extends Seeder
 {
@@ -44,12 +44,12 @@ class SouthDakotaDataSeeder extends Seeder
             [
                 'name' => 'University of South Dakota Psychiatry Residency Program',
                 'loc' => 'Sioux Falls',
-                'deg' => ['MD-DO']
+                'deg' => ['MD-DO'],
             ],
             [
                 'name' => 'University of South Dakota School of Medicine',
                 'loc' => 'Vermillion',
-                'deg' => ['MD-PhD']
+                'deg' => ['MD-PhD'],
             ],
         ];
 

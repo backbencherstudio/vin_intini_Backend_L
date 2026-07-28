@@ -20,7 +20,7 @@ class ProfileImageServiceTest extends TestCase
             ]),
         ]);
 
-        $service = new ProfileImageService();
+        $service = new ProfileImageService;
         $path = $service->storeFromUrl('https://example.com/avatar.jpg');
 
         $this->assertNotNull($path);

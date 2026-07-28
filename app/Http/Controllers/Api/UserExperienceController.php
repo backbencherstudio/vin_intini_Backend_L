@@ -47,7 +47,7 @@ class UserExperienceController extends Controller
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
-                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
                         : null,
                     'experiences' => $experiences,
                 ];
@@ -96,7 +96,7 @@ class UserExperienceController extends Controller
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
-                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
                         : null,
                     'experiences' => $experiences,
                 ];
@@ -137,8 +137,8 @@ class UserExperienceController extends Controller
             'total_time' => $totalTime,
             'timeline' => $startingDate && $totalTime
                 ? $experience->is_current
-                ? $startingDate . ' • ' . $statusLabel . ' • ' . $totalTime
-                : $startingDate . ' • ' . $endingDate . ' • ' . $totalTime
+                ? $startingDate.' • '.$statusLabel.' • '.$totalTime
+                : $startingDate.' • '.$endingDate.' • '.$totalTime
                 : null,
         ];
     }
@@ -164,11 +164,11 @@ class UserExperienceController extends Controller
         $parts = [];
 
         if ($years > 0) {
-            $parts[] = $years . ' year' . ($years === 1 ? '' : 's');
+            $parts[] = $years.' year'.($years === 1 ? '' : 's');
         }
 
         if ($remainingMonths > 0) {
-            $parts[] = $remainingMonths . ' month' . ($remainingMonths === 1 ? '' : 's');
+            $parts[] = $remainingMonths.' month'.($remainingMonths === 1 ? '' : 's');
         }
 
         if ($parts === []) {
@@ -269,8 +269,8 @@ class UserExperienceController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'count'  => $skills->count(),
-            'data'   => $skills,
+            'count' => $skills->count(),
+            'data' => $skills,
         ]);
     }
 
@@ -283,20 +283,20 @@ class UserExperienceController extends Controller
             'location' => 'nullable|string',
             'location_type' => 'nullable|string',
             'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
+            'start_year' => 'required|integer|min:1900|max:'.(date('Y') + 10),
             'is_current' => 'required|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
             'description' => 'nullable|string',
             'skills' => 'nullable|array',
             'skills.*' => 'string|distinct',
         ]);
 
-        $startDate = Carbon::parse($request->start_month . ' ' . $request->start_year)->startOfMonth();
+        $startDate = Carbon::parse($request->start_month.' '.$request->start_year)->startOfMonth();
         $endDate = null;
 
-        if (!$request->is_current) {
-            $endDate = Carbon::parse($request->end_month . ' ' . $request->end_year)->startOfMonth();
+        if (! $request->is_current) {
+            $endDate = Carbon::parse($request->end_month.' '.$request->end_year)->startOfMonth();
 
             if ($endDate->lt($startDate)) {
                 return response()->json([
@@ -370,7 +370,7 @@ class UserExperienceController extends Controller
             ->where('user_id', $request->user()->id)
             ->find($id);
 
-        if (!$experience) {
+        if (! $experience) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Experience not found',
@@ -428,7 +428,7 @@ class UserExperienceController extends Controller
         $finalStart = $updateData['start_date'] ?? $experience->start_date;
         $finalEnd = $updateData['end_date'] ?? $experience->end_date;
 
-        if (!$isCurrent && $finalStart && $finalEnd) {
+        if (! $isCurrent && $finalStart && $finalEnd) {
             if (Carbon::parse($finalEnd)->lt(Carbon::parse($finalStart))) {
                 return response()->json([
                     'status' => 'error',

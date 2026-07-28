@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\AcademiaController;
+use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
@@ -10,7 +10,6 @@ use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
-use App\Http\Controllers\Admin\PagesController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', function () {
@@ -44,7 +43,6 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
-
     // group, company, skill and institution suggestions for dropdown
     Route::get('/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
     Route::get('/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
@@ -64,4 +62,3 @@ Route::middleware('auth:api')->group(function () {
         require __DIR__.'/shanto.php';
     });
 });
-

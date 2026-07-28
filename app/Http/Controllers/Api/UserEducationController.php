@@ -61,13 +61,13 @@ class UserEducationController extends Controller
 
         if ($search !== '') {
             $query->where('name', 'like', "%{$search}%")
-                ->orderByRaw("
+                ->orderByRaw('
                 CASE
                     WHEN name = ? THEN 1
                     WHEN name LIKE ? THEN 2
                     ELSE 3
                 END
-            ", [$search, $search . '%']);
+            ', [$search, $search.'%']);
         }
 
         $institutions = $query->orderBy('name', 'asc')
@@ -75,8 +75,8 @@ class UserEducationController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'count'  => $institutions->count(),
-            'data'   => $institutions,
+            'count' => $institutions->count(),
+            'data' => $institutions,
         ]);
     }
 
@@ -158,10 +158,10 @@ class UserEducationController extends Controller
             'degree' => 'required|string|max:255',
             'field_study' => 'nullable|string|max:255',
             'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
+            'start_year' => 'required|integer|min:1900|max:'.(date('Y') + 10),
             'is_current' => 'required|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
             'grade' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'activities' => 'nullable|string',
@@ -169,9 +169,9 @@ class UserEducationController extends Controller
             'skills.*' => 'string|distinct',
         ]);
 
-        $startDate = Carbon::parse($validated['start_month'] . ' ' . $validated['start_year'])->startOfMonth();
-        if (!$validated['is_current']) {
-            $endDate = Carbon::parse($validated['end_month'] . ' ' . $validated['end_year'])->startOfMonth();
+        $startDate = Carbon::parse($validated['start_month'].' '.$validated['start_year'])->startOfMonth();
+        if (! $validated['is_current']) {
+            $endDate = Carbon::parse($validated['end_month'].' '.$validated['end_year'])->startOfMonth();
 
             if ($endDate->lt($startDate)) {
                 return response()->json([
@@ -234,7 +234,7 @@ class UserEducationController extends Controller
             ->where('user_id', $request->user()->id)
             ->find($id);
 
-        if (!$education) {
+        if (! $education) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Education not found',
@@ -266,7 +266,7 @@ class UserEducationController extends Controller
             'grade',
             'description',
             'activities',
-            'is_current'
+            'is_current',
         ]);
 
         if ($request->filled('institution_id')) {
@@ -284,8 +284,12 @@ class UserEducationController extends Controller
             $updateData['end_month'] = null;
             $updateData['end_year'] = null;
         } else {
-            if ($request->has('end_month')) $updateData['end_month'] = $validated['end_month'];
-            if ($request->has('end_year')) $updateData['end_year'] = $validated['end_year'];
+            if ($request->has('end_month')) {
+                $updateData['end_month'] = $validated['end_month'];
+            }
+            if ($request->has('end_year')) {
+                $updateData['end_year'] = $validated['end_year'];
+            }
         }
 
         $sMonth = $updateData['start_month'] ?? $education->start_month;
@@ -293,7 +297,7 @@ class UserEducationController extends Controller
         $eMonth = $updateData['end_month'] ?? $education->end_month;
         $eYear = $updateData['end_year'] ?? $education->end_year;
 
-        if (!$isCurrent && $sMonth && $sYear && $eMonth && $eYear) {
+        if (! $isCurrent && $sMonth && $sYear && $eMonth && $eYear) {
             $start = Carbon::parse("$sMonth $sYear")->startOfMonth();
             $end = Carbon::parse("$eMonth $eYear")->startOfMonth();
 

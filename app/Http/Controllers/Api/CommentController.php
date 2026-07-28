@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Post;
-use Illuminate\Support\Facades\DB;
-use App\Models\Connection;
 use App\Models\Comment;
+use App\Models\Connection;
+use App\Models\Post;
+use App\Models\Reply;
 use App\Notifications\CommentRepliedNotification;
 use App\Notifications\PostCommentedNotification;
-use App\Models\Reply;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class CommentController extends Controller
@@ -18,8 +18,8 @@ class CommentController extends Controller
     public function comment(Request $request, $postId)
     {
         $request->validate([
-            'comment'   => 'nullable|string|max:1000|required_without:image',
-            'image'     => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120|required_without:comment',
+            'comment' => 'nullable|string|max:1000|required_without:image',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120|required_without:comment',
             'parent_id' => 'nullable|exists:comments,id',
         ]);
 
@@ -29,7 +29,7 @@ class CommentController extends Controller
         if ($post->who_can_comment === 'no_one') {
             return response()->json([
                 'success' => false,
-                'message' => 'Comments are disabled for this post'
+                'message' => 'Comments are disabled for this post',
             ], 403);
         }
 
@@ -47,10 +47,10 @@ class CommentController extends Controller
                 })
                 ->exists();
 
-            if (!$isConnected && $user->id !== $post->user_id) {
+            if (! $isConnected && $user->id !== $post->user_id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Only connections can comment on this post'
+                    'message' => 'Only connections can comment on this post',
                 ], 403);
             }
         }
@@ -65,13 +65,13 @@ class CommentController extends Controller
                 $imagePath = $request->file('image')->store('comments', 'public');
             }
 
-            if (!$request->parent_id) {
+            if (! $request->parent_id) {
 
                 $comment = Comment::create([
                     'post_id' => $post->id,
                     'user_id' => $user->id,
                     'comment' => $request->comment ?? null,
-                    'image'   => $imagePath,
+                    'image' => $imagePath,
                 ]);
 
                 $post->increment('total_comment');
@@ -90,7 +90,7 @@ class CommentController extends Controller
                     'success' => true,
                     'message' => 'Comment added',
                     'data' => $comment,
-                    'total_comment' => $post->total_comment
+                    'total_comment' => $post->total_comment,
                 ]);
             }
 
@@ -99,11 +99,11 @@ class CommentController extends Controller
                 ->firstOrFail();
 
             $reply = Reply::create([
-                'post_id'    => $post->id,
+                'post_id' => $post->id,
                 'comment_id' => $parentComment->id,
-                'user_id'    => $user->id,
-                'reply'      => $request->comment ?? null,
-                'image'      => $imagePath,
+                'user_id' => $user->id,
+                'reply' => $request->comment ?? null,
+                'image' => $imagePath,
             ]);
 
             $parentComment->increment('reply_count');
@@ -121,7 +121,7 @@ class CommentController extends Controller
                 'success' => true,
                 'message' => 'Reply added',
                 'data' => $reply,
-                'total_reply' => $parentComment->reply_count
+                'total_reply' => $parentComment->reply_count,
             ]);
 
         } catch (\Throwable $e) {
@@ -131,7 +131,7 @@ class CommentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -146,7 +146,7 @@ class CommentController extends Controller
             ->withExists([
                 'likes as liked_by_me' => function ($query) use ($user) {
                     $query->where('user_id', $user->id);
-                }
+                },
             ])
             ->where('post_id', $postId)
             ->latest()
@@ -167,7 +167,7 @@ class CommentController extends Controller
 
                 'user' => [
                     'id' => $comment->user->id,
-                    'name' => $comment->user->first_name . ' ' . $comment->user->last_name,
+                    'name' => $comment->user->first_name.' '.$comment->user->last_name,
                     'title' => $comment->user->title,
                     'profile_image' => $comment->user->profile_image_url,
                 ],
@@ -190,7 +190,7 @@ class CommentController extends Controller
                 'per_page' => $comments->perPage(),
                 'total' => $comments->total(),
                 'last_page' => $comments->lastPage(),
-            ]
+            ],
         ]);
     }
 
@@ -203,7 +203,7 @@ class CommentController extends Controller
             ->withExists([
                 'likes as liked_by_me' => function ($query) use ($user) {
                     $query->where('user_id', $user->id);
-                }
+                },
             ])
             ->where('comment_id', $commentId)
             ->latest()
@@ -223,7 +223,7 @@ class CommentController extends Controller
                 'image_url' => $reply->image_url ?? null,
                 'user' => [
                     'id' => $reply->user->id,
-                    'name' => $reply->user->first_name . ' ' . $reply->user->last_name,
+                    'name' => $reply->user->first_name.' '.$reply->user->last_name,
                     'title' => $reply->user->title,
                     'profile_image' => $reply->user->profile_image_url,
                 ],
@@ -242,10 +242,10 @@ class CommentController extends Controller
             'data' => $data,
             'pagination' => [
                 'current_page' => $replies->currentPage(),
-                'per_page'     => $replies->perPage(),
-                'total'        => $replies->total(),
-                'last_page'    => $replies->lastPage(),
-            ]
+                'per_page' => $replies->perPage(),
+                'total' => $replies->total(),
+                'last_page' => $replies->lastPage(),
+            ],
         ]);
     }
 
@@ -261,7 +261,7 @@ class CommentController extends Controller
         ) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not authorized to delete this comment'
+                'message' => 'You are not authorized to delete this comment',
             ], 403);
         }
 
@@ -292,7 +292,7 @@ class CommentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Comment deleted successfully'
+                'message' => 'Comment deleted successfully',
             ]);
 
         } catch (\Throwable $e) {
@@ -302,7 +302,7 @@ class CommentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -323,7 +323,7 @@ class CommentController extends Controller
         ) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not authorized to delete this reply'
+                'message' => 'You are not authorized to delete this reply',
             ], 403);
         }
 
@@ -346,7 +346,7 @@ class CommentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Reply deleted successfully',
-                'total_reply' => $comment->reply_count
+                'total_reply' => $comment->reply_count,
             ]);
 
         } catch (\Throwable $e) {
@@ -356,7 +356,7 @@ class CommentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -366,9 +366,9 @@ class CommentController extends Controller
         $user = auth('api')->user();
 
         $comments = Comment::with([
-                'post:id,user_id,description',
-                'post.user:id,first_name,last_name'
-            ])
+            'post:id,user_id,description',
+            'post.user:id,first_name,last_name',
+        ])
             ->where('user_id', $user->id)
             ->latest()
             ->paginate($request->get('per_page', 10));
@@ -384,7 +384,7 @@ class CommentController extends Controller
 
                     'posted_by' => [
                         'id' => $comment->post->user->id ?? null,
-                        'name' => $comment->post->user->first_name . ' ' . $comment->post->user->last_name ?? null,
+                        'name' => $comment->post->user->first_name.' '.$comment->post->user->last_name ?? null,
                     ],
                 ],
 
@@ -398,11 +398,10 @@ class CommentController extends Controller
             'data' => $data,
             'pagination' => [
                 'current_page' => $comments->currentPage(),
-                'per_page'     => $comments->perPage(),
-                'total'        => $comments->total(),
-                'last_page'    => $comments->lastPage(),
-            ]
+                'per_page' => $comments->perPage(),
+                'total' => $comments->total(),
+                'last_page' => $comments->lastPage(),
+            ],
         ]);
     }
-
 }

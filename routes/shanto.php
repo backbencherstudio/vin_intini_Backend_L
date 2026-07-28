@@ -3,13 +3,11 @@
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\NewsfeedController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\TimelineController;
+use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:api', 'role:admin'])->group(function () {
-
-});
+Route::middleware(['auth:api', 'role:admin'])->group(function () {});
 
 Route::middleware(['auth:api', 'role:user'])->group(function () {
 
@@ -29,7 +27,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
 
     Route::get('/group-posts/{groupId}', [TimelineController::class, 'groupPosts']);
 
-    //Like
+    // Like
 
     Route::get('/liked-list/{post}', [LikeController::class, 'likedList']);
     Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
