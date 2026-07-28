@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Page extends Model
 {
@@ -20,7 +20,8 @@ class Page extends Model
         'team_members',
         'features_videos',
         'faqs',
-        'is_active'
+        'leading_institutions',
+        'is_active',
     ];
 
     protected $casts = [
@@ -28,5 +29,6 @@ class Page extends Model
         'team_members' => 'array',
         'features_videos' => 'array',
         'faqs' => 'array',
+        'leading_institutions' => 'array',
     ];
 }
