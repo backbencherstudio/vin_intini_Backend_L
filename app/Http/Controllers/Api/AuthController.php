@@ -22,6 +22,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string|min:6',
+            'fcm_token' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -58,6 +59,12 @@ class AuthController extends Controller
         }
 
         $user = auth('api')->user();
+
+        if (! empty($credentials['fcm_token'])) {
+            $user->fcmTokens()->updateOrCreate(
+                ['fcm_token' => $credentials['fcm_token']]
+            );
+        }
 
         return $this->respondWithToken($token, $user);
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\ConnectionRequestMail;
 use App\Models\Connection;
+use App\Models\Conversation;
 use App\Models\GroupInvitation;
 use App\Models\User;
 use App\Models\UserFollow;
@@ -706,6 +707,7 @@ class ConnectionController extends Controller
                 ]);
 
                 $this->ensureMutualFollows($currentUser, $targetUser);
+                Conversation::betweenUsers($currentUser->id, $targetUser->id);
 
                 return [
                     'status' => 'success',
@@ -789,6 +791,7 @@ class ConnectionController extends Controller
             ]);
 
             $this->ensureMutualFollows($connectionRequest->sender, $connectionRequest->receiver);
+            Conversation::betweenUsers($connectionRequest->sender_id, $connectionRequest->receiver_id);
 
             return $connectionRequest->fresh()->loadMissing(['sender', 'receiver']);
         });
