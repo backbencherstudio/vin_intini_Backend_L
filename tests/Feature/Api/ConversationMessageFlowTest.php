@@ -1,0 +1,418 @@
+<?php
+
+namespace Tests\Feature\Api;
+
+use App\Events\MessageSent;
+use App\Models\Connection;
+use App\Models\Conversation;
+use App\Models\FcmToken;
+use App\Models\Message;
+use App\Models\User;
+use App\Models\UserFollow;
+use App\Models\UserProfile;
+use App\Notifications\NewMessageNotification;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
+use Tests\TestCase;
+
+class ConversationMessageFlowTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_user_can_send_text_message(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        FcmToken::create(['user_id' => $connectedUser->id, 'fcm_token' => 'dummy-token']);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Hello, how are you?',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.type', 'text')
+            ->assertJsonPath('data.message', 'Hello, how are you?')
+            ->assertJsonPath('data.sender_id', $user->id);
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'type' => 'text',
+            'message' => 'Hello, how are you?',
+        ]);
+
+        $this->assertEquals($response->json('data.id'), $conversation->fresh()->last_message_id);
+
+        Notification::assertSentTo(
+            [$connectedUser],
+            NewMessageNotification::class
+        );
+    }
+
+    public function test_user_can_send_file_message(): void
+    {
+        Notification::fake();
+
+        Storage::fake('public');
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $file = UploadedFile::fake()->image('photo.jpg', 200, 200);
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'file',
+            'file' => $file,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.type', 'file');
+
+        $this->assertNotNull($response->json('data.file_url'));
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'type' => 'file',
+            'file_name' => 'photo.jpg',
+        ]);
+    }
+
+    public function test_user_can_send_voice_message(): void
+    {
+        Notification::fake();
+
+        Storage::fake('public');
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $file = UploadedFile::fake()->create('voice.mp3', 500, 'audio/mpeg');
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'voice',
+            'file' => $file,
+            'duration' => 30,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.type', 'voice')
+            ->assertJsonPath('data.duration', 30);
+    }
+
+    public function test_message_sent_event_is_dispatched(): void
+    {
+        Event::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Test event',
+        ]);
+
+        Event::assertDispatched(MessageSent::class, function ($event) use ($conversation, $user) {
+            return $event->message->conversation_id === $conversation->id
+                && $event->message->sender_id === $user->id;
+        });
+    }
+
+    public function test_unread_count_tracks_correctly(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        // User sends message — connectedUser should have 1 unread
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'First message',
+        ]);
+
+        $userConversations = $this->actingAs($connectedUser, 'api')->getJson('/api/conversations');
+        $userConversations->assertJsonPath('data.0.unread_count', 1);
+        $userConversations->assertJsonPath('total_unread', 1);
+
+        // connectedUser sends message — user should have 1 unread too
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Reply!',
+        ]);
+
+        $userConversations = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $userConversations->assertJsonPath('data.0.unread_count', 1);
+        $userConversations->assertJsonPath('total_unread', 1);
+
+        // connectedUser sends another — connectedUser should have 1 unread (only user's message)
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Another reply!',
+        ]);
+
+        $userConversations = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $userConversations->assertJsonPath('data.0.unread_count', 2);
+        $userConversations->assertJsonPath('total_unread', 2);
+    }
+
+    public function test_mark_as_read_resets_unread_count(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        // connectedUser sends messages
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Message 1',
+        ]);
+
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Message 2',
+        ]);
+
+        // User has 2 unread
+        $before = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $before->assertJsonPath('total_unread', 2);
+
+        // Mark as read
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/mark-read")
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Now 0 unread
+        $after = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $after->assertJsonPath('data.0.unread_count', 0);
+        $after->assertJsonPath('total_unread', 0);
+    }
+
+    public function test_user_can_get_paginated_messages(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        // Create multiple messages
+        for ($i = 0; $i < 5; $i++) {
+            Message::create([
+                'conversation_id' => $conversation->id,
+                'sender_id' => $i % 2 === 0 ? $user->id : $connectedUser->id,
+                'type' => 'text',
+                'message' => "Message {$i}",
+            ]);
+        }
+        $conversation->update(['last_message_id' => $conversation->messages()->latest()->first()->id]);
+
+        $response = $this->actingAs($user, 'api')->getJson("/api/conversations/{$conversation->id}/messages");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('other_user.id', $connectedUser->id)
+            ->assertJsonPath('data.0.message', 'Message 4')
+            ->assertJsonPath('data.4.message', 'Message 0');
+    }
+
+    public function test_user_can_delete_own_message(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'type' => 'text',
+            'message' => 'Delete me',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->deleteJson("/api/messages/{$message->id}");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSoftDeleted('messages', ['id' => $message->id]);
+    }
+
+    public function test_user_cannot_delete_others_message(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'type' => 'text',
+            'message' => 'Not yours',
+        ]);
+
+        $response = $this->actingAs($connectedUser, 'api')->deleteJson("/api/messages/{$message->id}");
+
+        $response
+            ->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'You can only delete your own messages.');
+
+        $this->assertDatabaseHas('messages', ['id' => $message->id, 'deleted_at' => null]);
+    }
+
+    public function test_unauthorized_user_cannot_access_conversation(): void
+    {
+        $user = $this->makeUser();
+        $user2 = $this->makeUser();
+        $stranger = $this->makeUser();
+        $this->connectUsers($user, $user2);
+
+        $conversation = Conversation::betweenUsers($user->id, $user2->id);
+
+        $response = $this->actingAs($stranger, 'api')->getJson("/api/conversations/{$conversation->id}/messages");
+
+        $response
+            ->assertStatus(403)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_conversation_list_shows_other_user_and_last_message(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser('Alice', 'Johnson');
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hey there!',
+        ]);
+        $conversation->update(['last_message_id' => $message->id]);
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/conversations');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.user.name', 'Alice Johnson')
+            ->assertJsonPath('data.0.last_message.message', 'Hey there!')
+            ->assertJsonPath('data.0.last_message.sender_id', $connectedUser->id)
+            ->assertJsonPath('data.0.unread_count', 1)
+            ->assertJsonPath('total_unread', 1);
+    }
+
+    public function test_conversation_list_empty_when_no_conversations(): void
+    {
+        $user = $this->makeUser();
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/conversations');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('total_unread', 0);
+    }
+
+    public function test_new_message_notification_is_sent_to_receiver(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        FcmToken::create(['user_id' => $connectedUser->id, 'fcm_token' => 'dummy-token']);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Notification test',
+        ]);
+
+        Notification::assertSentTo(
+            $connectedUser,
+            NewMessageNotification::class,
+            function (NewMessageNotification $notification) use ($user, $conversation) {
+                return $notification->message->conversation_id === $conversation->id
+                    && $notification->message->sender_id === $user->id;
+            }
+        );
+    }
+
+    private function makeUser(?string $firstName = null, ?string $lastName = null): User
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = Role::firstOrCreate([
+            'name' => 'user',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::factory()->create([
+            'is_verified' => true,
+            'first_name' => $firstName ?? fake()->firstName(),
+            'last_name' => $lastName ?? fake()->lastName(),
+            'title' => fake()->jobTitle(),
+        ]);
+        $user->assignRole($role);
+        UserProfile::create(['user_id' => $user->id]);
+
+        return $user;
+    }
+
+    private function connectUsers(User $a, User $b): void
+    {
+        Connection::create([
+            'sender_id' => $a->id,
+            'receiver_id' => $b->id,
+            'status' => Connection::STATUS_ACCEPTED,
+            'responded_at' => now(),
+        ]);
+
+        UserFollow::create(['follower_id' => $a->id, 'following_id' => $b->id]);
+        UserFollow::create(['follower_id' => $b->id, 'following_id' => $a->id]);
+    }
+}
