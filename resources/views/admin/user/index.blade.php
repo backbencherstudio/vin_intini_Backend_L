@@ -4,9 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <title>User Management</title>
+    <!-- Bootstrap 5 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
     <style>
         .img-thumbnail { width: 50px; height: 50px; object-fit: cover; }
+        .select2-container .select2-selection--single { height: 38px !important; }
+        .select2-container--bootstrap-5 .select2-selection { border: 1px solid #dee2e6; }
     </style>
 </head>
 
@@ -16,7 +23,6 @@
         <h2>User Management</h2>
     </div>
 
-    <!-- Success Message -->
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') }}
@@ -37,23 +43,19 @@
         </thead>
         <tbody>
             @foreach ($users as $user)
-                @php
-                    $edu = $user->educations->first();
-                @endphp
+                @php $edu = $user->educations->first(); @endphp
                 <tr>
                     <td>{{ $user->id }}</td>
                     <td>
                         @if ($user->profile_image)
-                            <img src="{{ asset('storage/' . $user->profile_image) }}" alt="User Image" class="img-thumbnail">
+                            <img src="{{ asset('storage/' . $user->profile_image) }}" class="img-thumbnail">
                         @else
                             <span class="badge bg-secondary">No Image</span>
                         @endif
                     </td>
                     <td>{{ $user->first_name }} {{ $user->last_name }}</td>
                     <td>{{ $user->email }}</td>
-                    <td>
-                        {{ $edu->institution->name ?? 'N/A' }}
-                    </td>
+                    <td>{{ $edu->institution->name ?? 'N/A' }}</td>
                     <td>
                         <button class="btn btn-primary btn-sm editBtn"
                             data-id="{{ $user->id }}"
@@ -67,12 +69,6 @@
                             data-bs-target="#editModal">
                             Edit
                         </button>
-
-                        <form action="{{ route('users.destroy', $user->id) }}" method="POST" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</button>
-                        </form>
                     </td>
                 </tr>
             @endforeach
@@ -92,12 +88,12 @@
                     <div class="modal-body">
                         <input type="hidden" name="id" id="user_id">
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
                                 <label class="form-label">First Name</label>
                                 <input type="text" name="fname" id="user_fname" class="form-control" required>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6">
                                 <label class="form-label">Last Name</label>
                                 <input type="text" name="lname" id="user_lname" class="form-control" required>
                             </div>
@@ -112,9 +108,9 @@
                         <h6 class="text-primary">Education Details</h6>
 
                         <div class="mb-3">
-                            <label class="form-label">Institution</label>
-                            <select name="institution_id" id="user_institution" class="form-select" required>
-                                <option value="">-- Select Institution --</option>
+                            <label class="form-label">Institution (Searchable)</label>
+                            <select name="institution_id" id="user_institution" class="form-select select2-search" style="width: 100%;" required>
+                                <option value="">-- Search University/Institution --</option>
                                 @foreach ($institutions as $inst)
                                     <option value="{{ $inst->id }}">{{ $inst->name }}</option>
                                 @endforeach
@@ -124,11 +120,11 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Degree</label>
-                                <input type="text" name="degree" id="user_degree" class="form-control" placeholder="e.g. B.Sc, MBA" required>
+                                <input type="text" name="degree" id="user_degree" class="form-control" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Field of Study</label>
-                                <input type="text" name="field_study" id="user_field" class="form-control" placeholder="e.g. Computer Science" required>
+                                <input type="text" name="field_study" id="user_field" class="form-control" required>
                             </div>
                         </div>
                     </div>
@@ -144,10 +140,19 @@
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
         $(document).ready(function() {
-            // Edit Button Click Event
+            $('.select2-search').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#editModal'),
+                placeholder: "-- Search University --",
+                allowClear: true
+            });
+
+            // ২. Edit Button Click Event
             $('.editBtn').on('click', function() {
                 let id = $(this).data('id');
                 let fname = $(this).data('fname');
@@ -162,7 +167,7 @@
                 $('#user_lname').val(lname);
                 $('#user_email').val(email);
 
-                $('#user_institution').val(institutionId);
+                $('#user_institution').val(institutionId).trigger('change');
                 $('#user_degree').val(degree);
                 $('#user_field').val(field);
             });
