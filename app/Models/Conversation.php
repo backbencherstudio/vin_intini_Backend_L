@@ -15,6 +15,8 @@ class Conversation extends Model
         'last_message_id',
         'user_1_last_read_at',
         'user_2_last_read_at',
+        'user_1_archived_at',
+        'user_2_archived_at',
     ];
 
     protected function casts(): array
@@ -22,6 +24,8 @@ class Conversation extends Model
         return [
             'user_1_last_read_at' => 'datetime',
             'user_2_last_read_at' => 'datetime',
+            'user_1_archived_at' => 'datetime',
+            'user_2_archived_at' => 'datetime',
         ];
     }
 
@@ -62,6 +66,45 @@ class Conversation extends Model
             ->count();
     }
 
+    public function markAsUnreadFor(int $userId): void
+    {
+        if ($userId === $this->user_id_1) {
+            $this->user_1_last_read_at = null;
+        } elseif ($userId === $this->user_id_2) {
+            $this->user_2_last_read_at = null;
+        }
+        $this->save();
+    }
+
+    public function archiveFor(int $userId): void
+    {
+        if ($userId === $this->user_id_1) {
+            $this->user_1_archived_at = now();
+        } elseif ($userId === $this->user_id_2) {
+            $this->user_2_archived_at = now();
+        }
+        $this->save();
+    }
+
+    public function unarchiveFor(int $userId): void
+    {
+        if ($userId === $this->user_id_1) {
+            $this->user_1_archived_at = null;
+        } elseif ($userId === $this->user_id_2) {
+            $this->user_2_archived_at = null;
+        }
+        $this->save();
+    }
+
+    public function isArchivedFor(int $userId): bool
+    {
+        $archivedAt = $userId === $this->user_id_1
+            ? $this->user_1_archived_at
+            : $this->user_2_archived_at;
+
+        return $archivedAt !== null;
+    }
+
     public function markAsReadFor(int $userId): void
     {
         if ($userId === $this->user_id_1) {
@@ -75,6 +118,22 @@ class Conversation extends Model
     public function scopeForUser(Builder $query, int $userId): Builder
     {
         return $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId);
+    }
+
+    public function scopeNotArchivedFor(Builder $query, int $userId): Builder
+    {
+        return $query->where(function (Builder $q) use ($userId) {
+            $q->where('user_id_1', $userId)->whereNull('user_1_archived_at')
+                ->orWhere('user_id_2', $userId)->whereNull('user_2_archived_at');
+        });
+    }
+
+    public function scopeArchivedOnlyFor(Builder $query, int $userId): Builder
+    {
+        return $query->where(function (Builder $q) use ($userId) {
+            $q->where('user_id_1', $userId)->whereNotNull('user_1_archived_at')
+                ->orWhere('user_id_2', $userId)->whereNotNull('user_2_archived_at');
+        });
     }
 
     public static function betweenUsers(int $a, int $b): self
