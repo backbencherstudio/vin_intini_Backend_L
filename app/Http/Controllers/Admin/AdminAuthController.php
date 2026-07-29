@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Education;
 use App\Models\User;
 use App\Models\Group;
 use App\Models\Post;
@@ -115,6 +116,47 @@ class AdminAuthController extends Controller
 
     //     return redirect()->back()->with('success', 'User updated successfully');
     // }
+
+    public function allUsers()
+    {
+        $users = User::with('education.institution')->get();
+
+        $institutions = Institution::all();
+
+        return view('admin.user.index', compact('users', 'institutions'));
+    }
+
+    public function userUpdate(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|exists:users,id',
+            'fname' => 'required|string|max:255',
+            'lname' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $request->id,
+            'institution_id' => 'required|exists:institutions,id',
+            'degree' => 'required|string|max:255',
+            'field_study' => 'required|string|max:255',
+        ]);
+
+        $user = User::findOrFail($request->id);
+
+        // $user->update([
+        //     'first_name' => $request->fname,
+        //     'last_name' => $request->lname,
+        //     'email' => $request->email,
+        // ]);
+
+        Education::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'institution_id' => $request->institution_id,
+                // 'degree' => $request->degree,
+                // 'field_study' => $request->field_study,
+            ]
+        );
+
+        return redirect()->back()->with('success', 'User and Education updated successfully');
+    }
 
     // public function userDestroy($id)
     // {
