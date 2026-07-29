@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Admin\IndustryCategoryController;
 use App\Http\Controllers\Admin\IndustryPharmaController;
 use App\Http\Controllers\Admin\IndustryPublicationController;
+use App\Http\Controllers\Admin\InstitutionReportController;
 use App\Http\Controllers\Admin\PagesController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,9 @@ Route::middleware('guest:web')->group(function () {
 Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], function () {
 
     Route::get('/user-management', [AdminAuthController::class, 'userManagement'])->name('admin.user.management');
+    // Institution Report Routes
+    Route::get('/institution-report', [InstitutionReportController::class, 'institutionReport'])->name('institution.index');
+    Route::get('/institution/{id}/students', [InstitutionReportController::class, 'showStudents'])->name('institution.students');
 
     Route::prefix('/academia')->group(function () {
         // 1. Universities (List, Edit, Update)
