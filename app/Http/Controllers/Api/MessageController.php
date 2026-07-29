@@ -37,11 +37,6 @@ class MessageController extends Controller
             'file_name' => $message->file_name,
             'file_size' => $message->file_size,
             'duration' => $message->duration,
-            'sender' => [
-                'id' => $message->sender->id,
-                'name' => trim(($message->sender->first_name ?? '').' '.($message->sender->last_name ?? '')),
-                'profile_image_url' => $message->sender->profile_image_url,
-            ],
             'created_at' => $message->created_at->toISOString(),
         ])->values();
 
@@ -72,8 +67,8 @@ class MessageController extends Controller
 
         $validated = $request->validate([
             'type' => 'required|in:text,voice,file',
-            'message' => 'required_without:file|nullable|string',
-            'file' => 'required_if:type,file,voice|nullable|file|max:102400',
+            'message' => 'required_if:type,text|nullable|string',
+            'file' => 'required_if:type,file|required_if:type,voice|nullable|file|max:102400',
             'duration' => 'nullable|integer|min:0',
         ]);
 
@@ -102,8 +97,6 @@ class MessageController extends Controller
         $otherUser = $conversation->getOtherUser($currentUser->id);
         $otherUser->notify(new NewMessageNotification($message));
 
-        $message->load('sender:id,first_name,last_name,title,profile_image');
-
         return response()->json([
             'success' => true,
             'message' => 'Message sent successfully.',
@@ -117,11 +110,6 @@ class MessageController extends Controller
                 'file_name' => $message->file_name,
                 'file_size' => $message->file_size,
                 'duration' => $message->duration,
-                'sender' => [
-                    'id' => $message->sender->id,
-                    'name' => trim(($message->sender->first_name ?? '').' '.($message->sender->last_name ?? '')),
-                    'profile_image_url' => $message->sender->profile_image_url,
-                ],
                 'created_at' => $message->created_at->toISOString(),
             ],
         ], 201);
