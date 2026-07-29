@@ -117,46 +117,46 @@ class AdminAuthController extends Controller
     //     return redirect()->back()->with('success', 'User updated successfully');
     // }
 
-    public function allUsers()
-    {
-        $users = User::with('education.institution')->get();
+    // public function allUsers()
+    // {
+    //     $users = User::with('education.institution')->get();
 
-        $institutions = Institution::all();
+    //     $institutions = Institution::all();
 
-        return view('admin.user.index', compact('users', 'institutions'));
-    }
+    //     return view('admin.user.index', compact('users', 'institutions'));
+    // }
 
-    public function userUpdate(Request $request)
-    {
-        $request->validate([
-            'id' => 'required|exists:users,id',
-            'fname' => 'required|string|max:255',
-            'lname' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $request->id,
-            'institution_id' => 'required|exists:institutions,id',
-            'degree' => 'required|string|max:255',
-            'field_study' => 'required|string|max:255',
-        ]);
+    // public function userUpdate(Request $request)
+    // {
+    //     $request->validate([
+    //         'id' => 'required|exists:users,id',
+    //         'fname' => 'required|string|max:255',
+    //         'lname' => 'required|string|max:255',
+    //         'email' => 'required|email|unique:users,email,' . $request->id,
+    //         'institution_id' => 'required|exists:institutions,id',
+    //         'degree' => 'required|string|max:255',
+    //         'field_study' => 'required|string|max:255',
+    //     ]);
 
-        $user = User::findOrFail($request->id);
+    //     $user = User::findOrFail($request->id);
 
-        // $user->update([
-        //     'first_name' => $request->fname,
-        //     'last_name' => $request->lname,
-        //     'email' => $request->email,
-        // ]);
+    //     // $user->update([
+    //     //     'first_name' => $request->fname,
+    //     //     'last_name' => $request->lname,
+    //     //     'email' => $request->email,
+    //     // ]);
 
-        Education::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'institution_id' => $request->institution_id,
-                // 'degree' => $request->degree,
-                // 'field_study' => $request->field_study,
-            ]
-        );
+    //     Education::updateOrCreate(
+    //         ['user_id' => $user->id],
+    //         [
+    //             'institution_id' => $request->institution_id,
+    //             // 'degree' => $request->degree,
+    //             // 'field_study' => $request->field_study,
+    //         ]
+    //     );
 
-        return redirect()->back()->with('success', 'User and Education updated successfully');
-    }
+    //     return redirect()->back()->with('success', 'User and Education updated successfully');
+    // }
 
     // public function userDestroy($id)
     // {
@@ -238,26 +238,26 @@ class AdminAuthController extends Controller
     //     return redirect()->back()->with('success', 'Post deleted successfully!');
     // }
 
-    public function institutionIndex()
-    {
-        $institutions = Institution::latest()->paginate(20);
-        return view('admin.institutions.index', compact('institutions'));
-    }
+    // public function institutionIndex()
+    // {
+    //     $institutions = Institution::latest()->paginate(20);
+    //     return view('admin.institutions.index', compact('institutions'));
+    // }
 
-    public function institutionUpdate(Request $request, Institution $institution)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:institutions,name,' . $institution->id,
-            'type' => 'nullable|string|max:255',
-            'state' => 'nullable|string|max:255',
-            'country' => 'nullable|string|max:255',
-            'website' => 'nullable|url|max:255',
-        ]);
+    // public function institutionUpdate(Request $request, Institution $institution)
+    // {
+    //     $request->validate([
+    //         'name' => 'required|string|max:255|unique:institutions,name,' . $institution->id,
+    //         'type' => 'nullable|string|max:255',
+    //         'state' => 'nullable|string|max:255',
+    //         'country' => 'nullable|string|max:255',
+    //         'website' => 'nullable|url|max:255',
+    //     ]);
 
-        $institution->update($request->all());
+    //     $institution->update($request->all());
 
-        return redirect()->back()->with('success', 'Institution updated successfully!');
-    }
+    //     return redirect()->back()->with('success', 'Institution updated successfully!');
+    // }
 
     // public function skillIndex()
     // {

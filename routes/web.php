@@ -111,9 +111,9 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], 
 
 
 // User Management Routes
-Route::get('/ni-az/users', [AdminAuthController::class, 'allUsers'])->name('users.index');
-Route::post('/ni-az/users/update', [AdminAuthController::class, 'userUpdate'])->name('users.update');
-Route::delete('/ni-az/users/{id}', [AdminAuthController::class, 'userDestroy'])->name('users.destroy');
+// Route::get('/ni-az/users', [AdminAuthController::class, 'allUsers'])->name('users.index');
+// Route::post('/ni-az/users/update', [AdminAuthController::class, 'userUpdate'])->name('users.update');
+// Route::delete('/ni-az/users/{id}', [AdminAuthController::class, 'userDestroy'])->name('users.destroy');
 
 // Route::get('/ni-az/groups', [AdminAuthController::class, 'groupIndex'])->name('groups.index');
 // Route::post('/ni-az/groups/update', [AdminAuthController::class, 'groupUpdate'])->name('groups.update');
@@ -124,8 +124,8 @@ Route::delete('/ni-az/users/{id}', [AdminAuthController::class, 'userDestroy'])-
 // Route::delete('/ni-az/posts/{id}', [AdminAuthController::class, 'postDestroy'])->name('posts.destroy');
 
 
-Route::get('/ni-az/institutions', [AdminAuthController::class, 'institutionIndex'])->name('institutions.index');
-Route::put('/ni-az/institutions/{institution}', [AdminAuthController::class, 'institutionUpdate'])->name('institutions.update');
+// Route::get('/ni-az/institutions', [AdminAuthController::class, 'institutionIndex'])->name('institutions.index');
+// Route::put('/ni-az/institutions/{institution}', [AdminAuthController::class, 'institutionUpdate'])->name('institutions.update');
 
 // Route::get('/ni-az/skills', [AdminAuthController::class, 'skillIndex'])->name('skills.index');
 // Route::put('/ni-az/skills/{skill}', [AdminAuthController::class, 'skillUpdate'])->name('skills.update');

@@ -68,10 +68,10 @@ class Education extends Model
     }
 
     // --------------------------------------------------------
-    public function education()
-    {
-        return $this->hasOne(Education::class, 'user_id');
-    }
+    // public function education()
+    // {
+    //     return $this->hasOne(Education::class, 'user_id');
+    // }
 
     // --------------------------------------------------------
 }
