@@ -52,6 +52,9 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     // conversation routes
     Route::get('/conversations', [ConversationController::class, 'index']);
     Route::post('/conversations/{conversation}/mark-read', [ConversationController::class, 'markAsRead']);
+    Route::post('/conversations/{conversation}/mark-unread', [ConversationController::class, 'markAsUnread']);
+    Route::post('/conversations/{conversation}/archive', [ConversationController::class, 'archive']);
+    Route::post('/conversations/{conversation}/unarchive', [ConversationController::class, 'unarchive']);
     Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy']);
     Route::post('/conversations/with/{user}', [ConversationController::class, 'showOrCreate']);
 
