@@ -53,6 +53,7 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/conversations', [ConversationController::class, 'index']);
     Route::post('/conversations/{conversation}/mark-read', [ConversationController::class, 'markAsRead']);
     Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy']);
+    Route::post('/conversations/with/{user}', [ConversationController::class, 'showOrCreate']);
 
     // message routes
     Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
