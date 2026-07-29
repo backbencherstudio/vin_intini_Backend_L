@@ -161,7 +161,6 @@ class ConversationMessageFlowTest extends TestCase
 
         $userConversations = $this->actingAs($connectedUser, 'api')->getJson('/api/conversations');
         $userConversations->assertJsonPath('data.0.unread_count', 1);
-        $userConversations->assertJsonPath('total_unread', 1);
 
         // connectedUser sends message — user should have 1 unread too
         $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
@@ -171,7 +170,6 @@ class ConversationMessageFlowTest extends TestCase
 
         $userConversations = $this->actingAs($user, 'api')->getJson('/api/conversations');
         $userConversations->assertJsonPath('data.0.unread_count', 1);
-        $userConversations->assertJsonPath('total_unread', 1);
 
         // connectedUser sends another — connectedUser should have 1 unread (only user's message)
         $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
@@ -181,7 +179,6 @@ class ConversationMessageFlowTest extends TestCase
 
         $userConversations = $this->actingAs($user, 'api')->getJson('/api/conversations');
         $userConversations->assertJsonPath('data.0.unread_count', 2);
-        $userConversations->assertJsonPath('total_unread', 2);
     }
 
     public function test_mark_as_read_resets_unread_count(): void
@@ -205,7 +202,7 @@ class ConversationMessageFlowTest extends TestCase
 
         // User has 2 unread
         $before = $this->actingAs($user, 'api')->getJson('/api/conversations');
-        $before->assertJsonPath('total_unread', 2);
+        $before->assertJsonPath('data.0.unread_count', 2);
 
         // Mark as read
         $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/mark-read")
@@ -215,7 +212,6 @@ class ConversationMessageFlowTest extends TestCase
         // Now 0 unread
         $after = $this->actingAs($user, 'api')->getJson('/api/conversations');
         $after->assertJsonPath('data.0.unread_count', 0);
-        $after->assertJsonPath('total_unread', 0);
     }
 
     public function test_user_can_get_paginated_messages(): void
@@ -338,8 +334,7 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('data.0.user.name', 'Alice Johnson')
             ->assertJsonPath('data.0.last_message.message', 'Hey there!')
             ->assertJsonPath('data.0.last_message.sender_id', $connectedUser->id)
-            ->assertJsonPath('data.0.unread_count', 1)
-            ->assertJsonPath('total_unread', 1);
+            ->assertJsonPath('data.0.unread_count', 1);
     }
 
     public function test_conversation_list_empty_when_no_conversations(): void
@@ -351,8 +346,7 @@ class ConversationMessageFlowTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(0, 'data')
-            ->assertJsonPath('total_unread', 0);
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_new_message_notification_is_sent_to_receiver(): void
@@ -380,6 +374,87 @@ class ConversationMessageFlowTest extends TestCase
                     && $notification->message->sender_id === $user->id;
             }
         );
+    }
+
+    public function test_mark_as_unread_resets_unread_to_total(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Message 1',
+        ]);
+
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Message 2',
+        ]);
+
+        // Mark as read first
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/mark-read");
+        $afterRead = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $afterRead->assertJsonPath('data.0.unread_count', 0);
+
+        // Mark as unread — unread should now include both messages
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/mark-unread")
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $afterUnread = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $afterUnread->assertJsonPath('data.0.unread_count', 2);
+    }
+
+    public function test_user_can_archive_and_unarchive_conversation(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Hello',
+        ]);
+
+        // Not archived in main list
+        $list = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $list->assertJsonPath('data.0.is_archived', false);
+
+        // Archive
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/archive")
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('is_archived', true);
+
+        // Should be gone from main list
+        $mainList = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $mainList->assertJsonCount(0, 'data');
+
+        // Should appear in archived list
+        $archivedList = $this->actingAs($user, 'api')->getJson('/api/conversations?status=archived');
+        $archivedList->assertJsonCount(1, 'data');
+        $archivedList->assertJsonPath('data.0.is_archived', true);
+
+        // ConnectedUser's list should NOT be affected (still shows)
+        $otherList = $this->actingAs($connectedUser, 'api')->getJson('/api/conversations');
+        $otherList->assertJsonCount(1, 'data');
+        $otherList->assertJsonPath('data.0.is_archived', false);
+
+        // Unarchive
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/unarchive")
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('is_archived', false);
+
+        // Back in main list
+        $finalList = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $finalList->assertJsonCount(1, 'data');
+        $finalList->assertJsonPath('data.0.is_archived', false);
     }
 
     private function makeUser(?string $firstName = null, ?string $lastName = null): User
