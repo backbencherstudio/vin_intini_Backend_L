@@ -240,7 +240,7 @@ class PagesController extends Controller
         if (empty($sections) || in_array('founder', $sections)) {
             $founder = $page->founder_info ?? [];
             if (isset($founder['photo'])) {
-                $founder['photo_url'] = asset('storage/'.$founder['photo']);
+                $founder['photo_url'] = asset('storage/' . $founder['photo']);
             }
             $responseData['founder'] = $founder;
         }
@@ -248,7 +248,7 @@ class PagesController extends Controller
         // 3. What We Do (Diagram)
         if (empty($sections) || in_array('what_we_do', $sections)) {
             $responseData['what_we_do'] = [
-                'diagram_url' => $page->what_we_do_image ? asset('storage/'.$page->what_we_do_image) : null,
+                'diagram_url' => $page->what_we_do_image ? asset('storage/' . $page->what_we_do_image) : null,
             ];
         }
 
@@ -259,7 +259,7 @@ class PagesController extends Controller
                     'name' => $member['name'] ?? '',
                     'title' => $member['title'] ?? '',
                     'bio' => $member['bio'] ?? '',
-                    'photo_url' => ! empty($member['photo']) ? asset('storage/'.$member['photo']) : null,
+                    'photo_url' => ! empty($member['photo']) ? asset('storage/' . $member['photo']) : null,
                 ];
             });
         }
@@ -272,8 +272,8 @@ class PagesController extends Controller
                     'source' => $video['source'] ?? '',
                     'type' => $video['type'] ?? '',
                     'url' => $video['url'] ?? null,
-                    'file_url' => isset($video['path']) ? asset('storage/'.$video['path']) : null,
-                    'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/'.$video['thumbnail']) : null,
+                    'file_url' => isset($video['path']) ? asset('storage/' . $video['path']) : null,
+                    'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/' . $video['thumbnail']) : null,
                 ];
             });
         }
@@ -290,7 +290,7 @@ class PagesController extends Controller
                 ->map(function ($item) {
                     return [
                         'name' => $item['name'],
-                        'logo_url' => ! empty($item['logo']) ? asset('storage/'.$item['logo']) : null,
+                        'logo_url' => ! empty($item['logo']) ? asset('storage/' . $item['logo']) : null,
                     ];
                 })->values();
         }
