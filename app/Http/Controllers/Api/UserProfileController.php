@@ -275,6 +275,7 @@ class UserProfileController extends Controller
             'notify_publications' => filter_var($request->notify_publications, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
             'notify_residency' => filter_var($request->notify_residency, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
             'notify_offers' => filter_var($request->notify_offers, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+            'is_current'   => filter_var($request->is_current, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
         ]);
 
         $validated = $request->validate([
@@ -296,6 +297,13 @@ class UserProfileController extends Controller
             'skills.*' => 'string',
             'current_position_id' => 'nullable|integer|exists:experiences,id',
             'current_institute_id' => 'nullable|integer|exists:institutions,id',
+
+            // Education
+            'start_month' => 'required_with:institution|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            'start_year'  => 'required_with:institution|nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'is_current'  => 'required_with:institution|nullable|boolean',
+            'end_month'   => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            'end_year'    => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
 
             'notify_jobs'         => 'nullable|boolean',
             'notify_publications' => 'nullable|boolean',
@@ -366,30 +374,33 @@ class UserProfileController extends Controller
 
         $institutionName = trim((string) ($validated['institution'] ?? ''));
         $degree = trim((string) ($validated['highest_degree'] ?? ''));
-        $endYear = trim((string) ($validated['graduation_year'] ?? ''));
 
-        if ($institutionName !== '' && $degree !== '' && $endYear !== '') {
-            $institution = Institution::query()->firstOrCreate([
-                'name' => $institutionName,
-            ]);
+
+        // $endYear = trim((string) ($validated['graduation_year'] ?? ''));
+
+        if ($institutionName !== '' && $degree !== '') {
+            $institution = Institution::query()->firstOrCreate(['name' => $institutionName]);
+
+            $isCurrent = $request->boolean('is_current');
 
             Education::query()->updateOrCreate(
                 [
                     'user_id' => $user->id,
                     'institution_id' => $institution->id,
                     'degree' => $degree,
-                    'end_year' => $endYear,
                 ],
                 [
                     'field_study' => $validated['field_study'] ?? null,
-                    'start_month' => 'January',
-                    'start_year' => $endYear,
-                    'end_month' => null,
-                    'is_current' => false,
-                    'skills_id' => $skillIds,
-                ],
+                    'start_month' => $validated['start_month'],
+                    'start_year'  => $validated['start_year'],
+                    'end_month'   => $isCurrent ? null : $validated['end_month'],
+                    'end_year'    => $isCurrent ? null : $validated['end_year'],
+                    'is_current'  => $isCurrent,
+                    'skills_id'   => $skillIds,
+                ]
             );
         }
+
 
         return response()->json([
             'status' => 'success',
