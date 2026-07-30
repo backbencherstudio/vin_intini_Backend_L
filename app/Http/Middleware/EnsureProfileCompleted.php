@@ -19,6 +19,10 @@ class EnsureProfileCompleted
             ], 401);
         }
 
+        if ($user->hasRole('admin')) {
+            return $next($request);
+        }
+
         $hasProfile = $user->relationLoaded('profile')
             ? $user->profile !== null
             : $user->profile()->exists();
