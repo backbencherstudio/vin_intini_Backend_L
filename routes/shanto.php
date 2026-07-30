@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\LikeController;
@@ -9,7 +10,14 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\TimelineController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:api', 'role:admin'])->group(function () {});
+Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/plans', [PlanController::class, 'index']);
+    Route::get('/plans/{plan}', [PlanController::class, 'show']);
+    Route::get('/plan-features', [PlanController::class, 'features']);
+    Route::post('/plans/create', [PlanController::class, 'store']);
+    Route::patch('/plans/{plan}', [PlanController::class, 'update']);
+    Route::patch('/plans/{plan}/status', [PlanController::class, 'toggleStatus']);
+});
 
 Route::middleware(['auth:api', 'role:user'])->group(function () {
 
@@ -62,5 +70,4 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
     Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
     Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
-
 });
