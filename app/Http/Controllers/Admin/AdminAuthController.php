@@ -12,6 +12,7 @@ use App\Models\Skill;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class AdminAuthController extends Controller
 {
@@ -92,30 +93,42 @@ class AdminAuthController extends Controller
 
 
     //user management functions
-    // public function allUsers()
-    // {
-    //     $users = User::all();
-    //     return view('admin.user.index', compact('users'));
-    // }
+    public function allUsers()
+    {
+        $users = User::all();
+        return view('admin.user.index', compact('users'));
+    }
 
-    // public function userUpdate(Request $request)
-    // {
-    //     $request->validate([
-    //         'id' => 'required',
-    //         'fname' => 'required|string|max:255',
-    //         'lname' => 'required|string|max:255',
-    //         'email' => 'required|email|unique:users,email,' . $request->id,
-    //     ]);
+    public function userUpdate(Request $request)
+    {
+        $request->validate([
+            'id' => 'required',
+            'fname' => 'required|string|max:255',
+            'lname' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $request->id,
+        ]);
 
-    //     $user = User::findOrFail($request->id);
-    //     $user->update([
-    //         'first_name' => $request->fname,
-    //         'last_name' => $request->lname,
-    //         'email' => $request->email,
-    //     ]);
+        $user = User::findOrFail($request->id);
+        // $user->update([
+        //     'first_name' => $request->fname,
+        //     'last_name' => $request->lname,
+        //     'email' => $request->email,
+        // ]);
 
-    //     return redirect()->back()->with('success', 'User updated successfully');
-    // }
+        return redirect()->back()->with('success', 'User updated successfully');
+    }
+
+    public function userDestroy($id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->profile_image) {
+            Storage::disk('public')->delete($user->profile_image);
+        }
+
+        $user->delete();
+        return redirect()->back()->with('success', 'User deleted successfully');
+    }
 
     // public function allUsers()
     // {
