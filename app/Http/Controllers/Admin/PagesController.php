@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PagesController extends Controller
 {
@@ -104,6 +105,9 @@ class PagesController extends Controller
         }
         $page->team_members = $newTeamData;
 
+
+
+
         $newVideoData = [];
         if ($request->has('videos')) {
             foreach ($request->videos as $vKey => $video) {
@@ -115,9 +119,7 @@ class PagesController extends Controller
 
                 $thumbPath = $video['old_thumbnail'] ?? null;
                 if ($request->hasFile("videos.$vKey.thumbnail")) {
-                    if ($thumbPath) {
-                        Storage::disk('public')->delete($thumbPath);
-                    }
+                    if ($thumbPath) Storage::disk('public')->delete($thumbPath);
                     $thumbPath = $request->file("videos.$vKey.thumbnail")->store('pages/videos/thumbnails', 'public');
                 }
                 $item['thumbnail'] = $thumbPath;
@@ -128,10 +130,8 @@ class PagesController extends Controller
                 } else {
                     $vPath = $video['path'] ?? null;
                     if ($request->hasFile("videos.$vKey.file")) {
-                        if ($vPath) {
-                            Storage::disk('public')->delete($vPath);
-                        }
-                        $vPath = $request->file("videos.$vKey.file")->store('pages/videos', 'public');
+                        if ($vPath) Storage::disk('public')->delete($vPath);
+                        $vPath = $this->processAboutVideo($request->file("videos.$vKey.file"));
                     }
                     $item['path'] = $vPath;
                     $item['url'] = null;
@@ -139,18 +139,63 @@ class PagesController extends Controller
                 $newVideoData[] = $item;
             }
         }
-
         foreach ($oldVideos as $oVideo) {
-            if (isset($oVideo['path']) && $oVideo['path']) {
-                if (! collect($newVideoData)->contains('path', $oVideo['path'])) {
-                    Storage::disk('public')->delete($oVideo['path']);
-                }
+            if (isset($oVideo['path']) && !collect($newVideoData)->contains('path', $oVideo['path'])) {
+                Storage::disk('public')->delete($oVideo['path']);
             }
-            if (isset($oVideo['thumbnail']) && ! collect($newVideoData)->contains('thumbnail', $oVideo['thumbnail'])) {
+            if (isset($oVideo['thumbnail']) && !collect($newVideoData)->contains('thumbnail', $oVideo['thumbnail'])) {
                 Storage::disk('public')->delete($oVideo['thumbnail']);
             }
         }
         $page->features_videos = $newVideoData;
+
+        // $newVideoData = [];
+        // if ($request->has('videos')) {
+        //     foreach ($request->videos as $vKey => $video) {
+        //         $item = [
+        //             'title' => $video['title'],
+        //             'source' => $video['source'],
+        //             'type' => ($video['source'] == 'url') ? 'youtube_video' : 'local_video',
+        //         ];
+
+        //         $thumbPath = $video['old_thumbnail'] ?? null;
+        //         if ($request->hasFile("videos.$vKey.thumbnail")) {
+        //             if ($thumbPath) {
+        //                 Storage::disk('public')->delete($thumbPath);
+        //             }
+        //             $thumbPath = $request->file("videos.$vKey.thumbnail")->store('pages/videos/thumbnails', 'public');
+        //         }
+        //         $item['thumbnail'] = $thumbPath;
+
+        //         if ($video['source'] == 'url') {
+        //             $item['url'] = $video['url'];
+        //             $item['path'] = null;
+        //         } else {
+        //             $vPath = $video['path'] ?? null;
+        //             if ($request->hasFile("videos.$vKey.file")) {
+        //                 if ($vPath) {
+        //                     Storage::disk('public')->delete($vPath);
+        //                 }
+        //                 $vPath = $request->file("videos.$vKey.file")->store('pages/videos', 'public');
+        //             }
+        //             $item['path'] = $vPath;
+        //             $item['url'] = null;
+        //         }
+        //         $newVideoData[] = $item;
+        //     }
+        // }
+
+        // foreach ($oldVideos as $oVideo) {
+        //     if (isset($oVideo['path']) && $oVideo['path']) {
+        //         if (! collect($newVideoData)->contains('path', $oVideo['path'])) {
+        //             Storage::disk('public')->delete($oVideo['path']);
+        //         }
+        //     }
+        //     if (isset($oVideo['thumbnail']) && ! collect($newVideoData)->contains('thumbnail', $oVideo['thumbnail'])) {
+        //         Storage::disk('public')->delete($oVideo['thumbnail']);
+        //     }
+        // }
+        // $page->features_videos = $newVideoData;
 
         // FAQ Management
         $newFaqData = [];
@@ -201,6 +246,39 @@ class PagesController extends Controller
 
         return back()->with('success', 'Page content updated successfully!');
     }
+
+
+    private function processAboutVideo($file)
+    {
+        $filename = 'pages/videos/' . Str::uuid() . '.mp4';
+        $inputPath = $file->getRealPath();
+        $outputPath = storage_path('app/public/' . $filename);
+
+        if (!Storage::disk('public')->exists('pages/videos')) {
+            Storage::disk('public')->makeDirectory('pages/videos');
+        }
+
+        $ffmpegPath = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN'
+                      ? 'C:/ffmpeg/bin/ffmpeg.exe'
+                      : '/usr/bin/ffmpeg';
+
+        $command = sprintf(
+            "\"%s\" -i %s -vf \"scale='min(1280,iw)':-2\" -c:v libx264 -preset superfast -crf 28 -movflags +faststart -c:a aac -b:a 128k %s -y 2>&1",
+            $ffmpegPath,
+            escapeshellarg($inputPath),
+            escapeshellarg($outputPath)
+        );
+
+        exec($command, $output, $status);
+
+        if ($status !== 0) {
+            \Log::error("FFmpeg Error: " . implode("\n", $output));
+            return $file->store('pages/videos', 'public');
+        }
+
+        return $filename;
+    }
+
 
     // get page data for API
     public function getPageData(Request $request, $slug)
