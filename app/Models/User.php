@@ -32,6 +32,7 @@ class User extends Authenticatable implements JWTSubject
         'otp',
         'otp_expires_at',
         'is_verified',
+        'stripe_customer_id',
     ];
 
     protected $hidden = [
@@ -168,5 +169,15 @@ class User extends Authenticatable implements JWTSubject
     public function comments()
     {
         return $this->hasMany(Comment::class);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 }
