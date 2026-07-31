@@ -186,4 +186,43 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.plan.features.0', 'search_profiles')
             ->assertJsonPath('data.willRenew', true);
     }
+
+    public function test_me_returns_free_user_when_no_subscription(): void
+    {
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/me');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('subscription.is_subscribed', false)
+            ->assertJsonPath('subscription.plan_name', null)
+            ->assertJsonPath('subscription.expires_at', null)
+            ->assertJsonPath('subscription.will_renew', null);
+    }
+
+    public function test_me_returns_plan_name_for_active_subscription(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Premium', 'billing_rate' => 19.99, 'billing_cycle' => 'yearly',
+            'status' => 'active', 'features' => ['search_profiles', 'unlimited_direct_messaging'],
+        ]);
+
+        Subscription::create([
+            'user_id' => $this->user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_1',
+            'status' => 'active',
+            'current_period_end' => now()->addDays(30),
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/me');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('subscription.is_subscribed', true)
+            ->assertJsonPath('subscription.plan_id', $plan->id)
+            ->assertJsonPath('subscription.plan_name', 'Premium')
+            ->assertJsonPath('subscription.status', 'active')
+            ->assertJsonPath('subscription.will_renew', true);
+    }
 }
