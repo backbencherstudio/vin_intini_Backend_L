@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\SocialController;
+use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
@@ -38,6 +39,9 @@ Route::post('/refresh', [AuthController::class, 'refresh']);
 
 // pages routes
 Route::get('/pages/{slug}', [PagesController::class, 'getPageData']);
+
+// Stripe webhook (must be public, no auth)
+Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
