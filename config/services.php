@@ -38,6 +38,8 @@ return [
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'return_url' => env('STRIPE_RETURN_URL', env('APP_URL', 'http://localhost').'/billing/success'),
     ],
 
     'google' => [
