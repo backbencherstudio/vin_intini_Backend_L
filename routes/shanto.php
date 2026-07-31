@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\Admin\PlanController;
+use App\Http\Controllers\Admin\SubscriptionManagementController;
+use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NewsfeedController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TimelineController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,9 +20,22 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::post('/plans/create', [PlanController::class, 'store']);
     Route::patch('/plans/{plan}', [PlanController::class, 'update']);
     Route::patch('/plans/{plan}/status', [PlanController::class, 'toggleStatus']);
+
+    // transaction routes
+    Route::get('/transactions', [TransactionController::class, 'index']);
+    Route::get('/transactions/overview', [TransactionController::class, 'overview']);
+
+    // subscription management routes
+    Route::get('/subscriptions', [SubscriptionManagementController::class, 'index']);
+    Route::post('/subscriptions/{subscription}/cancel', [SubscriptionManagementController::class, 'cancel']);
 });
 
 Route::middleware(['auth:api', 'role:user'])->group(function () {
+
+    // plans & subscription routes
+    Route::get('/plans', [SubscriptionController::class, 'plans']);
+    Route::post('/subscriptions/create', [SubscriptionController::class, 'create']);
+    Route::get('/subscriptions/status', [SubscriptionController::class, 'status']);
 
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/profile/posts/{id}', [PostController::class, 'editProfilePost']);
