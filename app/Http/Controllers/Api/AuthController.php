@@ -81,9 +81,20 @@ class AuthController extends Controller
 
         $latestEducation = $user->educations->sortByDesc('id')->first();
 
+        $subscription = $user->subscriptions()->with('plan')->latest()->first();
+        $isSubscribed = (bool) $subscription?->isActive();
+
         return response()->json([
             'success' => true,
             'is_onboarding' => $user->profile ? true : false,
+            'subscription' => [
+                'is_subscribed' => $isSubscribed,
+                'plan_id' => $isSubscribed ? $subscription->plan_id : null,
+                'plan_name' => $isSubscribed ? $subscription->plan?->name : null,
+                'status' => $isSubscribed ? $subscription->status : null,
+                'expires_at' => $isSubscribed ? $subscription->current_period_end?->toIso8601String() : null,
+                'will_renew' => $isSubscribed ? ! $subscription->cancel_at_period_end : null,
+            ],
             'user' => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
