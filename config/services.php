@@ -39,7 +39,8 @@ return [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
-        'return_url' => env('STRIPE_RETURN_URL', env('APP_URL', 'http://localhost').'/billing/success'),
+        'checkout_success_url' => env('STRIPE_CHECKOUT_SUCCESS_URL', env('APP_URL', 'http://localhost').'/payment/success'),
+        'checkout_cancel_url' => env('STRIPE_CHECKOUT_CANCEL_URL', env('APP_URL', 'http://localhost').'/payment/cancel'),
     ],
 
     'google' => [
