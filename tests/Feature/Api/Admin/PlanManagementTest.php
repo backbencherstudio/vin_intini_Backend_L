@@ -35,7 +35,6 @@ class PlanManagementTest extends TestCase
             $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_mock']));
             $mock->shouldReceive('updateProduct')->andReturn(Product::constructFrom(['id' => 'prod_mock']));
             $mock->shouldReceive('archivePrice')->andReturn(Price::constructFrom(['id' => 'price_mock']));
-            $mock->shouldReceive('archiveProduct')->andReturn(Product::constructFrom(['id' => 'prod_mock']));
         });
     }
 
@@ -212,7 +211,7 @@ class PlanManagementTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(count(\App\Enums\PlanFeature::cases()), 'data')
+            ->assertJsonCount(count(PlanFeature::cases()), 'data')
             ->assertJsonStructure([
                 'data' => [
                     '*' => ['value', 'label'],

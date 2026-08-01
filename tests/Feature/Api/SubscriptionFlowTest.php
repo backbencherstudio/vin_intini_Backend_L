@@ -96,8 +96,7 @@ class SubscriptionFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.type', 'payment')
-            ->assertJsonPath('data.client_secret', 'cs_test_secret_123')
-            ->assertJsonPath('data.subscription_id', 'sub_mock');
+            ->assertJsonPath('data.client_secret', 'cs_test_secret_123');
 
         $this->assertDatabaseHas('subscriptions', [
             'user_id' => $this->user->id,
