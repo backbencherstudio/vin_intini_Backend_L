@@ -11,6 +11,7 @@ use Stripe\PaymentIntent;
 use Stripe\Price;
 use Stripe\Product;
 use Stripe\Stripe;
+use Stripe\StripeClient;
 use Stripe\Subscription;
 use Stripe\Webhook;
 
@@ -107,20 +108,25 @@ class StripeService
 
     public function retrieveSession(string $sessionId): Session
     {
-        return Session::retrieve($sessionId, [
+        return $this->client()->checkout->sessions->retrieve($sessionId, [
             'expand' => ['subscription', 'payment_intent', 'payment_intent.payment_method'],
         ]);
     }
 
     public function retrieveSubscription(string $subscriptionId): Subscription
     {
-        return Subscription::retrieve($subscriptionId);
+        return $this->client()->subscriptions->retrieve($subscriptionId);
     }
 
     public function retrievePaymentIntent(string $paymentIntentId): PaymentIntent
     {
-        return PaymentIntent::retrieve($paymentIntentId, [
+        return $this->client()->paymentIntents->retrieve($paymentIntentId, [
             'expand' => ['payment_method'],
         ]);
+    }
+
+    private function client(): StripeClient
+    {
+        return new StripeClient(config('services.stripe.secret'));
     }
 }
