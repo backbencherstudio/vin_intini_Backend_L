@@ -130,6 +130,22 @@ class StripeService
         ]);
     }
 
+    public function findPaymentIntentBySession(string $sessionId, string $customerId): ?PaymentIntent
+    {
+        $paymentIntents = $this->client()->paymentIntents->all([
+            'customer' => $customerId,
+            'limit' => 10,
+        ]);
+
+        foreach ($paymentIntents->data as $paymentIntent) {
+            if (($paymentIntent->payment_details->order_reference ?? null) === $sessionId) {
+                return $paymentIntent;
+            }
+        }
+
+        return null;
+    }
+
     private function client(): StripeClient
     {
         return new StripeClient(config('services.stripe.secret'));

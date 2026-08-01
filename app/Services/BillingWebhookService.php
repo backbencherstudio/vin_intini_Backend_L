@@ -29,7 +29,8 @@ class BillingWebhookService
         $productId = $this->normalizeId($stripeSubscription?->items->data[0]?->price->product) ?? $plan->stripe_product_id;
 
         $paymentIntent = $session->payment_intent
-            ?? $stripeSubscription?->latest_invoice?->payment_intent;
+            ?? $stripeSubscription?->latest_invoice?->payment_intent
+            ?? $this->stripe->findPaymentIntentBySession($session->id, (string) $session->customer);
 
         $subscription = Subscription::updateOrCreate(
             [
@@ -289,11 +290,15 @@ class BillingWebhookService
 
     private function resolveSubscriptionFromInvoice(StripeObject $invoice): ?Subscription
     {
-        if (! $invoice->subscription) {
+        $subscriptionId = $invoice->subscription
+            ?? data_get($invoice, 'lines.data.0.parent.subscription_item_details.subscription')
+            ?? data_get($invoice, 'lines.data.0.subscription');
+
+        if (! $subscriptionId) {
             return null;
         }
 
-        $subscription = Subscription::where('provider_subscription_id', $invoice->subscription)
+        $subscription = Subscription::where('provider_subscription_id', $subscriptionId)
             ->where('platform', 'stripe')
             ->first();
 
@@ -301,7 +306,7 @@ class BillingWebhookService
             return $subscription;
         }
 
-        $stripeSubscription = $this->stripe->retrieveSubscription($invoice->subscription);
+        $stripeSubscription = $this->stripe->retrieveSubscription($subscriptionId);
 
         return $this->syncSubscriptionFromStripe($stripeSubscription);
     }

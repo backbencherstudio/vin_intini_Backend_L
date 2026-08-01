@@ -154,6 +154,61 @@ class StripeWebhookTest extends TestCase
         ]);
     }
 
+    public function test_checkout_completed_records_transaction_via_payment_intent_lookup(): void
+    {
+        $sessionData = [
+            'id' => 'cs_3',
+            'client_reference_id' => (string) $this->user->id,
+            'metadata' => ['user_id' => (string) $this->user->id, 'plan_id' => (string) $this->plan->id],
+            'customer' => 'cus_1',
+            'currency' => 'usd',
+            'amount_total' => 1499,
+            'subscription' => [
+                'id' => 'sub_3',
+                'current_period_start' => now()->timestamp,
+                'current_period_end' => now()->addMonth()->timestamp,
+                'cancel_at_period_end' => false,
+                'items' => ['data' => [['price' => ['id' => 'price_1', 'product' => 'prod_1']]]],
+            ],
+        ];
+
+        $event = Event::constructFrom([
+            'id' => 'evt_3',
+            'type' => 'checkout.session.completed',
+            'data' => ['object' => $sessionData],
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
+            $mock->shouldReceive('constructEvent')->once()->andReturn($event);
+            $mock->shouldReceive('retrieveSession')->once()->andReturn(
+                Session::constructFrom($sessionData),
+            );
+            $mock->shouldReceive('findPaymentIntentBySession')->once()
+                ->with('cs_3', 'cus_1')
+                ->andReturn(PaymentIntent::constructFrom([
+                    'id' => 'pi_3',
+                    'amount' => 1499,
+                    'currency' => 'usd',
+                    'payment_method' => ['id' => 'pm_3', 'card' => ['brand' => 'visa', 'last4' => '4242']],
+                ]));
+        });
+
+        $response = $this->postWebhook([]);
+
+        $response->assertOk()->assertJsonPath('received', true);
+
+        $this->assertDatabaseHas('transactions', [
+            'provider_transaction_id' => 'pi_3',
+            'checkout_session_id' => 'cs_3',
+            'user_id' => $this->user->id,
+            'plan_id' => $this->plan->id,
+            'amount' => 14.99,
+            'status' => 'succeeded',
+            'card_brand' => 'visa',
+            'card_last4' => '4242',
+        ]);
+    }
+
     public function test_subscription_updated_syncs_plan_change_by_price_id(): void
     {
         $newPlan = Plan::create([
