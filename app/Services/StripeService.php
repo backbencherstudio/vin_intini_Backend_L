@@ -12,6 +12,7 @@ use Stripe\Price;
 use Stripe\Product;
 use Stripe\Stripe;
 use Stripe\Subscription;
+use Stripe\Webhook;
 
 class StripeService
 {
@@ -103,7 +104,7 @@ class StripeService
 
     public function constructEvent(string $payload, string $signature): Event
     {
-        return Event::constructEvent($payload, $signature, config('services.stripe.webhook_secret'));
+        return Webhook::constructEvent($payload, $signature, config('services.stripe.webhook_secret'));
     }
 
     public function retrieveSession(string $sessionId): Session
