@@ -75,6 +75,7 @@ class SocialController extends Controller
                         'is_verified' => true,
                         'profile_image' => $avatarUrl !== '' ? $avatarUrl : null,
                         'password' => Str::random(32),
+                        'terms_accepted_at' => now(),
                     ]);
                 }
 
