@@ -13,6 +13,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Stripe\Checkout\Session;
 use Stripe\Customer;
+use Stripe\Exception\ApiConnectionException;
 use Tests\TestCase;
 
 class SubscriptionFlowTest extends TestCase
@@ -96,6 +97,58 @@ class SubscriptionFlowTest extends TestCase
         $this->assertDatabaseMissing('subscriptions', [
             'user_id' => $this->user->id,
         ]);
+    }
+
+    public function test_user_cannot_create_subscription_when_already_active(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
+        ]);
+
+        Subscription::create([
+            'user_id' => $this->user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_active',
+            'status' => 'active',
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getOrCreateCustomer')->never();
+            $mock->shouldReceive('createCheckoutSession')->never();
+        });
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+        ]);
+
+        $response->assertStatus(422)->assertJsonPath('success', false);
+    }
+
+    public function test_create_returns_friendly_error_when_stripe_fails(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getOrCreateCustomer')->once()->andThrow(
+                new ApiConnectionException('Stripe is down'),
+            );
+            $mock->shouldReceive('createCheckoutSession')->never();
+        });
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+        ]);
+
+        $response->assertStatus(502)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Failed to create checkout session. Please try again.');
     }
 
     public function test_user_cannot_subscribe_to_inactive_plan(): void

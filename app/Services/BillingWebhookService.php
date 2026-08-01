@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
+use Stripe\PaymentIntent;
 use Stripe\StripeObject;
 
 class BillingWebhookService
@@ -25,8 +26,13 @@ class BillingWebhookService
         }
 
         $stripeSubscription = $session->subscription;
-        $priceId = $this->normalizeId($stripeSubscription?->items->data[0]?->price->id) ?? $plan->stripe_price_id;
-        $productId = $this->normalizeId($stripeSubscription?->items->data[0]?->price->product) ?? $plan->stripe_product_id;
+
+        if (! $stripeSubscription?->id) {
+            return;
+        }
+
+        $priceId = $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.id')) ?? $plan->stripe_price_id;
+        $productId = $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.product')) ?? $plan->stripe_product_id;
 
         $paymentIntent = $session->payment_intent
             ?? $stripeSubscription?->latest_invoice?->payment_intent
@@ -89,8 +95,8 @@ class BillingWebhookService
             'ends_at' => $this->fromTimestamp($stripeSubscription->ended_at ?? null),
         ]);
 
-        $priceId = $this->normalizeId($stripeSubscription->items?->data[0]?->price?->id);
-        $productId = $this->normalizeId($stripeSubscription->items?->data[0]?->price?->product);
+        $priceId = $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.id'));
+        $productId = $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.product'));
 
         if ($priceId) {
             $data = [
@@ -156,10 +162,8 @@ class BillingWebhookService
                 ? $this->stripe->retrievePaymentIntent($charge->payment_intent)
                 : null;
 
-            $subscription = $paymentIntent?->subscription
-                ? Subscription::where('provider_subscription_id', $paymentIntent->subscription)
-                    ->where('platform', 'stripe')
-                    ->first()
+            $subscription = $paymentIntent
+                ? $this->resolveSubscriptionForPaymentIntent($paymentIntent)
                 : null;
 
             if (! $subscription) {
@@ -198,12 +202,10 @@ class BillingWebhookService
             return;
         }
 
-        $paymentIntent = $invoice->payment_intent
-            ? $this->stripe->retrievePaymentIntent($invoice->payment_intent)
-            : null;
+        $paymentIntent = $this->resolvePaymentIntentForInvoice($invoice, $subscription);
 
         $this->upsertTransaction([
-            'provider_transaction_id' => $invoice->payment_intent,
+            'provider_transaction_id' => $paymentIntent?->id ?? 'inv_'.$invoice->id,
             'user_id' => $subscription->user_id,
             'plan_id' => $subscription->plan_id,
             'subscription_id' => $subscription->id,
@@ -233,12 +235,10 @@ class BillingWebhookService
             return;
         }
 
-        $paymentIntent = $invoice->payment_intent
-            ? $this->stripe->retrievePaymentIntent($invoice->payment_intent)
-            : null;
+        $paymentIntent = $this->resolvePaymentIntentForInvoice($invoice, $subscription);
 
         $this->upsertTransaction([
-            'provider_transaction_id' => $invoice->payment_intent,
+            'provider_transaction_id' => $paymentIntent?->id ?? 'inv_'.$invoice->id,
             'user_id' => $subscription->user_id,
             'plan_id' => $subscription->plan_id,
             'subscription_id' => $subscription->id,
@@ -267,7 +267,7 @@ class BillingWebhookService
 
         $userId = data_get($stripeSubscription->metadata, 'user_id');
         $plan = Plan::find(data_get($stripeSubscription->metadata, 'plan_id'))
-            ?? Plan::where('stripe_price_id', $this->normalizeId($stripeSubscription->items->data[0]?->price?->id))->first();
+            ?? Plan::where('stripe_price_id', $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.id')))->first();
 
         if (! $userId || ! $plan) {
             return null;
@@ -279,8 +279,8 @@ class BillingWebhookService
             'platform' => 'stripe',
             'provider_subscription_id' => $stripeSubscription->id,
             'provider_customer_id' => $stripeSubscription->customer,
-            'product_id' => $this->normalizeId($stripeSubscription->items->data[0]?->price?->product),
-            'price_id' => $this->normalizeId($stripeSubscription->items->data[0]?->price?->id),
+            'product_id' => $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.product')),
+            'price_id' => $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.id')),
             'status' => $stripeSubscription->status ?? 'active',
             'current_period_start' => $this->fromTimestamp($stripeSubscription->current_period_start),
             'current_period_end' => $this->fromTimestamp($stripeSubscription->current_period_end),
@@ -290,7 +290,7 @@ class BillingWebhookService
 
     private function resolveSubscriptionFromInvoice(StripeObject $invoice): ?Subscription
     {
-        $subscriptionId = $invoice->subscription
+        $subscriptionId = data_get($invoice, 'subscription')
             ?? data_get($invoice, 'lines.data.0.parent.subscription_item_details.subscription')
             ?? data_get($invoice, 'lines.data.0.subscription');
 
@@ -313,21 +313,44 @@ class BillingWebhookService
 
     private function resolveSubscriptionForPaymentIntent(StripeObject $paymentIntent): ?Subscription
     {
-        if ($paymentIntent->subscription) {
-            $subscription = Subscription::where('provider_subscription_id', $paymentIntent->subscription)
-                ->where('platform', 'stripe')
-                ->first();
+        $subscriptionId = data_get($paymentIntent, 'subscription');
 
-            if ($subscription) {
-                return $subscription;
+        if (! $subscriptionId) {
+            $orderReference = data_get($paymentIntent, 'payment_details.order_reference');
+
+            if ($orderReference && str_starts_with((string) $orderReference, 'cs_')) {
+                $session = $this->stripe->retrieveSession((string) $orderReference);
+                $subscriptionId = $session->subscription?->id;
             }
-
-            return $this->syncSubscriptionFromStripe(
-                $this->stripe->retrieveSubscription($paymentIntent->subscription),
-            );
         }
 
-        return null;
+        if (! $subscriptionId) {
+            return null;
+        }
+
+        $subscription = Subscription::where('provider_subscription_id', $subscriptionId)
+            ->where('platform', 'stripe')
+            ->first();
+
+        if ($subscription) {
+            return $subscription;
+        }
+
+        return $this->syncSubscriptionFromStripe(
+            $this->stripe->retrieveSubscription($subscriptionId),
+        );
+    }
+
+    private function resolvePaymentIntentForInvoice(StripeObject $invoice, Subscription $subscription): ?PaymentIntent
+    {
+        if ($paymentIntentId = data_get($invoice, 'payment_intent')) {
+            return $this->stripe->retrievePaymentIntent((string) $paymentIntentId);
+        }
+
+        return $this->stripe->findPaymentIntentBySession(
+            (string) $invoice->id,
+            (string) $subscription->provider_customer_id,
+        );
     }
 
     private function upsertTransaction(array $data): void
@@ -346,8 +369,8 @@ class BillingWebhookService
 
     private function priceIdFromSession(StripeObject $session): ?string
     {
-        return $this->normalizeId($session->subscription?->items->data[0]?->price?->id)
-            ?? $this->normalizeId($session->line_items?->data[0]?->price?->id);
+        return $this->normalizeId(data_get($session, 'subscription.items.data.0.price.id'))
+            ?? $this->normalizeId(data_get($session, 'line_items.data.0.price.id'));
     }
 
     private function normalizeId(mixed $value): ?string

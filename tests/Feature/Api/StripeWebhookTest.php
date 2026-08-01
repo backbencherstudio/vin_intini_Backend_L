@@ -14,6 +14,7 @@ use Stripe\Checkout\Session;
 use Stripe\Event;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\PaymentIntent;
+use Stripe\Subscription as StripeSubscription;
 use Tests\TestCase;
 
 class StripeWebhookTest extends TestCase
@@ -327,6 +328,170 @@ class StripeWebhookTest extends TestCase
             'status' => 'failed',
             'card_brand' => 'mastercard',
             'card_last4' => '1234',
+        ]);
+    }
+
+    public function test_payment_intent_failed_resolves_subscription_via_order_reference(): void
+    {
+        $sessionData = [
+            'id' => 'cs_4',
+            'client_reference_id' => (string) $this->user->id,
+            'metadata' => ['user_id' => (string) $this->user->id, 'plan_id' => (string) $this->plan->id],
+            'customer' => 'cus_1',
+            'amount_total' => 999,
+            'subscription' => [
+                'id' => 'sub_4',
+                'current_period_start' => now()->timestamp,
+                'current_period_end' => now()->addMonth()->timestamp,
+                'cancel_at_period_end' => false,
+                'items' => ['data' => [['price' => ['id' => 'price_1', 'product' => 'prod_1']]]],
+            ],
+        ];
+
+        $event = Event::constructFrom([
+            'id' => 'evt_5',
+            'type' => 'payment_intent.payment_failed',
+            'data' => [
+                'object' => [
+                    'id' => 'pi_4',
+                    'amount' => 999,
+                    'currency' => 'usd',
+                    'payment_details' => ['order_reference' => 'cs_4'],
+                    'payment_method' => ['id' => 'pm_4', 'card' => ['brand' => 'visa', 'last4' => '9999']],
+                ],
+            ],
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
+            $mock->shouldReceive('constructEvent')->once()->andReturn($event);
+            $mock->shouldReceive('retrieveSession')->once()->with('cs_4')->andReturn(
+                Session::constructFrom($sessionData),
+            );
+            $mock->shouldReceive('retrieveSubscription')->once()->with('sub_4')->andReturn(
+                StripeSubscription::constructFrom([
+                    'id' => 'sub_4',
+                    'customer' => 'cus_1',
+                    'status' => 'active',
+                    'current_period_start' => now()->timestamp,
+                    'current_period_end' => now()->addMonth()->timestamp,
+                    'cancel_at_period_end' => false,
+                    'metadata' => ['user_id' => (string) $this->user->id, 'plan_id' => (string) $this->plan->id],
+                    'items' => ['data' => [['price' => ['id' => 'price_1', 'product' => 'prod_1']]]],
+                ]),
+            );
+        });
+
+        $this->postWebhook([])->assertOk();
+
+        $this->assertDatabaseHas('subscriptions', [
+            'provider_subscription_id' => 'sub_4',
+            'user_id' => $this->user->id,
+            'plan_id' => $this->plan->id,
+        ]);
+
+        $this->assertDatabaseHas('transactions', [
+            'provider_transaction_id' => 'pi_4',
+            'user_id' => $this->user->id,
+            'plan_id' => $this->plan->id,
+            'amount' => 9.99,
+            'status' => 'failed',
+        ]);
+    }
+
+    public function test_invoice_paid_records_transaction_without_payment_intent(): void
+    {
+        Subscription::create([
+            'user_id' => $this->user->id,
+            'plan_id' => $this->plan->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_5',
+            'provider_customer_id' => 'cus_1',
+            'status' => 'active',
+        ]);
+
+        $event = Event::constructFrom([
+            'id' => 'evt_6',
+            'type' => 'invoice.paid',
+            'data' => [
+                'object' => [
+                    'id' => 'in_5',
+                    'subscription' => 'sub_5',
+                    'amount_paid' => 2999,
+                    'currency' => 'usd',
+                    'period_start' => now()->timestamp,
+                    'period_end' => now()->addMonth()->timestamp,
+                ],
+            ],
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+            $mock->shouldReceive('constructEvent')->once()->andReturn($event);
+            $mock->shouldReceive('findPaymentIntentBySession')->once()
+                ->with('in_5', 'cus_1')
+                ->andReturn(null);
+        });
+
+        $this->postWebhook([])->assertOk();
+
+        $this->assertDatabaseHas('transactions', [
+            'provider_transaction_id' => 'inv_in_5',
+            'user_id' => $this->user->id,
+            'plan_id' => $this->plan->id,
+            'amount' => 29.99,
+            'status' => 'succeeded',
+        ]);
+    }
+
+    public function test_charge_refunded_resolves_subscription_via_order_reference(): void
+    {
+        Subscription::create([
+            'user_id' => $this->user->id,
+            'plan_id' => $this->plan->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_6',
+            'provider_customer_id' => 'cus_1',
+            'status' => 'active',
+        ]);
+
+        $event = Event::constructFrom([
+            'id' => 'evt_7',
+            'type' => 'charge.refunded',
+            'data' => [
+                'object' => [
+                    'id' => 'ch_6',
+                    'payment_intent' => 'pi_6',
+                    'amount_refunded' => 999,
+                    'currency' => 'usd',
+                ],
+            ],
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+            $mock->shouldReceive('constructEvent')->once()->andReturn($event);
+            $mock->shouldReceive('retrievePaymentIntent')->once()->with('pi_6')->andReturn(
+                PaymentIntent::constructFrom([
+                    'id' => 'pi_6',
+                    'payment_details' => ['order_reference' => 'cs_6'],
+                    'payment_method' => ['id' => 'pm_6', 'card' => ['brand' => 'visa', 'last4' => '1111']],
+                ]),
+            );
+            $mock->shouldReceive('retrieveSession')->once()->with('cs_6')->andReturn(
+                Session::constructFrom([
+                    'id' => 'cs_6',
+                    'metadata' => ['user_id' => (string) $this->user->id, 'plan_id' => (string) $this->plan->id],
+                    'subscription' => ['id' => 'sub_6', 'items' => ['data' => [['price' => ['id' => 'price_1', 'product' => 'prod_1']]]]],
+                ]),
+            );
+        });
+
+        $this->postWebhook([])->assertOk();
+
+        $this->assertDatabaseHas('transactions', [
+            'provider_transaction_id' => 'pi_6',
+            'user_id' => $this->user->id,
+            'plan_id' => $this->plan->id,
+            'amount' => 9.99,
+            'status' => 'refunded',
         ]);
     }
 

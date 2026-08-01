@@ -81,6 +81,7 @@ class StripeService
         return Session::create([
             'mode' => 'subscription',
             'customer' => $customerId,
+            'client_reference_id' => (string) $user->id,
             'line_items' => [
                 [
                     'price' => $plan->stripe_price_id,

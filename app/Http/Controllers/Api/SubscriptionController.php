@@ -8,6 +8,7 @@ use App\Models\Subscription;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Stripe\Exception\ApiErrorException;
 
 class SubscriptionController extends Controller
 {
@@ -46,8 +47,26 @@ class SubscriptionController extends Controller
             ], 422);
         }
 
-        $customer = $this->stripe->getOrCreateCustomer($user);
-        $checkoutSession = $this->stripe->createCheckoutSession($plan, $user, $customer->id);
+        $activeSubscription = Subscription::where('user_id', $user->id)
+            ->whereIn('status', ['active', 'trialing', 'paused'])
+            ->first();
+
+        if ($activeSubscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have an active subscription.',
+            ], 422);
+        }
+
+        try {
+            $customer = $this->stripe->getOrCreateCustomer($user);
+            $checkoutSession = $this->stripe->createCheckoutSession($plan, $user, $customer->id);
+        } catch (ApiErrorException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create checkout session. Please try again.',
+            ], 502);
+        }
 
         return response()->json([
             'success' => true,
