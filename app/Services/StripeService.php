@@ -8,7 +8,6 @@ use Stripe\Checkout\Session;
 use Stripe\Customer;
 use Stripe\Event;
 use Stripe\PaymentIntent;
-use Stripe\PaymentMethod;
 use Stripe\Price;
 use Stripe\Product;
 use Stripe\Stripe;
@@ -54,11 +53,6 @@ class StripeService
     public function archivePrice(string $priceId): Price
     {
         return Price::update($priceId, ['active' => false]);
-    }
-
-    public function archiveProduct(string $productId): Product
-    {
-        return Product::update($productId, ['active' => false]);
     }
 
     public function getOrCreateCustomer(User $user): Customer
@@ -129,10 +123,5 @@ class StripeService
         return PaymentIntent::retrieve($paymentIntentId, [
             'expand' => ['payment_method'],
         ]);
-    }
-
-    public function retrievePaymentMethod(string $paymentMethodId): PaymentMethod
-    {
-        return PaymentMethod::retrieve($paymentMethodId);
     }
 }
