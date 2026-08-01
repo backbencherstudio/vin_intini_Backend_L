@@ -185,7 +185,11 @@
                                     </td>
                                     <td class="text-center">
                                         @if($user->terms_accepted_at)
-                                            <div class="x-small fw-bold convert-to-local-time"
+                                            <div class="small fw-bold text-dark convert-to-local-date"
+                                                data-utc="{{ $user->terms_accepted_at->toIso8601String() }}">
+                                                {{ $user->terms_accepted_at->format('d M Y') }}
+                                            </div>
+                                            <div class="text-muted x-small convert-to-local-time"
                                                 data-utc="{{ $user->terms_accepted_at->toIso8601String() }}">
                                                 {{ $user->terms_accepted_at->format('h:i A') }}
                                             </div>
