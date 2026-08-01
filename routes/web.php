@@ -17,6 +17,14 @@ Route::get('/welcome', function () {
     return view('welcome');
 })->name('welcome');
 
+Route::get('/test-payment', function () {
+    return view('test-payment');
+})->name('test.payment');
+
+Route::get('/test-payment/success', function () {
+    return view('test-payment-success');
+})->name('test.payment.success');
+
 Route::get('/clear', function () {
     Artisan::call('optimize:clear');
 
