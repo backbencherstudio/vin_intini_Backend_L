@@ -137,6 +137,7 @@
                                 <th>Profile</th>
                                 <th class="text-start">Full Name</th>
                                 <th class="text-start">Email Address</th>
+                                <th>Terms accepted at</th>
                                 <th>Joined Date & Time</th>
                                 <th>Status</th>
                             </tr>
@@ -181,6 +182,16 @@
                                 </td> --}}
                                     <td class="text-start">
                                         <span class="text-muted small">{{ $user->email }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if($user->terms_accepted_at)
+                                            <div class="x-small fw-bold convert-to-local-time"
+                                                data-utc="{{ $user->terms_accepted_at->toIso8601String() }}">
+                                                {{ $user->terms_accepted_at->format('h:i A') }}
+                                            </div>
+                                        @else
+                                            <div class="text-muted x-small">Not accepted yet</div>
+                                        @endif
                                     </td>
                                     <td>
                                         <div class="small fw-bold text-dark convert-to-local-date"

@@ -168,6 +168,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string|min:6',
+            'terms' => 'required|accepted',
         ]);
 
         if ($validator->fails()) {
@@ -200,6 +201,7 @@ class AuthController extends Controller
                     'otp' => $otp,
                     'otp_expires_at' => now()->addMinutes(3),
                     'is_verified' => false,
+                    'terms_accepted_at' => now(),
                 ]);
 
                 if ($role && ! $user->hasRole('user')) {
@@ -223,6 +225,7 @@ class AuthController extends Controller
                 'otp' => $otp,
                 'otp_expires_at' => now()->addMinutes(3), // consistent
                 'is_verified' => false,
+                'terms_accepted_at' => now(),
             ]);
 
             if ($role) {
