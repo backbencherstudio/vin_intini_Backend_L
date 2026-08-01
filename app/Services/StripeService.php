@@ -3,16 +3,21 @@
 namespace App\Services;
 
 use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Stripe\Checkout\Session;
 use Stripe\Customer;
 use Stripe\Event;
+use Stripe\Exception\ApiErrorException;
+use Stripe\Invoice;
 use Stripe\PaymentIntent;
 use Stripe\Price;
 use Stripe\Product;
 use Stripe\Stripe;
 use Stripe\StripeClient;
-use Stripe\Subscription;
+use Stripe\StripeObject;
+use Stripe\Subscription as StripeSubscription;
 use Stripe\Webhook;
 
 class StripeService
@@ -97,9 +102,9 @@ class StripeService
         ]);
     }
 
-    public function cancelSubscription(string $subscriptionId, bool $atPeriodEnd = true): Subscription
+    public function cancelSubscription(string $subscriptionId, bool $atPeriodEnd = true): StripeSubscription
     {
-        return Subscription::update($subscriptionId, ['cancel_at_period_end' => $atPeriodEnd]);
+        return StripeSubscription::update($subscriptionId, ['cancel_at_period_end' => $atPeriodEnd]);
     }
 
     public function constructEvent(string $payload, string $signature): Event
@@ -119,9 +124,55 @@ class StripeService
         ]);
     }
 
-    public function retrieveSubscription(string $subscriptionId): Subscription
+    public function retrieveSubscription(string $subscriptionId): StripeSubscription
     {
         return $this->client()->subscriptions->retrieve($subscriptionId);
+    }
+
+    public function retrieveInvoice(string $invoiceId): Invoice
+    {
+        return $this->client()->invoices->retrieve($invoiceId);
+    }
+
+    public function hydrateSubscriptionDates(Subscription $subscription): void
+    {
+        if ($subscription->current_period_end || $subscription->platform !== 'stripe' || ! $subscription->provider_subscription_id) {
+            return;
+        }
+
+        try {
+            $stripeSubscription = $this->retrieveSubscription($subscription->provider_subscription_id);
+        } catch (ApiErrorException) {
+            return;
+        }
+
+        [$periodStart, $periodEnd] = $this->periodDatesFromSubscription($stripeSubscription);
+
+        $subscription->update([
+            'status' => $stripeSubscription->status ?? $subscription->status,
+            'current_period_start' => $periodStart,
+            'current_period_end' => $periodEnd,
+            'cancel_at_period_end' => (bool) $stripeSubscription->cancel_at_period_end,
+            'canceled_at' => $this->fromTimestamp(data_get($stripeSubscription, 'canceled_at')),
+            'ends_at' => $this->fromTimestamp(data_get($stripeSubscription, 'ended_at')),
+        ]);
+    }
+
+    public function periodDatesFromSubscription(StripeObject $stripeSubscription): array
+    {
+        $periodStart = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_start'));
+        $periodEnd = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_end'));
+
+        if ($periodEnd === null && $invoiceId = data_get($stripeSubscription, 'latest_invoice')) {
+            try {
+                $invoice = $this->retrieveInvoice((string) $invoiceId);
+                $periodStart = $this->fromTimestamp(data_get($invoice, 'period_start'));
+                $periodEnd = $this->fromTimestamp(data_get($invoice, 'period_end'));
+            } catch (ApiErrorException) {
+            }
+        }
+
+        return [$periodStart, $periodEnd];
     }
 
     public function retrievePaymentIntent(string $paymentIntentId): PaymentIntent
@@ -151,5 +202,10 @@ class StripeService
     private function client(): StripeClient
     {
         return new StripeClient(config('services.stripe.secret'));
+    }
+
+    private function fromTimestamp(mixed $timestamp): ?Carbon
+    {
+        return $timestamp ? now()->createFromTimestamp($timestamp) : null;
     }
 }

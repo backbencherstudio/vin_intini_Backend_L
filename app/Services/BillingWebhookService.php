@@ -38,6 +38,8 @@ class BillingWebhookService
             ?? $stripeSubscription?->latest_invoice?->payment_intent
             ?? $this->stripe->findPaymentIntentBySession($session->id, (string) $session->customer);
 
+        [$periodStart, $periodEnd] = $this->stripe->periodDatesFromSubscription($stripeSubscription);
+
         $subscription = Subscription::updateOrCreate(
             [
                 'provider_subscription_id' => $stripeSubscription?->id,
@@ -50,12 +52,8 @@ class BillingWebhookService
                 'product_id' => $productId,
                 'price_id' => $priceId,
                 'status' => 'active',
-                'current_period_start' => $stripeSubscription?->current_period_start
-                    ? now()->createFromTimestamp($stripeSubscription->current_period_start)
-                    : null,
-                'current_period_end' => $stripeSubscription?->current_period_end
-                    ? now()->createFromTimestamp($stripeSubscription->current_period_end)
-                    : null,
+                'current_period_start' => $periodStart,
+                'current_period_end' => $periodEnd,
                 'cancel_at_period_end' => (bool) $stripeSubscription?->cancel_at_period_end,
                 'canceled_at' => null,
                 'ends_at' => null,
@@ -86,13 +84,15 @@ class BillingWebhookService
             return;
         }
 
+        [$periodStart, $periodEnd] = $this->stripe->periodDatesFromSubscription($stripeSubscription);
+
         $subscription->update([
             'status' => $stripeSubscription->status ?? $subscription->status,
-            'current_period_start' => $this->fromTimestamp($stripeSubscription->current_period_start),
-            'current_period_end' => $this->fromTimestamp($stripeSubscription->current_period_end),
+            'current_period_start' => $periodStart,
+            'current_period_end' => $periodEnd,
             'cancel_at_period_end' => (bool) $stripeSubscription->cancel_at_period_end,
-            'canceled_at' => $this->fromTimestamp($stripeSubscription->canceled_at ?? null),
-            'ends_at' => $this->fromTimestamp($stripeSubscription->ended_at ?? null),
+            'canceled_at' => $this->fromTimestamp(data_get($stripeSubscription, 'canceled_at')),
+            'ends_at' => $this->fromTimestamp(data_get($stripeSubscription, 'ended_at')),
         ]);
 
         $priceId = $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.id'));
@@ -273,6 +273,8 @@ class BillingWebhookService
             return null;
         }
 
+        [$periodStart, $periodEnd] = $this->stripe->periodDatesFromSubscription($stripeSubscription);
+
         return Subscription::create([
             'user_id' => (int) $userId,
             'plan_id' => $plan->id,
@@ -282,8 +284,8 @@ class BillingWebhookService
             'product_id' => $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.product')),
             'price_id' => $this->normalizeId(data_get($stripeSubscription, 'items.data.0.price.id')),
             'status' => $stripeSubscription->status ?? 'active',
-            'current_period_start' => $this->fromTimestamp($stripeSubscription->current_period_start),
-            'current_period_end' => $this->fromTimestamp($stripeSubscription->current_period_end),
+            'current_period_start' => $periodStart,
+            'current_period_end' => $periodEnd,
             'cancel_at_period_end' => (bool) $stripeSubscription->cancel_at_period_end,
         ]);
     }

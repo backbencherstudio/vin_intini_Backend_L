@@ -80,6 +80,10 @@ class SubscriptionManagementTest extends TestCase
             'provider_subscription_id' => 'sub_2', 'status' => 'canceled',
         ]);
 
+        $this->mock(StripeService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('hydrateSubscriptionDates')->zeroOrMoreTimes();
+        });
+
         $response = $this->actingAs($this->admin, 'api')
             ->getJson('/api/admin/subscriptions?status=canceled');
 
@@ -88,6 +92,50 @@ class SubscriptionManagementTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.status', 'canceled')
             ->assertJsonPath('data.0.next_billing_date', null);
+    }
+
+    public function test_admin_list_hydrates_missing_billing_dates_from_stripe(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+        ]);
+
+        $user = User::factory()->create();
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_live',
+            'status' => 'active',
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('hydrateSubscriptionDates')->passthru();
+            $mock->shouldReceive('periodDatesFromSubscription')->passthru();
+            $mock->shouldReceive('retrieveSubscription')->once()->with('sub_live')->andReturn(
+                StripeSubscription::constructFrom([
+                    'id' => 'sub_live',
+                    'status' => 'active',
+                    'current_period_start' => now()->timestamp,
+                    'current_period_end' => now()->addDays(5)->timestamp,
+                    'cancel_at_period_end' => false,
+                ]),
+            );
+        });
+
+        $response = $this->actingAs($this->admin, 'api')->getJson('/api/admin/subscriptions');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.0.next_billing_date', now()->addDays(5)->toIso8601String())
+            ->assertJsonPath('data.0.days_left', 5);
+
+        $this->assertDatabaseHas('subscriptions', [
+            'provider_subscription_id' => 'sub_live',
+            'status' => 'active',
+        ]);
     }
 
     public function test_admin_can_cancel_subscription_at_period_end(): void

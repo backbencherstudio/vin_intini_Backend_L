@@ -44,24 +44,28 @@ class SubscriptionManagementController extends Controller
 
         $subscriptions = $query->paginate($validated['per_page'] ?? 15)->withQueryString();
 
-        $data = $subscriptions->map(fn (Subscription $subscription) => [
-            'id' => $subscription->id,
-            'subscriber' => [
-                'name' => trim(($subscription->user->first_name ?? '').' '.($subscription->user->last_name ?? '')),
-                'image' => $subscription->user->profile_image_url,
-            ],
-            'plan' => $subscription->plan ? [
-                'name' => $subscription->plan->name,
-                'amount' => $subscription->plan->billing_rate,
-                'billing_cycle' => $subscription->plan->billing_cycle,
-            ] : null,
-            'status' => $subscription->status,
-            'billing_cycle' => $subscription->plan?->billing_cycle,
-            'next_billing_date' => $subscription->current_period_end?->toIso8601String(),
-            'days_left' => $this->daysLeft($subscription),
-            'cancel_at_period_end' => $subscription->cancel_at_period_end,
-            'joined_at' => $subscription->created_at->toIso8601String(),
-        ]);
+        $data = $subscriptions->map(function (Subscription $subscription) {
+            $this->stripe->hydrateSubscriptionDates($subscription);
+
+            return [
+                'id' => $subscription->id,
+                'subscriber' => [
+                    'name' => trim(($subscription->user->first_name ?? '').' '.($subscription->user->last_name ?? '')),
+                    'image' => $subscription->user->profile_image_url,
+                ],
+                'plan' => $subscription->plan ? [
+                    'name' => $subscription->plan->name,
+                    'amount' => $subscription->plan->billing_rate,
+                    'billing_cycle' => $subscription->plan->billing_cycle,
+                ] : null,
+                'status' => $subscription->status,
+                'billing_cycle' => $subscription->plan?->billing_cycle,
+                'next_billing_date' => $subscription->current_period_end?->toIso8601String(),
+                'days_left' => $this->daysLeft($subscription),
+                'cancel_at_period_end' => $subscription->cancel_at_period_end,
+                'joined_at' => $subscription->created_at->toIso8601String(),
+            ];
+        });
 
         return response()->json([
             'success' => true,

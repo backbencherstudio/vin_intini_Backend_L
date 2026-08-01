@@ -84,6 +84,10 @@ class SubscriptionController extends Controller
             ->latest()
             ->first();
 
+        if ($subscription) {
+            $this->stripe->hydrateSubscriptionDates($subscription);
+        }
+
         if (! $subscription || ! $subscription->isActive()) {
             return response()->json([
                 'success' => true,
