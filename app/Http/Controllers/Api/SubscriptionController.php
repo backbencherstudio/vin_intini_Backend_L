@@ -70,9 +70,6 @@ class SubscriptionController extends Controller
             'data' => [
                 'type' => $type,
                 'client_secret' => $clientSecret,
-                'subscription_id' => $stripeSubscription->id,
-                'publishable_key' => config('services.stripe.key'),
-                'return_url' => config('services.stripe.return_url'),
             ],
         ], 200);
     }
