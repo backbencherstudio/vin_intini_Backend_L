@@ -33,6 +33,7 @@ class User extends Authenticatable implements JWTSubject
         'otp',
         'otp_expires_at',
         'is_verified',
+        'terms_accepted_at',
     ];
 
     protected $hidden = [
@@ -53,6 +54,7 @@ class User extends Authenticatable implements JWTSubject
     {
         return [
             'email_verified_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
             'otp_expires_at' => 'datetime',
             'is_verified' => 'boolean',
             'password' => 'hashed',
