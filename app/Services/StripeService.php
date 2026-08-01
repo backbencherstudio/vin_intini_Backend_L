@@ -135,6 +135,7 @@ class StripeService
         $paymentIntents = $this->client()->paymentIntents->all([
             'customer' => $customerId,
             'limit' => 10,
+            'expand' => ['data.payment_method'],
         ]);
 
         foreach ($paymentIntents->data as $paymentIntent) {
