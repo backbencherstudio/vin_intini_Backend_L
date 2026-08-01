@@ -23,7 +23,7 @@ class RegisterTest extends TestCase
         Role::firstOrCreate(['name' => 'user', 'guard_name' => 'api']);
     }
 
-    public function test_new_user_registers_with_all_user_data(): void
+    public function test_new_user_registers_with_email_and_password(): void
     {
         Mail::fake();
 
@@ -42,10 +42,6 @@ class RegisterTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'john@example.com',
-            'first_name' => 'John',
-            'last_name' => 'Doe',
-            'title' => 'Software Engineer',
-            'mobile' => '01712345678',
             'is_verified' => false,
         ]);
 
@@ -54,9 +50,11 @@ class RegisterTest extends TestCase
         $user = User::where('email', 'john@example.com')->first();
         $this->assertTrue($user->hasRole('user'));
         $this->assertNotNull($user->otp);
+        $this->assertNull($user->first_name);
+        $this->assertNull($user->mobile);
     }
 
-    public function test_registration_updates_user_data_for_existing_unverified_user(): void
+    public function test_registration_resends_otp_for_existing_unverified_user(): void
     {
         Mail::fake();
 
@@ -80,9 +78,8 @@ class RegisterTest extends TestCase
 
         $user->refresh();
 
-        $this->assertEquals('John', $user->first_name);
-        $this->assertEquals('Doe', $user->last_name);
         $this->assertNotEquals('oldpass123', $user->password);
+        $this->assertFalse($user->is_verified);
         $this->assertNotNull($user->otp);
     }
 }
