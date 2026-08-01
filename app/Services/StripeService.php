@@ -10,7 +10,6 @@ use Stripe\Checkout\Session;
 use Stripe\Customer;
 use Stripe\Event;
 use Stripe\Exception\ApiErrorException;
-use Stripe\Invoice;
 use Stripe\PaymentIntent;
 use Stripe\Price;
 use Stripe\Product;
@@ -129,14 +128,11 @@ class StripeService
         return $this->client()->subscriptions->retrieve($subscriptionId);
     }
 
-    public function retrieveInvoice(string $invoiceId): Invoice
-    {
-        return $this->client()->invoices->retrieve($invoiceId);
-    }
-
     public function hydrateSubscriptionDates(Subscription $subscription): void
     {
-        if ($subscription->current_period_end || $subscription->platform !== 'stripe' || ! $subscription->provider_subscription_id) {
+        if ($subscription->current_period_end?->greaterThan(now())
+            || $subscription->platform !== 'stripe'
+            || ! $subscription->provider_subscription_id) {
             return;
         }
 
@@ -163,16 +159,27 @@ class StripeService
         $periodStart = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_start'));
         $periodEnd = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_end'));
 
-        if ($periodEnd === null && $invoiceId = data_get($stripeSubscription, 'latest_invoice')) {
-            try {
-                $invoice = $this->retrieveInvoice((string) $invoiceId);
-                $periodStart = $this->fromTimestamp(data_get($invoice, 'period_start'));
-                $periodEnd = $this->fromTimestamp(data_get($invoice, 'period_end'));
-            } catch (ApiErrorException) {
+        if (! $periodEnd) {
+            $anchor = $this->fromTimestamp(data_get($stripeSubscription, 'billing_cycle_anchor'));
+
+            if ($anchor) {
+                $periodStart = $periodStart ?? $anchor;
+                $periodEnd = $this->billingCycle($stripeSubscription) === 'yearly'
+                    ? $anchor->copy()->addYear()
+                    : $anchor->copy()->addMonth();
             }
         }
 
         return [$periodStart, $periodEnd];
+    }
+
+    private function billingCycle(StripeObject $stripeSubscription): ?string
+    {
+        $priceId = data_get($stripeSubscription, 'items.data.0.price.id');
+
+        return $priceId
+            ? Plan::where('stripe_price_id', (string) $priceId)->value('billing_cycle')
+            : null;
     }
 
     public function retrievePaymentIntent(string $paymentIntentId): PaymentIntent

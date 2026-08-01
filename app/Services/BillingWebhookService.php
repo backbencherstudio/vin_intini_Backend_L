@@ -218,10 +218,18 @@ class BillingWebhookService
             'paid_at' => now(),
         ]);
 
+        $periodStart = $this->fromTimestamp($invoice->period_start);
+        $periodEnd = $this->fromTimestamp($invoice->period_end);
+
+        if (! $periodEnd || $periodEnd->lessThanOrEqualTo(now())) {
+            $stripeSubscription = $this->stripe->retrieveSubscription((string) $subscription->provider_subscription_id);
+            [$periodStart, $periodEnd] = $this->stripe->periodDatesFromSubscription($stripeSubscription);
+        }
+
         $subscription->update([
             'status' => 'active',
-            'current_period_start' => $this->fromTimestamp($invoice->period_start),
-            'current_period_end' => $this->fromTimestamp($invoice->period_end),
+            'current_period_start' => $periodStart,
+            'current_period_end' => $periodEnd,
             'canceled_at' => null,
             'ends_at' => null,
         ]);

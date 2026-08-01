@@ -138,6 +138,48 @@ class SubscriptionManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_list_computes_next_billing_from_anchor_when_invoice_period_degenerate(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+        ]);
+
+        $user = User::factory()->create();
+
+        $anchor = now();
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_anchor',
+            'status' => 'active',
+            'current_period_start' => $anchor,
+            'current_period_end' => $anchor,
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($anchor) {
+            $mock->shouldReceive('hydrateSubscriptionDates')->passthru();
+            $mock->shouldReceive('periodDatesFromSubscription')->passthru();
+            $mock->shouldReceive('retrieveSubscription')->once()->with('sub_anchor')->andReturn(
+                StripeSubscription::constructFrom([
+                    'id' => 'sub_anchor',
+                    'status' => 'active',
+                    'billing_cycle_anchor' => $anchor->timestamp,
+                    'cancel_at_period_end' => false,
+                    'items' => ['data' => [['price' => ['id' => 'price_1', 'product' => 'prod_1']]]],
+                ]),
+            );
+        });
+
+        $response = $this->actingAs($this->admin, 'api')->getJson('/api/admin/subscriptions');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.0.next_billing_date', $anchor->copy()->addMonth()->toIso8601String());
+    }
+
     public function test_admin_can_cancel_subscription_at_period_end(): void
     {
         $plan = Plan::create([

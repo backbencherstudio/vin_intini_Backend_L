@@ -13,7 +13,6 @@ use Mockery\MockInterface;
 use Stripe\Checkout\Session;
 use Stripe\Event;
 use Stripe\Exception\SignatureVerificationException;
-use Stripe\Invoice;
 use Stripe\PaymentIntent;
 use Stripe\Subscription as StripeSubscription;
 use Tests\TestCase;
@@ -104,9 +103,9 @@ class StripeWebhookTest extends TestCase
         ]);
     }
 
-    public function test_checkout_completed_falls_back_to_invoice_period_dates(): void
+    public function test_checkout_completed_uses_billing_anchor_when_period_dates_missing(): void
     {
-        $periodEnd = now()->addMonth();
+        $anchor = now();
 
         $sessionData = [
             'id' => 'cs_1b',
@@ -117,7 +116,7 @@ class StripeWebhookTest extends TestCase
             'amount_total' => 999,
             'subscription' => [
                 'id' => 'sub_1b',
-                'latest_invoice' => 'in_1b',
+                'billing_cycle_anchor' => $anchor->timestamp,
                 'cancel_at_period_end' => false,
                 'items' => ['data' => [['price' => ['id' => 'price_1', 'product' => 'prod_1']]]],
             ],
@@ -133,18 +132,11 @@ class StripeWebhookTest extends TestCase
             'data' => ['object' => $sessionData],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData, $periodEnd) {
-            $mock->shouldReceive('periodDatesFromSubscription')->passthru();
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
+            $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('retrieveSession')->once()->andReturn(
                 Session::constructFrom($sessionData),
-            );
-            $mock->shouldReceive('retrieveInvoice')->once()->with('in_1b')->andReturn(
-                Invoice::constructFrom([
-                    'id' => 'in_1b',
-                    'period_start' => now()->timestamp,
-                    'period_end' => $periodEnd->timestamp,
-                ]),
             );
         });
 
@@ -154,9 +146,12 @@ class StripeWebhookTest extends TestCase
 
         $this->assertNotNull($subscription);
         $this->assertEquals(
-            $periodEnd->toDateTimeString(),
+            $anchor->copy()->addMonth()->toDateTimeString(),
             $subscription->current_period_end->toDateTimeString(),
         );
+        $this->assertGreaterThan(20, (int) ceil(
+            ($subscription->current_period_end->timestamp - now()->timestamp) / 86400,
+        ));
     }
 
     public function test_checkout_completed_records_transaction_from_subscription_invoice(): void
