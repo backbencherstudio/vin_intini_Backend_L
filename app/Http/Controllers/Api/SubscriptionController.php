@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\Subscription;
-use App\Models\User;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,18 +25,10 @@ class SubscriptionController extends Controller
     public function create(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
             'plan_id' => ['required', 'integer', 'exists:plans,id'],
         ]);
 
-        $user = User::findOrFail($validated['user_id']);
-
-        if ($request->user()->id !== (int) $validated['user_id'] && ! $request->user()->hasRole('admin')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You can only subscribe for yourself.',
-            ], 403);
-        }
+        $user = $request->user();
 
         $plan = Plan::findOrFail($validated['plan_id']);
 
@@ -88,19 +79,8 @@ class SubscriptionController extends Controller
 
     public function status(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-        ]);
-
-        if ($request->user()->id !== (int) $validated['user_id'] && ! $request->user()->hasRole('admin')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You can only view your own subscription status.',
-            ], 403);
-        }
-
         $subscription = Subscription::with('plan')
-            ->where('user_id', $validated['user_id'])
+            ->where('user_id', $request->user()->id)
             ->latest()
             ->first();
 

@@ -89,7 +89,6 @@ class SubscriptionFlowTest extends TestCase
         });
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
-            'user_id' => $this->user->id,
             'plan_id' => $plan->id,
         ]);
 
@@ -123,34 +122,16 @@ class SubscriptionFlowTest extends TestCase
         });
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
-            'user_id' => $this->user->id,
             'plan_id' => $plan->id,
         ]);
 
         $response->assertStatus(422)->assertJsonPath('success', false);
     }
 
-    public function test_user_cannot_create_subscription_for_another_user(): void
-    {
-        $other = User::factory()->create();
-        $plan = Plan::create([
-            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
-            'status' => 'active', 'features' => ['search_profiles'],
-            'stripe_price_id' => 'price_1',
-        ]);
-
-        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
-            'user_id' => $other->id,
-            'plan_id' => $plan->id,
-        ]);
-
-        $response->assertStatus(403)->assertJsonPath('success', false);
-    }
-
     public function test_status_returns_inactive_when_no_subscription(): void
     {
         $response = $this->actingAs($this->user, 'api')
-            ->getJson("/api/subscriptions/status?user_id={$this->user->id}");
+            ->getJson('/api/subscriptions/status');
 
         $response
             ->assertOk()
@@ -176,7 +157,7 @@ class SubscriptionFlowTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->user, 'api')
-            ->getJson("/api/subscriptions/status?user_id={$this->user->id}");
+            ->getJson('/api/subscriptions/status');
 
         $response
             ->assertOk()
