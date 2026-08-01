@@ -11,8 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use Stripe\Checkout\Session;
 use Stripe\Customer;
-use Stripe\Subscription as StripeSubscription;
 use Tests\TestCase;
 
 class SubscriptionFlowTest extends TestCase
@@ -63,7 +63,7 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.1.name', 'Pro');
     }
 
-    public function test_user_can_create_subscription_for_custom_payment_form(): void
+    public function test_user_can_create_subscription_checkout_session(): void
     {
         $plan = Plan::create([
             'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
@@ -75,16 +75,11 @@ class SubscriptionFlowTest extends TestCase
             $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
                 Customer::constructFrom(['id' => 'cus_mock']),
             );
-            $mock->shouldReceive('createSubscriptionWithPayment')->once()
+            $mock->shouldReceive('createCheckoutSession')->once()
                 ->withArgs(fn ($planArg, $userArg, $customerId) => $planArg->is($plan) && $customerId === 'cus_mock')
-                ->andReturn(StripeSubscription::constructFrom([
-                    'id' => 'sub_mock',
-                    'pending_setup_intent' => null,
-                    'latest_invoice' => [
-                        'confirmation_secret' => [
-                            'client_secret' => 'cs_test_secret_123',
-                        ],
-                    ],
+                ->andReturn(Session::constructFrom([
+                    'id' => 'cs_mock',
+                    'url' => 'https://checkout.stripe.com/c/pay/cs_mock',
                 ]));
         });
 
@@ -95,15 +90,11 @@ class SubscriptionFlowTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.type', 'payment')
-            ->assertJsonPath('data.client_secret', 'cs_test_secret_123');
+            ->assertJsonPath('data.checkout_url', 'https://checkout.stripe.com/c/pay/cs_mock')
+            ->assertJsonPath('data.session_id', 'cs_mock');
 
-        $this->assertDatabaseHas('subscriptions', [
+        $this->assertDatabaseMissing('subscriptions', [
             'user_id' => $this->user->id,
-            'plan_id' => $plan->id,
-            'provider_subscription_id' => 'sub_mock',
-            'provider_customer_id' => 'cus_mock',
-            'status' => 'incomplete',
         ]);
     }
 
@@ -117,7 +108,7 @@ class SubscriptionFlowTest extends TestCase
 
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('getOrCreateCustomer')->never();
-            $mock->shouldReceive('createSubscriptionWithPayment')->never();
+            $mock->shouldReceive('createCheckoutSession')->never();
         });
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [

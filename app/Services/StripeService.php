@@ -75,25 +75,23 @@ class StripeService
         return $customer;
     }
 
-    public function createSubscriptionWithPayment(Plan $plan, User $user, string $customerId): Subscription
+    public function createCheckoutSession(Plan $plan, User $user, string $customerId): Session
     {
-        return Subscription::create([
+        return Session::create([
+            'mode' => 'subscription',
             'customer' => $customerId,
-            'items' => [
+            'line_items' => [
                 [
                     'price' => $plan->stripe_price_id,
                     'quantity' => 1,
                 ],
             ],
-            'payment_behavior' => 'default_incomplete',
-            'payment_settings' => [
-                'save_default_payment_method' => 'on_subscription',
-            ],
+            'success_url' => config('services.stripe.checkout_success_url'),
+            'cancel_url' => config('services.stripe.checkout_cancel_url'),
             'metadata' => [
                 'user_id' => (string) $user->id,
                 'plan_id' => (string) $plan->id,
             ],
-            'expand' => ['latest_invoice.confirmation_secret', 'pending_setup_intent'],
         ]);
     }
 

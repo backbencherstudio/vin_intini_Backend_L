@@ -47,29 +47,13 @@ class SubscriptionController extends Controller
         }
 
         $customer = $this->stripe->getOrCreateCustomer($user);
-        $stripeSubscription = $this->stripe->createSubscriptionWithPayment($plan, $user, $customer->id);
-
-        Subscription::create([
-            'user_id' => $user->id,
-            'plan_id' => $plan->id,
-            'platform' => 'stripe',
-            'provider_subscription_id' => $stripeSubscription->id,
-            'provider_customer_id' => $customer->id,
-            'product_id' => $plan->stripe_product_id,
-            'price_id' => $plan->stripe_price_id,
-            'status' => 'incomplete',
-        ]);
-
-        $type = $stripeSubscription->pending_setup_intent ? 'setup' : 'payment';
-        $clientSecret = $type === 'setup'
-            ? $stripeSubscription->pending_setup_intent->client_secret
-            : $stripeSubscription->latest_invoice->confirmation_secret->client_secret;
+        $checkoutSession = $this->stripe->createCheckoutSession($plan, $user, $customer->id);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'type' => $type,
-                'client_secret' => $clientSecret,
+                'checkout_url' => $checkoutSession->url,
+                'session_id' => $checkoutSession->id,
             ],
         ], 200);
     }
