@@ -28,6 +28,9 @@ class BillingWebhookService
         $priceId = $this->normalizeId($stripeSubscription?->items->data[0]?->price->id) ?? $plan->stripe_price_id;
         $productId = $this->normalizeId($stripeSubscription?->items->data[0]?->price->product) ?? $plan->stripe_product_id;
 
+        $paymentIntent = $session->payment_intent
+            ?? $stripeSubscription?->latest_invoice?->payment_intent;
+
         $subscription = Subscription::updateOrCreate(
             [
                 'provider_subscription_id' => $stripeSubscription?->id,
@@ -53,15 +56,15 @@ class BillingWebhookService
         );
 
         $this->upsertTransaction([
-            'provider_transaction_id' => $session->payment_intent?->id,
+            'provider_transaction_id' => $paymentIntent?->id,
             'checkout_session_id' => $session->id,
             'user_id' => $subscription->user_id,
             'plan_id' => $plan->id,
             'subscription_id' => $subscription->id,
             'amount' => ($session->amount_total ?? 0) / 100,
             'currency' => $session->currency ?? 'usd',
-            'card_brand' => data_get($session, 'payment_intent.payment_method.card.brand'),
-            'card_last4' => data_get($session, 'payment_intent.payment_method.card.last4'),
+            'card_brand' => data_get($paymentIntent, 'payment_method.card.brand'),
+            'card_last4' => data_get($paymentIntent, 'payment_method.card.last4'),
             'status' => 'succeeded',
             'refunded_amount' => 0,
             'paid_at' => now(),

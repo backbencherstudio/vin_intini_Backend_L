@@ -101,6 +101,59 @@ class StripeWebhookTest extends TestCase
         ]);
     }
 
+    public function test_checkout_completed_records_transaction_from_subscription_invoice(): void
+    {
+        $sessionData = [
+            'id' => 'cs_2',
+            'client_reference_id' => (string) $this->user->id,
+            'metadata' => ['user_id' => (string) $this->user->id, 'plan_id' => (string) $this->plan->id],
+            'customer' => 'cus_1',
+            'currency' => 'usd',
+            'amount_total' => 1999,
+            'subscription' => [
+                'id' => 'sub_2',
+                'current_period_start' => now()->timestamp,
+                'current_period_end' => now()->addMonth()->timestamp,
+                'cancel_at_period_end' => false,
+                'items' => ['data' => [['price' => ['id' => 'price_1', 'product' => 'prod_1']]]],
+                'latest_invoice' => [
+                    'payment_intent' => [
+                        'id' => 'pi_2',
+                        'payment_method' => ['id' => 'pm_2', 'card' => ['brand' => 'mastercard', 'last4' => '1111']],
+                    ],
+                ],
+            ],
+        ];
+
+        $event = Event::constructFrom([
+            'id' => 'evt_2',
+            'type' => 'checkout.session.completed',
+            'data' => ['object' => $sessionData],
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
+            $mock->shouldReceive('constructEvent')->once()->andReturn($event);
+            $mock->shouldReceive('retrieveSession')->once()->andReturn(
+                Session::constructFrom($sessionData),
+            );
+        });
+
+        $response = $this->postWebhook([]);
+
+        $response->assertOk()->assertJsonPath('received', true);
+
+        $this->assertDatabaseHas('transactions', [
+            'provider_transaction_id' => 'pi_2',
+            'checkout_session_id' => 'cs_2',
+            'user_id' => $this->user->id,
+            'plan_id' => $this->plan->id,
+            'amount' => 19.99,
+            'status' => 'succeeded',
+            'card_brand' => 'mastercard',
+            'card_last4' => '1111',
+        ]);
+    }
+
     public function test_subscription_updated_syncs_plan_change_by_price_id(): void
     {
         $newPlan = Plan::create([
