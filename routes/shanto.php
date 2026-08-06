@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\TimelineController;
 // Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
 Route::middleware(['auth:api'])->prefix('admin')->group(function () {
     Route::get('/pages/{slug}', [PageController::class, 'getPageData']);
+    Route::post('/pages/{slug}', [PageController::class, 'update']);
 });
 
 Route::middleware(['auth:api', 'role:user'])->group(function () {
@@ -50,5 +51,4 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::delete('/reply/{id}', [CommentController::class, 'deleteReply']);
 
     Route::get('/my-comment-list', [CommentController::class, 'myComments']);
-
 });
