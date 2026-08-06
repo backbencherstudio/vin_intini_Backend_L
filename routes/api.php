@@ -52,7 +52,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/groups-suggestions', [GroupController::class, 'groupSuggestions']);
 
         Route::post('/setup-profile', [UserProfileController::class, 'setupProfile'])->middleware('verified_user');
-        
+
         Route::middleware('profile_completed')->group(function () {
             require __DIR__ . '/niaz.php';
             require __DIR__ . '/shanto.php';
@@ -62,4 +62,7 @@ Route::middleware('auth:api')->group(function () {
     Route::middleware('role:admin')->group(function () {
         require __DIR__ . '/admin.php';
     });
+
+
+    require __DIR__ . '/kamruzzaman.php';
 });
