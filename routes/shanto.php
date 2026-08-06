@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\Api\PageController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\NewsfeedController;
@@ -7,8 +8,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\TimelineController;
 
-Route::middleware(['auth:api', 'role:admin'])->group(function () {
-
+// Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:api'])->prefix('admin')->group(function () {
+    Route::get('/pages/{slug}', [PageController::class, 'getPageData']);
 });
 
 Route::middleware(['auth:api', 'role:user'])->group(function () {
