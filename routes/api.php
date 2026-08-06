@@ -47,21 +47,6 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
-<<<<<<< HEAD
-    // group, company, skill and institution suggestions for dropdown
-    Route::get('/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
-    Route::get('/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
-    Route::get('/institution-suggestions', [UserEducationController::class, 'institutionSuggestions']);
-    Route::get('/groups-suggestions', [GroupController::class, 'groupSuggestions']);
-
-    Route::post('/setup-profile', [UserProfileController::class, 'setupProfile'])
-        ->middleware('verified_user');
-
-    Route::middleware('profile_completed')->group(function () {
-        Route::middleware(['role:admin'])->group(function () {
-            Route::post('/update-password', [UserController::class, 'updatePass']);
-            Route::put('/profile-update', [UserController::class, 'profileUpdate']);
-=======
     Route::middleware('role:user')->group(function () {
         // group, company, skill and institution suggestions for dropdown
         Route::get('/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
@@ -74,7 +59,6 @@ Route::middleware('auth:api')->group(function () {
         Route::middleware('profile_completed')->group(function () {
             require __DIR__ . '/niaz.php';
             require __DIR__ . '/shanto.php';
->>>>>>> main
         });
     });
 
