@@ -43,43 +43,6 @@ Route::put('/profile/update', [UserProfileController::class, 'update']);
 Route::post('/profile/images', [UserProfileController::class, 'updateImages']);
 Route::post('/profile/change-password', [UserProfileController::class, 'changePassword']);
 
-<<<<<<< HEAD
-    Route::get('/group-list', [GroupController::class, 'groupList']);
-    // group member join and leave routes
-    Route::post('/group/join', [GroupController::class, 'joinGroup']);
-    Route::post('/group/leave', [GroupController::class, 'leaveGroup']);
-    // group invite routes
-    Route::get('/group-invite-users/{id}', [GroupController::class, 'inviteableUsers']);
-    Route::post('/group-invite-user/{id}', [GroupController::class, 'sendInvitation']);
-    Route::get('/group-invitations/requests', [GroupController::class, 'invitationRequests']);
-    Route::post('/group-invitations/{invitationId}/accept', [GroupController::class, 'acceptInvitation']);
-    Route::post('/group-invitations/{invitationId}/ignore', [GroupController::class, 'ignoreInvitation']);
-    // ban user route
-    Route::post('/groups/{groupId}/ban/{userId}', [GroupController::class, 'banUser']);
-
-    // user profile routes
-    Route::get('/profile/{id}', [UserProfileController::class, 'showUserProfile']); // others user profile
-    Route::get('/profile', [UserProfileController::class, 'show']); // current user profile
-    Route::put('/profile/update', [UserProfileController::class, 'update']);
-    Route::post('/profile/images', [UserProfileController::class, 'updateImages']);
-    Route::post('/profile/change-password', [UserProfileController::class, 'changePassword']);
-
-    // user experience routes
-    Route::get('/experience/list', [UserExperienceController::class, 'index']); // list of user experience (auth user)
-    Route::post('/experience/add', [UserExperienceController::class, 'store']);
-    Route::get('/experience/edit/{id}', [UserExperienceController::class, 'edit']);
-    Route::post('/experience/update/{id}', [UserExperienceController::class, 'update']);
-    Route::delete('/experience/delete/{id}', [UserExperienceController::class, 'destroy']);
-    Route::get('/user-experiences/{id}', [UserExperienceController::class, 'showExperienceByUserId']);
-
-    // user education routes
-    Route::get('/education/list', [UserEducationController::class, 'index']); // list of user education (auth user)
-    Route::post('/education/add', [UserEducationController::class, 'store']);
-    Route::get('/education/edit/{id}', [UserEducationController::class, 'edit']);
-    Route::post('/education/update/{id}', [UserEducationController::class, 'update']);
-    Route::delete('/education/delete/{id}', [UserEducationController::class, 'destroy']);
-    Route::get('/user-educations/{id}', [UserEducationController::class, 'showEducationByUserId']);
-=======
 // user experience routes
 Route::get('/experience/list', [UserExperienceController::class, 'index']); //list of user experience (auth user)
 Route::post('/experience/add', [UserExperienceController::class, 'store']);
@@ -111,7 +74,6 @@ Route::get('/connections/followers', [FollowController::class, 'followers']);
 Route::get('/connections/following', [FollowController::class, 'following']);
 Route::post('/connections/{user}/follow', [FollowController::class, 'follow']);
 Route::delete('/connections/{user}/unfollow', [FollowController::class, 'unfollow']);
->>>>>>> main
 
 // notification routes
 Route::get('/notifications', [NotificationController::class, 'index']);
@@ -121,50 +83,6 @@ Route::post('/notifications/mark-all-as-read', [NotificationController::class, '
 Route::delete('/notifications/{notificationId}', [NotificationController::class, 'delete']);
 Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
 
-<<<<<<< HEAD
-    // followers and following routes
-    Route::get('/connections/followers', [FollowController::class, 'followers']);
-    Route::get('/connections/following', [FollowController::class, 'following']);
-    Route::post('/connections/{user}/follow', [FollowController::class, 'follow']);
-    Route::delete('/connections/{user}/unfollow', [FollowController::class, 'unfollow']);
-
-    // notification routes
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-    Route::post('/notifications/{notificationId}/mark-as-read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead']);
-    Route::delete('/notifications/{notificationId}', [NotificationController::class, 'delete']);
-    Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
-
-    // academia routes
-    Route::get('/states', [AcademiaController::class, 'getStates']);
-    Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
-    Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
-    Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
-    Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); // medical facilities
-    Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
-
-    // industry routes
-    Route::prefix('psychology-network/industry')->group(function () {
-        Route::get('/biotech', [IndustryApiController::class, 'getPsychologyBiotech']);
-        Route::get('/pharma', [IndustryApiController::class, 'getPsychologyPharma']);
-        Route::get('/publications', [IndustryApiController::class, 'getPsychologyPublications']);
-        // Partners (Separate)
-        Route::get('/biotech-partners', [IndustryApiController::class, 'getPsychologyBiotechPartners']);
-        Route::get('/pharma-partners', [IndustryApiController::class, 'getPsychologyPharmaPartners']);
-        Route::get('/pub-partners', [IndustryApiController::class, 'getPsychologyPubPartners']);
-    });
-
-    Route::prefix('neuroscience-network/industry')->group(function () {
-        Route::get('/biotech', [IndustryApiController::class, 'getNeuroscienceBiotech']);
-        Route::get('/pharma', [IndustryApiController::class, 'getNeurosciencePharma']);
-        Route::get('/publications', [IndustryApiController::class, 'getNeurosciencePublications']);
-        // Partners (Separate)
-        Route::get('/biotech-partners', [IndustryApiController::class, 'getNeuroscienceBiotechPartners']);
-        Route::get('/pharma-partners', [IndustryApiController::class, 'getNeurosciencePharmaPartners']);
-        Route::get('/pub-partners', [IndustryApiController::class, 'getNeurosciencePubPartners']);
-    });
-=======
 //academia routes
 Route::get('/states', [AcademiaController::class, 'getStates']);
 Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
@@ -172,7 +90,6 @@ Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniver
 Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
 Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); //medical facilities
 Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
->>>>>>> main
 
 // industry routes
 Route::prefix('psychology-network/industry')->group(function () {
