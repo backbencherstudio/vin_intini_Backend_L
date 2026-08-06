@@ -33,11 +33,8 @@ class User extends Authenticatable implements JWTSubject
         'otp',
         'otp_expires_at',
         'is_verified',
-<<<<<<< HEAD
         'stripe_customer_id',
-=======
         'terms_accepted_at',
->>>>>>> main
     ];
 
     protected $hidden = [
@@ -177,7 +174,6 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Comment::class);
     }
 
-<<<<<<< HEAD
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
@@ -187,7 +183,6 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(Transaction::class);
     }
-=======
 
     // -----------------------------------------------------------
     // public function education(): HasOne
@@ -195,5 +190,4 @@ class User extends Authenticatable implements JWTSubject
     //     return $this->hasOne(Education::class, 'user_id');
     // }
     // --------------------------------------------------------
->>>>>>> main
 }

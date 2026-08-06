@@ -3,16 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-<<<<<<< HEAD
-=======
 use App\Models\Education;
 use App\Models\User;
->>>>>>> main
 use App\Models\Group;
 use App\Models\Institution;
 use App\Models\Post;
 use App\Models\Skill;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -135,8 +131,6 @@ class AdminAuthController extends Controller
     //     return redirect()->back()->with('success', 'User deleted successfully');
     // }
 
-<<<<<<< HEAD
-=======
     // public function allUsers()
     // {
     //     $users = User::with('education.institution')->get();
@@ -179,7 +173,6 @@ class AdminAuthController extends Controller
     // }
 
 
->>>>>>> main
     // public function groupIndex()
     // {
     //     $groups = Group::all();
