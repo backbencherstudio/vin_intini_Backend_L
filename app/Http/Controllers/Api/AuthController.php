@@ -43,7 +43,8 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if (! $user->is_verified) {
+        // if (! $user->is_verified) {
+        if ($user->hasRole('user') && ! $user->is_verified) {
             return response()->json([
                 'success' => false,
                 'message' => 'Please verify your email with OTP before login.',
@@ -86,7 +87,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'profile_image_url' => $user->profile_image_url,
                 'cover_image_url' => $user->cover_image_url,
-                'roles' => $user->roles->pluck('name')->implode(', '),
+                'role' => $user->roles->pluck('name')->implode(', '),
 
                 'profile' => $user->profile ? [
                     'country' => $user->profile->country,
@@ -153,6 +154,10 @@ class AuthController extends Controller
 
     protected function respondWithToken($token, $user)
     {
+        $roleName = $user->getRoleNames()->first();
+        $user->makeHidden('roles');
+        $user->role = $roleName;
+
         return response()->json([
             'success' => true,
             'is_onboarding' => $user->profile()->exists(),

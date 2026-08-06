@@ -127,33 +127,24 @@ class GroupController extends Controller
 
     public function show(Request $request, $id)
     {
-        $group = Group::with([
-            'creator:id,first_name,last_name,title',
-            // 'members' => function ($query) {
-            //     $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
-            // },
-        ])
-            // ->withCount('members')
+        $group = Group::with(['creator:id,first_name,last_name,title'])
             ->withCount(['members' => function ($query) {
                 $query->where('group_users.status', 'active');
             }])
             ->find($id);
 
-        if (! $group) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Group not found',
-            ], 404);
+        if (!$group) {
+            return response()->json(['status' => 'error', 'message' => 'Group not found'], 404);
         }
 
         $user = $request->user();
-
-        // $isMember = $user ? $group->members()->where('user_id', $user->id)->exists() : false;
-
         $isMember = false;
         $notificationStatus = null;
         $mutualMembers = [];
         $mutualMembersCount = 0;
+
+        $isEditable = $user ? ($group->creator_id === $user->id) : false;
+        $isAdmin = $isEditable;
 
         if ($user) {
             $membership = GroupUser::where('group_id', $group->id)
@@ -162,19 +153,17 @@ class GroupController extends Controller
 
             if ($membership) {
                 if ($membership->status === 'banned') {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'You are banned from this group.',
-                        'is_banned' => true
-                    ], 403);
+                    return response()->json(['status' => 'error', 'message' => 'You are banned.', 'is_banned' => true], 403);
                 }
-
                 $isMember = true;
                 $notificationStatus = $membership->notification_status;
+
+                if ($membership->role === 'admin') {
+                    $isAdmin = true;
+                }
             }
 
             $myFriendIds = $this->connectedUserIds($user->id);
-
             if ($myFriendIds->isNotEmpty()) {
                 $mutualQuery = $group->members()
                     ->wherePivot('status', 'active')
@@ -182,7 +171,6 @@ class GroupController extends Controller
                     ->select('users.id', 'first_name', 'last_name', 'profile_image');
 
                 $mutualMembersCount = $mutualQuery->count();
-
                 $mutualMembers = $mutualQuery->limit(5)->get()->map(function ($member) {
                     return [
                         'id' => $member->id,
@@ -194,9 +182,7 @@ class GroupController extends Controller
             }
         }
 
-        $isAdmin = $user ? ($group->creator_id === $user->id) : false;
-
-        if ($group->type === 'private' && ! $isMember && ! $isAdmin) {
+        if ($group->type === 'private' && !$isMember && !$isAdmin) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'This is a private group. You must be a member to see details.',
@@ -208,6 +194,8 @@ class GroupController extends Controller
                         'members_count' => $group->members_count,
                     ],
                     'is_current_user_member' => false,
+                    'is_current_user_admin' => $isAdmin,
+                    'is_current_user_editable' => $isEditable,
                     'notification_status' => null,
                     'mutual_members_count' => $mutualMembersCount,
                     'mutual_members' => $mutualMembers,
@@ -220,12 +208,116 @@ class GroupController extends Controller
             'data' => [
                 'group' => $group,
                 'is_current_user_member' => $isMember,
+                'is_current_user_admin' => $isAdmin,
+                'is_current_user_editable' => $isEditable,
                 'notification_status' => $notificationStatus,
                 'mutual_members_count' => $mutualMembersCount,
                 'mutual_members' => $mutualMembers,
             ],
         ], 200);
     }
+
+    // public function show(Request $request, $id)
+    // {
+    //     $group = Group::with([
+    //         'creator:id,first_name,last_name,title',
+    //         // 'members' => function ($query) {
+    //         //     $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
+    //         // },
+    //     ])
+    //         // ->withCount('members')
+    //         ->withCount(['members' => function ($query) {
+    //             $query->where('group_users.status', 'active');
+    //         }])
+    //         ->find($id);
+
+    //     if (! $group) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Group not found',
+    //         ], 404);
+    //     }
+
+    //     $user = $request->user();
+
+    //     // $isMember = $user ? $group->members()->where('user_id', $user->id)->exists() : false;
+
+    //     $isMember = false;
+    //     $notificationStatus = null;
+    //     $mutualMembers = [];
+    //     $mutualMembersCount = 0;
+
+    //     if ($user) {
+    //         $membership = GroupUser::where('group_id', $group->id)
+    //             ->where('user_id', $user->id)
+    //             ->first();
+
+    //         if ($membership) {
+    //             if ($membership->status === 'banned') {
+    //                 return response()->json([
+    //                     'status' => 'error',
+    //                     'message' => 'You are banned from this group.',
+    //                     'is_banned' => true
+    //                 ], 403);
+    //             }
+
+    //             $isMember = true;
+    //             $notificationStatus = $membership->notification_status;
+    //         }
+
+    //         $myFriendIds = $this->connectedUserIds($user->id);
+
+    //         if ($myFriendIds->isNotEmpty()) {
+    //             $mutualQuery = $group->members()
+    //                 ->wherePivot('status', 'active')
+    //                 ->whereIn('users.id', $myFriendIds)
+    //                 ->select('users.id', 'first_name', 'last_name', 'profile_image');
+
+    //             $mutualMembersCount = $mutualQuery->count();
+
+    //             $mutualMembers = $mutualQuery->limit(5)->get()->map(function ($member) {
+    //                 return [
+    //                     'id' => $member->id,
+    //                     'first_name' => $member->first_name,
+    //                     'last_name' => $member->last_name,
+    //                     'profile_image_url' => $member->profile_image_url,
+    //                 ];
+    //             });
+    //         }
+    //     }
+
+    //     $isAdmin = $user ? ($group->creator_id === $user->id) : false;
+
+    //     if ($group->type === 'private' && ! $isMember && ! $isAdmin) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'This is a private group. You must be a member to see details.',
+    //             'data' => [
+    //                 'group' => [
+    //                     'id' => $group->id,
+    //                     'name' => $group->name,
+    //                     'type' => $group->type,
+    //                     'members_count' => $group->members_count,
+    //                 ],
+    //                 'is_current_user_member' => false,
+    //                 'notification_status' => null,
+    //                 'mutual_members_count' => $mutualMembersCount,
+    //                 'mutual_members' => $mutualMembers,
+    //             ],
+    //         ], 403);
+    //     }
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => [
+    //             'group' => $group,
+    //             'is_current_user_member' => $isMember,
+    //             'notification_status' => $notificationStatus,
+    //             'mutual_members_count' => $mutualMembersCount,
+    //             'mutual_members' => $mutualMembers,
+    //         ],
+    //     ], 200);
+    // }
 
     public function inviteableUsers(Request $request, $id)
     {

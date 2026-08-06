@@ -125,6 +125,9 @@ class SocialController extends Controller
             //     $frontendUrl = rtrim(config('app.frontend_url'), '/');
             //     return redirect("{$frontendUrl}/mu/home?token={$token}");
             // }
+            $roleName = $user->getRoleNames()->first();
+            $user->makeHidden('roles');
+            $user->role = $roleName;
 
             return response()->json([
                 'success' => true,
