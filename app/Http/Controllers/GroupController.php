@@ -153,15 +153,7 @@ class GroupController extends Controller
 
             if ($membership) {
                 if ($membership->status === 'banned') {
-<<<<<<< HEAD
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'You are banned from this group.',
-                        'is_banned' => true,
-                    ], 403);
-=======
                     return response()->json(['status' => 'error', 'message' => 'You are banned.', 'is_banned' => true], 403);
->>>>>>> main
                 }
                 $isMember = true;
                 $notificationStatus = $membership->notification_status;

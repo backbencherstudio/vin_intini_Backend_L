@@ -298,9 +298,6 @@ class UserProfileController extends Controller
             'current_position_id' => 'nullable|integer|exists:experiences,id',
             'current_institute_id' => 'nullable|integer|exists:institutions,id',
 
-<<<<<<< HEAD
-            'notify_jobs' => 'nullable|boolean',
-=======
             // Education
             'start_month' => 'required_with:institution|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
             'start_year'  => 'required_with:institution|nullable|integer|min:1900|max:' . (date('Y') + 10),
@@ -309,7 +306,6 @@ class UserProfileController extends Controller
             'end_year'    => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
 
             'notify_jobs'         => 'nullable|boolean',
->>>>>>> main
             'notify_publications' => 'nullable|boolean',
             'notify_residency' => 'nullable|boolean',
             'notify_offers' => 'nullable|boolean',
