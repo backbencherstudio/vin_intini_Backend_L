@@ -66,4 +66,12 @@ class Education extends Model
     {
         return $this->is_current ? 'Present' : 'Complete';
     }
+
+    // --------------------------------------------------------
+    // public function education()
+    // {
+    //     return $this->hasOne(Education::class, 'user_id');
+    // }
+
+    // --------------------------------------------------------
 }

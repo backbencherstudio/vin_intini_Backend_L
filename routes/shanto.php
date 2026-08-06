@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TimelineController;
 use Illuminate\Support\Facades\Route;
 
+<<<<<<< HEAD
 Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/plans', [PlanController::class, 'index']);
     Route::get('/plans/{plan}', [PlanController::class, 'show']);
@@ -29,9 +30,16 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::get('/subscriptions', [SubscriptionManagementController::class, 'index']);
     Route::post('/subscriptions/{subscription}/cancel', [SubscriptionManagementController::class, 'cancel']);
 });
+=======
 
-Route::middleware(['auth:api', 'role:user'])->group(function () {
+Route::post('/posts', [PostController::class, 'store']);
+Route::get('/profile/posts/{id}', [PostController::class, 'editProfilePost']);
+Route::post('/profile/posts/{id}', [PostController::class, 'updateProfilePost']);
+>>>>>>> main
 
+Route::delete('/profile/posts/{id}', [PostController::class, 'destroyProfilePost']);
+
+<<<<<<< HEAD
     // plans & subscription routes
     Route::get('/plans', [SubscriptionController::class, 'plans']);
     Route::post('/subscriptions/create', [SubscriptionController::class, 'create']);
@@ -40,30 +48,41 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/profile/posts/{id}', [PostController::class, 'editProfilePost']);
     Route::post('/profile/posts/{id}', [PostController::class, 'updateProfilePost']);
+=======
+Route::get('/groups/{group}/posts/{post}', [PostController::class, 'editGroupPost']);
+Route::post('/groups/{group}/posts/{post}', [PostController::class, 'updateGroupPost']);
+Route::delete('/groups/{group}/posts/{post}', [PostController::class, 'destroyGroupPost']);
+>>>>>>> main
 
-    Route::delete('/profile/posts/{id}', [PostController::class, 'destroyProfilePost']);
+Route::get('/newsfeed', [NewsfeedController::class, 'newsFeed']);
+Route::get('/single-post/{id}', [NewsfeedController::class, 'singlePost']);
+Route::get('/timeline/{userId}', [TimelineController::class, 'timeline']);
 
-    Route::get('/groups/{group}/posts/{post}', [PostController::class, 'editGroupPost']);
-    Route::post('/groups/{group}/posts/{post}', [PostController::class, 'updateGroupPost']);
-    Route::delete('/groups/{group}/posts/{post}', [PostController::class, 'destroyGroupPost']);
+Route::get('/group-posts/{groupId}', [TimelineController::class, 'groupPosts']);
 
-    Route::get('/newsfeed', [NewsfeedController::class, 'newsFeed']);
-    Route::get('/single-post/{id}', [NewsfeedController::class, 'singlePost']);
-    Route::get('/timeline/{userId}', [TimelineController::class, 'timeline']);
+//Like
 
-    Route::get('/group-posts/{groupId}', [TimelineController::class, 'groupPosts']);
+Route::get('/liked-list/{post}', [LikeController::class, 'likedList']);
+Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
 
+<<<<<<< HEAD
     // Like
+=======
+Route::get('/comment-liked-list/{comment}', [LikeController::class, 'commentLikedList']);
+Route::get('/reply-liked-list/{reply}', [LikeController::class, 'replyLikedList']);
+>>>>>>> main
 
-    Route::get('/liked-list/{post}', [LikeController::class, 'likedList']);
-    Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
+Route::post('/comment-toggle-like/{comment}', [LikeController::class, 'likeComment']);
+Route::post('/reply-toggle-like/{reply}', [LikeController::class, 'likeReply']);
 
-    Route::get('/comment-liked-list/{comment}', [LikeController::class, 'commentLikedList']);
-    Route::get('/reply-liked-list/{reply}', [LikeController::class, 'replyLikedList']);
+Route::get('/comment-list/{post}', [CommentController::class, 'commentList']);
+Route::get('/reply-list/{comment}', [CommentController::class, 'replyList']);
+Route::post('/comment/{post}', [CommentController::class, 'comment']);
 
-    Route::post('/comment-toggle-like/{comment}', [LikeController::class, 'likeComment']);
-    Route::post('/reply-toggle-like/{reply}', [LikeController::class, 'likeReply']);
+Route::delete('/comment/{id}', [CommentController::class, 'deleteComment']);
+Route::delete('/reply/{id}', [CommentController::class, 'deleteReply']);
 
+<<<<<<< HEAD
     Route::get('/comment-list/{post}', [CommentController::class, 'commentList']);
     Route::get('/reply-list/{comment}', [CommentController::class, 'replyList']);
     Route::post('/comment/{post}', [CommentController::class, 'comment']);
@@ -87,3 +106,6 @@ Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
     Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
 });
+=======
+Route::get('/my-comment-list', [CommentController::class, 'myComments']);
+>>>>>>> main

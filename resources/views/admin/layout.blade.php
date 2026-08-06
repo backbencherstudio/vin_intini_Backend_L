@@ -243,6 +243,13 @@
                 </div>
             </div>
 
+            <div class="nav-item">
+                <a class="nav-link {{ request()->routeIs('institution.*') ? 'active' : '' }}"
+                    href="{{ route('institution.index') }}">
+                    <i class="fa-solid fa-chart-line"></i> <span>Institution Report</span>
+                </a>
+            </div>
+
             <div class="nav-section-label">Industries Networks</div>
 
             <div class="nav-item">
@@ -309,6 +316,7 @@
                     </a>
                 </div>
             </div>
+
             <a class="nav-link {{ request()->routeIs('admin.partners.*') ? 'active' : '' }}"
                 href="{{ route('admin.partners.index') }}">
                 <i class="fa-solid fa-handshake-angle"></i> <span>Partners</span>

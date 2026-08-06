@@ -74,6 +74,7 @@ class SocialController extends Controller
                         'is_verified' => true,
                         'profile_image' => $avatarUrl !== '' ? $avatarUrl : null,
                         'password' => Str::random(32),
+                        'terms_accepted_at' => now(),
                     ]);
                 }
 
@@ -123,6 +124,9 @@ class SocialController extends Controller
             //     $frontendUrl = rtrim(config('app.frontend_url'), '/');
             //     return redirect("{$frontendUrl}/mu/home?token={$token}");
             // }
+            $roleName = $user->getRoleNames()->first();
+            $user->makeHidden('roles');
+            $user->role = $roleName;
 
             return response()->json([
                 'success' => true,

@@ -10,6 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -32,7 +33,11 @@ class User extends Authenticatable implements JWTSubject
         'otp',
         'otp_expires_at',
         'is_verified',
+<<<<<<< HEAD
         'stripe_customer_id',
+=======
+        'terms_accepted_at',
+>>>>>>> main
     ];
 
     protected $hidden = [
@@ -53,6 +58,7 @@ class User extends Authenticatable implements JWTSubject
     {
         return [
             'email_verified_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
             'otp_expires_at' => 'datetime',
             'is_verified' => 'boolean',
             'password' => 'hashed',
@@ -171,6 +177,7 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Comment::class);
     }
 
+<<<<<<< HEAD
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
@@ -180,4 +187,13 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(Transaction::class);
     }
+=======
+
+    // -----------------------------------------------------------
+    // public function education(): HasOne
+    // {
+    //     return $this->hasOne(Education::class, 'user_id');
+    // }
+    // --------------------------------------------------------
+>>>>>>> main
 }
