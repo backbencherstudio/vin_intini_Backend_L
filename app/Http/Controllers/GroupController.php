@@ -727,7 +727,7 @@ class GroupController extends Controller
         }
 
         $group = Group::findOrFail($targetGroupId);
-
+        $user = $request->user() ?? auth()->user();
         $userId = auth()->id();
 
         $existingMembership = $group->members()->where('user_id', $userId)->first();
@@ -750,6 +750,12 @@ class GroupController extends Controller
             'role' => 'member',
             'status' => 'active'
         ]);
+
+        GroupInvitation::where('group_id', $group->id)
+            ->where('invited_user_id', $userId)
+            ->delete();
+
+        $this->deleteGroupInvitationNotification($user, $group->id);
 
         // if ($group->members()->where('user_id', auth()->id())->exists()) {
         //     return response()->json([
