@@ -29,7 +29,7 @@ Route::middleware('guest:web')->group(function () {
     Route::post('admin/login-submit', [AdminAuthController::class, 'adminLogin'])->name('admin.login.submit');
 });
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], function () {
+Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'active_session']], function () {
 
     Route::get('/user-management', [AdminAuthController::class, 'userManagement'])->name('admin.user.management');
     // Institution Report Routes
@@ -104,7 +104,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], 
     });
 
 
-    Route::post('admin/logout', [AdminAuthController::class, 'adminLogout'])->name('admin.logout');
+    Route::post('/logout', [AdminAuthController::class, 'adminLogout'])->name('admin.logout');
 });
 
 
