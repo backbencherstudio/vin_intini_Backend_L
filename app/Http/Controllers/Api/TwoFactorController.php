@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\RecoveryOtpMail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
+use Illuminate\Auth\Events\Login;
 
 class TwoFactorController extends Controller
 {
@@ -102,6 +103,15 @@ class TwoFactorController extends Controller
 
         if ($valid) {
             $token = auth('api')->login($user);
+
+            // -----------------------------------------
+            // Trigger the Login event to log the successful login activity
+            $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
+            $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
+            request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
+            event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
+            // -----------------------------------------
+
             return $this->respondWithToken($token, $user);
         }
 
@@ -273,6 +283,14 @@ class TwoFactorController extends Controller
             ]);
 
             $token = auth('api')->login($user);
+
+            // -----------------------------------------
+            // Trigger the Login event to log the successful login activity
+            $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
+            $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
+            request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
+            event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
+            // -----------------------------------------
 
             return $this->respondWithToken($token, $user);
         }

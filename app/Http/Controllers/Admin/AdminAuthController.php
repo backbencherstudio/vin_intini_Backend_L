@@ -33,24 +33,56 @@ class AdminAuthController extends Controller
 
         $credentials = $request->only('email', 'password');
 
-        if (Auth::guard('web')->attempt($credentials)) {
-
-            $user = Auth::guard('web')->user();
+        if (Auth::guard('web')->validate($credentials)) {
+            $user = \App\Models\User::where('email', $request->email)->first();
 
             if ($user->email === 'admin@gmail.com') {
                 $request->session()->regenerate();
+
+                Auth::guard('web')->login($user);
+
                 return redirect()->intended(route('admin.user.management'));
             }
 
             Auth::guard('web')->logout();
-            return back()->withErrors(['email' => 'You do not have permission to access the admin panel.']);
+            return back()->withErrors(['email' => 'Access denied.']);
         }
 
-        return back()->withErrors(['email' => 'The provided credentials do not match our records.']);
+        return back()->withErrors(['email' => 'Invalid credentials.']);
     }
+
+    // public function adminlogin(Request $request)
+    // {
+    //     $request->validate([
+    //         'email' => ['required', 'email'],
+    //         'password' => ['required'],
+    //     ]);
+
+    //     $credentials = $request->only('email', 'password');
+
+    //     if (Auth::guard('web')->attempt($credentials)) {
+
+    //         $user = Auth::guard('web')->user();
+
+    //         if ($user->email === 'admin@gmail.com') {
+    //             $request->session()->regenerate();
+    //             return redirect()->intended(route('admin.user.management'));
+    //         }
+
+    //         Auth::guard('web')->logout();
+    //         return back()->withErrors(['email' => 'You do not have permission to access the admin panel.']);
+    //     }
+
+    //     return back()->withErrors(['email' => 'The provided credentials do not match our records.']);
+    // }
 
     public function adminLogout(Request $request)
     {
+        $sessionId = $request->session()->getId();
+        \App\Models\LoginActivity::where('token_id', $sessionId)
+            ->where('user_id', Auth::guard('web')->id())
+            ->update(['is_active' => false]);
+
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
