@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Illuminate\Auth\Events\Login;
 
 class AuthController extends Controller
 {
@@ -68,7 +69,16 @@ class AuthController extends Controller
             ], 401);
         }
 
+
         $user = auth('api')->user();
+
+        // -----------------------------------------
+        // Trigger the Login event to log the successful login activity
+        $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
+        $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
+        request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
+        event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
+        // -----------------------------------------
 
         return $this->respondWithToken($token, $user);
     }
@@ -147,16 +157,46 @@ class AuthController extends Controller
         ]);
     }
 
-
     public function logout()
     {
-        auth('api')->logout();
+        try {
+            $user = auth('api')->user();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Successfully logged out',
-        ]);
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'User not found'], 401);
+            }
+
+            $tokenId = auth('api')->payload()->get('jti');
+
+            \App\Models\LoginActivity::where('token_id', $tokenId)
+                ->where('user_id', $user->id)
+                ->update(['is_active' => 0]);
+
+            auth('api')->logout();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Successfully logged out',
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Logout failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
+
+
+    // public function logout()
+    // {
+    //     auth('api')->logout();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Successfully logged out',
+    //     ]);
+    // }
 
     public function refresh()
     {
@@ -338,6 +378,14 @@ class AuthController extends Controller
         ])->save();
 
         $token = auth('api')->login($user);
+
+        // -----------------------------------------
+        // Trigger the Login event to log the successful login activity
+        $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
+        $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
+        request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
+        event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
+        // -----------------------------------------
 
         return response()->json([
             'status' => true,
