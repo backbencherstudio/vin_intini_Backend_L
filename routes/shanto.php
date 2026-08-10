@@ -47,3 +47,12 @@ Route::delete('/comment/{id}', [CommentController::class, 'deleteComment']);
 Route::delete('/reply/{id}', [CommentController::class, 'deleteReply']);
 
 Route::get('/my-comment-list', [CommentController::class, 'myComments']);
+
+// conversation routes
+Route::get('/conversations', [ConversationController::class, 'index']);
+Route::post('/conversations/{conversation}/mark-read', [ConversationController::class, 'markAsRead']);
+Route::post('/conversations/{conversation}/mark-unread', [ConversationController::class, 'markAsUnread']);
+Route::post('/conversations/{conversation}/archive', [ConversationController::class, 'archive']);
+Route::post('/conversations/{conversation}/unarchive', [ConversationController::class, 'unarchive']);
+Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy']);
+Route::post('/conversations/with/{user}', [ConversationController::class, 'showOrCreate']);
