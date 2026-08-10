@@ -6,9 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Throwable;
-use App\Models\Settings;
-use App\Http\Requests\Settings\UpdatePlatformSettingsRequest;
-use App\Models\User;
+use Carbon\Carbon;
 use App\Services\ProfileImageService;
 use App\Models\LoginActivity;
 
@@ -124,6 +122,123 @@ class SettingsController extends Controller
 
 
 
+
+
+
+
+
+
+    //Account Security and Login Activities start from here-----------------
+
+    public function getSecurityOverview(): JsonResponse
+    {
+        $user = auth()->user();
+        $last24Hours = now()->subDay();
+
+        $is2faEnabled = !is_null($user->two_factor_confirmed_at);
+        $isRecoveryVerified = !is_null($user->recovery_email_verified_at);
+
+        $activeSessionsCount = LoginActivity::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->count();
+
+        $latestSuccessLogin = LoginActivity::where('user_id', $user->id)
+            ->where('status', 'Successful')
+            ->latest('login_at')
+            ->first();
+
+        $failedQuery = LoginActivity::where('user_id', $user->id)
+            ->where('status', 'Failed')
+            ->where('created_at', '>=', $last24Hours);
+
+        if ($latestSuccessLogin) {
+            $failedQuery->where('created_at', '>', $latestSuccessLogin->created_at);
+        }
+        $failedCount = $failedQuery->count();
+
+        $isSuspicious = false;
+        $suspiciousStatus = "No suspicious activity";
+
+        if ($failedCount >= 5) {
+            $isSuspicious = true;
+            $suspiciousStatus = "Multiple failed login attempts detected ($failedCount)";
+        } elseif ($latestSuccessLogin) {
+            $seenBefore = LoginActivity::where('user_id', $user->id)
+                ->where('status', 'Successful')
+                ->where('location', $latestSuccessLogin->location)
+                ->where('device', $latestSuccessLogin->device)
+                ->where('id', '<', $latestSuccessLogin->id)
+                ->exists();
+
+            if (!$seenBefore) {
+                $isSuspicious = true;
+                $suspiciousStatus = "New login from unrecognized location/device";
+            }
+        }
+
+        $score = 20;
+        if ($is2faEnabled) $score += 40;
+        if ($isRecoveryVerified) $score += 20;
+        if ($user->profile()->exists()) $score += 10;
+        if (!$isSuspicious) $score += 10;
+
+        $score = max(0, min($score, 100));
+        $securityRating = ($score > 80) ? "Strong" : (($score > 50) ? "Medium" : "Weak");
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'security_score' => [
+                    'percentage' => $score,
+                    'rating' => $securityRating,
+                    'last_checked' => now()->toISOString(),
+                ],
+                'password_strength' => 'Strong',
+                'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
+                'active_sessions' => $activeSessionsCount . " active devices",
+                'account_recovery' => $isRecoveryVerified ? 'Email verified' : 'Not verified',
+                'login_activity' => $suspiciousStatus,
+            ]
+        ]);
+    }
+
+    public function getActiveSessions(): JsonResponse
+    {
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
+        $sessions = LoginActivity::where('user_id', auth()->id())
+            ->where('is_active', true)
+            ->orderByRaw("token_id = ? DESC", [$currentTokenId])
+            ->orderBy('login_at', 'desc')
+            ->get();
+
+        $items = $sessions->map(function ($activity) use ($currentTokenId) {
+            $isCurrent = $activity->token_id === $currentTokenId;
+
+            return [
+                'id' => $activity->id,
+                'device' => $activity->device,
+                'browser' => $activity->browser,
+                'ip_address' => $activity->ip_address,
+                'location' => $activity->location,
+                'is_active' => (bool) $activity->is_active,
+                'is_current' => $isCurrent,
+
+                'status' => $isCurrent ? 'Current device' : 'Signed in',
+
+                'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $items
+        ]);
+    }
+
+
     public function getLoginActivities(Request $request): JsonResponse
     {
         $perPage = $request->integer('limit', $request->integer('per_page', 10));
@@ -135,12 +250,23 @@ class SettingsController extends Controller
             : session()->getId();
 
         $paginator = LoginActivity::where('user_id', auth()->id())
-            ->orderByRaw("token_id = ? DESC", [$currentTokenId]) // Current device absolutely first
-            ->orderByDesc('is_active') // Then other active sessions
-            ->orderBy('login_at', $sortOrder) // Then by date
+            ->orderByRaw("token_id = ? DESC", [$currentTokenId])
+            ->orderByDesc('is_active')
+            ->orderBy('login_at', $sortOrder)
             ->paginate($perPage);
 
         $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId) {
+            $isCurrent = $activity->token_id === $currentTokenId;
+            $isActive = (bool) $activity->is_active;
+
+            if ($isCurrent) {
+                $signinStatus = 'Current device';
+            } elseif ($isActive) {
+                $signinStatus = 'Signed in';
+            } else {
+                $signinStatus = 'Logged out';
+            }
+
             return [
                 'id' => $activity->id,
                 'device' => $activity->device,
@@ -148,34 +274,27 @@ class SettingsController extends Controller
                 'ip_address' => $activity->ip_address,
                 'location' => $activity->location,
                 'status' => $activity->status,
-                'is_active' => (bool) $activity->is_active,
-
-                'is_current' => $activity->token_id === $currentTokenId,
-
+                'is_active' => $isActive,
+                'is_current' => $isCurrent,
+                'signin_status' => $signinStatus,
                 'login_at' => $activity->login_at ? \Carbon\Carbon::parse($activity->login_at)->toISOString() : null,
-                'created_at' => $activity->created_at ? $activity->created_at->toISOString() : null,
+                'created_at' => $activity->created_at->toISOString(),
             ];
         });
 
         return response()->json([
             'success' => true,
-            'message' => 'Login activities retrieved successfully.',
             'status' => 'success',
-            'data' => [
-                'items' => $items,
-            ],
+            'data' => ['items' => $items],
             'total' => $paginator->total(),
             'limit' => $perPage,
             'current_page' => $paginator->currentPage(),
             'total_page' => $paginator->lastPage(),
             'last_page' => $paginator->lastPage(),
-            'filters' => [
-                'sort' => $sortOrder,
-            ],
-        ], 200);
+        ]);
     }
 
-    public function revokeSession($id)
+    public function revokeSession($id): JsonResponse
     {
         $session = LoginActivity::where('id', $id)
             ->where('user_id', auth()->id())
@@ -183,7 +302,7 @@ class SettingsController extends Controller
             ->first();
 
         if (!$session) {
-            return response()->json(['message' => 'Session not found or already revoked.'], 404);
+            return response()->json(['success' => false, 'message' => 'Session not found or already revoked.'], 404);
         }
 
         $session->update(['is_active' => false]);
@@ -191,6 +310,75 @@ class SettingsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Device has been signed out successfully.'
+        ]);
+    }
+
+    public function signOutAllSessions(): JsonResponse
+    {
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
+        LoginActivity::where('user_id', auth()->id())
+            ->where('token_id', '!=', $currentTokenId)
+            ->where('is_active', true)
+            ->update(['is_active' => false]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'All other sessions have been signed out successfully.'
+        ]);
+    }
+
+    public function deleteLoginActivity($id): JsonResponse
+    {
+        $user = auth()->user();
+
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
+        $activity = LoginActivity::where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$activity) {
+            return response()->json(['success' => false, 'message' => 'Activity not found.'], 404);
+        }
+
+        if ($activity->token_id === $currentTokenId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot delete your current active session.'
+            ], 403);
+        }
+
+        $activity->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login activity deleted successfully.'
+        ]);
+    }
+
+    public function deleteAllLoginActivities(): JsonResponse
+    {
+        $user = auth()->user();
+
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
+        LoginActivity::where('user_id', $user->id)
+            ->where(function ($query) use ($currentTokenId) {
+                $query->where('token_id', '!=', $currentTokenId)
+                    ->orWhereNull('token_id');
+            })
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "All other login activities for your account have been cleared."
         ]);
     }
 }
