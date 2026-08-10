@@ -17,7 +17,8 @@ class LogSuccessfulLogin
             $event->user->id,
             request()->ip(),
             request()->userAgent(),
-            $tokenId
+            $tokenId,
+            'Successful'
         );
     }
 }
