@@ -55,8 +55,15 @@ Route::middleware('auth:api', 'active_session')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
-    Route::get('/login-activities', [SettingsController::class, 'getLoginActivities']);
-    Route::post('/sessions/revoke/{id}', [SettingsController::class, 'revokeSession']);  //remove active session
+    //user login activities and active sessions routes
+    Route::get('/security/overview', [SettingsController::class, 'getSecurityOverview']); //security overview route
+    Route::get('/active-sessions', [SettingsController::class, 'getActiveSessions']);  //active sessions route
+    Route::get('/login-activities', [SettingsController::class, 'getLoginActivities']);  // user login activities
+    Route::post('/sessions/revoke/{id}', [SettingsController::class, 'revokeSession']);   //remove active session
+    Route::post('/sessions/sign-out-all', [SettingsController::class, 'signOutAllSessions']);  //sign out all sessions
+    Route::delete('/login-activities/clear-all', [SettingsController::class, 'deleteAllLoginActivities']); //delete all login activities 
+    Route::delete('/login-activities/{id}', [SettingsController::class, 'deleteLoginActivity']); //delete single login activity
+
 
     Route::prefix('2fa')->group(function () {
         Route::post('/setup', [TwoFactorController::class, 'setup']);
