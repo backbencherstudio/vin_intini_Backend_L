@@ -38,6 +38,12 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+
+            // Trigger the Failed event to log the failed login activity--------------
+            if ($user) {
+                event(new \Illuminate\Auth\Events\Failed('api', $user, $credentials));
+            }
+            // ------------------------------------------------------------------------
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
@@ -166,11 +172,13 @@ class AuthController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not found'], 401);
             }
 
-            $tokenId = auth('api')->payload()->get('jti');
-
-            \App\Models\LoginActivity::where('token_id', $tokenId)
-                ->where('user_id', $user->id)
-                ->update(['is_active' => 0]);
+            $payload = auth('api')->payload();
+            if ($payload) {
+                $tokenId = $payload->get('jti');
+                \App\Models\LoginActivity::where('token_id', $tokenId)
+                    ->where('user_id', $user->id)
+                    ->update(['is_active' => 0]);
+            }
 
             auth('api')->logout();
 
@@ -178,12 +186,11 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Successfully logged out',
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
-                'message' => 'Logout failed: ' . $e->getMessage()
-            ], 500);
+                'success' => true,
+                'message' => 'Successfully logged out'
+            ]);
         }
     }
 

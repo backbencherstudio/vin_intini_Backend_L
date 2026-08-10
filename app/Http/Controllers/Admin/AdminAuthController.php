@@ -44,9 +44,17 @@ class AdminAuthController extends Controller
                 return redirect()->intended(route('admin.user.management'));
             }
 
+            event(new \Illuminate\Auth\Events\Failed('web', $user, $credentials));
+
             Auth::guard('web')->logout();
             return back()->withErrors(['email' => 'Access denied.']);
         }
+
+        $user = \App\Models\User::where('email', $request->email)->first();
+        if ($user) {
+            event(new \Illuminate\Auth\Events\Failed('web', $user, $credentials));
+        }
+
 
         return back()->withErrors(['email' => 'Invalid credentials.']);
     }
