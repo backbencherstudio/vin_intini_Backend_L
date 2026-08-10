@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Connection;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -80,6 +81,11 @@ class DatabaseSeeder extends Seeder
         );
 
         $user2->assignRole($userRole);
+
+        Connection::updateOrCreate(
+            ['sender_id' => $user1->id, 'receiver_id' => $user2->id],
+            ['status' => Connection::STATUS_ACCEPTED]
+        );
 
         UserProfile::updateOrCreate(
             ['user_id' => $user2->id],
