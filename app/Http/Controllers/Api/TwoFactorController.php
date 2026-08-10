@@ -11,6 +11,7 @@ use App\Mail\RecoveryOtpMail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Failed;
 
 class TwoFactorController extends Controller
 {
@@ -114,6 +115,10 @@ class TwoFactorController extends Controller
 
             return $this->respondWithToken($token, $user);
         }
+
+        // if login fails (Suspicious Activity tracking) ---
+        event(new Failed('api', $user, ['code' => $request->code]));
+        // --------------------------------------------------
 
         return response()->json(['status' => false, 'message' => 'Invalid verification code'], 401);
     }
@@ -293,6 +298,10 @@ class TwoFactorController extends Controller
             // -----------------------------------------
 
             return $this->respondWithToken($token, $user);
+        }
+
+        if ($user) {
+            event(new Failed('api', $user, ['otp' => $request->otp]));
         }
 
         return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.'], 422);
