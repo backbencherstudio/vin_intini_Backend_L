@@ -4,26 +4,25 @@ namespace App\Jobs;
 
 use App\Models\LoginActivity;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Jenssegers\Agent\Agent;
+use Jenssegers\Agent\Agent; 
 use Stevebauman\Location\Facades\Location;
 
-// class LogLoginJob implements ShouldQueue
 class LogLoginJob
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $userId, $ip, $userAgent, $tokenId;
+    protected $userId, $ip, $userAgent, $tokenId, $status;
 
-    public function __construct($userId, $ip, $userAgent, $tokenId)
+    public function __construct($userId, $ip, $userAgent, $tokenId = null, $status = 'Successful')
     {
         $this->userId = $userId;
         $this->ip = $ip;
         $this->userAgent = $userAgent;
         $this->tokenId = $tokenId;
+        $this->status = $status;
     }
 
     public function handle()
@@ -31,19 +30,30 @@ class LogLoginJob
         $agent = new Agent();
         $agent->setUserAgent($this->userAgent);
 
+        $platform = $agent->platform(); // e.g., Windows, AndroidOS
+        $browser = $agent->browser();
+
+        if ($agent->isPhone() || $agent->isTablet()) {
+            $brand = $agent->device();
+
+            $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
+        } else {
+            $device = $platform;
+        }
+
         $loc = Location::get($this->ip);
         $locationName = $loc ? $loc->cityName . ', ' . $loc->countryName : 'Unknown';
 
         LoginActivity::create([
             'user_id'    => $this->userId,
-            'device'     => $agent->platform(), // e.g., Windows, Mac
-            'browser'    => $agent->browser(),  // e.g., Chrome, Firefox
+            'token_id'   => $this->tokenId,
+            'device'     => $device ?: 'Unknown Device',
+            'browser'    => $browser ?: 'Unknown Browser',
             'ip_address' => $this->ip,
             'location'   => $locationName,
             'login_at'   => now(),
-            'status'     => 'Successful',
-            'token_id'   => $this->tokenId,
-            'is_active'  => true,
+            'status'     => $this->status,
+            'is_active'  => ($this->status === 'Successful'),
         ]);
     }
 }
