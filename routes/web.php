@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\IndustryPharmaController;
 use App\Http\Controllers\Admin\IndustryPublicationController;
 use App\Http\Controllers\Admin\InstitutionReportController;
 use App\Http\Controllers\Admin\PagesController;
+use App\Http\Controllers\Api\SettingsController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,14 @@ Route::middleware('guest:web')->group(function () {
     Route::get('admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
     Route::post('admin/login-submit', [AdminAuthController::class, 'adminLogin'])->name('admin.login.submit');
 });
+
+//
+Route::get('/security/email-resolve/{id}', [SettingsController::class, 'resolveFromEmail'])
+    ->name('security.email-resolve')->middleware('signed');
+//
+Route::post('/security/update-password', [SettingsController::class, 'updatePasswordFromAlert'])
+    ->name('security.update-password')->middleware('signed');
+
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'active_session']], function () {
 
