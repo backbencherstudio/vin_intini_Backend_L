@@ -37,8 +37,8 @@ class AcademiaController extends Controller
                 return [
                     'id' => $university->id,
                     'university_name' => $university->name,
-                    'phone' => $university->phone,
                     'location' => $university->location,
+                    'phone' => $university->phone,
                     'state' => $university->state?->name,
                     'psychology_degrees' => $university->psychology_degrees,
                     'counseling_degrees' => $university->counseling_degrees,
@@ -69,5 +69,81 @@ class AcademiaController extends Controller
                 'prev_page_url' => $universities->previousPageUrl(),
             ],
         ]);
+    }
+
+
+
+    
+    public function storeUniversity(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'state_id' => 'required|exists:states,id',
+
+            'psychology_degrees' => 'nullable|array',
+            'psychology_degrees.*' => 'string',
+
+            'counseling_degrees' => 'nullable|array',
+            'counseling_degrees.*' => 'string',
+
+            'neuroscience_degrees' => 'nullable|array',
+            'neuroscience_degrees.*' => 'string',
+
+            'has_online_options' => 'nullable|boolean',
+
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+
+            'phone' => 'nullable|string|max:50',
+            'location' => 'nullable|string|max:500',
+            'website' => 'nullable|url|max:500',
+        ]);
+
+        $university = AcademiaUniversity::create([
+            'name' => $validated['name'],
+            'state_id' => $validated['state_id'],
+
+            'psychology_degrees' => $validated['psychology_degrees'] ?? [],
+            'counseling_degrees' => $validated['counseling_degrees'] ?? [],
+            'neuroscience_degrees' => $validated['neuroscience_degrees'] ?? [],
+
+            'has_online_options' => $request->boolean('has_online_options'),
+
+            'latitude' => $validated['latitude'] ?? 0,
+            'longitude' => $validated['longitude'] ?? 0,
+
+            'phone' => $validated['phone'] ?? null,
+            'location' => $validated['location'] ?? null,
+            'website' => $validated['website'] ?? null,
+        ]);
+
+
+        $university->load('state');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'New University added successfully.',
+
+            'data' => [
+                'id' => $university->id,
+                'university_name' => $university->name,
+                'state' => $university->state?->name,
+
+                'psychology_degrees' => $university->psychology_degrees,
+                'counseling_degrees' => $university->counseling_degrees,
+                'neuroscience_degrees' => $university->neuroscience_degrees,
+
+                'has_online_options' => $university->has_online_options,
+
+                'map_pin' => [
+                    'latitude' => $university->latitude,
+                    'longitude' => $university->longitude,
+                ],
+
+                'phone' => $university->phone,
+                'location' => $university->location,
+                'website' => $university->website,
+            ],
+        ], 201);
     }
 }

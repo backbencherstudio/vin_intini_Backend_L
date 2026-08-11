@@ -10,11 +10,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
     //Universities.....
     Route::get('academia/universities', [AcademiaController::class, 'indexUniversities']);
-
+    Route::post('academia/university/create', [AcademiaController::class, 'storeUniversity']);
 });
 
 Route::middleware('role:user')->group(function () {
-    Route::middleware('profile_completed')->group(function () {
-
-    });
+    Route::middleware('profile_completed')->group(function () {});
 });
