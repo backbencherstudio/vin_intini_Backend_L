@@ -297,6 +297,12 @@
                     body: JSON.stringify({ plan_id: state.selectedPlanId }),
                 });
                 log('OTP sent to ' + data.email + '. Check your inbox.', 'ok');
+
+                if (data.debug_otp) {
+                    document.getElementById('otp').value = data.debug_otp;
+                    log('Debug OTP (local only): ' + data.debug_otp, 'ok');
+                }
+
                 document.getElementById('otp-status').innerHTML =
                     '<span class="badge waiting">OTP sent — check email</span>';
                 document.getElementById('otp').classList.remove('hidden');

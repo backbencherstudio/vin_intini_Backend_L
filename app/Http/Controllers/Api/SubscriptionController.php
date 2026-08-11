@@ -155,13 +155,19 @@ class SubscriptionController extends Controller
 
         Mail::to($user->email)->queue(new SubscriptionOtpMail($otp));
 
+        $data = [
+            'email' => $user->email,
+            'requires_verification' => true,
+        ];
+
+        if (app()->environment('local')) {
+            $data['debug_otp'] = (string) $otp;
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'OTP sent to your email. Submit the request again with the OTP and payment method to complete the subscription.',
-            'data' => [
-                'email' => $user->email,
-                'requires_verification' => true,
-            ],
+            'data' => $data,
         ], 200);
     }
 
