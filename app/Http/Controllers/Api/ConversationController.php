@@ -53,6 +53,7 @@ class ConversationController extends Controller
                         'file_name' => $conversation->lastMessage->file_name,
                         'sender_id' => $conversation->lastMessage->sender_id,
                         'created_at' => $conversation->lastMessage->created_at->toISOString(),
+                        'created_at_diff' => $conversation->lastMessage->created_at->diffForHumans(),
                     ] : null,
                     'is_archived' => $conversation->isArchivedFor($currentUser->id),
                     'unread_count' => $unreadCount,
