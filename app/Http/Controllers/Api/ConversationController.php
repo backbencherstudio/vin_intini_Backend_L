@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Connection;
 use App\Models\Conversation;
+use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,9 +30,10 @@ class ConversationController extends Controller
             ->get();
 
         $unreadCounts = $this->loadUnreadCounts($conversations, $currentUser->id);
+        $premiumUserIds = $this->loadPremiumUserIds($conversations, $currentUser->id);
 
         $data = $conversations
-            ->map(function (Conversation $conversation) use ($currentUser, $unreadCounts) {
+            ->map(function (Conversation $conversation) use ($currentUser, $unreadCounts, $premiumUserIds) {
                 $otherUser = $conversation->getOtherUser($currentUser->id);
                 $unreadCount = $unreadCounts[$conversation->id] ?? 0;
 
@@ -41,6 +43,7 @@ class ConversationController extends Controller
                         'id' => $otherUser->id,
                         'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
                         'profile_image_url' => $otherUser->profile_image_url,
+                        'has_premium' => in_array($otherUser->id, $premiumUserIds),
                     ],
                     'last_message' => $conversation->lastMessage ? [
                         'id' => $conversation->lastMessage->id,
@@ -183,6 +186,7 @@ class ConversationController extends Controller
                     'title' => $otherUser->title,
                     'profile_image_url' => $otherUser->profile_image_url,
                     'cover_image_url' => $otherUser->cover_image_url,
+                    'has_premium' => $this->userHasActiveSubscription($otherUser->id),
                 ],
                 'last_message' => $conversation->lastMessage ? [
                     'id' => $conversation->lastMessage->id,
@@ -215,6 +219,31 @@ class ConversationController extends Controller
             'success' => true,
             'message' => 'Conversation deleted successfully.',
         ]);
+    }
+
+    private function loadPremiumUserIds($conversations, int $currentUserId): array
+    {
+        $userIds = $conversations
+            ->map(fn (Conversation $conversation) => $conversation->getOtherUser($currentUserId)->id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return [];
+        }
+
+        return Subscription::whereIn('user_id', $userIds)
+            ->whereIn('status', ['active', 'trialing', 'paused'])
+            ->pluck('user_id')
+            ->all();
+    }
+
+    private function userHasActiveSubscription(int $userId): bool
+    {
+        return Subscription::where('user_id', $userId)
+            ->whereIn('status', ['active', 'trialing', 'paused'])
+            ->exists();
     }
 
     private function loadUnreadCounts($conversations, int $userId): array

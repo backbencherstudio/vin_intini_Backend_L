@@ -7,6 +7,8 @@ use App\Models\Connection;
 use App\Models\Conversation;
 use App\Models\FcmToken;
 use App\Models\Message;
+use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Models\UserProfile;
@@ -455,6 +457,38 @@ class ConversationMessageFlowTest extends TestCase
         $finalList = $this->actingAs($user, 'api')->getJson('/api/conversations');
         $finalList->assertJsonCount(1, 'data');
         $finalList->assertJsonPath('data.0.is_archived', false);
+    }
+
+    public function test_conversation_list_includes_premium_status_for_other_user(): void
+    {
+        $user = $this->makeUser();
+        $premiumUser = $this->makeUser();
+        $freeUser = $this->makeUser();
+        $this->connectUsers($user, $premiumUser);
+        $this->connectUsers($user, $freeUser);
+
+        Conversation::betweenUsers($user->id, $premiumUser->id);
+        Conversation::betweenUsers($user->id, $freeUser->id);
+
+        Subscription::create([
+            'user_id' => $premiumUser->id,
+            'plan_id' => Plan::create([
+                'name' => 'Premium', 'billing_rate' => 29.99, 'billing_cycle' => 'monthly',
+                'status' => 'active', 'features' => ['search_profiles'],
+            ])->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_1',
+            'status' => 'active',
+            'current_period_end' => now()->addDays(20),
+        ]);
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/conversations');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.user.has_premium', true)
+            ->assertJsonPath('data.1.user.has_premium', false);
     }
 
     private function makeUser(?string $firstName = null, ?string $lastName = null): User
