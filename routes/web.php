@@ -26,6 +26,10 @@ Route::get('/payment/cancel', function () {
     return view('payment-cancel');
 })->name('payment.cancel');
 
+Route::get('/subscription-test', function () {
+    return view('subscription-test');
+})->name('subscription.test');
+
 Route::get('/clear', function () {
     Artisan::call('optimize:clear');
 
