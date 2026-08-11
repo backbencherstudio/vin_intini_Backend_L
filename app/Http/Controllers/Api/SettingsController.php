@@ -9,6 +9,8 @@ use Throwable;
 use Carbon\Carbon;
 use App\Services\ProfileImageService;
 use App\Models\LoginActivity;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class SettingsController extends Controller
 {
@@ -133,49 +135,63 @@ class SettingsController extends Controller
     public function getSecurityOverview(): JsonResponse
     {
         $user = auth()->user();
-        $last24Hours = now()->subDay();
+        $lookBackDays = now()->subDays(7);
+        $currentTokenId = auth('api')->check() ? auth('api')->payload()->get('jti') : session()->getId();
 
         $is2faEnabled = !is_null($user->two_factor_confirmed_at);
         $isRecoveryVerified = !is_null($user->recovery_email_verified_at);
 
-        $activeSessionsCount = LoginActivity::where('user_id', $user->id)
-            ->where('is_active', true)
-            ->count();
-
-        $latestSuccessLogin = LoginActivity::where('user_id', $user->id)
+        $unresolvedLogins = LoginActivity::where('user_id', $user->id)
             ->where('status', 'Successful')
-            ->latest('login_at')
-            ->first();
-
-        $failedQuery = LoginActivity::where('user_id', $user->id)
-            ->where('status', 'Failed')
-            ->where('created_at', '>=', $last24Hours);
-
-        if ($latestSuccessLogin) {
-            $failedQuery->where('created_at', '>', $latestSuccessLogin->created_at);
-        }
-        $failedCount = $failedQuery->count();
+            ->where('is_resolved', false)
+            ->where('created_at', '>=', $lookBackDays)
+            ->get();
 
         $isSuspicious = false;
         $suspiciousStatus = "No suspicious activity";
+        $suspiciousId = null;
+        $canResolveFromHere = true; // ডিফল্টভাবে বাটন দেখাবে
 
-        if ($failedCount >= 5) {
-            $isSuspicious = true;
-            $suspiciousStatus = "Multiple failed login attempts detected ($failedCount)";
-        } elseif ($latestSuccessLogin) {
+        foreach ($unresolvedLogins as $login) {
             $seenBefore = LoginActivity::where('user_id', $user->id)
                 ->where('status', 'Successful')
-                ->where('location', $latestSuccessLogin->location)
-                ->where('device', $latestSuccessLogin->device)
-                ->where('id', '<', $latestSuccessLogin->id)
+                ->where('location', $login->location)
+                ->where('device', $login->device)
+                ->where('id', '<', $login->id)
                 ->exists();
 
             if (!$seenBefore) {
                 $isSuspicious = true;
-                $suspiciousStatus = "New login from unrecognized location/device";
+                $suspiciousId = $login->id;
+
+                // === মূল সিকিউরিটি লজিক ===
+                // যদি বর্তমান সেশনটিই সেই সন্দেহজনক সেশন হয়, তবে সে এখান থেকে নিজেকে Trust করতে পারবে না।
+                // তাকে ইমেইল চেক করতে হবে অথবা অন্য ট্রাস্টেড ডিভাইস ব্যবহার করতে হবে।
+                if ($login->token_id === $currentTokenId) {
+                    $suspiciousStatus = "New login detected. Please verify this session via email.";
+                    $canResolveFromHere = false;
+                } else {
+                    $suspiciousStatus = "New login from unrecognized location/device. Was this you?";
+                    $canResolveFromHere = true;
+                }
+                break;
             }
         }
 
+        // ফেইল্ড লগইন চেক
+        $failedCount = LoginActivity::where('user_id', $user->id)
+            ->where('status', 'Failed')
+            ->where('is_resolved', false)
+            ->where('created_at', '>=', now()->subDay())
+            ->count();
+
+        if (!$isSuspicious && $failedCount >= 5) {
+            $isSuspicious = true;
+            $suspiciousStatus = "Multiple failed login attempts detected ($failedCount)";
+            $canResolveFromHere = true;
+        }
+
+        // স্কোর ক্যালকুলেশন
         $score = 20;
         if ($is2faEnabled) $score += 40;
         if ($isRecoveryVerified) $score += 20;
@@ -195,9 +211,12 @@ class SettingsController extends Controller
                 ],
                 'password_strength' => 'Strong',
                 'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
-                'active_sessions' => $activeSessionsCount . " active devices",
+                'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . " active devices",
                 'account_recovery' => $isRecoveryVerified ? 'Email verified' : 'Not verified',
                 'login_activity' => $suspiciousStatus,
+                'suspicious_id' => $suspiciousId,
+                'is_suspicious' => $isSuspicious,
+                'can_resolve_from_here' => $canResolveFromHere // ফ্রন্টএন্ড এই ভ্যালু দেখে বাটন হাইড করবে
             ]
         ]);
     }
@@ -380,5 +399,150 @@ class SettingsController extends Controller
             'success' => true,
             'message' => "All other login activities for your account have been cleared."
         ]);
+    }
+
+
+    /**
+     * 2. suspicious login resolution (Yes, it was me)
+     */
+    public function resolveSuspiciousLogin($id): JsonResponse
+    {
+        $activity = LoginActivity::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if ($activity) {
+            $activity->update(['is_resolved' => true]);
+            return response()->json(['success' => true, 'message' => 'Trusted successfully.']);
+        }
+        return response()->json(['success' => false, 'message' => 'Activity not found.'], 404);
+    }
+
+    /**
+     * 3. all unresolved activities resolved (Yes, it was me for all)
+     */
+    public function resolveAllActivities(): JsonResponse
+    {
+        LoginActivity::where('user_id', auth()->id())
+            ->where('is_resolved', false)
+            ->update(['is_resolved' => true]);
+
+        return response()->json(['success' => true, 'message' => 'All activities marked as trusted.']);
+    }
+
+    /**
+     * if user says "No, it wasn't me"
+     */
+    public function secureAccount($id): JsonResponse
+    {
+        $activity = LoginActivity::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if ($activity) {
+            $activity->update([
+                'is_active' => false,
+                'is_resolved' => true
+            ]);
+
+            $currentTokenId = auth('api')->check() ? auth('api')->payload()->get('jti') : session()->getId();
+            LoginActivity::where('user_id', auth()->id())
+                ->where('token_id', '!=', $currentTokenId)
+                ->update(['is_active' => false]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'That session has been blocked. For your security, please change your password immediately.',
+                'action_required' => 'change_password'
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Activity not found.'], 404);
+    }
+
+
+    // public function resolveFromEmail(Request $request, $id)
+    // {
+    //     $activity = LoginActivity::findOrFail($id);
+    //     $action = $request->query('action');
+
+    //     if ($action === 'trust') {
+    //         $activity->update(['is_resolved' => true]);
+
+    //         return view('security.resolution', ['type' => 'trust']);
+    //     }
+
+    //     if ($action === 'block') {
+    //         $activity->update(['is_active' => false, 'is_resolved' => false]);
+
+    //         LoginActivity::where('user_id', $activity->user_id)
+    //             ->where('token_id', '!=', $activity->token_id)
+    //             ->update(['is_active' => false]);
+
+    //         return view('security.resolution', ['type' => 'block']);
+    //     }
+    // }
+
+    public function resolveFromEmail(Request $request, $id)
+    {
+        $activity = LoginActivity::findOrFail($id);
+
+        // Single-use check: If the activity is already resolved, show an expired message
+        if ($activity->is_resolved) {
+            return view('security.resolution', ['type' => 'expired']);
+        }
+
+        $action = $request->query('action');
+
+        if ($action === 'trust') {
+            $activity->update(['is_resolved' => true]);
+            return view('security.resolution', ['type' => 'trust']);
+        }
+
+        if ($action === 'block') {
+            $activity->update(['is_active' => false]);
+            LoginActivity::where('user_id', $activity->user_id)->update(['is_active' => false]);
+
+            $postUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                'security.update-password',
+                now()->addMinutes(20),
+                ['user_id' => $activity->user_id, 'activity_id' => $activity->id]
+            );
+
+            return view('security.resolution', [
+                'type' => 'block',
+                'postUrl' => $postUrl,
+                'user_id' => $activity->user_id
+            ]);
+        }
+    }
+
+    // This method handles the password update after the user clicks "No, it wasn't me" in the email alert.
+    public function updatePasswordFromAlert(Request $request)
+    {
+        $activityId = $request->query('activity_id');
+        $activity = LoginActivity::findOrFail($activityId);
+
+        if ($activity->is_resolved) {
+            return view('security.resolution', ['type' => 'expired']);
+        }
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)->mixedCase()->numbers()
+            ],
+        ]);
+
+        $user = \App\Models\User::find($request->user_id);
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        $activity->update(['is_resolved' => true]);
+
+        return view('security.resolution', ['type' => 'success_reset']);
     }
 }
