@@ -556,6 +556,214 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('data.1.user.has_premium', false);
     }
 
+    public function test_user_can_react_to_message(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello!',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [
+            'reaction' => '👍',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('my_reaction', '👍')
+            ->assertJsonPath('reactions.0.reaction', '👍')
+            ->assertJsonPath('reactions.0.count', 1)
+            ->assertJsonPath('reactions.0.user_ids.0', $user->id);
+
+        $this->assertDatabaseHas('message_reactions', [
+            'message_id' => $message->id,
+            'user_id' => $user->id,
+            'reaction' => '👍',
+        ]);
+    }
+
+    public function test_reacting_with_same_reaction_again_removes_it(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello!',
+        ]);
+
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [
+            'reaction' => '👍',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [
+            'reaction' => '👍',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('my_reaction', null)
+            ->assertJsonPath('reactions', []);
+
+        $this->assertDatabaseMissing('message_reactions', [
+            'message_id' => $message->id,
+            'user_id' => $user->id,
+        ]);
+    }
+
+    public function test_user_can_change_reaction(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello!',
+        ]);
+
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [
+            'reaction' => '👍',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [
+            'reaction' => '❤️',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('my_reaction', '❤️')
+            ->assertJsonPath('reactions.0.reaction', '❤️')
+            ->assertJsonPath('reactions.0.count', 1);
+
+        $this->assertDatabaseHas('message_reactions', [
+            'message_id' => $message->id,
+            'user_id' => $user->id,
+            'reaction' => '❤️',
+        ]);
+    }
+
+    public function test_multiple_users_can_react_to_same_message(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello!',
+        ]);
+
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", ['reaction' => '👍']);
+        $this->actingAs($connectedUser, 'api')->postJson("/api/messages/{$message->id}/react", ['reaction' => '👍']);
+
+        $response = $this->actingAs($user, 'api')->getJson("/api/conversations/{$conversation->id}/messages");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.0.my_reaction', '👍')
+            ->assertJsonCount(1, 'data.0.reactions')
+            ->assertJsonPath('data.0.reactions.0.reaction', '👍')
+            ->assertJsonPath('data.0.reactions.0.count', 2);
+    }
+
+    public function test_user_can_unreact_to_message(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello!',
+        ]);
+
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", ['reaction' => '👍']);
+
+        $response = $this->actingAs($user, 'api')->deleteJson("/api/messages/{$message->id}/react");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('my_reaction', null)
+            ->assertJsonPath('reactions', []);
+
+        $this->assertDatabaseMissing('message_reactions', [
+            'message_id' => $message->id,
+            'user_id' => $user->id,
+        ]);
+    }
+
+    public function test_non_participant_cannot_react_to_message(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $outsider = $this->makeUser();
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello!',
+        ]);
+
+        $this->actingAs($outsider, 'api')->postJson("/api/messages/{$message->id}/react", ['reaction' => '👍'])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('message_reactions', [
+            'message_id' => $message->id,
+            'user_id' => $outsider->id,
+        ]);
+    }
+
+    public function test_reaction_requires_reaction_field(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello!',
+        ]);
+
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('reaction');
+    }
+
     private function makeUser(?string $firstName = null, ?string $lastName = null): User
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();

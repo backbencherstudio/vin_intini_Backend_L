@@ -22,7 +22,7 @@ class MessageController extends Controller
         }
 
         $messages = $conversation->messages()
-            ->with('sender:id,first_name,last_name,title,profile_image')
+            ->with(['sender:id,first_name,last_name,title,profile_image', 'reactions'])
             ->orderBy('id')
             ->cursorPaginate(50);
 
@@ -41,6 +41,8 @@ class MessageController extends Controller
             'file_extension' => $message->file_extension,
             'file_category' => $message->file_category,
             'duration' => $message->duration,
+            'reactions' => $this->reactionSummary($message),
+            'my_reaction' => $message->reactions->firstWhere('user_id', $currentUser->id)?->reaction,
             'created_at' => $message->created_at->toISOString(),
         ])->values();
 
@@ -121,6 +123,84 @@ class MessageController extends Controller
                 'created_at' => $message->created_at->toISOString(),
             ],
         ], 201);
+    }
+
+    public function react(Request $request, Message $message): JsonResponse
+    {
+        $currentUser = $request->user();
+
+        if (! $this->isParticipant($currentUser->id, $message->conversation_id)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $validated = $request->validate([
+            'reaction' => 'required|string|max:20',
+        ]);
+
+        $reaction = $message->reactions()->where('user_id', $currentUser->id)->first();
+
+        if ($reaction && $reaction->reaction === $validated['reaction']) {
+            $reaction->delete();
+            $changed = null;
+        } elseif ($reaction) {
+            $reaction->update(['reaction' => $validated['reaction']]);
+            $changed = $validated['reaction'];
+        } else {
+            $message->reactions()->create([
+                'user_id' => $currentUser->id,
+                'reaction' => $validated['reaction'],
+            ]);
+            $changed = $validated['reaction'];
+        }
+
+        $message->load('reactions');
+
+        return response()->json([
+            'success' => true,
+            'message' => $changed ? 'Reaction added.' : 'Reaction removed.',
+            'my_reaction' => $changed,
+            'reactions' => $this->reactionSummary($message),
+        ]);
+    }
+
+    public function unreact(Request $request, Message $message): JsonResponse
+    {
+        $currentUser = $request->user();
+
+        if (! $this->isParticipant($currentUser->id, $message->conversation_id)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $message->reactions()->where('user_id', $currentUser->id)->delete();
+
+        $message->load('reactions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reaction removed.',
+            'my_reaction' => null,
+            'reactions' => $this->reactionSummary($message),
+        ]);
+    }
+
+    private function isParticipant(int $userId, int $conversationId): bool
+    {
+        return Conversation::where('id', $conversationId)
+            ->where(fn ($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
+            ->exists();
+    }
+
+    private function reactionSummary(Message $message): array
+    {
+        return $message->reactions
+            ->groupBy('reaction')
+            ->map(fn ($reactions, string $reaction) => [
+                'reaction' => $reaction,
+                'count' => $reactions->count(),
+                'user_ids' => $reactions->pluck('user_id')->values(),
+            ])
+            ->values()
+            ->all();
     }
 
     private function userHasActiveSubscription(int $userId): bool

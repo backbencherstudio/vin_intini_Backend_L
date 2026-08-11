@@ -59,6 +59,8 @@ Route::post('/conversations/with/{user}', [ConversationController::class, 'showO
 Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
 Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
 Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
+Route::post('/messages/{message}/react', [MessageController::class, 'react']);
+Route::delete('/messages/{message}/react', [MessageController::class, 'unreact']);
 
 // plans & subscription routes
 Route::get('/plans', [SubscriptionController::class, 'plans']);
