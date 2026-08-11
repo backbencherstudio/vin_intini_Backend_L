@@ -3,12 +3,14 @@
 namespace App\Jobs;
 
 use App\Models\LoginActivity;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Jenssegers\Agent\Agent; 
+use Jenssegers\Agent\Agent;
 use Stevebauman\Location\Facades\Location;
+use App\Jobs\SendLoginAlertEmailJob;
 
 class LogLoginJob
 {
@@ -30,12 +32,11 @@ class LogLoginJob
         $agent = new Agent();
         $agent->setUserAgent($this->userAgent);
 
-        $platform = $agent->platform(); // e.g., Windows, AndroidOS
+        $platform = $agent->platform();
         $browser = $agent->browser();
 
         if ($agent->isPhone() || $agent->isTablet()) {
             $brand = $agent->device();
-
             $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
         } else {
             $device = $platform;
@@ -44,7 +45,7 @@ class LogLoginJob
         $loc = Location::get($this->ip);
         $locationName = $loc ? $loc->cityName . ', ' . $loc->countryName : 'Unknown';
 
-        LoginActivity::create([
+        $activity = LoginActivity::create([
             'user_id'    => $this->userId,
             'token_id'   => $this->tokenId,
             'device'     => $device ?: 'Unknown Device',
@@ -55,5 +56,23 @@ class LogLoginJob
             'status'     => $this->status,
             'is_active'  => ($this->status === 'Successful'),
         ]);
+
+        // base on the status, send an email alert if it's a successful login
+        if ($this->status === 'Successful') {
+            $user = User::find($this->userId);
+
+            if ($user) {
+                $seenBefore = LoginActivity::where('user_id', $user->id)
+                    ->where('status', 'Successful')
+                    ->where('location', $locationName)
+                    ->where('device', $device)
+                    ->where('is_resolved', true)
+                    ->exists();
+
+                if (!$seenBefore) {
+                    SendLoginAlertEmailJob::dispatch($activity);
+                }
+            }
+        }
     }
 }
