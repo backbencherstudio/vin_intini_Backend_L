@@ -6,6 +6,7 @@ use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\Subscription;
 use App\Notifications\NewMessageNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,6 +52,7 @@ class MessageController extends Controller
                 'title' => $otherUser->title,
                 'profile_image_url' => $otherUser->profile_image_url,
                 'cover_image_url' => $otherUser->cover_image_url,
+                'has_premium' => $this->userHasActiveSubscription($otherUser->id),
             ],
             'data' => $data,
             'next_cursor' => $messages->nextCursor()?->encode(),
@@ -115,6 +117,13 @@ class MessageController extends Controller
                 'created_at' => $message->created_at->toISOString(),
             ],
         ], 201);
+    }
+
+    private function userHasActiveSubscription(int $userId): bool
+    {
+        return Subscription::where('user_id', $userId)
+            ->whereIn('status', ['active', 'trialing', 'paused'])
+            ->exists();
     }
 
     public function destroy(Request $request, Message $message): JsonResponse

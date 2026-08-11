@@ -99,6 +99,35 @@ class ConversationMessageFlowTest extends TestCase
         ]);
     }
 
+    public function test_messages_list_includes_premium_status_for_other_user(): void
+    {
+        $user = $this->makeUser();
+        $premiumUser = $this->makeUser();
+        $this->connectUsers($user, $premiumUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $premiumUser->id);
+
+        Subscription::create([
+            'user_id' => $premiumUser->id,
+            'plan_id' => Plan::create([
+                'name' => 'Premium', 'billing_rate' => 29.99, 'billing_cycle' => 'monthly',
+                'status' => 'active', 'features' => ['search_profiles'],
+            ])->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_1',
+            'status' => 'active',
+            'current_period_end' => now()->addDays(20),
+        ]);
+
+        $response = $this->actingAs($user, 'api')->getJson("/api/conversations/{$conversation->id}/messages");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('other_user.has_premium', true)
+            ->assertJsonPath('other_user.id', $premiumUser->id);
+    }
+
     public function test_user_can_send_voice_message(): void
     {
         Notification::fake();
