@@ -15,10 +15,16 @@ class LoginActivity extends Model
         'location',
         'status',
         'is_active',
+        'is_resolved',
         'login_at'
     ];
 
     protected $casts = [
         'login_at' => 'datetime',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
