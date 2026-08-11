@@ -23,7 +23,7 @@ class MessageController extends Controller
 
         $messages = $conversation->messages()
             ->with('sender:id,first_name,last_name,title,profile_image')
-            ->orderByDesc('id')
+            ->orderBy('id')
             ->cursorPaginate(50);
 
         $otherUser = $conversation->getOtherUser($currentUser->id);

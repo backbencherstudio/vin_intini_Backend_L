@@ -271,8 +271,8 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonCount(5, 'data')
             ->assertJsonPath('other_user.id', $connectedUser->id)
-            ->assertJsonPath('data.0.message', 'Message 4')
-            ->assertJsonPath('data.4.message', 'Message 0');
+            ->assertJsonPath('data.0.message', 'Message 0')
+            ->assertJsonPath('data.4.message', 'Message 4');
     }
 
     public function test_user_can_delete_own_message(): void
