@@ -56,3 +56,13 @@ Route::post('/conversations/{conversation}/archive', [ConversationController::cl
 Route::post('/conversations/{conversation}/unarchive', [ConversationController::class, 'unarchive']);
 Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy']);
 Route::post('/conversations/with/{user}', [ConversationController::class, 'showOrCreate']);
+
+// message routes
+Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
+Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
+Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
+
+// plans & subscription routes
+Route::get('/plans', [SubscriptionController::class, 'plans']);
+Route::post('/subscriptions/create', [SubscriptionController::class, 'create']);
+Route::get('/subscriptions/status', [SubscriptionController::class, 'status']);
