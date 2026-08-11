@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\Api\PageController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\LikeController;
@@ -10,7 +9,6 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TimelineController;
 use Illuminate\Support\Facades\Route;
-
 
 Route::post('/posts', [PostController::class, 'store']);
 Route::get('/profile/posts/{id}', [PostController::class, 'editProfilePost']);
@@ -28,7 +26,7 @@ Route::get('/timeline/{userId}', [TimelineController::class, 'timeline']);
 
 Route::get('/group-posts/{groupId}', [TimelineController::class, 'groupPosts']);
 
-//Like
+// Like
 
 Route::get('/liked-list/{post}', [LikeController::class, 'likedList']);
 Route::post('/toggle-like/{post}', [LikeController::class, 'toggleLike']);
@@ -64,5 +62,6 @@ Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
 
 // plans & subscription routes
 Route::get('/plans', [SubscriptionController::class, 'plans']);
+Route::post('/subscriptions/send-otp', [SubscriptionController::class, 'sendOtp']);
 Route::post('/subscriptions/create', [SubscriptionController::class, 'create']);
 Route::get('/subscriptions/status', [SubscriptionController::class, 'status']);

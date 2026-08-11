@@ -11,6 +11,7 @@ use Stripe\Customer;
 use Stripe\Event;
 use Stripe\Exception\ApiErrorException;
 use Stripe\PaymentIntent;
+use Stripe\PaymentMethod;
 use Stripe\Price;
 use Stripe\Product;
 use Stripe\Stripe;
@@ -80,23 +81,34 @@ class StripeService
         return $customer;
     }
 
-    public function createCheckoutSession(Plan $plan, User $user, string $customerId): Session
+    public function attachPaymentMethod(string $paymentMethodId, string $customerId): PaymentMethod
     {
-        return Session::create([
-            'mode' => 'subscription',
+        return PaymentMethod::retrieve($paymentMethodId)->attach(['customer' => $customerId]);
+    }
+
+    public function createSubscription(
+        Plan $plan,
+        string $customerId,
+        int $userId,
+        string $paymentMethodId,
+    ): StripeSubscription {
+        return StripeSubscription::create([
             'customer' => $customerId,
-            'client_reference_id' => (string) $user->id,
-            'line_items' => [
-                [
-                    'price' => $plan->stripe_price_id,
-                    'quantity' => 1,
-                ],
+            'items' => [
+                ['price' => $plan->stripe_price_id],
             ],
-            'success_url' => config('services.stripe.checkout_success_url'),
-            'cancel_url' => config('services.stripe.checkout_cancel_url'),
+            'default_payment_method' => $paymentMethodId,
+            'payment_settings' => [
+                'save_default_payment_method' => 'on_subscription',
+            ],
             'metadata' => [
-                'user_id' => (string) $user->id,
+                'user_id' => (string) $userId,
                 'plan_id' => (string) $plan->id,
+                'registration_flow' => 'subscription',
+            ],
+            'expand' => [
+                'latest_invoice.payment_intent.payment_method',
+                'latest_invoice.payment_intent.payment_method.card',
             ],
         ]);
     }

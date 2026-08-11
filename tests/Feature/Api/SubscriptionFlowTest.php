@@ -2,18 +2,21 @@
 
 namespace Tests\Feature\Api;
 
+use App\Mail\SubscriptionOtpMail;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
-use Stripe\Checkout\Session;
 use Stripe\Customer;
 use Stripe\Exception\ApiConnectionException;
+use Stripe\PaymentMethod;
+use Stripe\Subscription as StripeSubscription;
 use Tests\TestCase;
 
 class SubscriptionFlowTest extends TestCase
@@ -39,7 +42,45 @@ class SubscriptionFlowTest extends TestCase
         UserProfile::create(['user_id' => $this->user->id]);
     }
 
-    public function test_user_can_fetch_only_active_plans(): void
+    private function makePlan(array $overrides = []): Plan
+    {
+        return Plan::create(array_merge([
+            'name' => 'Pro',
+            'billing_rate' => 9.99,
+            'billing_cycle' => 'monthly',
+            'status' => 'active',
+            'features' => ['search_profiles', 'unlimited_direct_messaging'],
+            'stripe_product_id' => 'prod_1',
+            'stripe_price_id' => 'price_1',
+        ], $overrides));
+    }
+
+    private function fakeStripeSubscription(array $overrides = []): StripeSubscription
+    {
+        return StripeSubscription::constructFrom(array_merge([
+            'id' => 'sub_mock',
+            'status' => 'active',
+            'customer' => 'cus_mock',
+            'cancel_at_period_end' => false,
+            'items' => [
+                'data' => [
+                    ['price' => ['id' => 'price_1', 'product' => 'prod_1']],
+                ],
+            ],
+            'latest_invoice' => [
+                'payment_intent' => [
+                    'id' => 'pi_mock',
+                    'client_secret' => 'pi_mock_secret_123',
+                    'status' => 'succeeded',
+                    'amount' => 999,
+                    'currency' => 'usd',
+                    'payment_method' => ['card' => ['brand' => 'visa', 'last4' => '4242']],
+                ],
+            ],
+        ], $overrides));
+    }
+
+    public function test_user_can_fetch_only_active_plans_with_stripe_price(): void
     {
         Plan::create([
             'name' => 'Free', 'billing_rate' => 0, 'billing_cycle' => 'monthly',
@@ -48,6 +89,11 @@ class SubscriptionFlowTest extends TestCase
         Plan::create([
             'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
             'status' => 'active', 'features' => ['search_profiles', 'unlimited_direct_messaging'],
+            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
+        ]);
+        Plan::create([
+            'name' => 'NoStripe', 'billing_rate' => 5, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
         ]);
         Plan::create([
             'name' => 'Hidden', 'billing_rate' => 5, 'billing_cycle' => 'monthly',
@@ -59,53 +105,213 @@ class SubscriptionFlowTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(2, 'data')
-            ->assertJsonPath('data.0.name', 'Free')
-            ->assertJsonPath('data.1.name', 'Pro');
+            ->assertJsonPath('data.stripe_public_key', config('services.stripe.key'))
+            ->assertJsonCount(1, 'data.plans')
+            ->assertJsonPath('data.plans.0.name', 'Pro')
+            ->assertJsonPath('data.plans.0.stripe_price_id', 'price_1');
     }
 
-    public function test_user_can_create_subscription_checkout_session(): void
+    public function test_send_otp_sends_otp_and_requires_verification(): void
     {
-        $plan = Plan::create([
-            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
-            'status' => 'active', 'features' => ['search_profiles'],
-            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
-        ]);
+        Mail::fake();
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($plan) {
-            $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
-                Customer::constructFrom(['id' => 'cus_mock']),
-            );
-            $mock->shouldReceive('createCheckoutSession')->once()
-                ->withArgs(fn ($planArg, $userArg, $customerId) => $planArg->is($plan) && $customerId === 'cus_mock')
-                ->andReturn(Session::constructFrom([
-                    'id' => 'cs_mock',
-                    'url' => 'https://checkout.stripe.com/c/pay/cs_mock',
-                ]));
-        });
+        $plan = $this->makePlan();
 
-        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/send-otp', [
             'plan_id' => $plan->id,
         ]);
 
         $response
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.checkout_url', 'https://checkout.stripe.com/c/pay/cs_mock')
-            ->assertJsonPath('data.session_id', 'cs_mock');
+            ->assertJsonPath('data.requires_verification', true)
+            ->assertJsonPath('data.email', $this->user->email);
 
-        $this->assertDatabaseMissing('subscriptions', [
+        Mail::assertQueued(SubscriptionOtpMail::class);
+
+        $this->assertNotNull($this->user->fresh()->otp);
+        $this->assertTrue($this->user->fresh()->otp_expires_at->greaterThan(now()));
+        $this->assertDatabaseMissing('subscriptions', ['user_id' => $this->user->id]);
+    }
+
+    public function test_send_otp_returns_429_while_otp_is_still_valid(): void
+    {
+        $plan = $this->makePlan();
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->addMinutes(2),
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/send-otp', [
+            'plan_id' => $plan->id,
+        ]);
+
+        $response->assertStatus(429)->assertJsonPath('success', false);
+    }
+
+    public function test_create_without_otp_returns_validation_error(): void
+    {
+        $plan = $this->makePlan();
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_create_with_invalid_otp_returns_400(): void
+    {
+        $plan = $this->makePlan();
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->addMinutes(2),
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+            'otp' => '9999',
+            'payment_method' => 'pm_mock',
+        ]);
+
+        $response->assertStatus(400)->assertJsonPath('success', false);
+    }
+
+    public function test_create_with_expired_otp_returns_400_and_can_resend(): void
+    {
+        $plan = $this->makePlan();
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->subMinute(),
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+            'otp' => '1234',
+            'payment_method' => 'pm_mock',
+        ]);
+
+        $response
+            ->assertStatus(400)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('data.can_resend_otp', true);
+    }
+
+    public function test_create_with_valid_otp_creates_subscription_and_transaction(): void
+    {
+        $plan = $this->makePlan();
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->addMinutes(2),
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($plan) {
+            $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
+                Customer::constructFrom(['id' => 'cus_mock']),
+            );
+            $mock->shouldReceive('attachPaymentMethod')->once()
+                ->with('pm_mock', 'cus_mock')
+                ->andReturn(PaymentMethod::constructFrom(['id' => 'pm_mock']));
+            $mock->shouldReceive('createSubscription')->once()
+                ->withArgs(fn ($planArg, $customerId, $userId, $pmId) => $planArg->is($plan) && $customerId === 'cus_mock' && $pmId === 'pm_mock')
+                ->andReturn($this->fakeStripeSubscription());
+            $mock->shouldReceive('periodDatesFromSubscription')->once()
+                ->andReturn([now()->subMonth(), now()->addMonth()]);
+        });
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+            'otp' => '1234',
+            'payment_method' => 'pm_mock',
+        ]);
+
+        $response
+            ->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.subscription.status', 'active')
+            ->assertJsonPath('data.subscription.plan.name', 'Pro');
+
+        $this->assertDatabaseHas('subscriptions', [
             'user_id' => $this->user->id,
+            'plan_id' => $plan->id,
+            'provider_subscription_id' => 'sub_mock',
+            'status' => 'active',
+        ]);
+
+        $this->assertDatabaseHas('transactions', [
+            'user_id' => $this->user->id,
+            'plan_id' => $plan->id,
+            'provider_transaction_id' => 'pi_mock',
+            'status' => 'succeeded',
+            'amount' => 9.99,
+            'card_brand' => 'visa',
+            'card_last4' => '4242',
+        ]);
+
+        $this->assertNull($this->user->fresh()->otp);
+    }
+
+    public function test_create_returns_client_secret_when_payment_requires_action(): void
+    {
+        $plan = $this->makePlan();
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->addMinutes(2),
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($plan) {
+            $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
+                Customer::constructFrom(['id' => 'cus_mock']),
+            );
+            $mock->shouldReceive('attachPaymentMethod')->once()
+                ->with('pm_mock', 'cus_mock')
+                ->andReturn(PaymentMethod::constructFrom(['id' => 'pm_mock']));
+            $mock->shouldReceive('createSubscription')->once()
+                ->withArgs(fn ($planArg, $customerId, $userId, $pmId) => $planArg->is($plan) && $customerId === 'cus_mock' && $pmId === 'pm_mock')
+                ->andReturn($this->fakeStripeSubscription([
+                    'id' => 'sub_3ds',
+                    'status' => 'incomplete',
+                    'latest_invoice' => [
+                        'payment_intent' => [
+                            'id' => 'pi_3ds',
+                            'client_secret' => 'pi_3ds_secret_xyz',
+                            'status' => 'requires_action',
+                            'amount' => 999,
+                            'currency' => 'usd',
+                        ],
+                    ],
+                ]));
+            $mock->shouldReceive('periodDatesFromSubscription')->once()
+                ->andReturn([now()->subMonth(), now()->addMonth()]);
+        });
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+            'otp' => '1234',
+            'payment_method' => 'pm_mock',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.payment_intent_client_secret', 'pi_3ds_secret_xyz')
+            ->assertJsonPath('data.payment_status', 'requires_action');
+
+        $this->assertDatabaseHas('subscriptions', [
+            'user_id' => $this->user->id,
+            'provider_subscription_id' => 'sub_3ds',
+            'status' => 'incomplete',
         ]);
     }
 
     public function test_user_cannot_create_subscription_when_already_active(): void
     {
-        $plan = Plan::create([
-            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
-            'status' => 'active', 'features' => ['search_profiles'],
-            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
-        ]);
+        $plan = $this->makePlan();
 
         Subscription::create([
             'user_id' => $this->user->id,
@@ -117,38 +323,47 @@ class SubscriptionFlowTest extends TestCase
 
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('getOrCreateCustomer')->never();
-            $mock->shouldReceive('createCheckoutSession')->never();
+            $mock->shouldReceive('attachPaymentMethod')->never();
+            $mock->shouldReceive('createSubscription')->never();
         });
 
-        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/send-otp', [
             'plan_id' => $plan->id,
         ]);
 
         $response->assertStatus(422)->assertJsonPath('success', false);
     }
 
-    public function test_create_returns_friendly_error_when_stripe_fails(): void
+    public function test_create_returns_422_when_stripe_fails_and_rolls_back(): void
     {
-        $plan = Plan::create([
-            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
-            'status' => 'active', 'features' => ['search_profiles'],
-            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
+        $plan = $this->makePlan();
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->addMinutes(2),
         ]);
 
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('getOrCreateCustomer')->once()->andThrow(
                 new ApiConnectionException('Stripe is down'),
             );
-            $mock->shouldReceive('createCheckoutSession')->never();
+            $mock->shouldReceive('attachPaymentMethod')->never();
+            $mock->shouldReceive('createSubscription')->never();
         });
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
             'plan_id' => $plan->id,
+            'otp' => '1234',
+            'payment_method' => 'pm_mock',
         ]);
 
-        $response->assertStatus(502)
+        $response
+            ->assertStatus(422)
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Failed to create checkout session. Please try again.');
+            ->assertJsonPath('message', 'Subscription payment failed. Please try again.');
+
+        $this->assertDatabaseMissing('subscriptions', ['user_id' => $this->user->id]);
+        $this->assertDatabaseMissing('transactions', ['user_id' => $this->user->id]);
     }
 
     public function test_user_cannot_subscribe_to_inactive_plan(): void
@@ -161,11 +376,19 @@ class SubscriptionFlowTest extends TestCase
 
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('getOrCreateCustomer')->never();
-            $mock->shouldReceive('createCheckoutSession')->never();
+            $mock->shouldReceive('attachPaymentMethod')->never();
+            $mock->shouldReceive('createSubscription')->never();
         });
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->addMinutes(2),
+        ]);
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
             'plan_id' => $plan->id,
+            'otp' => '1234',
+            'payment_method' => 'pm_mock',
         ]);
 
         $response->assertStatus(422)->assertJsonPath('success', false);
