@@ -72,8 +72,6 @@ class AcademiaController extends Controller
     }
 
 
-
-
     public function storeUniversity(Request $request)
     {
         $validated = $request->validate([
@@ -261,5 +259,25 @@ class AcademiaController extends Controller
                 'website' => $university->website,
             ],
         ]);
+    }
+
+
+    public function destroyUniversity($id)
+    {
+        $university = AcademiaUniversity::find($id);
+
+        if (!$university) {
+            return response()->json([
+                'success' => false,
+                'message' => 'University not found.',
+            ], 404);
+        }
+
+        $university->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'University deleted successfully.',
+        ], 200);
     }
 }

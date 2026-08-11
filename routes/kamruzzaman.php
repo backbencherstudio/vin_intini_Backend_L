@@ -12,7 +12,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::get('academia/universities', [AcademiaController::class, 'indexUniversities']);
     Route::post('academia/university/create', [AcademiaController::class, 'storeUniversity']);
     Route::put('academia/university/update/{id}', [AcademiaController::class, 'updateUniversity']);
+    Route::delete('academia/university/delete/{id}', [AcademiaController::class, 'destroyUniversity']);
 });
+
 
 Route::middleware('role:user')->group(function () {
     Route::middleware('profile_completed')->group(function () {});
