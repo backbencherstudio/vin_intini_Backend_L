@@ -47,4 +47,32 @@ class Message extends Model
 
         return asset('storage/'.ltrim($this->file_path, '/'));
     }
+
+    public function getFileExtensionAttribute(): ?string
+    {
+        if (! $this->file_name) {
+            return null;
+        }
+
+        return strtolower(pathinfo($this->file_name, PATHINFO_EXTENSION)) ?: null;
+    }
+
+    public function getFileCategoryAttribute(): ?string
+    {
+        $extension = $this->file_extension;
+
+        if (! $extension) {
+            return null;
+        }
+
+        return match ($extension) {
+            'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif' => 'image',
+            'mp4', 'mov', 'avi', 'mkv', 'webm', '3gp' => 'video',
+            'mp3', 'wav', 'm4a', 'aac', 'ogg', 'opus' => 'audio',
+            'pdf' => 'pdf',
+            'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'rtf' => 'document',
+            'zip', 'rar', '7z', 'tar', 'gz' => 'archive',
+            default => 'other',
+        };
+    }
 }

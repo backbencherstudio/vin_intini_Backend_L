@@ -34,6 +34,8 @@ class MessageSent implements ShouldBroadcast, ShouldQueue
             'file_url' => $this->message->file_url,
             'file_name' => $this->message->file_name,
             'file_size' => $this->message->file_size,
+            'file_extension' => $this->message->file_extension,
+            'file_category' => $this->message->file_category,
             'duration' => $this->message->duration,
             'created_at' => $this->message->created_at->toISOString(),
         ];

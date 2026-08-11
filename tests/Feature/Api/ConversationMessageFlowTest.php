@@ -128,6 +128,42 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('other_user.id', $premiumUser->id);
     }
 
+    public function test_messages_include_file_category_and_extension(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'type' => 'file',
+            'file_path' => 'conversations/1/photo.jpg',
+            'file_name' => 'photo.jpg',
+            'file_size' => 1000,
+        ]);
+
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'type' => 'file',
+            'file_path' => 'conversations/1/doc.pdf',
+            'file_name' => 'doc.pdf',
+            'file_size' => 2000,
+        ]);
+
+        $response = $this->actingAs($user, 'api')->getJson("/api/conversations/{$conversation->id}/messages");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.0.file_category', 'image')
+            ->assertJsonPath('data.0.file_extension', 'jpg')
+            ->assertJsonPath('data.1.file_category', 'pdf')
+            ->assertJsonPath('data.1.file_extension', 'pdf');
+    }
+
     public function test_user_can_send_voice_message(): void
     {
         Notification::fake();

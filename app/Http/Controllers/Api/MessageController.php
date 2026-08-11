@@ -38,6 +38,8 @@ class MessageController extends Controller
             'file_url' => $message->file_url,
             'file_name' => $message->file_name,
             'file_size' => $message->file_size,
+            'file_extension' => $message->file_extension,
+            'file_category' => $message->file_category,
             'duration' => $message->duration,
             'created_at' => $message->created_at->toISOString(),
         ])->values();
@@ -113,6 +115,8 @@ class MessageController extends Controller
                 'file_url' => $message->file_url,
                 'file_name' => $message->file_name,
                 'file_size' => $message->file_size,
+                'file_extension' => $message->file_extension,
+                'file_category' => $message->file_category,
                 'duration' => $message->duration,
                 'created_at' => $message->created_at->toISOString(),
             ],
