@@ -29,12 +29,12 @@ class MessageController extends Controller
 
         $messages = $conversation->messages()
             ->with(['sender:id,first_name,last_name,title,profile_image', 'replyTo.sender:id,first_name,last_name', 'reactions.user:id,first_name,last_name'])
-            ->orderBy('id')
+            ->orderBy('id', 'desc')
             ->cursorPaginate(50);
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
-        $data = $messages->map(fn (Message $message) => [
+        $data = $messages->reverse()->values()->map(fn (Message $message) => [
             'id' => $message->id,
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
