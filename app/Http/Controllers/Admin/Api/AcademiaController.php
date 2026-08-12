@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademiaFacility;
+use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaUniversity;
 use Illuminate\Http\Request;
 
@@ -11,7 +13,7 @@ class AcademiaController extends Controller
 
     public function indexUniversities(Request $request)
     {
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = (int) $request->input('per_page', 20);
 
         $query = AcademiaUniversity::query()
             ->with('state');
@@ -279,5 +281,65 @@ class AcademiaController extends Controller
             'success' => true,
             'message' => 'University deleted successfully.',
         ], 200);
+    }
+
+
+    public function indexResidencies(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 20);
+
+        $query = AcademiaMedicalResidency::with('state');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+
+            $query->where(function ($q) use ($search) {
+                $q->where('program_name', 'LIKE', "%{$search}%")
+                    ->orWhere('location', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('state_id')) {
+            $query->where('state_id', $request->input('state_id'));
+        }
+
+        $residencies = $query
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $data = collect($residencies->items())
+            ->map(function ($residency) {
+                return [
+                    'id' => $residency->id,
+                    'program_name' => $residency->program_name,
+                    'location' => $residency->location,
+                    'phone' => $residency->phone,
+                    'state' => $residency->state?->name,
+                    'degree-types' => $residency->degree_types,
+                    'map_pin' => [
+                        'latitude' => $residency->latitude,
+                        'longitude' => $residency->longitude,
+                    ],
+                    'website' => $residency->website,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Residencies fetched successfully.',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $residencies->currentPage(),
+                'per_page' => $residencies->perPage(),
+                'total' => $residencies->total(),
+                'last_page' => $residencies->lastPage(),
+                'from' => $residencies->firstItem(),
+                'to' => $residencies->lastItem(),
+                'has_more_pages' => $residencies->hasMorePages(),
+                'next_page_url' => $residencies->nextPageUrl(),
+                'prev_page_url' => $residencies->previousPageUrl(),
+            ],
+        ]);
     }
 }
