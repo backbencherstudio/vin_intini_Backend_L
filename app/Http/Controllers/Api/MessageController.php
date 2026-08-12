@@ -12,6 +12,7 @@ use App\Notifications\NewMessageNotification;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 
 class MessageController extends Controller
 {
@@ -112,6 +113,10 @@ class MessageController extends Controller
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_size'] = $file->getSize();
+
+            if (($data['duration'] ?? null) === null && $this->isMediaFile($file)) {
+                $data['duration'] = $this->extractMediaDuration($file);
+            }
         }
 
         $message = Message::create($data)->load('replyTo.sender:id,first_name,last_name');
@@ -245,6 +250,35 @@ class MessageController extends Controller
             'file_category' => $message->file_category,
             'created_at' => $message->created_at?->toISOString(),
         ];
+    }
+
+    /**
+     * Check if the uploaded file is audio or video.
+     */
+    private function isMediaFile(UploadedFile $file): bool
+    {
+        $mime = $file->getMimeType();
+
+        return str_contains($mime, 'audio') || str_contains($mime, 'video');
+    }
+
+    /**
+     * Extract the duration of a media file with ffprobe.
+     */
+    private function extractMediaDuration(UploadedFile $file): ?int
+    {
+        $command = sprintf(
+            'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s 2>&1',
+            escapeshellarg($file->getRealPath())
+        );
+
+        exec($command, $output, $status);
+
+        if ($status !== 0 || ! isset($output[0]) || ! is_numeric(trim($output[0]))) {
+            return null;
+        }
+
+        return (int) round((float) trim($output[0]));
     }
 
     /**

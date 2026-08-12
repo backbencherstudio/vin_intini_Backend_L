@@ -190,6 +190,75 @@ class ConversationMessageFlowTest extends TestCase
         ]);
     }
 
+    public function test_audio_file_duration_is_auto_extracted(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $sampleRate = 8000;
+        $seconds = 2;
+        $dataSize = $sampleRate * $seconds * 2;
+        $wav = pack('CCCC', 0x52, 0x49, 0x46, 0x46) // RIFF
+            .pack('V', 36 + $dataSize)
+            .pack('CCCC', 0x57, 0x41, 0x56, 0x45) // WAVE
+            .pack('CCCC', 0x66, 0x6D, 0x74, 0x20) // fmt
+            .pack('V', 16)
+            .pack('v', 1)
+            .pack('v', 1)
+            .pack('V', $sampleRate)
+            .pack('V', $sampleRate * 2)
+            .pack('v', 2)
+            .pack('v', 16)
+            .pack('CCCC', 0x64, 0x61, 0x74, 0x61) // data
+            .pack('V', $dataSize)
+            .str_repeat(pack('s', 0), $sampleRate * $seconds);
+
+        $file = UploadedFile::fake()->createWithContent('voice.wav', $wav);
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'voice',
+            'file' => $file,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.duration', 2);
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'file_name' => 'voice.wav',
+            'duration' => 2,
+        ]);
+    }
+
+    public function test_client_provided_duration_is_kept(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $file = UploadedFile::fake()->createWithContent('voice.wav', 'not-real-audio');
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'voice',
+            'file' => $file,
+            'duration' => 7,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.duration', 7);
+    }
+
     public function test_messages_list_includes_premium_status_for_other_user(): void
     {
         $user = $this->makeUser();
