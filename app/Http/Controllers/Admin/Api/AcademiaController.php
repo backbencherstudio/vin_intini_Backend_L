@@ -342,4 +342,54 @@ class AcademiaController extends Controller
             ],
         ]);
     }
+
+
+    public function storeResidency(Request $request)
+    {
+        $validated = $request->validate([
+            'program_name' => 'required|string|max:255',
+            'state_id' => 'required|exists:states,id',
+            'location' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'degree_types' => 'nullable|string',
+            'website' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+        ]);
+
+        $degrees = !empty($validated['degree_types'])
+            ? array_map('trim', explode(',', $validated['degree_types']))
+            : [];
+
+        $residency = AcademiaMedicalResidency::create([
+            'program_name' => $validated['program_name'],
+            'state_id' => $validated['state_id'],
+            'location' => $validated['location'] ?? null,
+            'latitude' => $validated['latitude'] ?? 0,
+            'longitude' => $validated['longitude'] ?? 0,
+            'degree_types' => $degrees,
+            'website' => $validated['website'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+        ]);
+
+        $residency->load('state');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'New Residency Program added successfully.',
+            'data' => [
+                'id' => $residency->id,
+                'program_name' => $residency->program_name,
+                'city' => $residency->location,
+                'state' => $residency->state?->name,
+                'degree_types' => $residency->degree_types,
+                'phone' => $residency->phone,
+                'map_pin' => [
+                    'latitude' => $residency->latitude,
+                    'longitude' => $residency->longitude,
+                ],
+                'website' => $residency->website,
+            ],
+        ], 201);
+    }
 }
