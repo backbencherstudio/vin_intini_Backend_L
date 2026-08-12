@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\MessageReactionChanged;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
@@ -14,6 +15,9 @@ use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {
+    /**
+     * List paginated messages of a conversation.
+     */
     public function index(Request $request, Conversation $conversation): JsonResponse
     {
         $currentUser = $request->user();
@@ -23,7 +27,7 @@ class MessageController extends Controller
         }
 
         $messages = $conversation->messages()
-            ->with(['sender:id,first_name,last_name,title,profile_image', 'reactions.user:id,first_name,last_name'])
+            ->with(['sender:id,first_name,last_name,title,profile_image', 'replyTo.sender:id,first_name,last_name', 'reactions.user:id,first_name,last_name'])
             ->orderBy('id')
             ->cursorPaginate(50);
 
@@ -42,6 +46,7 @@ class MessageController extends Controller
             'file_extension' => $message->file_extension,
             'file_category' => $message->file_category,
             'duration' => $message->duration,
+            'reply_to' => $this->replyPreview($message->replyTo),
             'reactions' => $this->reactionSummary($message),
             'my_reaction' => $message->reactions->firstWhere('user_id', $currentUser->id)?->reaction,
             'created_at' => $message->created_at->toISOString(),
@@ -65,6 +70,9 @@ class MessageController extends Controller
         ]);
     }
 
+    /**
+     * Create and send a new message in a conversation.
+     */
     public function store(Request $request, Conversation $conversation): JsonResponse
     {
         $currentUser = $request->user();
@@ -78,11 +86,21 @@ class MessageController extends Controller
             'message' => 'required_if:type,text|nullable|string',
             'file' => 'required_if:type,file|required_if:type,voice|nullable|file|max:102400',
             'duration' => 'nullable|integer|min:0',
+            'reply_to_id' => [
+                'nullable',
+                'integer',
+                function (string $attribute, mixed $value, Closure $fail) use ($conversation): void {
+                    if ($value && ! Message::where('id', $value)->where('conversation_id', $conversation->id)->exists()) {
+                        $fail('The replied message does not exist in this conversation.');
+                    }
+                },
+            ],
         ]);
 
         $data = [
             'conversation_id' => $conversation->id,
             'sender_id' => $currentUser->id,
+            'reply_to_id' => $validated['reply_to_id'] ?? null,
             'type' => $validated['type'],
             'message' => $validated['message'] ?? null,
             'duration' => $validated['duration'] ?? null,
@@ -96,7 +114,7 @@ class MessageController extends Controller
             $data['file_size'] = $file->getSize();
         }
 
-        $message = Message::create($data);
+        $message = Message::create($data)->load('replyTo.sender:id,first_name,last_name');
 
         $conversation->update(['last_message_id' => $message->id]);
 
@@ -121,11 +139,15 @@ class MessageController extends Controller
                 'file_extension' => $message->file_extension,
                 'file_category' => $message->file_category,
                 'duration' => $message->duration,
+                'reply_to' => $this->replyPreview($message->replyTo),
                 'created_at' => $message->created_at->toISOString(),
             ],
         ], 201);
     }
 
+    /**
+     * Add, change or remove the user's reaction on a message.
+     */
     public function react(Request $request, Message $message): JsonResponse
     {
         $currentUser = $request->user();
@@ -134,14 +156,12 @@ class MessageController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
 
-        $singleEmojiPattern = '/^(?:\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\x{FE0F}|\x{200D}\p{Extended_Pictographic}\p{Emoji_Modifier}?)*|[\x{1F1E6}-\x{1F1FF}]{2})$/u';
-
         $validated = $request->validate([
             'reaction' => [
                 'required',
                 'string',
-                function (string $attribute, mixed $value, Closure $fail) use ($singleEmojiPattern): void {
-                    if (preg_match($singleEmojiPattern, $value) !== 1) {
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (! $this->isSingleEmoji($value)) {
                         $fail('The reaction must be a single emoji.');
                     }
                 },
@@ -166,14 +186,21 @@ class MessageController extends Controller
 
         $message->load('reactions.user:id,first_name,last_name');
 
+        $reactions = $this->reactionSummary($message);
+
+        event(new MessageReactionChanged($message, $changed, $reactions, $currentUser->id));
+
         return response()->json([
             'success' => true,
             'message' => $changed ? 'Reaction added.' : 'Reaction removed.',
             'my_reaction' => $changed,
-            'reactions' => $this->reactionSummary($message),
+            'reactions' => $reactions,
         ]);
     }
 
+    /**
+     * Remove the user's reaction from a message.
+     */
     public function unreact(Request $request, Message $message): JsonResponse
     {
         $currentUser = $request->user();
@@ -186,14 +213,43 @@ class MessageController extends Controller
 
         $message->load('reactions.user:id,first_name,last_name');
 
+        $reactions = $this->reactionSummary($message);
+
+        event(new MessageReactionChanged($message, null, $reactions, $currentUser->id));
+
         return response()->json([
             'success' => true,
             'message' => 'Reaction removed.',
             'my_reaction' => null,
-            'reactions' => $this->reactionSummary($message),
+            'reactions' => $reactions,
         ]);
     }
 
+    /**
+     * Build a compact preview of the replied message.
+     */
+    private function replyPreview(?Message $message): ?array
+    {
+        if (! $message) {
+            return null;
+        }
+
+        return [
+            'id' => $message->id,
+            'sender_id' => $message->sender_id,
+            'sender_name' => trim(($message->sender->first_name ?? '').' '.($message->sender->last_name ?? '')),
+            'type' => $message->type,
+            'message' => $message->message,
+            'file_url' => $message->file_url,
+            'file_name' => $message->file_name,
+            'file_category' => $message->file_category,
+            'created_at' => $message->created_at?->toISOString(),
+        ];
+    }
+
+    /**
+     * Check if a user is a participant of a conversation.
+     */
     private function isParticipant(int $userId, int $conversationId): bool
     {
         return Conversation::where('id', $conversationId)
@@ -201,6 +257,17 @@ class MessageController extends Controller
             ->exists();
     }
 
+    /**
+     * Check if a string is exactly one emoji.
+     */
+    private function isSingleEmoji(string $value): bool
+    {
+        return preg_match('/^(?:\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\x{FE0F}|\x{200D}\p{Extended_Pictographic}\p{Emoji_Modifier}?)*|[\x{1F1E6}-\x{1F1FF}]{2})$/u', $value) === 1;
+    }
+
+    /**
+     * Build a per-emoji reaction summary with count and users.
+     */
     private function reactionSummary(Message $message): array
     {
         return $message->reactions
@@ -219,6 +286,9 @@ class MessageController extends Controller
             ->all();
     }
 
+    /**
+     * Check if a user has an active subscription.
+     */
     private function userHasActiveSubscription(int $userId): bool
     {
         return Subscription::where('user_id', $userId)
@@ -226,6 +296,9 @@ class MessageController extends Controller
             ->exists();
     }
 
+    /**
+     * Delete a message if the user is its sender.
+     */
     public function destroy(Request $request, Message $message): JsonResponse
     {
         $currentUser = $request->user();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Events\MessageReactionChanged;
 use App\Events\MessageSent;
 use App\Models\Connection;
 use App\Models\Conversation;
@@ -63,6 +64,96 @@ class ConversationMessageFlowTest extends TestCase
             [$connectedUser],
             NewMessageNotification::class
         );
+    }
+
+    public function test_user_can_reply_to_a_message(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $original = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Original message',
+        ]);
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'My reply',
+            'reply_to_id' => $original->id,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.reply_to.id', $original->id)
+            ->assertJsonPath('data.reply_to.message', 'Original message')
+            ->assertJsonPath('data.reply_to.sender_name', trim(($connectedUser->first_name).' '.($connectedUser->last_name)));
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'message' => 'My reply',
+            'reply_to_id' => $original->id,
+        ]);
+    }
+
+    public function test_reply_must_reference_message_in_same_conversation(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $otherConversation = Conversation::betweenUsers($this->makeUser()->id, $this->makeUser()->id);
+        $foreignMessage = $otherConversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'From another conversation',
+        ]);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'My reply',
+            'reply_to_id' => $foreignMessage->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('reply_to_id');
+    }
+
+    public function test_messages_list_includes_reply_preview(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $original = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Original message',
+        ]);
+
+        $conversation->messages()->create([
+            'sender_id' => $user->id,
+            'type' => 'text',
+            'message' => 'My reply',
+            'reply_to_id' => $original->id,
+        ]);
+
+        $this->actingAs($user, 'api')->getJson("/api/conversations/{$conversation->id}/messages")
+            ->assertOk()
+            ->assertJsonPath('data.1.reply_to.id', $original->id)
+            ->assertJsonPath('data.1.reply_to.message', 'Original message');
     }
 
     public function test_user_can_send_file_message(): void
@@ -558,6 +649,8 @@ class ConversationMessageFlowTest extends TestCase
 
     public function test_user_can_react_to_message(): void
     {
+        Event::fake([MessageReactionChanged::class]);
+
         Notification::fake();
 
         $user = $this->makeUser();
@@ -584,6 +677,10 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('reactions.0.users.0.id', $user->id)
             ->assertJsonPath('reactions.0.users.0.name', trim(($user->first_name).' '.($user->last_name)));
 
+        Event::assertDispatched(MessageReactionChanged::class, fn (MessageReactionChanged $event) => $event->message->is($message)
+            && $event->reaction === '👍'
+            && $event->userId === $user->id);
+
         $this->assertDatabaseHas('message_reactions', [
             'message_id' => $message->id,
             'user_id' => $user->id,
@@ -593,6 +690,8 @@ class ConversationMessageFlowTest extends TestCase
 
     public function test_reacting_with_same_reaction_again_removes_it(): void
     {
+        Event::fake([MessageReactionChanged::class]);
+
         Notification::fake();
 
         $user = $this->makeUser();
@@ -691,6 +790,8 @@ class ConversationMessageFlowTest extends TestCase
 
     public function test_user_can_unreact_to_message(): void
     {
+        Event::fake([MessageReactionChanged::class]);
+
         Notification::fake();
 
         $user = $this->makeUser();
@@ -717,6 +818,13 @@ class ConversationMessageFlowTest extends TestCase
             'message_id' => $message->id,
             'user_id' => $user->id,
         ]);
+
+        Event::assertDispatched(
+            MessageReactionChanged::class,
+            fn (MessageReactionChanged $event) => $event->message->is($message)
+                && $event->reaction === null
+                && $event->userId === $user->id
+        );
     }
 
     public function test_non_participant_cannot_react_to_message(): void
@@ -741,7 +849,7 @@ class ConversationMessageFlowTest extends TestCase
 
         $this->assertDatabaseMissing('message_reactions', [
             'message_id' => $message->id,
-            'user_id' => $outsider->id,
+            'user_id' => $user->id,
         ]);
     }
 

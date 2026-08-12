@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Connection;
+use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -49,6 +51,17 @@ class DatabaseSeeder extends Seeder
         );
 
         $user1->assignRole($userRole);
+
+        Subscription::updateOrCreate(
+            ['user_id' => $user1->id],
+            [
+                'plan_id' => Plan::where('name', 'Premium Plan')->first()?->id,
+                'platform' => 'stripe',
+                'status' => 'active',
+                'current_period_start' => now(),
+                'current_period_end' => now()->addMonth(),
+            ]
+        );
 
         UserProfile::updateOrCreate(
             ['user_id' => $user1->id],
