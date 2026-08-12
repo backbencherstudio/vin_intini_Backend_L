@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('status')->default('Successful');
             $table->boolean('is_active')->default(true);
             $table->boolean('is_resolved')->default(false);
+            $table->boolean('is_trusted')->default(false);
             $table->timestamp('login_at');
             $table->timestamps();
         });

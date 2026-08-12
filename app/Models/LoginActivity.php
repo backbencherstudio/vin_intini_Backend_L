@@ -16,6 +16,7 @@ class LoginActivity extends Model
         'status',
         'is_active',
         'is_resolved',
+        'is_trusted',
         'login_at'
     ];
 

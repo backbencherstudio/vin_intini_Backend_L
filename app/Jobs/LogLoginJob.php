@@ -66,7 +66,7 @@ class LogLoginJob
                     ->where('status', 'Successful')
                     ->where('location', $locationName)
                     ->where('device', $device)
-                    ->where('is_resolved', true)
+                    ->where('is_trusted', true)
                     ->exists();
 
                 if (!$seenBefore) {

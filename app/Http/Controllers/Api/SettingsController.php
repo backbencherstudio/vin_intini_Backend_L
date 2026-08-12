@@ -495,7 +495,7 @@ class SettingsController extends Controller
         $action = $request->query('action');
 
         if ($action === 'trust') {
-            $activity->update(['is_resolved' => true]);
+            $activity->update(['is_resolved' => true, 'is_trusted' => true]);
             return view('security.resolution', ['type' => 'trust']);
         }
 
@@ -541,7 +541,7 @@ class SettingsController extends Controller
             'password' => Hash::make($request->password)
         ]);
 
-        $activity->update(['is_resolved' => true]);
+        $activity->update(['is_resolved' => true, 'is_trusted' => false]);
 
         return view('security.resolution', ['type' => 'success_reset']);
     }
