@@ -101,20 +101,6 @@ class AuthController extends Controller
 
         $latestEducation = $user->educations->sortByDesc('id')->first();
 
-        // --- backup codes count ---
-        if (!$user->two_factor_confirmed_at) {
-            $backupCodesCountText = "Enable 2FA to generate backup codes";
-        } else {
-            $recoveryCodes = $user->two_factor_recovery_codes
-                ? json_decode(decrypt($user->two_factor_recovery_codes), true)
-                : [];
-
-            $remaining = count($recoveryCodes);
-            $used = 10 - $remaining;
-            $backupCodesCountText = "{$used} of 10 codes used";
-        }
-        // ------------------------------------
-
         return response()->json([
             'success' => true,
             'is_onboarding' => $user->profile ? true : false,
@@ -129,7 +115,6 @@ class AuthController extends Controller
                 'role' => $user->roles->pluck('name')->implode(', '),
 
                 'two_factor_enabled' => $user->two_factor_confirmed_at ? true : false,
-                'backup_codes_count' => $backupCodesCountText,
                 'recovery_email' => $user->recovery_email,
                 'recovery_email_verified' => $user->recovery_email_verified_at ? true : false,
                 // 'recovery_email_pending' => !$user->recovery_email_verified_at && $user->recovery_email ? true : false,

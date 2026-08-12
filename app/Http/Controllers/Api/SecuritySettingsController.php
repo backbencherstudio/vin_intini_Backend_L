@@ -76,6 +76,20 @@ class SecuritySettingsController extends Controller
         $score = max(0, min($score, 100));
         $securityRating = ($score > 80) ? "Strong" : (($score > 50) ? "Medium" : "Weak");
 
+        // --- backup codes count ---
+        if (!$user->two_factor_confirmed_at) {
+            $backupCodesCountText = "Enable 2FA to generate backup codes";
+        } else {
+            $recoveryCodes = $user->two_factor_recovery_codes
+                ? json_decode(decrypt($user->two_factor_recovery_codes), true)
+                : [];
+
+            $remaining = count($recoveryCodes);
+            $used = 10 - $remaining;
+            $backupCodesCountText = "{$used} of 10 codes used";
+        }
+        // ------------------------------------
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -89,9 +103,13 @@ class SecuritySettingsController extends Controller
                 'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . " active devices",
                 'account_recovery' => $isRecoveryVerified ? 'Email verified' : 'Not verified',
                 'login_activity' => $suspiciousStatus,
-                'suspicious_id' => $suspiciousId,
+                // 'suspicious_id' => $suspiciousId,
                 'is_suspicious' => $isSuspicious,
-                'can_resolve_from_here' => $canResolveFromHere
+                'can_resolve_from_here' => $canResolveFromHere,
+                'two_factor_enabled' => $user->two_factor_confirmed_at ? true : false,
+                'backup_codes_count' => $backupCodesCountText,
+                'recovery_email' => $user->recovery_email,
+                'recovery_email_verified' => $user->recovery_email_verified_at ? true : false,
             ]
         ]);
     }
