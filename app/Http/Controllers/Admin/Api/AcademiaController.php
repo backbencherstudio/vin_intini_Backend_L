@@ -569,4 +569,62 @@ class AcademiaController extends Controller
             ],
         ], 201);
     }
+
+
+    public function updateFacility(Request $request, $id)
+    {
+        $facility = AcademiaFacility::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'state_id' => 'sometimes|exists:states,id',
+            'type' => 'sometimes|in:state_institution,university_hospital,va_facility',
+            'location' => 'sometimes|nullable|string|max:255',
+            'latitude' => 'sometimes|nullable|numeric',
+            'longitude' => 'sometimes|nullable|numeric',
+            'website' => 'sometimes|nullable|string|max:255',
+            'phone' => 'sometimes|nullable|string|max:255',
+        ]);
+
+        $facility->update($validated);
+
+        $facility->load('state');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Facility updated successfully.',
+            'data' => [
+                'id' => $facility->id,
+                'program_name' => $facility->name,
+                'city' => $facility->location,
+                'state' => $facility->state?->name,
+                'degree_types' => $facility->type,
+                'phone' => $facility->phone,
+                'map_pin' => [
+                    'latitude' => $facility->latitude,
+                    'longitude' => $facility->longitude,
+                ],
+                'website' => $facility->website,
+            ],
+        ]);
+    }
+
+
+    public function destroyFacility($id)
+    {
+        $facility = AcademiaFacility::find($id);
+
+        if (! $facility) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Facility not found.'
+            ], 404);
+        }
+
+        $facility->delete();
+        return response()->json([
+            'success' => true,
+            'message' => 'Facility deleted successfully.'
+        ], 200);
+    }
 }
