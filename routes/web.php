@@ -9,7 +9,7 @@ use App\Http\Controllers\Admin\IndustryPharmaController;
 use App\Http\Controllers\Admin\IndustryPublicationController;
 use App\Http\Controllers\Admin\InstitutionReportController;
 use App\Http\Controllers\Admin\PagesController;
-use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\SecuritySettingsController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -30,11 +30,11 @@ Route::middleware('guest:web')->group(function () {
     Route::post('admin/login-submit', [AdminAuthController::class, 'adminLogin'])->name('admin.login.submit');
 });
 
-//
-Route::get('/security/email-resolve/{id}', [SettingsController::class, 'resolveFromEmail'])
+// Security Routes when user clicks on the email link for suspicious login activities
+Route::get('/security/email-resolve/{id}', [SecuritySettingsController::class, 'resolveFromEmail'])
     ->name('security.email-resolve')->middleware('signed');
-//
-Route::post('/security/update-password', [SettingsController::class, 'updatePasswordFromAlert'])
+// Security Routes when user clicks on the email link for suspicious login activities
+Route::post('/security/update-password', [SecuritySettingsController::class, 'updatePasswordFromAlert'])
     ->name('security.update-password')->middleware('signed');
 
 
