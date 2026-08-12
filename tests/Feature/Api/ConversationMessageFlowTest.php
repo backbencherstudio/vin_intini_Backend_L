@@ -581,7 +581,8 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('my_reaction', '👍')
             ->assertJsonPath('reactions.0.reaction', '👍')
             ->assertJsonPath('reactions.0.count', 1)
-            ->assertJsonPath('reactions.0.user_ids.0', $user->id);
+            ->assertJsonPath('reactions.0.users.0.id', $user->id)
+            ->assertJsonPath('reactions.0.users.0.name', trim(($user->first_name).' '.($user->last_name)));
 
         $this->assertDatabaseHas('message_reactions', [
             'message_id' => $message->id,

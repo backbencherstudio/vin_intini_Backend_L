@@ -23,7 +23,7 @@ class MessageController extends Controller
         }
 
         $messages = $conversation->messages()
-            ->with(['sender:id,first_name,last_name,title,profile_image', 'reactions'])
+            ->with(['sender:id,first_name,last_name,title,profile_image', 'reactions.user:id,first_name,last_name'])
             ->orderBy('id')
             ->cursorPaginate(50);
 
@@ -164,7 +164,7 @@ class MessageController extends Controller
             $changed = $validated['reaction'];
         }
 
-        $message->load('reactions');
+        $message->load('reactions.user:id,first_name,last_name');
 
         return response()->json([
             'success' => true,
@@ -184,7 +184,7 @@ class MessageController extends Controller
 
         $message->reactions()->where('user_id', $currentUser->id)->delete();
 
-        $message->load('reactions');
+        $message->load('reactions.user:id,first_name,last_name');
 
         return response()->json([
             'success' => true,
@@ -208,7 +208,12 @@ class MessageController extends Controller
             ->map(fn ($reactions, string $reaction) => [
                 'reaction' => $reaction,
                 'count' => $reactions->count(),
-                'user_ids' => $reactions->pluck('user_id')->values(),
+                'users' => $reactions
+                    ->map(fn ($item) => [
+                        'id' => $item->user_id,
+                        'name' => trim(($item->user->first_name ?? '').' '.($item->user->last_name ?? '')),
+                    ])
+                    ->values(),
             ])
             ->values()
             ->all();
