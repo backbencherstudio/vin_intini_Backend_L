@@ -523,4 +523,50 @@ class AcademiaController extends Controller
             ],
         ]);
     }
+
+
+    public function storeFacility(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'state_id' => 'required|exists:states,id',
+            'type' => 'required|in:state_institution,university_hospital,va_facility',
+            'location' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'website' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+        ]);
+
+        $facility = AcademiaFacility::create([
+            'name' => $validated['name'],
+            'state_id' => $validated['state_id'],
+            'type' => $validated['type'],
+            'location' => $validated['location'] ?? null,
+            'latitude' => $validated['latitude'] ?? 0,
+            'longitude' => $validated['longitude'] ?? 0,
+            'website' => $validated['website'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+        ]);
+
+        $facility->load('state');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'New Facility added successfully.',
+            'data' => [
+                'id' => $facility->id,
+                'program_name' => $facility->name,
+                'city' => $facility->location,
+                'state' => $facility->state?->name,
+                'degree_types' => $facility->type,
+                'phone' => $facility->phone,
+                'map_pin' => [
+                    'latitude' => $facility->latitude,
+                    'longitude' => $facility->longitude,
+                ],
+                'website' => $facility->website,
+            ],
+        ], 201);
+    }
 }
