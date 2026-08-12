@@ -437,4 +437,24 @@ class AcademiaController extends Controller
             ],
         ]);
     }
+
+
+    public function destroyResidency($id)
+    {
+        $residency = AcademiaMedicalResidency::find($id);
+
+        if (!$residency) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Residency not found.',
+            ], 404);
+        }
+
+        $residency->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Residency deleted successfully.',
+        ], 200);
+    }
 }
