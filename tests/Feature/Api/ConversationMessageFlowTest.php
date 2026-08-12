@@ -764,6 +764,42 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonValidationErrors('reaction');
     }
 
+    public function test_reaction_must_be_a_single_emoji(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = $conversation->messages()->create([
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello!',
+        ]);
+
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [
+            'reaction' => '😀😀😀',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('reaction');
+
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [
+            'reaction' => '😀❤️',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('reaction');
+
+        $this->assertDatabaseMissing('message_reactions', [
+            'message_id' => $message->id,
+            'user_id' => $user->id,
+        ]);
+
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", [
+            'reaction' => '👍🏽',
+        ])->assertOk()
+            ->assertJsonPath('my_reaction', '👍🏽');
+    }
+
     private function makeUser(?string $firstName = null, ?string $lastName = null): User
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();

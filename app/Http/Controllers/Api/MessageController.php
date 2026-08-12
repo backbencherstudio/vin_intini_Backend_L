@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Subscription;
 use App\Notifications\NewMessageNotification;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -133,8 +134,18 @@ class MessageController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
 
+        $singleEmojiPattern = '/^(?:\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\x{FE0F}|\x{200D}\p{Extended_Pictographic}\p{Emoji_Modifier}?)*|[\x{1F1E6}-\x{1F1FF}]{2})$/u';
+
         $validated = $request->validate([
-            'reaction' => 'required|string|max:20',
+            'reaction' => [
+                'required',
+                'string',
+                function (string $attribute, mixed $value, Closure $fail) use ($singleEmojiPattern): void {
+                    if (preg_match($singleEmojiPattern, $value) !== 1) {
+                        $fail('The reaction must be a single emoji.');
+                    }
+                },
+            ],
         ]);
 
         $reaction = $message->reactions()->where('user_id', $currentUser->id)->first();
