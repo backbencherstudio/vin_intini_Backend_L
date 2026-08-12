@@ -392,4 +392,49 @@ class AcademiaController extends Controller
             ],
         ], 201);
     }
+
+
+    public function updateResidency(Request $request, $id)
+    {
+        $residency = AcademiaMedicalResidency::findOrFail($id);
+
+        $validated = $request->validate([
+            'program_name' => 'sometimes|string|max:255',
+            'state_id' => 'sometimes|exists:states,id',
+            'location' => 'sometimes|nullable|string|max:255',
+            'latitude' => 'sometimes|nullable|numeric',
+            'longitude' => 'sometimes|nullable|numeric',
+            'degree_types' => 'sometimes|nullable|string',
+            'website' => 'sometimes|nullable|string|max:255',
+            'phone' => 'sometimes|nullable|string|max:255',
+        ]);
+
+        if (array_key_exists('degree_types', $validated)) {
+            $validated['degree_types'] = !empty($validated['degree_types'])
+                ? array_map('trim', explode(',', $validated['degree_types']))
+                : [];
+        }
+
+        $residency->update($validated);
+
+        $residency->load('state');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Residency Program updated successfully.',
+            'data' => [
+                'id' => $residency->id,
+                'program_name' => $residency->program_name,
+                'city' => $residency->location,
+                'state' => $residency->state?->name,
+                'degree_types' => $residency->degree_types,
+                'phone' => $residency->phone,
+                'map_pin' => [
+                    'latitude' => $residency->latitude,
+                    'longitude' => $residency->longitude,
+                ],
+                'website' => $residency->website,
+            ],
+        ]);
+    }
 }

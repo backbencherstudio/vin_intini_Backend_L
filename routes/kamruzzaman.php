@@ -20,6 +20,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         // Residencies.....
         Route::get('residencies', [AcademiaController::class, 'indexResidencies']);
         Route::post('residency/create', [AcademiaController::class, 'storeResidency']);
+        Route::put('residency/update/{id}', [AcademiaController::class, 'updateResidency']);
     });
 });
 
