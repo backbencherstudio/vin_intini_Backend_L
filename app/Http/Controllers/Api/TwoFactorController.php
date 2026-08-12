@@ -22,12 +22,24 @@ class TwoFactorController extends Controller
         $this->google2fa = new Google2FA();
     }
 
-    public function setup()
+    public function setup(Request $request)
     {
+        $request->validate(['password' => 'required']);
+
         $user = auth('api')->user();
 
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Incorrect password. Please try again.'
+            ], 403);
+        }
+
         if ($user->two_factor_confirmed_at) {
-            return response()->json(['status' => false, 'message' => '2FA is already enabled'], 400);
+            return response()->json([
+                'status' => false,
+                'message' => '2FA is already enabled'
+            ], 400);
         }
 
         $secret = $this->google2fa->generateSecretKey();
@@ -172,8 +184,19 @@ class TwoFactorController extends Controller
 
     public function updateRecoveryEmail(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required'
+        ]);
+
         $user = auth('api')->user();
+
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Incorrect password. Please try again.'
+            ], 403);
+        }
 
         if ($request->email === $user->email) {
             return response()->json([
