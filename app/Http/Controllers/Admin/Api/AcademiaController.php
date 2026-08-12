@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademiaFacility;
+use App\Models\AcademiaJob;
 use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaUniversity;
 use Illuminate\Http\Request;
@@ -626,5 +627,82 @@ class AcademiaController extends Controller
             'success' => true,
             'message' => 'Facility deleted successfully.'
         ], 200);
+    }
+
+
+    public function indexJobs(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 20);
+
+        $query = AcademiaJob::with('state');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'LIKE', "%{$search}%")
+                    ->orWhere('company_name', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('state_id')) {
+            $query->where('state_id', $request->input('state_id'));
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
+        $jobs = $query
+            ->latest()
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $data = collect($jobs->items())
+            ->map(function ($job) {
+                $salaryRange = null;
+
+                if ($job->salary_min !== null && $job->salary_max !== null) {
+                    $salaryRange = '$' .
+                        number_format($job->salary_min / 1000, 0) . 'k - $' .
+                        number_format($job->salary_max / 1000, 0) . 'k';
+                } elseif ($job->salary_min !== null) {
+                    $salaryRange = '$' .
+                        number_format($job->salary_min / 1000, 0) . 'k+';
+                } elseif ($job->salary_max !== null) {
+                    $salaryRange = 'Up to $' .
+                        number_format($job->salary_max / 1000, 0) . 'k';
+                }
+
+                return [
+                    'id' => $job->id,
+                    'title' => $job->title,
+                    'company_name' => $job->company_name,
+                    'location' => $job->location,
+                    'state' => $job->state?->name,
+                    'category' => $job->category,
+                    'job_type' => $job->employment_type,
+                    'job_mode' => $job->work_mode,
+                    'salary_range' => $salaryRange,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Jobs fetched successfully.',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $jobs->currentPage(),
+                'per_page' => $jobs->perPage(),
+                'total' => $jobs->total(),
+                'last_page' => $jobs->lastPage(),
+                'from' => $jobs->firstItem(),
+                'to' => $jobs->lastItem(),
+                'has_more_pages' => $jobs->hasMorePages(),
+                'next_page_url' => $jobs->nextPageUrl(),
+                'prev_page_url' => $jobs->previousPageUrl(),
+            ],
+        ]);
     }
 }

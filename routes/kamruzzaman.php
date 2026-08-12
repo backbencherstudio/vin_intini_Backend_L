@@ -28,6 +28,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::post('facility/create', [AcademiaController::class, 'storeFacility']);
         Route::put('facility/update/{id}', [AcademiaController::class, 'updateFacility']);
         Route::delete('facility/delete/{id}', [AcademiaController::class, 'destroyFacility']);
+
+        // Employment.....
+        Route::get('jobs', [AcademiaController::class, 'indexJobs']);
     });
 });
 
