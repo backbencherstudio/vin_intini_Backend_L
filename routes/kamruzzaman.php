@@ -22,6 +22,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::post('residency/create', [AcademiaController::class, 'storeResidency']);
         Route::put('residency/update/{id}', [AcademiaController::class, 'updateResidency']);
         Route::delete('residency/delete/{id}', [AcademiaController::class, 'destroyResidency']);
+
+        // Facilities.....
+        Route::get('facilities', [AcademiaController::class, 'indexFacilities']);
     });
 });
 

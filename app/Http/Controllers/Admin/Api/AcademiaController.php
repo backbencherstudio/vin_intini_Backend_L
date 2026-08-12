@@ -457,4 +457,70 @@ class AcademiaController extends Controller
             'message' => 'Residency deleted successfully.',
         ], 200);
     }
+
+
+    public function indexFacilities(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 20);
+
+        $query = AcademiaFacility::with('state');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('location', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('state_id')) {
+            $query->where('state_id', $request->input('state_id'));
+        }
+
+        if ($request->filled('category')) {
+            $query->where('type', $request->input('category'));
+        }
+
+        $facilities = $query
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $data = collect($facilities->items())
+            ->map(function ($facility) {
+                return [
+                    'id' => $facility->id,
+                    'facility_details' => [
+                        'name' => $facility->name,
+                        'location' => $facility->location,
+                        'phone' => $facility->phone,
+                    ],
+                    'state' => $facility->state?->name,
+                    'category' => $facility->type,
+                    'map_pin' => [
+                        'latitude' => $facility->latitude,
+                        'longitude' => $facility->longitude,
+                    ],
+                    'website' => $facility->website,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Facilities fetched successfully.',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $facilities->currentPage(),
+                'per_page' => $facilities->perPage(),
+                'total' => $facilities->total(),
+                'last_page' => $facilities->lastPage(),
+                'from' => $facilities->firstItem(),
+                'to' => $facilities->lastItem(),
+                'has_more_pages' => $facilities->hasMorePages(),
+                'next_page_url' => $facilities->nextPageUrl(),
+                'prev_page_url' => $facilities->previousPageUrl(),
+            ],
+        ]);
+    }
 }
