@@ -9,10 +9,14 @@ use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ConversationController extends Controller
 {
+    /**
+     * List conversations with optional status (archived/unread) and search filters.
+     */
     public function index(Request $request): JsonResponse
     {
         $currentUser = $request->user();
@@ -74,6 +78,9 @@ class ConversationController extends Controller
         ]);
     }
 
+    /**
+     * Mark a conversation as read for the current user.
+     */
     public function markAsRead(Request $request, Conversation $conversation): JsonResponse
     {
         $currentUser = $request->user();
@@ -90,6 +97,9 @@ class ConversationController extends Controller
         ]);
     }
 
+    /**
+     * Mark a conversation as unread for the current user.
+     */
     public function markAsUnread(Request $request, Conversation $conversation): JsonResponse
     {
         $currentUser = $request->user();
@@ -106,6 +116,9 @@ class ConversationController extends Controller
         ]);
     }
 
+    /**
+     * Archive a conversation for the current user.
+     */
     public function archive(Request $request, Conversation $conversation): JsonResponse
     {
         $currentUser = $request->user();
@@ -127,6 +140,9 @@ class ConversationController extends Controller
         ]);
     }
 
+    /**
+     * Unarchive a conversation for the current user.
+     */
     public function unarchive(Request $request, Conversation $conversation): JsonResponse
     {
         $currentUser = $request->user();
@@ -148,6 +164,9 @@ class ConversationController extends Controller
         ]);
     }
 
+    /**
+     * Get or create a conversation with a connected user.
+     */
     public function showOrCreate(Request $request, User $user): JsonResponse
     {
         $currentUser = $request->user();
@@ -205,6 +224,9 @@ class ConversationController extends Controller
         ]);
     }
 
+    /**
+     * Delete a conversation and all its messages.
+     */
     public function destroy(Request $request, Conversation $conversation): JsonResponse
     {
         $currentUser = $request->user();
@@ -222,6 +244,11 @@ class ConversationController extends Controller
         ]);
     }
 
+    /**
+     * Load ids of users with an active subscription among conversation partners.
+     *
+     * @param  Collection  $conversations
+     */
     private function loadPremiumUserIds($conversations, int $currentUserId): array
     {
         $userIds = $conversations
@@ -240,6 +267,9 @@ class ConversationController extends Controller
             ->all();
     }
 
+    /**
+     * Check if a user has an active subscription.
+     */
     private function userHasActiveSubscription(int $userId): bool
     {
         return Subscription::where('user_id', $userId)
@@ -247,6 +277,11 @@ class ConversationController extends Controller
             ->exists();
     }
 
+    /**
+     * Load unread message counts per conversation for a user.
+     *
+     * @param  Collection  $conversations
+     */
     private function loadUnreadCounts($conversations, int $userId): array
     {
         $conversationIds = $conversations->pluck('id');
