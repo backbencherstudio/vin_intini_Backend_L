@@ -31,6 +31,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
         // Employment.....
         Route::get('jobs', [AcademiaController::class, 'indexJobs']);
+        Route::post('job/create', [AcademiaController::class, 'storeJob']);
     });
 });
 

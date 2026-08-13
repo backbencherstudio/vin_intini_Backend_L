@@ -705,4 +705,58 @@ class AcademiaController extends Controller
             ],
         ]);
     }
+
+
+    public function storeJob(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'company_name' => 'required|string|max:255',
+            'state_id' => 'required|exists:states,id',
+            'category' => 'required|in:state_institution,private_practice',
+
+            'location' => 'nullable|string|max:255',
+            'salary_min' => 'nullable|numeric',
+            'salary_max' => 'nullable|numeric',
+
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+
+            'employment_type' => 'nullable|string|max:255',
+            'work_mode' => 'nullable|string|max:255',
+        ]);
+
+        $job = AcademiaJob::create([
+            'state_id' => $validated['state_id'],
+            'title' => $validated['title'],
+            'company_name' => $validated['company_name'],
+            'location' => $validated['location'] ?? null,
+            'salary_min' => $validated['salary_min'] ?? null,
+            'salary_max' => $validated['salary_max'] ?? null,
+            'category' => $validated['category'],
+            'latitude' => $validated['latitude'] ?? 0,
+            'longitude' => $validated['longitude'] ?? 0,
+            'employment_type' => $validated['employment_type'] ?? null,
+            'work_mode' => $validated['work_mode'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'New Job Opening added successfully!',
+            'data' => [
+                'id' => $job->id,
+                'state_id' => $job->state_id,
+                'title' => $job->title,
+                'company_name' => $job->company_name,
+                'location' => $job->location,
+                'salary_min' => $job->salary_min,
+                'salary_max' => $job->salary_max,
+                'category' => $job->category,
+                'latitude' => $job->latitude,
+                'longitude' => $job->longitude,
+                'employment_type' => $job->employment_type,
+                'work_mode' => $job->work_mode,
+            ],
+        ], 201);
+    }
 }
