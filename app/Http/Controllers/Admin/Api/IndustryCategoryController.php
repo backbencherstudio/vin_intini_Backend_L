@@ -39,12 +39,56 @@ class IndustryCategoryController extends Controller
                         'id' => $section->id,
                         'industry_type' => $section->industry_type,
                         'name' => $section->name,
-                        'network_type' => $section->network_type,
+                        // 'network_type' => $section->network_type,
 
                         'categories' => $section->IndustryCategory->map(function ($category) {
                             return [
-                                'id' => $category->id,
-                                'section_id' => $category->section_id,
+                                // 'id' => $category->id,
+                                // 'section_id' => $category->section_id,
+                                'category_name' => $category->category_name,
+                            ];
+                        })->values(),
+                    ];
+                })->values(),
+            ],
+        ]);
+    }
+
+
+    public function neuroscience(Request $request)
+    {
+        $query = IndustrySections::where('network_type', 'neuroscience')
+            ->where('industry_type', '!=', 'publications')
+            ->with([
+                'IndustryCategory' => function ($query) {
+                    $query->select(
+                        'id',
+                        'section_id',
+                        'category_name'
+                    );
+                }
+            ])
+            ->latest();
+
+        if ($request->filled('type')) {
+            $query->where('industry_type', $request->type);
+        }
+
+        $sections = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Neuroscience sections fetched successfully.',
+            'data' => [
+                'network' => 'neuroscience',
+                'sections' => $sections->map(function ($section) {
+                    return [
+                        'id' => $section->id,
+                        'industry_type' => $section->industry_type,
+                        'name' => $section->name,
+
+                        'categories' => $section->IndustryCategory->map(function ($category) {
+                            return [
                                 'category_name' => $category->category_name,
                             ];
                         })->values(),

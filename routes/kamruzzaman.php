@@ -44,6 +44,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     // Categories.....
     Route::prefix('categories')->group(function () {
         Route::get('psychology', [IndustryCategoryController::class, 'psychology']);
+        Route::get('neuroscience', [IndustryCategoryController::class, 'neuroscience']);
     });
 });
 
