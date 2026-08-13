@@ -11,6 +11,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     // Academia.....
     Route::prefix('academia')->group(function () {
 
+        // State.....
+        Route::get('state', [AcademiaController::class, 'getState']);
+
         // Universities.....
         Route::get('universities', [AcademiaController::class, 'indexUniversities']);
         Route::post('university/create', [AcademiaController::class, 'storeUniversity']);

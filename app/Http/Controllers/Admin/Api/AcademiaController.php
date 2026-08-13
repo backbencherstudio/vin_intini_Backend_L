@@ -7,6 +7,7 @@ use App\Models\AcademiaFacility;
 use App\Models\AcademiaJob;
 use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaUniversity;
+use App\Models\State;
 use Illuminate\Http\Request;
 
 class AcademiaController extends Controller
@@ -821,5 +822,20 @@ class AcademiaController extends Controller
             'success' => true,
             'message' => 'Job deleted successfully.'
         ], 200);
+    }
+
+
+    // For State.....
+    public function getState()
+    {
+        $states = State::select('id', 'name')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'States retrieved successfully.',
+            'data' => $states,
+        ]);
     }
 }
