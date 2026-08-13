@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Auth\Events\Login;
 
 class SocialController extends Controller
 {
@@ -101,6 +102,14 @@ class SocialController extends Controller
             }
 
             $token = JWTAuth::fromUser($user);
+
+            // -----------------------------------------
+            // Trigger the Login event to log the successful login activity
+            $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
+            $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
+            request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
+            event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
+            // -----------------------------------------
 
             if ($platform === 'web') {
                 $frontendUrl = rtrim(config('app.frontend_url'), '/');

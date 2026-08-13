@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\PasswordOtpMail;
+use App\Models\LoginActivity;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -131,6 +132,12 @@ class ForgotPasswordController extends Controller
         $user->save();
 
         DB::table('password_otps')->where('user_id', $user->id)->delete();
+
+        // === previous active sessions inactivity ===
+        LoginActivity::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->update(['is_active' => false]);
+        // ===========================================
 
         return response()->json([
             'status' => true,

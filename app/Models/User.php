@@ -35,6 +35,11 @@ class User extends Authenticatable implements JWTSubject
         'is_verified',
         'stripe_customer_id',
         'terms_accepted_at',
+        'two_factor_secret',
+        'two_factor_confirmed_at',
+        'two_factor_recovery_codes',
+        'recovery_email',
+        'recovery_email_verified_at',
     ];
 
     protected $hidden = [
@@ -50,6 +55,8 @@ class User extends Authenticatable implements JWTSubject
         'email_verified_at',
         'created_at',
         'updated_at',
+        'two_factor_secret',
+        'two_factor_recovery_codes'
     ];
 
     protected function casts(): array
@@ -60,6 +67,8 @@ class User extends Authenticatable implements JWTSubject
             'otp_expires_at' => 'datetime',
             'is_verified' => 'boolean',
             'password' => 'hashed',
+            'two_factor_confirmed_at' => 'datetime',
+            'recovery_email_verified_at' => 'datetime',
         ];
     }
 
@@ -143,7 +152,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/'.ltrim($value, '/'));
+        return asset('storage/' . ltrim($value, '/'));
     }
 
     public function getCoverImageUrlAttribute(): ?string
@@ -157,7 +166,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/'.ltrim($value, '/'));
+        return asset('storage/' . ltrim($value, '/'));
     }
 
     public function posts()

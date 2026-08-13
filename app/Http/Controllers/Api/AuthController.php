@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Illuminate\Auth\Events\Login;
 
 class AuthController extends Controller
 {
@@ -37,6 +38,12 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+
+            // Trigger the Failed event to log the failed login activity--------------
+            if ($user) {
+                event(new \Illuminate\Auth\Events\Failed('api', $user, $credentials));
+            }
+            // ------------------------------------------------------------------------
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
@@ -51,6 +58,15 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Check if 2FA is enabled and confirmed
+        if ($user->two_factor_confirmed_at) {
+            return response()->json([
+                'status' => '2fa_required',
+                'email' => $user->email,
+                'message' => 'Two-factor authentication is required. Please provide your code.'
+            ], 200);
+        }
+
         // Attempt login (JWT token)
         if (! $token = auth('api')->attempt($credentials)) {
             return response()->json([
@@ -59,6 +75,7 @@ class AuthController extends Controller
             ], 401);
         }
 
+
         $user = auth('api')->user();
 
         if (! empty($credentials['fcm_token'])) {
@@ -66,6 +83,13 @@ class AuthController extends Controller
                 ['fcm_token' => $credentials['fcm_token']]
             );
         }
+        // -----------------------------------------
+        // Trigger the Login event to log the successful login activity
+        $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
+        $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
+        request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
+        event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
+        // -----------------------------------------
 
         return $this->respondWithToken($token, $user);
     }
@@ -106,6 +130,11 @@ class AuthController extends Controller
                 'cover_image_url' => $user->cover_image_url,
                 'role' => $user->roles->pluck('name')->implode(', '),
 
+                'two_factor_enabled' => $user->two_factor_confirmed_at ? true : false,
+                'recovery_email' => $user->recovery_email,
+                'recovery_email_verified' => $user->recovery_email_verified_at ? true : false,
+                // 'recovery_email_pending' => !$user->recovery_email_verified_at && $user->recovery_email ? true : false,
+
                 'profile' => $user->profile ? [
                     'country' => $user->profile->country,
                     'postal_code' => $user->profile->postal_code,
@@ -137,13 +166,45 @@ class AuthController extends Controller
 
     public function logout()
     {
-        auth('api')->logout();
+        try {
+            $user = auth('api')->user();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Successfully logged out',
-        ]);
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'User not found'], 401);
+            }
+
+            $payload = auth('api')->payload();
+            if ($payload) {
+                $tokenId = $payload->get('jti');
+                \App\Models\LoginActivity::where('token_id', $tokenId)
+                    ->where('user_id', $user->id)
+                    ->update(['is_active' => 0]);
+            }
+
+            auth('api')->logout();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Successfully logged out',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Successfully logged out'
+            ]);
+        }
     }
+
+
+    // public function logout()
+    // {
+    //     auth('api')->logout();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Successfully logged out',
+    //     ]);
+    // }
 
     public function refresh()
     {
@@ -325,6 +386,14 @@ class AuthController extends Controller
         ])->save();
 
         $token = auth('api')->login($user);
+
+        // -----------------------------------------
+        // Trigger the Login event to log the successful login activity
+        $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
+        $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
+        request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
+        event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
+        // -----------------------------------------
 
         return response()->json([
             'status' => true,

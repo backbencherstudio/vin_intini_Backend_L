@@ -11,6 +11,9 @@ use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use App\Http\Middleware\CheckActiveSession;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -36,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'profile_completed' => EnsureProfileCompleted::class,
             'verified_user' => EnsureVerifiedUser::class,
+            'active_session' => CheckActiveSession::class,
         ]);
         // for admin login redirection--------
         $middleware->redirectGuestsTo('admin/login');

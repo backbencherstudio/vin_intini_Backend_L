@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\IndustryPublicationController;
 use App\Http\Controllers\Admin\InstitutionReportController;
 use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Admin\PartnerController;
+use App\Http\Controllers\Api\SecuritySettingsController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -42,7 +43,15 @@ Route::middleware('guest:web')->group(function () {
     Route::post('admin/login-submit', [AdminAuthController::class, 'adminLogin'])->name('admin.login.submit');
 });
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], function () {
+// Security Routes when user clicks on the email link for suspicious login activities
+Route::get('/security/email-resolve/{id}', [SecuritySettingsController::class, 'resolveFromEmail'])
+    ->name('security.email-resolve')->middleware('signed');
+// Security Routes when user clicks on the email link for suspicious login activities
+Route::post('/security/update-password', [SecuritySettingsController::class, 'updatePasswordFromAlert'])
+    ->name('security.update-password')->middleware('signed');
+
+
+Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'active_session']], function () {
 
     Route::get('/user-management', [AdminAuthController::class, 'userManagement'])->name('admin.user.management');
     // Institution Report Routes
@@ -116,7 +125,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin']], 
         Route::post('/update/{id}', [PagesController::class, 'update'])->name('admin.pages.update');
     });
 
-    Route::post('admin/logout', [AdminAuthController::class, 'adminLogout'])->name('admin.logout');
+
+    Route::post('/logout', [AdminAuthController::class, 'adminLogout'])->name('admin.logout');
 });
 
 // User Management Routes

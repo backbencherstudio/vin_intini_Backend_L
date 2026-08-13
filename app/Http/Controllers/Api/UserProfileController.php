@@ -7,6 +7,7 @@ use App\Models\Connection;
 use App\Models\Education;
 use App\Models\Experience;
 use App\Models\Institution;
+use App\Models\LoginActivity;
 use App\Models\Skill;
 use App\Models\User;
 use App\Services\ProfileImageService;
@@ -629,6 +630,15 @@ class UserProfileController extends Controller
         $user->update([
             'password' => Hash::make($request->new_password),
         ]);
+
+        // 4. Current token invalidation and logout other sessions
+        $currentTokenId = auth('api')->payload()->get('jti');
+
+        LoginActivity::where('user_id', $user->id)
+            ->where('token_id', '!=', $currentTokenId) 
+            ->where('is_active', true)
+            ->update(['is_active' => false]);
+        // ========================================================
 
         return response()->json([
             'status' => true,
