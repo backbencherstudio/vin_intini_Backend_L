@@ -51,7 +51,7 @@ class ConversationController extends Controller
                     ],
                     'last_message' => $conversation->lastMessage ? [
                         'id' => $conversation->lastMessage->id,
-                        'type' => $conversation->lastMessage->type,
+                        'type' => $conversation->lastMessage->display_type,
                         'message' => $conversation->lastMessage->message,
                         'file_url' => $conversation->lastMessage->file_url,
                         'file_name' => $conversation->lastMessage->file_name,
@@ -210,7 +210,7 @@ class ConversationController extends Controller
                 ],
                 'last_message' => $conversation->lastMessage ? [
                     'id' => $conversation->lastMessage->id,
-                    'type' => $conversation->lastMessage->type,
+                    'type' => $conversation->lastMessage->display_type,
                     'message' => $conversation->lastMessage->message,
                     'file_url' => $conversation->lastMessage->file_url,
                     'file_name' => $conversation->lastMessage->file_name,

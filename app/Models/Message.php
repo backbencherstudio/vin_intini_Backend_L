@@ -87,4 +87,14 @@ class Message extends Model
             default => 'other',
         };
     }
+
+    public function getDisplayTypeAttribute(): string
+    {
+        return match ($this->type) {
+            'text' => 'text',
+            'voice' => 'audio',
+            'file' => $this->file_category ?? 'file',
+            default => $this->type,
+        };
+    }
 }

@@ -560,8 +560,32 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.user.name', 'Alice Johnson')
             ->assertJsonPath('data.0.last_message.message', 'Hey there!')
+            ->assertJsonPath('data.0.last_message.type', 'text')
             ->assertJsonPath('data.0.last_message.sender_id', $connectedUser->id)
             ->assertJsonPath('data.0.unread_count', 1);
+    }
+
+    public function test_conversation_list_last_message_type_reflects_file_kind(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser('Alice', 'Johnson');
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $connectedUser->id,
+            'type' => 'file',
+            'file_path' => 'conversations/1/photo.jpg',
+            'file_name' => 'photo.jpg',
+            'file_size' => 1000,
+        ]);
+        $conversation->update(['last_message_id' => $message->id]);
+
+        $this->actingAs($user, 'api')->getJson('/api/conversations')
+            ->assertOk()
+            ->assertJsonPath('data.0.last_message.type', 'image');
     }
 
     public function test_conversation_list_empty_when_no_conversations(): void
