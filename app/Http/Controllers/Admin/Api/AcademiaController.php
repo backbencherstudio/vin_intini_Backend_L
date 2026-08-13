@@ -759,4 +759,67 @@ class AcademiaController extends Controller
             ],
         ], 201);
     }
+
+
+    public function updateJob(Request $request, $id)
+    {
+        $job = AcademiaJob::findOrFail($id);
+
+        $validated = $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'company_name' => 'sometimes|string|max:255',
+            'state_id' => 'sometimes|exists:states,id',
+            'location' => 'sometimes|nullable|string|max:255',
+            'salary_min' => 'sometimes|nullable|numeric',
+            'salary_max' => 'sometimes|nullable|numeric',
+            'category' => 'sometimes|in:state_institution,private_practice',
+            'latitude' => 'sometimes|nullable|numeric',
+            'longitude' => 'sometimes|nullable|numeric',
+            'employment_type' => 'sometimes|nullable|string|max:255',
+            'work_mode' => 'sometimes|nullable|string|max:255',
+        ]);
+
+        $job->update($validated);
+
+        $job->load('state');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Job Opening updated successfully.',
+            'data' => [
+                'id' => $job->id,
+                'title' => $job->title,
+                'company_name' => $job->company_name,
+                'category' => $job->category,
+                'salary_min' => $job->salary_min,
+                'salary_max' => $job->salary_max,
+                'employment_type' => $job->employment_type,
+                'work_mode' => $job->work_mode,
+                'city' => $job->location,
+                'state' => $job->state?->name,
+                'map_pin' => [
+                    'latitude' => $job->latitude,
+                    'longitude' => $job->longitude,
+                ],
+            ],
+        ]);
+    }
+
+
+    public function destroyJob($id)
+    {
+        $job = AcademiaJob::find($id);
+
+        if (!$job) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Job not found.'
+            ], 404);
+        }
+        $job->delete();
+        return response()->json([
+            'success' => true,
+            'message' => 'Job deleted successfully.'
+        ], 200);
+    }
 }
