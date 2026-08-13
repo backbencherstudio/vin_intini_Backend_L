@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\IndustryCategory;
 use App\Models\IndustrySections;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class IndustryCategoryController extends Controller
 {
@@ -96,5 +98,58 @@ class IndustryCategoryController extends Controller
                 })->values(),
             ],
         ]);
+    }
+
+
+    public function storeSection(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'industry_type' => 'required|in:biotechnology,psychotropics',
+        ]);
+
+        $section = DB::transaction(function () use ($validated) {
+
+            $section = IndustrySections::create([
+                'name' => $validated['name'],
+                'industry_type' => $validated['industry_type'],
+                'network_type' => 'psychology',
+            ]);
+
+            IndustryCategory::firstOrCreate([
+                'section_id' => $section->id,
+                'category_name' => 'All',
+            ]);
+
+            return $section;
+        });
+
+        $section->load([
+            'IndustryCategory' => function ($query) {
+                $query->select(
+                    'id',
+                    'section_id',
+                    'category_name'
+                );
+            }
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Section created successfully.',
+            'data' => [
+                'id' => $section->id,
+                'name' => $section->name,
+                'network_type' => $section->network_type,
+                'industry_type' => $section->industry_type,
+                'categories' => $section->IndustryCategory->map(function ($category) {
+                    return [
+                        'id' => $category->id,
+                        'section_id' => $category->section_id,
+                        'category_name' => $category->category_name,
+                    ];
+                })->values(),
+            ],
+        ], 201);
     }
 }
