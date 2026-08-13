@@ -197,4 +197,17 @@ class IndustryCategoryController extends Controller
             ],
         ]);
     }
+
+
+    public function destroySection($id)
+    {
+        $section = IndustrySections::findOrFail($id);
+
+        $section->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Section removed successfully'
+        ]);
+    }
 }
