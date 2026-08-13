@@ -11,6 +11,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     // Academia.....
     Route::prefix('academia')->group(function () {
 
+        // State.....
+        Route::get('state', [AcademiaController::class, 'getState']);
+
         // Universities.....
         Route::get('universities', [AcademiaController::class, 'indexUniversities']);
         Route::post('university/create', [AcademiaController::class, 'storeUniversity']);
@@ -31,6 +34,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
         // Employment.....
         Route::get('jobs', [AcademiaController::class, 'indexJobs']);
+        Route::post('job/create', [AcademiaController::class, 'storeJob']);
+        Route::put('job/update/{id}', [AcademiaController::class, 'updateJob']);
+        Route::delete('job/delete/{id}', [AcademiaController::class, 'destroyJob']);
     });
 });
 
