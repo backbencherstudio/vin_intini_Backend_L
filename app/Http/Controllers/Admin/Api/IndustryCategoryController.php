@@ -263,4 +263,49 @@ class IndustryCategoryController extends Controller
             ],
         ], 201);
     }
+
+
+    public function updateNeuroSection(Request $request, $id)
+    {
+        $section = IndustrySections::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'industry_type' => 'required|in:biotechnology,psychotropics',
+        ]);
+
+        $section->update([
+            'name' => $validated['name'],
+            'industry_type' => $validated['industry_type'],
+            'network_type' => 'neuroscience',
+        ]);
+
+        $section->load([
+            'IndustryCategory' => function ($query) {
+                $query->select(
+                    'id',
+                    'section_id',
+                    'category_name'
+                );
+            }
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Section updated successfully.',
+            'data' => [
+                'id' => $section->id,
+                'name' => $section->name,
+                'network_type' => $section->network_type,
+                'industry_type' => $section->industry_type,
+                'categories' => $section->IndustryCategory->map(function ($category) {
+                    return [
+                        'id' => $category->id,
+                        'section_id' => $category->section_id,
+                        'category_name' => $category->category_name,
+                    ];
+                })->values(),
+            ],
+        ]);
+    }
 }
