@@ -50,6 +50,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
 
         Route::get('neuroscience', [IndustryCategoryController::class, 'neuroscience']);
+        Route::post('neuroscience/create', [IndustryCategoryController::class, 'storeNeuroSection']);
     });
 });
 
