@@ -358,4 +358,17 @@ class IndustryCategoryController extends Controller
             ],
         ]);
     }
+
+
+    public function destroySubCategory($id)
+    {
+        $category = IndustryCategory::findOrFail($id);
+
+        $category->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Category removed successfully.'
+        ]);
+    }
 }
