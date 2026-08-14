@@ -45,7 +45,7 @@ class IndustryCategoryController extends Controller
 
                         'categories' => $section->IndustryCategory->map(function ($category) {
                             return [
-                                // 'id' => $category->id,
+                                'id' => $category->id,
                                 // 'section_id' => $category->section_id,
                                 'category_name' => $category->category_name,
                             ];
@@ -189,6 +189,7 @@ class IndustryCategoryController extends Controller
 
                         'categories' => $section->IndustryCategory->map(function ($category) {
                             return [
+                                'id' => $category->id,
                                 'category_name' => $category->category_name,
                             ];
                         })->values(),
@@ -333,7 +334,4 @@ class IndustryCategoryController extends Controller
             ],
         ], 201);
     }
-
-
-    
 }
