@@ -59,7 +59,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
         // Sub Tabs/Categories.....
         Route::post('sub-cateroy/create', [IndustryCategoryController::class, 'storeSubCategory']);
-        
+        Route::put('sub-cateroy/update/{id}', [IndustryCategoryController::class, 'updateSubCategory']);
     });
 });
 

@@ -334,4 +334,28 @@ class IndustryCategoryController extends Controller
             ],
         ], 201);
     }
+
+
+    public function updateSubCategory(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'category_name' => 'required|string|max:255',
+        ]);
+
+        $category = IndustryCategory::findOrFail($id);
+
+        $category->update([
+            'category_name' => $validated['category_name'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Category updated successfully.',
+            'data' => [
+                'id' => $category->id,
+                'section_id' => $category->section_id,
+                'category_name' => $category->category_name,
+            ],
+        ]);
+    }
 }
