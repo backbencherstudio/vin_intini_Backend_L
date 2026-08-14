@@ -46,12 +46,12 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('psychology', [IndustryCategoryController::class, 'psychology']);
         Route::post('psychology/create', [IndustryCategoryController::class, 'storeSection']);
         Route::put('psychology/update/{id}', [IndustryCategoryController::class, 'updateSection']);
-        Route::delete('psychology/delete/{id}', [IndustryCategoryController::class, 'destroySection']);
-
 
         Route::get('neuroscience', [IndustryCategoryController::class, 'neuroscience']);
         Route::post('neuroscience/create', [IndustryCategoryController::class, 'storeNeuroSection']);
         Route::put('neuroscience/update/{id}', [IndustryCategoryController::class, 'updateNeuroSection']);
+
+        Route::delete('section/delete/{id}', [IndustryCategoryController::class, 'destroySection']);
     });
 });
 
