@@ -308,4 +308,32 @@ class IndustryCategoryController extends Controller
             'message' => 'Section removed successfully'
         ]);
     }
+
+
+
+    public function storeSubCategory(Request $request)
+    {
+        $validated = $request->validate([
+            'category_name' => 'required|string|max:255',
+            'section_id' => 'required|exists:industry_sections,id',
+        ]);
+
+        $category = IndustryCategory::create([
+            'section_id' => $validated['section_id'],
+            'category_name' => $validated['category_name'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Category created successfully.',
+            'data' => [
+                'id' => $category->id,
+                'section_id' => $category->section_id,
+                'category_name' => $category->category_name,
+            ],
+        ], 201);
+    }
+
+
+    
 }
