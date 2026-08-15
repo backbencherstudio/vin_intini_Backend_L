@@ -18,7 +18,9 @@ class LogSuccessfulLogin
             request()->ip(),
             request()->userAgent(),
             $tokenId,
-            'Successful'
+            'Successful',
+            request('device_name'),
+            request('platform')
         );
     }
 }
