@@ -16,15 +16,17 @@ class LogLoginJob
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $userId, $ip, $userAgent, $tokenId, $status;
+    protected $userId, $ip, $userAgent, $tokenId, $status, $customDevice, $customPlatform;
 
-    public function __construct($userId, $ip, $userAgent, $tokenId = null, $status = 'Successful')
+    public function __construct($userId, $ip, $userAgent, $tokenId = null, $status = 'Successful', $customDevice = null, $customPlatform = null)
     {
         $this->userId = $userId;
         $this->ip = $ip;
         $this->userAgent = $userAgent;
         $this->tokenId = $tokenId;
         $this->status = $status;
+        $this->customDevice = $customDevice;
+        $this->customPlatform = $customPlatform;
     }
 
     public function handle()
@@ -35,12 +37,25 @@ class LogLoginJob
         $platform = $agent->platform();
         $browser = $agent->browser();
 
-        if ($agent->isPhone() || $agent->isTablet()) {
-            $brand = $agent->device();
-            $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
+        if ($this->customDevice) {
+            $device = $this->customDevice . ($this->customPlatform ? ' (' . $this->customPlatform . ')' : '');
+            $browser = 'Native Mobile App';
         } else {
-            $device = $platform;
+            if ($agent->isPhone() || $agent->isTablet()) {
+                $brand = $agent->device();
+                $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
+            } else {
+                $device = $platform ?: 'Unknown Device';
+            }
+            $browser = $agent->browser() ?: 'Unknown Browser';
         }
+
+        // if ($agent->isPhone() || $agent->isTablet()) {
+        //     $brand = $agent->device();
+        //     $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
+        // } else {
+        //     $device = $platform;
+        // }
 
         $loc = Location::get($this->ip);
         $locationName = $loc ? $loc->cityName . ', ' . $loc->countryName : 'Unknown';

@@ -6,7 +6,7 @@ use Illuminate\Auth\Events\Failed;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Jobs\LogLoginJob;
 
-class LogFailedLogin 
+class LogFailedLogin
 {
     public function handle(Failed $event)
     {
@@ -23,7 +23,9 @@ class LogFailedLogin
                 $ip,
                 $userAgent,
                 null,
-                'Failed'
+                'Failed',
+                request('device_name'),
+                request('platform')
             );
         }
     }
