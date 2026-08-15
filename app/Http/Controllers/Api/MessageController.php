@@ -34,7 +34,7 @@ class MessageController extends Controller
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
-        $data = $messages->reverse()->values()->map(fn (Message $message) => [
+        $data = $messages->reverse()->values()->map(fn(Message $message) => [
             'id' => $message->id,
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
@@ -57,7 +57,7 @@ class MessageController extends Controller
             'success' => true,
             'other_user' => [
                 'id' => $otherUser->id,
-                'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
+                'name' => trim(($otherUser->first_name ?? '') . ' ' . ($otherUser->last_name ?? '')),
                 'first_name' => $otherUser->first_name,
                 'last_name' => $otherUser->last_name,
                 'title' => $otherUser->title,
@@ -85,7 +85,7 @@ class MessageController extends Controller
         $validated = $request->validate([
             'type' => 'required|in:text,voice,file',
             'message' => 'required_if:type,text|nullable|string',
-            'file' => 'required_if:type,file|required_if:type,voice|nullable|file|max:102400',
+            'file' => 'required_if:type,file|required_if:type,voice|required_if:type,image|required_if:type,video|nullable|file|max:102400',
             'duration' => 'nullable|integer|min:0',
             'reply_to_id' => [
                 'nullable',
@@ -109,7 +109,7 @@ class MessageController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $file->store('conversations/'.$conversation->id, 'public');
+            $path = $file->store('conversations/' . $conversation->id, 'public');
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_size'] = $file->getSize();
@@ -242,7 +242,7 @@ class MessageController extends Controller
         return [
             'id' => $message->id,
             'sender_id' => $message->sender_id,
-            'sender_name' => trim(($message->sender->first_name ?? '').' '.($message->sender->last_name ?? '')),
+            'sender_name' => trim(($message->sender->first_name ?? '') . ' ' . ($message->sender->last_name ?? '')),
             'type' => $message->type,
             'message' => $message->message,
             'file_url' => $message->file_url,
@@ -287,7 +287,7 @@ class MessageController extends Controller
     private function isParticipant(int $userId, int $conversationId): bool
     {
         return Conversation::where('id', $conversationId)
-            ->where(fn ($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
+            ->where(fn($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
             ->exists();
     }
 
@@ -306,13 +306,13 @@ class MessageController extends Controller
     {
         return $message->reactions
             ->groupBy('reaction')
-            ->map(fn ($reactions, string $reaction) => [
+            ->map(fn($reactions, string $reaction) => [
                 'reaction' => $reaction,
                 'count' => $reactions->count(),
                 'users' => $reactions
-                    ->map(fn ($item) => [
+                    ->map(fn($item) => [
                         'id' => $item->user_id,
-                        'name' => trim(($item->user->first_name ?? '').' '.($item->user->last_name ?? '')),
+                        'name' => trim(($item->user->first_name ?? '') . ' ' . ($item->user->last_name ?? '')),
                     ])
                     ->values(),
             ])
