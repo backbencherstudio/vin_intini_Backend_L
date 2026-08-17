@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Events\ConversationUpdated;
 use App\Events\MessageReactionChanged;
 use App\Events\MessageSent;
 use App\Models\Connection;
@@ -492,6 +493,34 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('other_user.id', $connectedUser->id)
             ->assertJsonPath('data.0.message', 'Message 0')
             ->assertJsonPath('data.4.message', 'Message 4');
+    }
+
+
+    public function test_conversation_updated_event_broadcasts_unread_count_to_receiver(): void
+    {
+        Event::fake([MessageSent::class, ConversationUpdated::class]);
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Hello!',
+        ])->assertCreated();
+
+        Event::assertDispatched(ConversationUpdated::class, function (ConversationUpdated $event) use ($conversation, $connectedUser, $user) {
+            return $event->conversation->is($conversation)
+                && $event->receiver->id === $connectedUser->id
+                && $event->unreadCount === 1
+                && $event->unreadConversationCount === 1
+                && $event->totalUnreadMessages === 1
+                && $event->message->sender_id === $user->id
+                && $event->broadcastOn()[0]->name === 'private-App.Models.User.'.$connectedUser->id;
+        });
     }
 
     public function test_user_can_delete_own_message(): void

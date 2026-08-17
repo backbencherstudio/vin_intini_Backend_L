@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ConversationUpdated;
 use App\Events\MessageReactionChanged;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
@@ -128,6 +129,17 @@ class MessageController extends Controller
         event(new MessageSent($message));
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
+        $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
+
+        event(new ConversationUpdated(
+            $conversation,
+            $otherUser,
+            $conversation->unreadCountFor($otherUser->id),
+            $message,
+            $unreadSummary['unread_conversation_count'],
+            $unreadSummary['total_unread_messages'],
+        ));
+
         $otherUser->notify(new NewMessageNotification($message));
 
         return response()->json([
