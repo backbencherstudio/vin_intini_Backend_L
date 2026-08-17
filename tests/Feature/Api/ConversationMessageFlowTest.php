@@ -569,6 +569,36 @@ class ConversationMessageFlowTest extends TestCase
         });
     }
 
+    public function test_conversation_updated_event_broadcasts_zeroed_counts_when_opening_chat(): void
+    {
+        Event::fake([MessageSent::class, ConversationUpdated::class]);
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Hello!',
+        ])->assertCreated();
+
+        $this->actingAs($connectedUser, 'api')->getJson("/api/conversations/{$conversation->id}/messages")
+            ->assertOk();
+
+        Event::assertDispatched(ConversationUpdated::class, function (ConversationUpdated $event) use ($conversation, $connectedUser) {
+            return $event->conversation->is($conversation)
+                && $event->receiver->id === $connectedUser->id
+                && $event->unreadCount === 0
+                && $event->unreadConversationCount === 0
+                && $event->totalUnreadMessages === 0
+                && $event->message === null
+                && $event->broadcastOn()[0]->name === 'private-App.Models.User.'.$connectedUser->id;
+        });
+    }
+
     public function test_user_can_delete_own_message(): void
     {
         $user = $this->makeUser();
