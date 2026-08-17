@@ -44,6 +44,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
     // Institution Report.....
     Route::get('institution-report', [InstitutionReportController::class, 'institutionReport']);
+    Route::get('institution-report/students/{id}', [InstitutionReportController::class, 'showStudents']);
 
 
     // Categories.....
