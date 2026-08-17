@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\LoginActivity;
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\LoginActivity;
 
 class CheckActiveSession
 {
@@ -13,7 +13,9 @@ class CheckActiveSession
         $user = auth()->user();
 
         if ($user) {
-            $tokenId = null;
+            if (auth('api')->check() && ! $request->bearerToken()) {
+                return $next($request);
+            }
 
             if (auth('api')->check()) {
                 $tokenId = auth('api')->payload()->get('jti'); // API
@@ -26,12 +28,13 @@ class CheckActiveSession
                 ->where('is_active', true)
                 ->exists();
 
-            if (!$isActive) {
+            if (! $isActive) {
                 if (auth('api')->check()) {
                     return response()->json(['message' => 'Your session has been revoked.'], 401);
                 }
 
                 auth()->logout();
+
                 return redirect('/admin/login')->withErrors(['email' => 'Session revoked by admin.']);
             }
         }
