@@ -56,6 +56,17 @@ class MessageController extends Controller
             'created_at' => $message->created_at->toISOString(),
         ])->values();
 
+        $unreadSummary = Conversation::unreadSummaryFor($currentUser->id);
+
+        event(new ConversationUpdated(
+            $conversation,
+            $currentUser,
+            $conversation->unreadCountFor($currentUser->id),
+            null,
+            $unreadSummary['unread_conversation_count'],
+            $unreadSummary['total_unread_messages'],
+        ));
+
         return response()->json([
             'success' => true,
             'other_user' => [
