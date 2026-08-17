@@ -175,6 +175,8 @@ class UserProfileController extends Controller
                     }
                 }
             }
+
+            $isFollowing = $currentUser->following()->where('following_id', $user->id)->exists();
         }
 
         $totalConnections = Connection::query()
@@ -200,6 +202,7 @@ class UserProfileController extends Controller
                     'action_label' => $actionLabel,
                     'pending_request_id' => $pendingRequestId,
                     'is_connected' => $state === 'accepted',
+                    'is_following' => $isFollowing,
                 ],
 
                 'id' => $user->id,
@@ -635,7 +638,7 @@ class UserProfileController extends Controller
         $currentTokenId = auth('api')->payload()->get('jti');
 
         LoginActivity::where('user_id', $user->id)
-            ->where('token_id', '!=', $currentTokenId) 
+            ->where('token_id', '!=', $currentTokenId)
             ->where('is_active', true)
             ->update(['is_active' => false]);
         // ========================================================
