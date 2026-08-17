@@ -495,6 +495,52 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('data.4.message', 'Message 4');
     }
 
+    public function test_total_unread_count_returns_global_summary(): void
+    {
+        $user = $this->makeUser();
+
+        $unreadUsers = ['a', 'b', 'c', 'd'];
+        $messagesPerUser = ['a' => 1, 'b' => 4, 'c' => 5, 'd' => 2];
+
+        foreach ($unreadUsers as $name) {
+            $other = $this->makeUser();
+            $this->connectUsers($user, $other);
+
+            $conversation = Conversation::betweenUsers($user->id, $other->id);
+
+            for ($i = 0; $i < $messagesPerUser[$name]; $i++) {
+                $this->actingAs($other, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+                    'type' => 'text',
+                    'message' => "Hello from {$name} {$i}",
+                ]);
+            }
+        }
+
+        $readUser = $this->makeUser();
+        $this->connectUsers($user, $readUser);
+        $readConversation = Conversation::betweenUsers($user->id, $readUser->id);
+        $this->actingAs($readUser, 'api')->postJson("/api/conversations/{$readConversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Already read',
+        ]);
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$readConversation->id}/mark-read");
+
+        $this->actingAs($user, 'api')->getJson('/api/conversations/unread-count')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.unread_conversation_count', 4)
+            ->assertJsonPath('data.total_unread_messages', 12);
+    }
+
+    public function test_total_unread_count_is_zero_when_everything_is_read(): void
+    {
+        $user = $this->makeUser();
+
+        $this->actingAs($user, 'api')->getJson('/api/conversations/unread-count')
+            ->assertOk()
+            ->assertJsonPath('data.unread_conversation_count', 0)
+            ->assertJsonPath('data.total_unread_messages', 0);
+    }
 
     public function test_conversation_updated_event_broadcasts_unread_count_to_receiver(): void
     {

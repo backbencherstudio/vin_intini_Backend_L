@@ -10,7 +10,6 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class ConversationController extends Controller
 {
@@ -75,6 +74,17 @@ class ConversationController extends Controller
         return response()->json([
             'success' => true,
             'data' => $data,
+        ]);
+    }
+
+    /**
+     * Global unread summary across all conversations of the current user.
+     */
+    public function unreadCount(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => Conversation::unreadSummaryFor($request->user()->id),
         ]);
     }
 
@@ -290,29 +300,6 @@ class ConversationController extends Controller
             return [];
         }
 
-        $results = DB::table('messages')
-            ->join('conversations', 'messages.conversation_id', '=', 'conversations.id')
-            ->whereIn('messages.conversation_id', $conversationIds)
-            ->where('messages.sender_id', '!=', $userId)
-            ->where(function ($q) use ($userId) {
-                $q->where(function ($q) use ($userId) {
-                    $q->where('conversations.user_id_1', $userId)
-                        ->where(function ($q) {
-                            $q->whereColumn('messages.created_at', '>', 'conversations.user_1_last_read_at')
-                                ->orWhereNull('conversations.user_1_last_read_at');
-                        });
-                })->orWhere(function ($q) use ($userId) {
-                    $q->where('conversations.user_id_2', $userId)
-                        ->where(function ($q) {
-                            $q->whereColumn('messages.created_at', '>', 'conversations.user_2_last_read_at')
-                                ->orWhereNull('conversations.user_2_last_read_at');
-                        });
-                });
-            })
-            ->groupBy('messages.conversation_id')
-            ->selectRaw('messages.conversation_id, COUNT(*) as count')
-            ->get();
-
-        return $results->pluck('count', 'conversation_id')->toArray();
+        return Conversation::unreadCountsFor($userId);
     }
 }

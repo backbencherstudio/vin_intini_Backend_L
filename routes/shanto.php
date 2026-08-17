@@ -48,6 +48,7 @@ Route::get('/my-comment-list', [CommentController::class, 'myComments']);
 
 // conversation routes
 Route::get('/conversations', [ConversationController::class, 'index']);
+Route::get('/conversations/unread-count', [ConversationController::class, 'unreadCount']);
 Route::post('/conversations/{conversation}/mark-read', [ConversationController::class, 'markAsRead']);
 Route::post('/conversations/{conversation}/mark-unread', [ConversationController::class, 'markAsUnread']);
 Route::post('/conversations/{conversation}/archive', [ConversationController::class, 'archive']);
