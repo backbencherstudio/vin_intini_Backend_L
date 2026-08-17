@@ -14,22 +14,25 @@ class TimelineController extends Controller
     public function timeline(Request $request, $userId)
     {
         $authUser = auth('api')->user();
-
         $isOwnProfile = $authUser->id == $userId;
 
+        $targetUser = \App\Models\User::with('profile:user_id,privacy_profile_activity')->find($userId);
+
+        if (!$targetUser) {
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        $privacy = $targetUser->profile->privacy_profile_activity ?? 'everyone';
         $relationshipStatus = 'not_connected';
 
         if ($isOwnProfile) {
             $relationshipStatus = 'connected';
         } else {
-
             $connection = Connection::where(function ($q) use ($authUser, $userId) {
                 $q->where(function ($q1) use ($authUser, $userId) {
-                    $q1->where('sender_id', $authUser->id)
-                        ->where('receiver_id', $userId);
+                    $q1->where('sender_id', $authUser->id)->where('receiver_id', $userId);
                 })->orWhere(function ($q2) use ($authUser, $userId) {
-                    $q2->where('sender_id', $userId)
-                        ->where('receiver_id', $authUser->id);
+                    $q2->where('sender_id', $userId)->where('receiver_id', $authUser->id);
                 });
             })->first();
 
@@ -48,21 +51,33 @@ class TimelineController extends Controller
             ->with([
                 'user:id,first_name,last_name,profile_image,title',
                 'media',
+                'likes' => function ($q) use ($authUser) {
+                    $q->where('user_id', $authUser->id);
+                },
             ])
-            ->where('user_id', $userId)
-            ->where(function ($query) use ($isOwnProfile, $isConnected) {
+            ->where('user_id', $userId);
 
-                if ($isOwnProfile) {
-                    $query->whereIn('visibility', ['public', 'connections']);
+        $postsQuery->where(function ($query) use ($isOwnProfile, $isConnected, $privacy) {
+            if ($isOwnProfile) {
+                $query->whereIn('visibility', ['public', 'connections', 'groups']);
+            } else {
+                if ($privacy === 'nobody') {
+                    $query->whereRaw('1 = 0');
+                } elseif ($privacy === 'only_connected') {
+                    if ($isConnected) {
+                        $query->whereIn('visibility', ['public', 'connections']);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
                 } else {
-
                     if ($isConnected) {
                         $query->whereIn('visibility', ['public', 'connections']);
                     } else {
                         $query->where('visibility', 'public');
                     }
                 }
-            });
+            }
+        });
 
         $posts = $postsQuery
             ->orderByDesc('id')
@@ -79,14 +94,9 @@ class TimelineController extends Controller
                     'description' => $post->description,
                     'visibility' => $post->visibility,
                     'who_can_comment' => $post->who_can_comment,
-
                     'total_like' => $post->total_like ?? 0,
                     'total_comment' => $post->total_comment ?? 0,
-
-                    'liked_by_me' => $post->likes()
-                        ->where('user_id', $authUser->id)
-                        ->exists(),
-
+                    'liked_by_me' => $post->likes->isNotEmpty(),
                     'media' => $post->media,
                     'created_at' => $post->created_at,
                 ];
@@ -94,7 +104,6 @@ class TimelineController extends Controller
 
             'meta' => [
                 'is_own_profile' => $isOwnProfile,
-
                 'relationship_status' => $relationshipStatus,
             ],
 
@@ -106,6 +115,104 @@ class TimelineController extends Controller
             ],
         ]);
     }
+
+    //santos's code===================================
+    // public function timeline(Request $request, $userId)
+    // {
+    //     $authUser = auth('api')->user();
+
+    //     $isOwnProfile = $authUser->id == $userId;
+
+    //     $relationshipStatus = 'not_connected';
+
+    //     if ($isOwnProfile) {
+    //         $relationshipStatus = 'connected';
+    //     } else {
+
+    //         $connection = Connection::where(function ($q) use ($authUser, $userId) {
+    //             $q->where(function ($q1) use ($authUser, $userId) {
+    //                 $q1->where('sender_id', $authUser->id)
+    //                     ->where('receiver_id', $userId);
+    //             })->orWhere(function ($q2) use ($authUser, $userId) {
+    //                 $q2->where('sender_id', $userId)
+    //                     ->where('receiver_id', $authUser->id);
+    //             });
+    //         })->first();
+
+    //         if ($connection) {
+    //             $relationshipStatus = match ($connection->status) {
+    //                 Connection::STATUS_ACCEPTED => 'connected',
+    //                 Connection::STATUS_PENDING => 'pending',
+    //                 default => 'not_connected',
+    //             };
+    //         }
+    //     }
+
+    //     $isConnected = $relationshipStatus === 'connected';
+
+    //     $postsQuery = Post::query()
+    //         ->with([
+    //             'user:id,first_name,last_name,profile_image,title',
+    //             'media',
+    //         ])
+    //         ->where('user_id', $userId)
+    //         ->where(function ($query) use ($isOwnProfile, $isConnected) {
+
+    //             if ($isOwnProfile) {
+    //                 $query->whereIn('visibility', ['public', 'connections']);
+    //             } else {
+
+    //                 if ($isConnected) {
+    //                     $query->whereIn('visibility', ['public', 'connections']);
+    //                 } else {
+    //                     $query->where('visibility', 'public');
+    //                 }
+    //             }
+    //         });
+
+    //     $posts = $postsQuery
+    //         ->orderByDesc('id')
+    //         ->paginate($request->get('per_page', 10));
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Timeline fetched successfully',
+
+    //         'data' => collect($posts->items())->map(function ($post) use ($authUser) {
+    //             return [
+    //                 'id' => $post->id,
+    //                 'user' => $post->user,
+    //                 'description' => $post->description,
+    //                 'visibility' => $post->visibility,
+    //                 'who_can_comment' => $post->who_can_comment,
+
+    //                 'total_like' => $post->total_like ?? 0,
+    //                 'total_comment' => $post->total_comment ?? 0,
+
+    //                 'liked_by_me' => $post->likes()
+    //                     ->where('user_id', $authUser->id)
+    //                     ->exists(),
+
+    //                 'media' => $post->media,
+    //                 'created_at' => $post->created_at,
+    //             ];
+    //         }),
+
+    //         'meta' => [
+    //             'is_own_profile' => $isOwnProfile,
+
+    //             'relationship_status' => $relationshipStatus,
+    //         ],
+
+    //         'pagination' => [
+    //             'current_page' => $posts->currentPage(),
+    //             'per_page' => $posts->perPage(),
+    //             'total' => $posts->total(),
+    //             'last_page' => $posts->lastPage(),
+    //         ],
+    //     ]);
+    // }
+    //santos's code===================================
 
     public function groupPosts(Request $request, $groupId)
     {
