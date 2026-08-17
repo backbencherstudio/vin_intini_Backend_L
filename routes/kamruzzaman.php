@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\Api\PageController;
 use App\Http\Controllers\Admin\Api\AcademiaController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
+use App\Http\Controllers\Admin\Api\InstitutionReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('role:admin')->prefix('admin')->group(function () {
@@ -39,6 +40,10 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::put('job/update/{id}', [AcademiaController::class, 'updateJob']);
         Route::delete('job/delete/{id}', [AcademiaController::class, 'destroyJob']);
     });
+
+
+    // Institution Report.....
+    Route::get('institution-report', [InstitutionReportController::class, 'institutionReport']);
 
 
     // Categories.....
