@@ -27,6 +27,8 @@ class MessageController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
 
+        $conversation->markAsReadFor($currentUser->id);
+
         $messages = $conversation->messages()
             ->with(['sender:id,first_name,last_name,title,profile_image', 'replyTo.sender:id,first_name,last_name', 'reactions.user:id,first_name,last_name'])
             ->orderBy('id', 'desc')

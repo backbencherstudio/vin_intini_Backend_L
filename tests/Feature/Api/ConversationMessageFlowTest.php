@@ -441,6 +441,29 @@ class ConversationMessageFlowTest extends TestCase
         $after->assertJsonPath('data.0.unread_count', 0);
     }
 
+    public function test_fetching_messages_marks_conversation_as_read(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Unread message',
+        ]);
+
+        $before = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $before->assertJsonPath('data.0.unread_count', 1);
+
+        $this->actingAs($user, 'api')->getJson("/api/conversations/{$conversation->id}/messages")
+            ->assertOk();
+
+        $after = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $after->assertJsonPath('data.0.unread_count', 0);
+    }
+
     public function test_user_can_get_paginated_messages(): void
     {
         $user = $this->makeUser();
