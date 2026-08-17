@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
+use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\GroupController;
 use Illuminate\Support\Facades\Route;
 
@@ -111,3 +112,6 @@ Route::prefix('neuroscience-network/industry')->group(function () {
     Route::get('/pharma-partners', [IndustryApiController::class, 'getNeurosciencePharmaPartners']);
     Route::get('/pub-partners', [IndustryApiController::class, 'getNeurosciencePubPartners']);
 });
+
+
+Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'updatePrivacySettings']);
