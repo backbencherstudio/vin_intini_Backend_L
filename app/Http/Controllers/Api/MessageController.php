@@ -6,6 +6,7 @@ use App\Events\ConversationUpdated;
 use App\Events\MessageReactionChanged;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
+use App\Models\Connection;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Subscription;
@@ -36,6 +37,14 @@ class MessageController extends Controller
             ->cursorPaginate(50);
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
+
+        $isConnected = Connection::query()
+            ->accepted()
+            ->where(function ($query) use ($currentUser, $otherUser) {
+                $query->where('sender_id', $currentUser->id)->where('receiver_id', $otherUser->id)
+                    ->orWhere('sender_id', $otherUser->id)->where('receiver_id', $currentUser->id);
+            })
+            ->exists();
 
         $data = $messages->reverse()->values()->map(fn (Message $message) => [
             'id' => $message->id,
@@ -79,6 +88,7 @@ class MessageController extends Controller
                 'cover_image_url' => $otherUser->cover_image_url,
                 'has_premium' => $this->userHasActiveSubscription($otherUser->id),
             ],
+            'is_connected' => $isConnected,
             'data' => $data,
             'next_cursor' => $messages->nextCursor()?->encode(),
             'has_more' => $messages->hasMorePages(),
@@ -94,6 +104,20 @@ class MessageController extends Controller
 
         if ($conversation->user_id_1 !== $currentUser->id && $conversation->user_id_2 !== $currentUser->id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $otherUser = $conversation->getOtherUser($currentUser->id);
+
+        $isConnected = Connection::query()
+            ->accepted()
+            ->where(function ($query) use ($currentUser, $otherUser) {
+                $query->where('sender_id', $currentUser->id)->where('receiver_id', $otherUser->id)
+                    ->orWhere('sender_id', $otherUser->id)->where('receiver_id', $currentUser->id);
+            })
+            ->exists();
+
+        if (! $isConnected) {
+            return response()->json(['success' => false, 'message' => 'You must be connected to message this user.'], 403);
         }
 
         $validated = $request->validate([
@@ -139,7 +163,6 @@ class MessageController extends Controller
 
         event(new MessageSent($message));
 
-        $otherUser = $conversation->getOtherUser($currentUser->id);
         $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
 
         event(new ConversationUpdated(
