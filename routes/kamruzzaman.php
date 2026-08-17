@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\Api\PageController;
 use App\Http\Controllers\Admin\Api\AcademiaController;
+use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
 use App\Http\Controllers\Admin\Api\InstitutionReportController;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +46,10 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     // Institution Report.....
     Route::get('institution-report', [InstitutionReportController::class, 'institutionReport']);
     Route::get('institution-report/students/{id}', [InstitutionReportController::class, 'showStudents']);
+
+
+    // Contact Us.....
+    
 
 
     // Categories.....
