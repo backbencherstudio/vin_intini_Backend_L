@@ -49,7 +49,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
 
     // Contact Us.....
-    
+    Route::get('contact-us', [ContactUsController::class, 'getContactUs']);
 
 
     // Categories.....
