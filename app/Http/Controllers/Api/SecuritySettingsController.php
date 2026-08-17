@@ -460,4 +460,25 @@ class SecuritySettingsController extends Controller
 
         return view('security.resolution', ['type' => 'success_reset']);
     }
+
+    public function updatePrivacySettings(Request $request)
+    {
+        $request->validate([
+            'privacy_profile_activity' => 'nullable|string|in:everyone,nobody,only_connected',
+            'privacy_profile_visibility' => 'nullable|string|in:everyone,nobody,only_connected',
+        ]);
+
+        $profile = auth()->user()->profile;
+
+        $profile->update($request->only([
+            'privacy_profile_activity',
+            'privacy_profile_visibility'
+        ]));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Privacy settings updated successfully',
+            'data' => $profile
+        ]);
+    }
 }

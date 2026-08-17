@@ -27,6 +27,9 @@ class UserProfile extends Model
         'notify_publications',
         'notify_residency',
         'notify_offers',
+
+        'privacy_profile_activity',
+        'privacy_profile_visibility',
     ];
 
     protected $casts = [

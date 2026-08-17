@@ -120,6 +120,8 @@ class AuthController extends Controller
                 // 'recovery_email_pending' => !$user->recovery_email_verified_at && $user->recovery_email ? true : false,
 
                 'profile' => $user->profile ? [
+                    'privacy_profile_activity' => $user->profile->privacy_profile_activity,
+                    'privacy_profile_visibility' => $user->profile->privacy_profile_visibility,
                     'country' => $user->profile->country,
                     'postal_code' => $user->profile->postal_code,
                     'profession' => $user->profile->profession,
