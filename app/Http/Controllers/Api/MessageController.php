@@ -46,7 +46,7 @@ class MessageController extends Controller
             })
             ->exists();
 
-        $data = $messages->reverse()->values()->map(fn (Message $message) => [
+        $data = $messages->reverse()->values()->map(fn(Message $message) => [
             'id' => $message->id,
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
@@ -80,15 +80,15 @@ class MessageController extends Controller
             'success' => true,
             'other_user' => [
                 'id' => $otherUser->id,
-                'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
+                'name' => trim(($otherUser->first_name ?? '') . ' ' . ($otherUser->last_name ?? '')),
                 'first_name' => $otherUser->first_name,
                 'last_name' => $otherUser->last_name,
                 'title' => $otherUser->title,
                 'profile_image_url' => $otherUser->profile_image_url,
                 'cover_image_url' => $otherUser->cover_image_url,
                 'has_premium' => $this->userHasActiveSubscription($otherUser->id),
+                'is_connected' => $isConnected,
             ],
-            'is_connected' => $isConnected,
             'data' => $data,
             'next_cursor' => $messages->nextCursor()?->encode(),
             'has_more' => $messages->hasMorePages(),
@@ -147,7 +147,7 @@ class MessageController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $file->store('conversations/'.$conversation->id, 'public');
+            $path = $file->store('conversations/' . $conversation->id, 'public');
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_size'] = $file->getSize();
@@ -290,7 +290,7 @@ class MessageController extends Controller
         return [
             'id' => $message->id,
             'sender_id' => $message->sender_id,
-            'sender_name' => trim(($message->sender->first_name ?? '').' '.($message->sender->last_name ?? '')),
+            'sender_name' => trim(($message->sender->first_name ?? '') . ' ' . ($message->sender->last_name ?? '')),
             'type' => $message->type,
             'message' => $message->message,
             'file_url' => $message->file_url,
@@ -335,7 +335,7 @@ class MessageController extends Controller
     private function isParticipant(int $userId, int $conversationId): bool
     {
         return Conversation::where('id', $conversationId)
-            ->where(fn ($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
+            ->where(fn($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
             ->exists();
     }
 
@@ -354,13 +354,13 @@ class MessageController extends Controller
     {
         return $message->reactions
             ->groupBy('reaction')
-            ->map(fn ($reactions, string $reaction) => [
+            ->map(fn($reactions, string $reaction) => [
                 'reaction' => $reaction,
                 'count' => $reactions->count(),
                 'users' => $reactions
-                    ->map(fn ($item) => [
+                    ->map(fn($item) => [
                         'id' => $item->user_id,
-                        'name' => trim(($item->user->first_name ?? '').' '.($item->user->last_name ?? '')),
+                        'name' => trim(($item->user->first_name ?? '') . ' ' . ($item->user->last_name ?? '')),
                     ])
                     ->values(),
             ])
