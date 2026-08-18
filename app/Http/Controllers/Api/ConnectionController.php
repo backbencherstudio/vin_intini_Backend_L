@@ -291,26 +291,21 @@ class ConnectionController extends Controller
             })
             ->whereIn('status', [Connection::STATUS_ACCEPTED, Connection::STATUS_PENDING])
             ->get(['sender_id', 'receiver_id'])
+            ->toBase()
             ->map(function ($conn) use ($currentUser) {
                 return $conn->sender_id === $currentUser->id ? $conn->receiver_id : $conn->sender_id;
             })
-            ->push($currentUser->id)
             ->unique()
-            ->values()
-            ->toArray();
+            ->values();
 
         $suggestionsQuery = User::query()
-            ->select([
-                'users.id',
-                'users.first_name',
-                'users.last_name',
-                'users.title',
-                'users.profile_image',
-                'users.cover_image'
-            ])
+            ->select(['users.id', 'users.first_name', 'users.last_name', 'users.title', 'users.profile_image', 'users.cover_image'])
             ->join('user_profiles', 'users.id', '=', 'user_profiles.user_id')
             ->where('user_profiles.privacy_profile_visibility', 'everyone')
-            ->whereNotIn('users.id', $excludedUserIds)
+            ->where('users.id', '!=', $currentUser->id)
+            ->when($excludedUserIds->isNotEmpty(), function ($query) use ($excludedUserIds) {
+                $query->whereNotIn('users.id', $excludedUserIds->all());
+            })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('users.first_name', 'like', $search . '%')
