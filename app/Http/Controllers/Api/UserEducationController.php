@@ -6,48 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Education;
 use App\Models\Institution;
 use App\Models\Skill;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class UserEducationController extends Controller
 {
-    // public function institutionSuggestions(Request $request)
-    // {
-    //     $validated = $request->validate([
-    //         'search' => 'nullable|string|max:100',
-    //         'limit'  => 'nullable|integer|min:1|max:20',
-    //     ]);
-
-    //     $search = trim((string) ($validated['search'] ?? ''));
-    //     $limit  = $validated['limit'] ?? 20;
-
-    //     $query = Institution::query()
-    //         ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website']);
-
-    //     if ($search !== '') {
-    //         $query->where('name', 'like', "%{$search}%")
-
-    //             ->orderByRaw("
-    //             CASE
-    //                 WHEN name = ? THEN 1
-    //                 WHEN name LIKE ? THEN 2
-    //                 ELSE 3
-    //             END
-    //         ", [$search, $search . '%']);
-    //     }
-
-    //     $institutions = $query->orderBy('name', 'asc')
-    //         ->limit($limit)
-    //         ->get();
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'count'  => $institutions->count(),
-    //         'data'   => $institutions,
-    //     ]);
-    // }
-
     public function institutionSuggestions(Request $request)
     {
         $validated = $request->validate([
@@ -67,7 +32,7 @@ class UserEducationController extends Controller
                     WHEN name LIKE ? THEN 2
                     ELSE 3
                 END
-            ', [$search, $search.'%']);
+            ', [$search, $search . '%']);
         }
 
         $institutions = $query->orderBy('name', 'asc')
@@ -79,31 +44,6 @@ class UserEducationController extends Controller
             'data' => $institutions,
         ]);
     }
-
-    // public function institutionSuggestions(Request $request)
-    // {
-    //     $validated = $request->validate([
-    //         'search' => 'nullable|string|max:100',
-    //         'limit' => 'nullable|integer|min:1|max:20',
-    //     ]);
-
-    //     $search = trim((string) ($validated['search'] ?? ''));
-    //     $limit = $validated['limit'] ?? 20;
-
-    //     $institutions = Institution::query()
-    //         ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website'])
-    //         ->when($search !== '', function ($query) use ($search) {
-    //             $query->where('name', 'like', "%{$search}%");
-    //         })
-    //         ->orderBy('name')
-    //         ->limit($limit)
-    //         ->get();
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $institutions,
-    //     ]);
-    // }
 
     public function index(Request $request)
     {
@@ -125,7 +65,48 @@ class UserEducationController extends Controller
 
     public function showEducationByUserId($id)
     {
-        $isOwnEducation = auth()->check() && auth()->id() == $id;
+        $viewer = auth('api')->user();
+        $isOwnEducation = $viewer && $viewer->id == $id;
+
+        $targetUser = User::with('profile:user_id,privacy_profile_activity')->find($id);
+
+        if (!$targetUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        $privacy = $targetUser->profile->privacy_profile_activity ?? 'everyone';
+        $canSee = $isOwnEducation;
+
+        if (!$canSee) {
+            if ($privacy === 'everyone') {
+                $canSee = true;
+            } elseif ($privacy === 'only_connected' && $viewer) {
+                $isConnected = \App\Models\Connection::where('status', \App\Models\Connection::STATUS_ACCEPTED)
+                    ->where(function ($q) use ($viewer, $id) {
+                        $q->where(function ($q1) use ($viewer, $id) {
+                            $q1->where('sender_id', $viewer->id)->where('receiver_id', $id);
+                        })->orWhere(function ($q2) use ($viewer, $id) {
+                            $q2->where('sender_id', $id)->where('receiver_id', $viewer->id);
+                        });
+                    })->exists();
+
+                if ($isConnected) {
+                    $canSee = true;
+                }
+            }
+        }
+
+        if (!$canSee) {
+            return response()->json([
+                'status' => 'success',
+                'is_own_education' => $isOwnEducation,
+                'is_private_profile' => true,
+                'data' => [],
+            ]);
+        }
 
         $educations = Education::query()
             ->where('user_id', $id)
@@ -150,6 +131,35 @@ class UserEducationController extends Controller
         ]);
     }
 
+    //niaz's code================================
+    // public function showEducationByUserId($id)
+    // {
+    //     $isOwnEducation = auth()->check() && auth()->id() == $id;
+
+    //     $educations = Education::query()
+    //         ->where('user_id', $id)
+    //         ->with('institution:id,name')
+    //         ->orderByDesc('start_year')
+    //         ->orderByDesc('start_month')
+    //         ->get();
+
+    //     if ($educations->isEmpty()) {
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'No education found for this user',
+    //             'is_own_education' => $isOwnEducation,
+    //             'data' => [],
+    //         ]);
+    //     }
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'is_own_education' => $isOwnEducation,
+    //         'data' => $educations,
+    //     ]);
+    // }
+    //===========================================
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -158,10 +168,10 @@ class UserEducationController extends Controller
             'degree' => 'required|string|max:255',
             'field_study' => 'nullable|string|max:255',
             'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required|integer|min:1900|max:'.(date('Y') + 10),
+            'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
             'is_current' => 'required|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
             'grade' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'activities' => 'nullable|string',
@@ -169,9 +179,9 @@ class UserEducationController extends Controller
             'skills.*' => 'string|distinct',
         ]);
 
-        $startDate = Carbon::parse($validated['start_month'].' '.$validated['start_year'])->startOfMonth();
+        $startDate = Carbon::parse($validated['start_month'] . ' ' . $validated['start_year'])->startOfMonth();
         if (! $validated['is_current']) {
-            $endDate = Carbon::parse($validated['end_month'].' '.$validated['end_year'])->startOfMonth();
+            $endDate = Carbon::parse($validated['end_month'] . ' ' . $validated['end_year'])->startOfMonth();
 
             if ($endDate->lt($startDate)) {
                 return response()->json([

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Validation\Rule;
 use App\Models\Connection;
 use App\Models\Education;
 use App\Models\Experience;
@@ -12,11 +13,10 @@ use App\Models\Skill;
 use App\Models\User;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
 
 class UserProfileController extends Controller
 {
@@ -26,7 +26,7 @@ class UserProfileController extends Controller
             'profile.currentPosition',
             'profile.currentInstitute',
             'educations.institution',
-            'experiences.company',
+            'experiences.company'
         ]);
 
         $isOwnProfile = true;
@@ -143,6 +143,7 @@ class UserProfileController extends Controller
         $state = 'not_connected';
         $actionLabel = 'Connect';
         $pendingRequestId = null;
+        $isFollowing = false;
 
         if ($isOwnProfile) {
             $state = 'self';
@@ -175,20 +176,32 @@ class UserProfileController extends Controller
                     }
                 }
             }
-
             $isFollowing = $currentUser->following()->where('following_id', $user->id)->exists();
         }
+
+        $privacySetting = $user->profile->privacy_profile_activity ?? 'everyone';
+        $isPrivateProfile = false;
+
+        if (!$isOwnProfile) {
+            if ($privacySetting === 'nobody') {
+                $isPrivateProfile = true;
+            } elseif ($privacySetting === 'only_connected' && $state !== 'accepted') {
+                $isPrivateProfile = true;
+            }
+        }
+
+        $canSeeDetails = !$isPrivateProfile;
 
         $totalConnections = Connection::query()
             ->accepted()
             ->forUser($user->id)
             ->count();
 
-        $skills = Skill::query()
+        $skills = ($canSeeDetails) ? Skill::query()
             ->select(['id', 'name'])
             ->whereIn('id', $user->profile?->skills_id ?? [])
             ->orderBy('name')
-            ->get();
+            ->get() : collect([]);
 
         $currentPosition = $user->profile?->currentPosition;
         $currentInstitute = $user->profile?->currentInstitute;
@@ -197,6 +210,7 @@ class UserProfileController extends Controller
             'status' => 'success',
             'data' => [
                 'is_own_profile' => $isOwnProfile,
+                'is_private_profile' => $isPrivateProfile,
                 'connection_status' => [
                     'state' => $state,
                     'action_label' => $actionLabel,
@@ -209,11 +223,12 @@ class UserProfileController extends Controller
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'title' => $user->title,
-                'about' => $user->profile?->about,
+                'about' => $canSeeDetails ? $user->profile?->about : null,
                 'profile_image_url' => $user->profile_image_url,
                 'cover_image_url' => $user->cover_image_url,
-                'country' => $user->profile?->country,
+                'country' => $canSeeDetails ? $user->profile?->country : null,
                 'total_connections' => $totalConnections,
+
                 'current_position' => $currentPosition ? [
                     'id' => $currentPosition->id,
                     'company_name' => $currentPosition->name,
@@ -222,8 +237,9 @@ class UserProfileController extends Controller
                     'id' => $currentInstitute->id,
                     'name' => $currentInstitute->name,
                 ] : null,
+
                 'skills' => $skills,
-                'experiences' => $user->experiences->map(function ($experience) {
+                'experiences' => $canSeeDetails ? $user->experiences->map(function ($experience) {
                     return [
                         'id' => $experience->id,
                         'company_id' => $experience->company_id,
@@ -239,8 +255,8 @@ class UserProfileController extends Controller
                         'description' => $experience->description,
                         'skills' => $experience->skills_data,
                     ];
-                })->values(),
-                'educations' => $user->educations->map(function ($education) {
+                })->values() : [],
+                'educations' => $canSeeDetails ? $user->educations->map(function ($education) {
                     return [
                         'id' => $education->id,
                         'institution_id' => $education->institution_id,
@@ -261,16 +277,161 @@ class UserProfileController extends Controller
                         'status' => $education->status,
                         'skills' => $education->skills_data,
                     ];
-                })->values(),
+                })->values() : [],
             ],
         ], 200);
     }
+
+    //niaz's code=============================================
+    // public function showUserProfile(Request $request, $id)
+    // {
+    //     $currentUser = $request->user();
+
+    //     $user = User::with([
+    //         'profile.currentPosition',
+    //         'profile.currentInstitute',
+    //         'educations.institution',
+    //         'experiences.company'
+    //     ])->find($id);
+
+    //     if (!$user) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'User profile not found',
+    //         ], 404);
+    //     }
+
+    //     $isOwnProfile = $currentUser->id === $user->id;
+
+    //     $state = 'not_connected';
+    //     $actionLabel = 'Connect';
+    //     $pendingRequestId = null;
+
+    //     if ($isOwnProfile) {
+    //         $state = 'self';
+    //         $actionLabel = 'Edit Profile';
+    //     } else {
+    //         $connection = Connection::query()
+    //             ->where(function ($query) use ($currentUser, $user) {
+    //                 $query->where('sender_id', $currentUser->id)
+    //                     ->where('receiver_id', $user->id);
+    //             })
+    //             ->orWhere(function ($query) use ($currentUser, $user) {
+    //                 $query->where('sender_id', $user->id)
+    //                     ->where('receiver_id', $currentUser->id);
+    //             })
+    //             ->first();
+
+    //         if ($connection) {
+    //             if ($connection->status === Connection::STATUS_ACCEPTED) {
+    //                 $state = 'accepted';
+    //                 $actionLabel = 'Connected';
+    //             } elseif ($connection->status === Connection::STATUS_PENDING) {
+    //                 if ($connection->sender_id === $currentUser->id) {
+    //                     $state = 'pending_sent';
+    //                     $actionLabel = 'Pending';
+    //                     $pendingRequestId = $connection->id;
+    //                 } else {
+    //                     $state = 'pending_received';
+    //                     $actionLabel = 'Accept';
+    //                     $pendingRequestId = $connection->id;
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     $totalConnections = Connection::query()
+    //         ->accepted()
+    //         ->forUser($user->id)
+    //         ->count();
+
+    //     $skills = Skill::query()
+    //         ->select(['id', 'name'])
+    //         ->whereIn('id', $user->profile?->skills_id ?? [])
+    //         ->orderBy('name')
+    //         ->get();
+
+    //     $currentPosition = $user->profile?->currentPosition;
+    //     $currentInstitute = $user->profile?->currentInstitute;
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => [
+    //             'is_own_profile' => $isOwnProfile,
+    //             'connection_status' => [
+    //                 'state' => $state,
+    //                 'action_label' => $actionLabel,
+    //                 'pending_request_id' => $pendingRequestId,
+    //                 'is_connected' => $state === 'accepted',
+    //             ],
+
+    //             'id' => $user->id,
+    //             'first_name' => $user->first_name,
+    //             'last_name' => $user->last_name,
+    //             'title' => $user->title,
+    //             'about' => $user->profile?->about,
+    //             'profile_image_url' => $user->profile_image_url,
+    //             'cover_image_url' => $user->cover_image_url,
+    //             'country' => $user->profile?->country,
+    //             'total_connections' => $totalConnections,
+    //             'current_position' => $currentPosition ? [
+    //                 'id' => $currentPosition->id,
+    //                 'company_name' => $currentPosition->name,
+    //             ] : null,
+    //             'current_institute' => $currentInstitute ? [
+    //                 'id' => $currentInstitute->id,
+    //                 'name' => $currentInstitute->name,
+    //             ] : null,
+    //             'skills' => $skills,
+    //             'experiences' => $user->experiences->map(function ($experience) {
+    //                 return [
+    //                     'id' => $experience->id,
+    //                     'company_id' => $experience->company_id,
+    //                     'company' => [
+    //                         'id' => $experience->company?->id,
+    //                         'name' => $experience->company?->name,
+    //                     ],
+    //                     'title' => $experience->title,
+    //                     'start_date' => $experience->start_date,
+    //                     'end_date' => $experience->end_date,
+    //                     'is_current' => $experience->is_current,
+    //                     'status' => $experience->formatted_end_date_attribute,
+    //                     'description' => $experience->description,
+    //                     'skills' => $experience->skills_data,
+    //                 ];
+    //             })->values(),
+    //             'educations' => $user->educations->map(function ($education) {
+    //                 return [
+    //                     'id' => $education->id,
+    //                     'institution_id' => $education->institution_id,
+    //                     'institution' => [
+    //                         'id' => $education->institution?->id,
+    //                         'name' => $education->institution?->name,
+    //                     ],
+    //                     'degree' => $education->degree,
+    //                     'field_study' => $education->field_study,
+    //                     'start_month' => $education->start_month,
+    //                     'start_year' => $education->start_year,
+    //                     'end_month' => $education->end_month,
+    //                     'end_year' => $education->end_year,
+    //                     'grade' => $education->grade,
+    //                     'description' => $education->description,
+    //                     'activities' => $education->activities,
+    //                     'is_current' => $education->is_current,
+    //                     'status' => $education->status,
+    //                     'skills' => $education->skills_data,
+    //                 ];
+    //             })->values(),
+    //         ],
+    //     ], 200);
+    // }
+    // ============================================================
 
     public function setupProfile(Request $request, ProfileImageService $profileImageService)
     {
         if ($request->has('group_ids') && is_string($request->group_ids)) {
             $request->merge([
-                'group_ids' => explode(',', $request->group_ids),
+                'group_ids' => explode(',', $request->group_ids)
             ]);
         }
 
@@ -311,10 +472,10 @@ class UserProfileController extends Controller
 
             'notify_jobs'         => 'nullable|boolean',
             'notify_publications' => 'nullable|boolean',
-            'notify_residency' => 'nullable|boolean',
-            'notify_offers' => 'nullable|boolean',
-            'group_ids' => 'nullable|array',
-            'group_ids.*' => 'exists:groups,id',
+            'notify_residency'    => 'nullable|boolean',
+            'notify_offers'       => 'nullable|boolean',
+            'group_ids'           => 'nullable|array',
+            'group_ids.*'         => 'exists:groups,id'
         ]);
 
         $user = $request->user();
@@ -365,10 +526,10 @@ class UserProfileController extends Controller
                 'current_institute_id' => $currentInstituteId,
                 'about' => $request->about,
 
-                'notify_jobs' => $request->boolean('notify_jobs'),
+                'notify_jobs'         => $request->boolean('notify_jobs'),
                 'notify_publications' => $request->boolean('notify_publications'),
-                'notify_residency' => $request->boolean('notify_residency'),
-                'notify_offers' => $request->boolean('notify_offers'),
+                'notify_residency'    => $request->boolean('notify_residency'),
+                'notify_offers'       => $request->boolean('notify_offers'),
             ]
         );
 
@@ -608,30 +769,30 @@ class UserProfileController extends Controller
             'new_password' => [
                 'required',
                 'confirmed',
-                Password::min(8)->mixedCase()->numbers(), // Minimum 8 chars, mixed case, and numbers
+                Password::min(8)->mixedCase()->numbers() // Minimum 8 chars, mixed case, and numbers
             ],
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'errors' => $validator->errors(),
+                'errors' => $validator->errors()
             ], 422);
         }
 
         $user = $request->user();
 
         // 2. Check if current password matches
-        if (! Hash::check($request->current_password, $user->password)) {
+        if (!Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'The current password you entered is incorrect.',
+                'message' => 'The current password you entered is incorrect.'
             ], 400);
         }
 
         // 3. Update the password
         $user->update([
-            'password' => Hash::make($request->new_password),
+            'password' => Hash::make($request->new_password)
         ]);
 
         // 4. Current token invalidation and logout other sessions
@@ -645,7 +806,7 @@ class UserProfileController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Password changed successfully.',
+            'message' => 'Password changed successfully.'
         ], 200);
     }
 }
