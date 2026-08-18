@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Connection;
 use App\Models\Experience;
 use App\Models\Skill;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -47,7 +49,7 @@ class UserExperienceController extends Controller
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
-                        ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
                         : null,
                     'experiences' => $experiences,
                 ];
@@ -63,7 +65,48 @@ class UserExperienceController extends Controller
 
     public function showExperienceByUserId(Request $request, $id)
     {
-        $isOwnExperience = auth()->check() && auth()->id() == $id;
+        $viewer = auth('api')->user();
+        $isOwnExperience = $viewer && $viewer->id == $id;
+
+        $targetUser = User::with('profile:user_id,privacy_profile_activity')->find($id);
+
+        if (!$targetUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        $privacy = $targetUser->profile->privacy_profile_activity ?? 'everyone';
+        $canSee = $isOwnExperience;
+
+        if (!$canSee) {
+            if ($privacy === 'everyone') {
+                $canSee = true;
+            } elseif ($privacy === 'only_connected' && $viewer) {
+                $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
+                    ->where(function ($q) use ($viewer, $id) {
+                        $q->where(function ($q1) use ($viewer, $id) {
+                            $q1->where('sender_id', $viewer->id)->where('receiver_id', $id);
+                        })->orWhere(function ($q2) use ($viewer, $id) {
+                            $q2->where('sender_id', $id)->where('receiver_id', $viewer->id);
+                        });
+                    })->exists();
+
+                if ($isConnected) {
+                    $canSee = true;
+                }
+            }
+        }
+
+        if (!$canSee) {
+            return response()->json([
+                'status' => 'success',
+                'is_own_experience' => $isOwnExperience,
+                'is_private_profile' => true,
+                'data' => [],
+            ]);
+        }
 
         $experiences = Experience::query()
             ->where('user_id', $id)
@@ -96,7 +139,7 @@ class UserExperienceController extends Controller
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
-                        ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
                         : null,
                     'experiences' => $experiences,
                 ];
@@ -109,6 +152,57 @@ class UserExperienceController extends Controller
             'data' => $grouped,
         ]);
     }
+
+    //niaz's code===================================================
+    // public function showExperienceByUserId(Request $request, $id)
+    // {
+    //     $isOwnExperience = auth()->check() && auth()->id() == $id;
+
+    //     $experiences = Experience::query()
+    //         ->where('user_id', $id)
+    //         ->with('company')
+    //         ->orderByDesc('start_date')
+    //         ->get();
+
+    //     if ($experiences->isEmpty()) {
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'No experiences found',
+    //             'is_own_experience' => $isOwnExperience,
+    //             'data' => [],
+    //         ]);
+    //     }
+
+    //     $grouped = $experiences
+    //         ->groupBy('company_id')
+    //         ->map(function ($companyExperiences) {
+    //             $company = $companyExperiences->first()->company;
+    //             $latestExperience = $companyExperiences->first();
+
+    //             $experiences = $companyExperiences->values()->map(function ($experience) {
+    //                 return $this->formatExperience($experience);
+    //             });
+
+    //             return [
+    //                 'company' => $company,
+    //                 'company_name' => $company?->name,
+    //                 'job_type' => $latestExperience?->employment_type,
+    //                 'period' => $this->formatCompanyPeriod($companyExperiences),
+    //                 'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
+    //                     ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
+    //                     : null,
+    //                 'experiences' => $experiences,
+    //             ];
+    //         })
+    //         ->values();
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'is_own_experience' => $isOwnExperience,
+    //         'data' => $grouped,
+    //     ]);
+    // }
+    // =============================================================
 
     private function formatExperience(Experience $experience): array
     {
@@ -137,8 +231,8 @@ class UserExperienceController extends Controller
             'total_time' => $totalTime,
             'timeline' => $startingDate && $totalTime
                 ? $experience->is_current
-                ? $startingDate.' • '.$statusLabel.' • '.$totalTime
-                : $startingDate.' • '.$endingDate.' • '.$totalTime
+                ? $startingDate . ' • ' . $statusLabel . ' • ' . $totalTime
+                : $startingDate . ' • ' . $endingDate . ' • ' . $totalTime
                 : null,
         ];
     }
@@ -164,11 +258,11 @@ class UserExperienceController extends Controller
         $parts = [];
 
         if ($years > 0) {
-            $parts[] = $years.' year'.($years === 1 ? '' : 's');
+            $parts[] = $years . ' year' . ($years === 1 ? '' : 's');
         }
 
         if ($remainingMonths > 0) {
-            $parts[] = $remainingMonths.' month'.($remainingMonths === 1 ? '' : 's');
+            $parts[] = $remainingMonths . ' month' . ($remainingMonths === 1 ? '' : 's');
         }
 
         if ($parts === []) {
@@ -177,31 +271,6 @@ class UserExperienceController extends Controller
 
         return implode(' ', $parts);
     }
-
-    // public function companySuggestions(Request $request)
-    // {
-    //     $validated = $request->validate([
-    //         'search' => 'nullable|string|max:100',
-    //         'limit' => 'nullable|integer|min:1|max:20',
-    //     ]);
-
-    //     $search = trim((string) ($validated['search'] ?? ''));
-    //     $limit = $validated['limit'] ?? 10;
-
-    //     $companies = Company::query()
-    //         ->select(['id', 'name'])
-    //         ->when($search !== '', function ($query) use ($search) {
-    //             $query->where('name', 'like', "%{$search}%");
-    //         })
-    //         ->orderBy('name')
-    //         ->limit($limit)
-    //         ->get();
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $companies,
-    //     ]);
-    // }
 
     public function companySuggestions(Request $request)
     {
@@ -225,31 +294,6 @@ class UserExperienceController extends Controller
             'data' => $companies,
         ]);
     }
-
-    // public function skillSuggestions(Request $request)
-    // {
-    //     $validated = $request->validate([
-    //         'search' => 'nullable|string|max:100',
-    //         'limit' => 'nullable|integer|min:1|max:20',
-    //     ]);
-
-    //     $search = trim((string) ($validated['search'] ?? ''));
-    //     $limit = $validated['limit'] ?? 10;
-
-    //     $skills = Skill::query()
-    //         ->select(['id', 'name'])
-    //         ->when($search !== '', function ($query) use ($search) {
-    //             $query->where('name', 'like', "%{$search}%");
-    //         })
-    //         ->orderBy('name')
-    //         ->limit($limit)
-    //         ->get();
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $skills,
-    //     ]);
-    // }
 
     public function skillSuggestions(Request $request)
     {
@@ -283,20 +327,20 @@ class UserExperienceController extends Controller
             'location' => 'nullable|string',
             'location_type' => 'nullable|string',
             'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required|integer|min:1900|max:'.(date('Y') + 10),
+            'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
             'is_current' => 'required|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
             'description' => 'nullable|string',
             'skills' => 'nullable|array',
             'skills.*' => 'string|distinct',
         ]);
 
-        $startDate = Carbon::parse($request->start_month.' '.$request->start_year)->startOfMonth();
+        $startDate = Carbon::parse($request->start_month . ' ' . $request->start_year)->startOfMonth();
         $endDate = null;
 
         if (! $request->is_current) {
-            $endDate = Carbon::parse($request->end_month.' '.$request->end_year)->startOfMonth();
+            $endDate = Carbon::parse($request->end_month . ' ' . $request->end_year)->startOfMonth();
 
             if ($endDate->lt($startDate)) {
                 return response()->json([
