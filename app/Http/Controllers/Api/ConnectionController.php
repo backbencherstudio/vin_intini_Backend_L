@@ -86,7 +86,7 @@ class ConnectionController extends Controller
 
             return [
                 'payload' => $this->formatConnectionRequest($connectionRequest, $currentUser->id, []),
-                'search_name' => trim(($counterpart->first_name ?? '').' '.($counterpart->last_name ?? '')),
+                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
                 'connected_at' => $connectionRequest->responded_at?->timestamp ?? $connectionRequest->created_at?->timestamp ?? 0,
             ];
         });
@@ -155,131 +155,6 @@ class ConnectionController extends Controller
         ], 200);
     }
 
-    /*connection request and group invitation are merged in this method,
-     so the user will get both connection request and group invitation in the same list,
-     and the user can accept or ignore the request/invitation from the same list*/
-
-    // public function requests(Request $request): JsonResponse
-    // {
-    //     $currentUser = $request->user();
-    //     $search = trim((string) $request->query('search', ''));
-    //     $perPage = $request->integer('limit', $request->integer('per_page', 10));
-    //     $perPage = max(1, min($perPage, 100));
-    //     $page = max(1, (int) $request->integer('page', 1));
-
-    //     $connectionRequests = Connection::query()
-    //         ->pending()
-    //         ->where('receiver_id', $currentUser->id)
-    //         ->with([
-    //             'sender:id,first_name,last_name,title,profile_image',
-    //             'receiver:id,first_name,last_name,title,profile_image',
-    //         ])
-    //         ->get();
-
-    //     $groupInvitations = GroupInvitation::query()
-    //         ->where('invited_user_id', $currentUser->id)
-    //         ->with([
-    //             'group:id,name,type,logo,creator_id',
-    //             'inviter:id,first_name,last_name,title,profile_image',
-    //         ])
-    //         ->get();
-
-    //     $allRequests = collect();
-
-    //     foreach ($connectionRequests as $conn) {
-    //         $counterpart = $conn->sender;
-    //         $allRequests->push([
-    //             'type' => 'connection_request',
-    //             'instance' => $conn,
-    //             'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
-    //             'search_title' => (string) ($counterpart->title ?? ''),
-    //             'created_at' => $conn->created_at,
-    //         ]);
-    //     }
-
-    //     foreach ($groupInvitations as $invitation) {
-    //         $allRequests->push([
-    //             'type' => 'group_invitation',
-    //             'instance' => $invitation,
-    //             'search_name' => (string) ($invitation->group?->name ?? ''),
-    //             'search_title' => '',
-    //             'created_at' => $invitation->created_at,
-    //         ]);
-    //     }
-
-    //     if ($search !== '') {
-    //         $normalizedSearch = mb_strtolower($search);
-    //         $allRequests = $allRequests->filter(function ($item) use ($normalizedSearch) {
-    //             return str_contains(mb_strtolower($item['search_name']), $normalizedSearch)
-    //                 || str_contains(mb_strtolower($item['search_title']), $normalizedSearch);
-    //         });
-    //     }
-
-    //     $allRequests = $allRequests->sortByDesc(fn($item) => $item['created_at']->timestamp)->values();
-
-    //     $totalFiltered = $allRequests->count();
-    //     $paginatedItems = $allRequests->slice(($page - 1) * $perPage, $perPage)->values();
-
-    //     $senderIds = $paginatedItems->where('type', 'connection_request')
-    //         ->map(fn($item) => $item['instance']->sender_id)
-    //         ->unique()->values();
-    //     $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $senderIds);
-
-    //     $data = $paginatedItems->map(function ($item) use ($currentUser, $mutualConnections) {
-    //         if ($item['type'] === 'connection_request') {
-    //             /** @var Connection $conn */
-    //             $conn = $item['instance'];
-    //             $formatted = $this->formatConnectionRequest($conn, $currentUser->id, $mutualConnections, true);
-
-    //             $formatted['request_type'] = 'connection_request';
-    //             return $formatted;
-    //         } else {
-    //             /** @var GroupInvitation $invitation */
-    //             $invitation = $item['instance'];
-    //             $inviterName = trim(($invitation->inviter?->first_name ?? '') . ' ' . ($invitation->inviter?->last_name ?? ''));
-
-    //             return [
-    //                 'request_type' => 'group_invitation',
-    //                 'invitation_id' => $invitation->id,
-    //                 'group' => [
-    //                     'id' => $invitation->group?->id,
-    //                     'name' => $invitation->group?->name,
-    //                     'type' => $invitation->group?->type,
-    //                     'logo_url' => $invitation->group?->logo_url,
-    //                 ],
-    //                 'inviter' => [
-    //                     'id' => $invitation->inviter?->id,
-    //                     'name' => $inviterName,
-    //                     'title' => $invitation->inviter?->title,
-    //                     'profile_image_url' => $invitation->inviter?->profile_image_url,
-    //                 ],
-    //                 'requested_at' => $invitation->created_at?->toDateTimeString(),
-    //             ];
-    //         }
-    //     });
-
-    //     $lastPage = (int) ceil($totalFiltered / $perPage);
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => $totalFiltered > 0 ? 'Requests retrieved successfully.' : 'No pending requests found.',
-    //         'status' => 'success',
-    //         'data' => $data,
-    //         'stats' => [
-    //             'total_requests' => $connectionRequests->count() + $groupInvitations->count(),
-    //             'filtered_requests' => $totalFiltered,
-    //         ],
-    //         'total' => $totalFiltered,
-    //         'limit' => $perPage,
-    //         'current_page' => $page,
-    //         'total_page' => $lastPage,
-    //         'last_page' => $lastPage,
-    //         'filters' => [
-    //             'search' => $search !== '' ? $search : null,
-    //         ],
-    //     ], 200);
-    // }
-
     public function requests(Request $request): JsonResponse
     {
         $currentUser = $request->user();
@@ -329,7 +204,7 @@ class ConnectionController extends Controller
 
             return [
                 'request' => $connectionRequest,
-                'search_name' => trim(($counterpart->first_name ?? '').' '.($counterpart->last_name ?? '')),
+                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
                 'search_title' => (string) ($counterpart->title ?? ''),
             ];
         });
@@ -409,42 +284,40 @@ class ConnectionController extends Controller
         $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
 
         $excludedUserIds = Connection::query()
-            ->where(function ($query) {
-                $query->where(function ($q) {
-                    $q->accepted();
-                })
-                    ->orWhere(function ($q) {
-                        $q->pending();
-                    });
-            })
             ->where(function ($query) use ($currentUser) {
                 $query->where('sender_id', $currentUser->id)
                     ->orWhere('receiver_id', $currentUser->id);
             })
+            ->whereIn('status', [Connection::STATUS_ACCEPTED, Connection::STATUS_PENDING])
             ->get(['sender_id', 'receiver_id'])
-            ->map(function (Connection $connectionRequest) use ($currentUser) {
-                return $connectionRequest->sender_id === $currentUser->id
-                    ? $connectionRequest->receiver_id
-                    : $connectionRequest->sender_id;
+            ->map(function ($conn) use ($currentUser) {
+                return $conn->sender_id === $currentUser->id ? $conn->receiver_id : $conn->sender_id;
             })
+            ->push($currentUser->id)
             ->unique()
-            ->values();
+            ->values()
+            ->toArray();
 
         $suggestionsQuery = User::query()
-            ->whereKeyNot($currentUser->id)
-            ->whereHas('profile')
-            ->when($excludedUserIds->isNotEmpty(), function ($query) use ($excludedUserIds) {
-                $query->whereNotIn('id', $excludedUserIds->all());
-            })
+            ->select([
+                'users.id',
+                'users.first_name',
+                'users.last_name',
+                'users.title',
+                'users.profile_image',
+                'users.cover_image'
+            ])
+            ->join('user_profiles', 'users.id', '=', 'user_profiles.user_id')
+            ->where('user_profiles.privacy_profile_visibility', 'everyone')
+            ->whereNotIn('users.id', $excludedUserIds)
             ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('first_name', 'like', '%'.$search.'%')
-                        ->orWhere('last_name', 'like', '%'.$search.'%')
-                        ->orWhere('title', 'like', '%'.$search.'%');
+                $query->where(function ($q) use ($search) {
+                    $q->where('users.first_name', 'like', $search . '%')
+                        ->orWhere('users.last_name', 'like', $search . '%')
+                        ->orWhere('users.title', 'like', '%' . $search . '%');
                 });
             })
-            ->select(['id', 'first_name', 'last_name', 'title', 'profile_image', 'cover_image'])
-            ->latest('id');
+            ->latest('users.id');
 
         $paginator = $suggestionsQuery->paginate($perPage);
 
@@ -485,6 +358,91 @@ class ConnectionController extends Controller
         ], 200);
     }
 
+    //niaz's code=================================================
+    // public function suggestions(Request $request): JsonResponse
+    // {
+    //     $currentUser = $request->user();
+    //     $search = trim((string) $request->query('search', ''));
+    //     $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
+
+    //     $excludedUserIds = Connection::query()
+    //         ->where(function ($query) {
+    //             $query->where(function ($q) {
+    //                 $q->accepted();
+    //             })
+    //                 ->orWhere(function ($q) {
+    //                     $q->pending();
+    //                 });
+    //         })
+    //         ->where(function ($query) use ($currentUser) {
+    //             $query->where('sender_id', $currentUser->id)
+    //                 ->orWhere('receiver_id', $currentUser->id);
+    //         })
+    //         ->get(['sender_id', 'receiver_id'])
+    //         ->map(function (Connection $connectionRequest) use ($currentUser) {
+    //             return $connectionRequest->sender_id === $currentUser->id
+    //                 ? $connectionRequest->receiver_id
+    //                 : $connectionRequest->sender_id;
+    //         })
+    //         ->unique()
+    //         ->values();
+
+    //     $suggestionsQuery = User::query()
+    //         ->whereKeyNot($currentUser->id)
+    //         ->whereHas('profile')
+    //         ->when($excludedUserIds->isNotEmpty(), function ($query) use ($excludedUserIds) {
+    //             $query->whereNotIn('id', $excludedUserIds->all());
+    //         })
+    //         ->when($search !== '', function ($query) use ($search) {
+    //             $query->where(function ($query) use ($search) {
+    //                 $query->where('first_name', 'like', '%'.$search.'%')
+    //                     ->orWhere('last_name', 'like', '%'.$search.'%')
+    //                     ->orWhere('title', 'like', '%'.$search.'%');
+    //             });
+    //         })
+    //         ->select(['id', 'first_name', 'last_name', 'title', 'profile_image', 'cover_image'])
+    //         ->latest('id');
+
+    //     $paginator = $suggestionsQuery->paginate($perPage);
+
+    //     $candidateIds = $paginator->getCollection()->pluck('id')->values();
+
+    //     $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $candidateIds);
+
+    //     $data = $paginator->getCollection()->map(function (User $candidate) use ($mutualConnections) {
+    //         $mutualConnectionData = $mutualConnections[$candidate->id] ?? ['count' => 0, 'preview' => []];
+
+    //         return [
+    //             'user' => $this->formatUser($candidate),
+    //             'state' => 'not_connected',
+    //             'action_label' => 'Connect',
+    //             'pending_request_id' => null,
+    //             'is_connectable' => true,
+    //             'mutual_connections_count' => $mutualConnectionData['count'],
+    //             'mutual_connections' => $mutualConnectionData['preview'],
+    //         ];
+    //     })->values();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Connection suggestions retrieved successfully.',
+    //         'status' => 'success',
+    //         'data' => $data,
+    //         'stats' => [
+    //             'total_suggestions' => $paginator->total(),
+    //         ],
+    //         'total' => $paginator->total(),
+    //         'limit' => $paginator->perPage(),
+    //         'current_page' => $paginator->currentPage(),
+    //         'total_page' => $paginator->lastPage(),
+    //         'last_page' => $paginator->lastPage(),
+    //         'filters' => [
+    //             'search' => $search !== '' ? $search : null,
+    //         ],
+    //     ], 200);
+    // }
+    //============================================================
+
     public function sentPendingRequests(Request $request): JsonResponse
     {
         $currentUser = $request->user();
@@ -501,9 +459,9 @@ class ConnectionController extends Controller
                 $query->whereHas('profile');
                 if ($search !== '') {
                     $query->where(function ($q) use ($search) {
-                        $q->where('first_name', 'like', '%'.$search.'%')
-                            ->orWhere('last_name', 'like', '%'.$search.'%')
-                            ->orWhere('title', 'like', '%'.$search.'%');
+                        $q->where('first_name', 'like', '%' . $search . '%')
+                            ->orWhere('last_name', 'like', '%' . $search . '%')
+                            ->orWhere('title', 'like', '%' . $search . '%');
                     });
                 }
             })
@@ -548,113 +506,6 @@ class ConnectionController extends Controller
             ],
         ], 200);
     }
-
-    // public function suggestions(Request $request): JsonResponse
-    // {
-    //     $currentUser = $request->user();
-    //     $search = trim((string) $request->query('search', ''));
-    //     $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
-
-    //     $acceptedCounterpartIds = Connection::query()
-    //         ->accepted()
-    //         ->where(function ($query) use ($currentUser) {
-    //             $query->where('sender_id', $currentUser->id)
-    //                 ->orWhere('receiver_id', $currentUser->id);
-    //         })
-    //         ->get(['sender_id', 'receiver_id'])
-    //         ->map(function (Connection $connectionRequest) use ($currentUser) {
-    //             return $connectionRequest->sender_id === $currentUser->id
-    //                 ? $connectionRequest->receiver_id
-    //                 : $connectionRequest->sender_id;
-    //         })
-    //         ->unique()
-    //         ->values();
-
-    //     $suggestionsQuery = User::query()
-    //         ->whereKeyNot($currentUser->id)
-    //         ->whereHas('profile')
-    //         ->when($acceptedCounterpartIds->isNotEmpty(), function ($query) use ($acceptedCounterpartIds) {
-    //             $query->whereNotIn('id', $acceptedCounterpartIds->all());
-    //         })
-    //         ->when($search !== '', function ($query) use ($search) {
-    //             $query->where(function ($query) use ($search) {
-    //                 $query->where('first_name', 'like', '%' . $search . '%')
-    //                     ->orWhere('last_name', 'like', '%' . $search . '%')
-    //                     ->orWhere('title', 'like', '%' . $search . '%');
-    //             });
-    //         })
-    //         ->select(['id', 'first_name', 'last_name', 'title', 'profile_image', 'cover_image'])
-    //         ->latest('id');
-
-    //     $paginator = $suggestionsQuery->paginate($perPage);
-
-    //     $candidateIds = $paginator->getCollection()->pluck('id')->values();
-
-    //     $outgoingPendingByUserId = Connection::query()
-    //         ->pending()
-    //         ->where('sender_id', $currentUser->id)
-    //         ->whereIn('receiver_id', $candidateIds)
-    //         ->get(['id', 'receiver_id'])
-    //         ->keyBy('receiver_id');
-
-    //     $incomingPendingByUserId = Connection::query()
-    //         ->pending()
-    //         ->where('receiver_id', $currentUser->id)
-    //         ->whereIn('sender_id', $candidateIds)
-    //         ->get(['id', 'sender_id'])
-    //         ->keyBy('sender_id');
-
-    //     $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $candidateIds);
-
-    //     $data = $paginator->getCollection()->map(function (User $candidate) use ($outgoingPendingByUserId, $incomingPendingByUserId, $mutualConnections) {
-    //         $outgoingPendingRequest = $outgoingPendingByUserId->get($candidate->id);
-    //         $incomingPendingRequest = $incomingPendingByUserId->get($candidate->id);
-
-    //         $state = 'not_connected';
-    //         $actionLabel = 'Connect';
-    //         $pendingRequestId = null;
-
-    //         if ($outgoingPendingRequest) {
-    //             $state = 'pending_sent';
-    //             $actionLabel = 'Pending';
-    //             $pendingRequestId = $outgoingPendingRequest->id;
-    //         } elseif ($incomingPendingRequest) {
-    //             $state = 'pending_received';
-    //             $actionLabel = 'Accept';
-    //             $pendingRequestId = $incomingPendingRequest->id;
-    //         }
-
-    //         $mutualConnectionData = $mutualConnections[$candidate->id] ?? ['count' => 0, 'preview' => []];
-
-    //         return [
-    //             'user' => $this->formatUser($candidate),
-    //             'state' => $state,
-    //             'action_label' => $actionLabel,
-    //             'pending_request_id' => $pendingRequestId,
-    //             'is_connectable' => $state === 'not_connected',
-    //             'mutual_connections_count' => $mutualConnectionData['count'],
-    //             'mutual_connections' => $mutualConnectionData['preview'],
-    //         ];
-    //     })->values();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Connection suggestions retrieved successfully.',
-    //         'status' => 'success',
-    //         'data' => $data,
-    //         'stats' => [
-    //             'total_suggestions' => $paginator->total(),
-    //         ],
-    //         'total' => $paginator->total(),
-    //         'limit' => $paginator->perPage(),
-    //         'current_page' => $paginator->currentPage(),
-    //         'total_page' => $paginator->lastPage(),
-    //         'last_page' => $paginator->lastPage(),
-    //         'filters' => [
-    //             'search' => $search !== '' ? $search : null,
-    //         ],
-    //     ], 200);
-    // }
 
     public function sendRequest(Request $request): JsonResponse
     {
@@ -1029,20 +880,20 @@ class ConnectionController extends Controller
 
         if ($connectionRequest->status === Connection::STATUS_IGNORED) {
             return $connectionRequest->receiver_id === $currentUserId
-                ? 'You ignored '.$counterpartName.'\'s invitation'
-                : $counterpartName.' ignored your invitation';
+                ? 'You ignored ' . $counterpartName . '\'s invitation'
+                : $counterpartName . ' ignored your invitation';
         }
 
         return $connectionRequest->sender_id === $currentUserId
             ? 'Connection request sent'
-            : $counterpartName.' sent you a connection request';
+            : $counterpartName . ' sent you a connection request';
     }
 
     private function formatUser(User $user): array
     {
         return [
             'id' => $user->id,
-            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
+            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'title' => $user->title,
