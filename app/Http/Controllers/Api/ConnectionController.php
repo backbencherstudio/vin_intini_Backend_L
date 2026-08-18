@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ConnectionRemoved;
 use App\Http\Controllers\Controller;
 use App\Mail\ConnectionRequestMail;
 use App\Models\Connection;
@@ -717,6 +718,21 @@ class ConnectionController extends Controller
                         });
                 })
                 ->delete();
+
+            $conversation = Conversation::query()
+                ->where(function ($query) use ($currentUser, $user) {
+                    $query->where('user_id_1', $currentUser->id)
+                        ->where('user_id_2', $user->id)
+                        ->orWhere(function ($query) use ($currentUser, $user) {
+                            $query->where('user_id_1', $user->id)
+                                ->where('user_id_2', $currentUser->id);
+                        });
+                })
+                ->first();
+
+            if ($conversation) {
+                event(new ConnectionRemoved($conversation, $user, $currentUser->id));
+            }
         });
 
         return response()->json([

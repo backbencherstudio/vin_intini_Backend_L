@@ -2,13 +2,16 @@
 
 namespace Tests\Feature\Api;
 
+use App\Events\ConnectionRemoved;
 use App\Models\Connection;
+use App\Models\Conversation;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Models\UserProfile;
 use App\Notifications\ConnectionRequestAcceptedNotification;
 use App\Notifications\ConnectionRequestReceivedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -446,6 +449,8 @@ class UserConnectionFlowTest extends TestCase
             'responded_at' => now(),
         ]);
 
+        $conversation = Conversation::betweenUsers($firstUser->id, $secondUser->id);
+
         UserFollow::create([
             'follower_id' => $firstUser->id,
             'following_id' => $secondUser->id,
@@ -456,6 +461,8 @@ class UserConnectionFlowTest extends TestCase
             'following_id' => $firstUser->id,
         ]);
 
+        Event::fake();
+
         $response = $this->actingAs($firstUser, 'api')->deleteJson('/api/connections/'.$secondUser->id.'/remove');
 
         $response
@@ -465,6 +472,15 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('data.user.id', $secondUser->id)
             ->assertJsonPath('data.is_connected', false)
             ->assertJsonPath('data.is_following', false);
+
+        Event::assertDispatched(ConnectionRemoved::class, function (ConnectionRemoved $event) use ($conversation, $firstUser, $secondUser): bool {
+            return $event->conversation->id === $conversation->id
+                && $event->removedUser->id === $secondUser->id
+                && $event->removedById === $firstUser->id
+                && collect($event->broadcastOn())->contains(
+                    fn ($channel) => $channel->name === 'private-conversation.'.$conversation->id
+                );
+        });
 
         $this->assertDatabaseMissing('connections', [
             'id' => $connectionRequest->id,
