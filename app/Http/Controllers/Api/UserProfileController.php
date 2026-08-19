@@ -50,6 +50,7 @@ class UserProfileController extends Controller
             'status' => 'success',
             'data' => [
                 'id' => $user->id,
+                'username' => $user->username,
                 'is_own_profile' => $isOwnProfile,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
@@ -120,7 +121,7 @@ class UserProfileController extends Controller
         ], 200);
     }
 
-    public function showUserProfile(Request $request, $id)
+    public function showUserProfile(Request $request, $username)
     {
         $currentUser = $request->user();
 
@@ -129,7 +130,11 @@ class UserProfileController extends Controller
             'profile.currentInstitute',
             'educations.institution',
             'experiences.company',
-        ])->find($id);
+        ])
+            // ->find($id);
+            ->where('username', $username)
+            ->orWhere('id', $username)
+            ->first();
 
         if (! $user) {
             return response()->json([
@@ -220,6 +225,7 @@ class UserProfileController extends Controller
                 ],
 
                 'id' => $user->id,
+                'username' => $user->username,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'title' => $user->title,
@@ -480,6 +486,18 @@ class UserProfileController extends Controller
 
         $user = $request->user();
 
+        if (!$user->username) {
+            $baseSlug = \Illuminate\Support\Str::slug($request->first_name . ' ' . $request->last_name, '-');
+            $finalUsername = $baseSlug;
+            $counter = 1;
+
+            while (User::where('username', $finalUsername)->exists()) {
+                $finalUsername = $baseSlug . '-' . $counter;
+                $counter++;
+            }
+            $user->username = $finalUsername;
+        }
+
         $professionArray = array_map('trim', explode(',', $request->profession));
         $interestsArray = array_map('trim', explode(',', $request->interests));
         $skillIds = [];
@@ -507,6 +525,7 @@ class UserProfileController extends Controller
             'last_name' => $request->last_name,
             'title' => $request->title,
             'profile_image' => $imagePath,
+            'username' => $user->username,
         ]);
 
         $user->profile()->updateOrCreate(
