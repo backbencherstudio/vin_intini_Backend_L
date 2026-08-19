@@ -35,7 +35,6 @@
 
         .content h2 {
             color: #e11d48;
-            /* Red for Alert */
             font-size: 24px;
             margin: 0 0 10px 0;
             font-weight: 700;
@@ -52,15 +51,21 @@
             background-color: #fcf8f8;
             border: 1px solid #e2e8f0;
             border-radius: 16px;
-            padding: 30px 20px;
+            padding: 30px 25px;
             margin: 0 auto 30px;
             max-width: 450px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             text-align: left;
         }
 
-        .info-row {
-            margin-bottom: 12px;
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .info-table td {
+            padding-bottom: 12px;
+            vertical-align: top;
             font-size: 15px;
             color: #334155;
         }
@@ -69,38 +74,48 @@
             font-weight: bold;
             color: #64748b;
             width: 100px;
-            display: inline-block;
+        }
+
+        .info-value {
+            font-weight: 500;
+        }
+
+        .tz-text {
+            font-size: 13px;
+            color: #94a3b8;
+            display: block;
+            margin-top: 2px;
         }
 
         .btn-container {
-            margin-top: 30px;
+            margin-top: 5px;
             text-align: center;
+            border-top: 1px solid;
+            padding-top: 5px;
         }
 
-        /* Green Button for Trust */
         .btn-trust {
             background-color: #10b981;
             color: #ffffff !important;
-            padding: 12px 25px;
+            padding: 12px 20px;
             text-decoration: none;
             border-radius: 8px;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 14px;
             display: inline-block;
-            margin-bottom: 10px;
+            margin: 5px;
         }
 
-        /* Red Button for Block */
         .btn-block {
             background-color: #ef4444;
             color: #ffffff !important;
-            padding: 12px 25px;
+            padding: 12px 20px;
             text-decoration: none;
             border-radius: 8px;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 14px;
             display: inline-block;
-            margin-bottom: 10px;
+            margin: 5px;
         }
 
         .footer {
@@ -112,20 +127,16 @@
             border-top: 1px solid #eeeeee;
         }
 
-        .footer strong {
-            color: #00c2cb;
-        }
-
         @media only screen and (max-width: 600px) {
             .responsive-logo {
-                width: 300px !important;
+                width: 250px !important;
             }
-
-            .btn-trust,
-            .btn-block {
+            .security-card {
+                padding: 20px 15px;
+            }
+            .btn-trust, .btn-block {
                 display: block;
-                margin-left: 0 !important;
-                margin-right: 0 !important;
+                margin: 10px 0;
             }
         }
     </style>
@@ -137,52 +148,57 @@
         <div class="header">
             <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
                 <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
-                    style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
+                    style="width: 400px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
             </a>
         </div>
 
         <!-- Content -->
         <div class="content">
             <h2>New Login Detected</h2>
-            <p>Hi <strong>{{ $activity->user->first_name }}</strong>, we noticed a login to your Mind Unite account from
-                a device or location you don't usually use.</p>
+            <p>Hi <strong>{{ $activity->user->first_name }}</strong>, we noticed a login to your account from a device or location you don't usually use.</p>
 
-            <!-- Modern Security Card -->
+            <!-- Modern Security Card using Table for Perfect Alignment -->
             <div class="security-card">
-                <div class="info-row">
-                    <span class="info-label">Device:</span> {{ $activity->device }}
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Browser:</span> {{ $activity->browser }}
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Location:</span> {{ $activity->location }}
-                </div>
-                <div class="info-row">
-                    <span class="info-label">IP Address:</span> {{ $activity->ip_address }}
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Time:</span> {{ $activity->login_at->format('d M Y, h:i A') }}
-                </div>
+                <table class="info-table" border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="info-label">Device:</td>
+                        <td class="info-value">{{ $activity->device }}</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">Browser:</td>
+                        <td class="info-value">{{ $activity->browser }}</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">Location:</td>
+                        <td class="info-value">{{ $activity->location }}</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">IP Address:</td>
+                        <td class="info-value">{{ $activity->ip_address }}</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">Time:</td>
+                        <td class="info-value">
+                            {{ $localTime }}
+                            <span class="tz-text">({{ $userTimezone }})</span>
+                        </td>
+                    </tr>
+                </table>
 
                 <div class="btn-container">
-                    <p style="color: #0f172a; font-weight: bold; margin-bottom: 20px;">Was this you?</p>
-
+                    <p style="color: #0f172a; font-weight: bold; margin-bottom: 15px; font-size: 15px;">Was this you?</p>
                     <a href="{{ $trustUrl }}" class="btn-trust">Yes, it was me</a>
-
-                    <a href="{{ $blockUrl }}" class="btn-block" style="margin-left: 10px;">No, secure account</a>
+                    <a href="{{ $blockUrl }}" class="btn-block">No, secure account</a>
                 </div>
             </div>
 
-            <p style="font-size: 14px; margin-top: 20px;">If this wasn't you, your password might be compromised. We
-                highly recommend changing it immediately.</p>
+            <p style="font-size: 14px; margin-top: 20px; color: #64748b;">If this wasn't you, your password might be compromised. We highly recommend changing it immediately.</p>
         </div>
 
         <!-- Footer -->
         <div class="footer">
             &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
-                style="text-decoration: none; color: #00c2cb; font-weight: bold;">Mind Unite</a>. All rights
-            reserved.<br>
+                style="text-decoration: none; color: #00c2cb; font-weight: bold;">Mind Unite</a>. All rights reserved.<br>
             Psychology and Neuroscience Community.
         </div>
     </div>
