@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\SecuritySettingsController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
+use App\Models\User;
 
 Route::redirect('/', '/welcome');
 Route::get('/welcome', function () {
@@ -155,4 +157,33 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'a
 //     return redirect()->back()->with('success', 'All notifications have been removed!');
 // })->name('notifications.clearAll');
 
-require __DIR__.'/auth.php';
+
+Route::get('/generate-usernames', function () {
+    $users = User::whereNull('username')->get();
+    $count = 0;
+
+    foreach ($users as $user) {
+        $baseSlug = Str::slug($user->first_name . ' ' . $user->last_name, '-');
+
+        if (empty($baseSlug)) {
+            $baseSlug = Str::slug(explode('@', $user->email)[0], '-');
+        }
+
+        $username = $baseSlug;
+        $counter = 1;
+
+        while (User::where('username', $username)->exists()) {
+            $username = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        $user->username = $username;
+        $user->save();
+        $count++;
+    }
+
+    return response()->json(['message' => "$count users updated with usernames!"]);
+});
+
+
+require __DIR__ . '/auth.php';
