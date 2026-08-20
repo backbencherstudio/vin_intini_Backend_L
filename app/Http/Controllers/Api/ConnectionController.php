@@ -820,7 +820,7 @@ class ConnectionController extends Controller
 
         $mutualUsers = User::query()
             ->whereIn('id', $mutualUserIds->unique()->values())
-            ->get(['id', 'first_name', 'last_name', 'title', 'profile_image'])
+            ->get(['id', 'first_name', 'last_name', 'title', 'profile_image', 'username'])
             ->keyBy('id');
 
         $formatted = [];
@@ -904,6 +904,7 @@ class ConnectionController extends Controller
     {
         return [
             'id' => $user->id,
+            'username' => $user->username,
             'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
