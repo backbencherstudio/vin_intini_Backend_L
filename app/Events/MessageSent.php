@@ -5,12 +5,11 @@ namespace App\Events;
 use App\Models\Message;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MessageSent implements ShouldBroadcast, ShouldQueue
+class MessageSent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -45,7 +44,8 @@ class MessageSent implements ShouldBroadcast, ShouldQueue
                 'file_url' => $this->message->replyTo->file_url,
                 'file_name' => $this->message->replyTo->file_name,
                 'file_category' => $this->message->replyTo->file_category,
-            ] : null,            'created_at' => $this->message->created_at->toISOString(),
+            ] : null,
+            'created_at' => $this->message->created_at->toISOString(),
         ];
     }
 
