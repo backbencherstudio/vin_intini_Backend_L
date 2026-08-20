@@ -49,6 +49,7 @@ class GroupInvitationNotification extends Notification implements ShouldQueue
             'group_name' => $this->group->name,
             'group_logo_url' => $this->group->logo_url,
             'inviter_id' => $this->inviter->id,
+            'inviter_username' => $this->inviter->username,
             'inviter_name' => $inviterName,
             // Fallback to a default profile image URL if the inviter doesn't have one
             'sender_name' => $inviterName,

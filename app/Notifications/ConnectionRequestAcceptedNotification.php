@@ -44,6 +44,7 @@ class ConnectionRequestAcceptedNotification extends Notification implements Shou
         return [
             'connection_request_id' => $this->connectionRequest->id,
             'acceptor_id' => $this->acceptor->id,
+            'acceptor_username' => $this->acceptor->username,
             'acceptor_name' => $acceptorName,
             'acceptor_profile_image' => $this->acceptor->profile_image,
             'acceptor_profile_image_url' => $this->acceptor->profile_image_url,

@@ -34,6 +34,7 @@ class PostLikedNotification extends Notification implements ShouldQueue
 
         return [
             'sender_id' => $this->sender->id,
+            'sender_username' => $this->sender->username,
             'sender_name' => $this->sender->first_name.' '.$this->sender->last_name,
             'sender_profile_image_url' => $this->sender->profile_image_url,
             'post_id' => $this->post->id,
