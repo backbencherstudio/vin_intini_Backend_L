@@ -39,19 +39,24 @@ class ConversationUpdated implements ShouldBroadcast, ShouldQueue
 
     public function broadcastWith(): array
     {
-        $otherUser = $this->conversation->getOtherUser($this->receiver->id);
-
-        return [
+        $payload = [
             'conversation_id' => $this->conversation->id,
             'unread_count' => $this->unreadCount,
             'unread_conversation_count' => $this->unreadConversationCount,
             'total_unread_messages' => $this->totalUnreadMessages,
-            'user' => [
+            'user' => null,
+            'last_message' => null,
+        ];
+
+        if ($this->message) {
+            $otherUser = $this->conversation->getOtherUser($this->receiver->id);
+
+            $payload['user'] = [
                 'id' => $otherUser->id,
                 'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
                 'profile_image_url' => $otherUser->profile_image_url,
-            ],
-            'last_message' => $this->message ? [
+            ];
+            $payload['last_message'] = [
                 'id' => $this->message->id,
                 'type' => $this->message->display_type,
                 'message' => $this->message->message,
@@ -59,7 +64,9 @@ class ConversationUpdated implements ShouldBroadcast, ShouldQueue
                 'file_name' => $this->message->file_name,
                 'sender_id' => $this->message->sender_id,
                 'created_at' => $this->message->created_at?->toISOString(),
-            ] : null,
-        ];
+            ];
+        }
+
+        return $payload;
     }
 }
