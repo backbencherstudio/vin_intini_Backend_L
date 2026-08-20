@@ -16,11 +16,17 @@ class TimelineController extends Controller
         $authUser = auth('api')->user();
         $isOwnProfile = $authUser->id == $userId;
 
-        $targetUser = \App\Models\User::with('profile:user_id,privacy_profile_activity')->find($userId);
+        $targetUser = \App\Models\User::with('profile:user_id,privacy_profile_activity')
+            ->where('username', $userId)
+            ->orWhere('id', $userId)
+            ->first();
 
         if (!$targetUser) {
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
+
+        $actualId = $targetUser->id;
+        $isOwnProfile = $authUser->id == $actualId;
 
         $privacy = $targetUser->profile->privacy_profile_activity ?? 'everyone';
         $relationshipStatus = 'not_connected';
@@ -28,11 +34,11 @@ class TimelineController extends Controller
         if ($isOwnProfile) {
             $relationshipStatus = 'connected';
         } else {
-            $connection = Connection::where(function ($q) use ($authUser, $userId) {
-                $q->where(function ($q1) use ($authUser, $userId) {
-                    $q1->where('sender_id', $authUser->id)->where('receiver_id', $userId);
-                })->orWhere(function ($q2) use ($authUser, $userId) {
-                    $q2->where('sender_id', $userId)->where('receiver_id', $authUser->id);
+            $connection = Connection::where(function ($q) use ($authUser, $actualId ) {
+                $q->where(function ($q1) use ($authUser, $actualId) {
+                    $q1->where('sender_id', $authUser->id)->where('receiver_id', $actualId );
+                })->orWhere(function ($q2) use ($authUser, $actualId) {
+                    $q2->where('sender_id', $actualId)->where('receiver_id', $authUser->id);
                 });
             })->first();
 
@@ -49,13 +55,13 @@ class TimelineController extends Controller
 
         $postsQuery = Post::query()
             ->with([
-                'user:id,first_name,last_name,profile_image,title',
+                'user:id,username,first_name,last_name,profile_image,title',
                 'media',
                 'likes' => function ($q) use ($authUser) {
                     $q->where('user_id', $authUser->id);
                 },
             ])
-            ->where('user_id', $userId);
+            ->where('user_id', $actualId);
 
         $postsQuery->where(function ($query) use ($isOwnProfile, $isConnected, $privacy) {
             if ($isOwnProfile) {
@@ -260,7 +266,7 @@ class TimelineController extends Controller
 
         $posts = Post::query()
             ->with([
-                'user:id,first_name,last_name,profile_image,title',
+                'user:id,username,first_name,last_name,profile_image,title',
                 'media',
                 'groups:id,name',
                 'likes' => function ($q) use ($user) {

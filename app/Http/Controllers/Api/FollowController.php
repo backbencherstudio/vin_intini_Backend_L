@@ -30,12 +30,13 @@ class FollowController extends Controller
             $baseQuery->whereHas('follower', function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('first_name', 'LIKE', "%{$search}%")
-                        ->orWhere('last_name', 'LIKE', "%{$search}%");
+                        ->orWhere('last_name', 'LIKE', "%{$search}%")
+                        ->orWhere('username', 'LIKE', "%{$search}%");
                 });
             });
         }
 
-        $paginated = $baseQuery->with('follower:id,first_name,last_name,title,profile_image')
+        $paginated = $baseQuery->with('follower:id,username,first_name,last_name,title,profile_image')
             ->latest('id')
             ->paginate($limit);
 
@@ -221,12 +222,13 @@ class FollowController extends Controller
             $baseQuery->whereHas('following', function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('first_name', 'LIKE', "%{$search}%")
-                        ->orWhere('last_name', 'LIKE', "%{$search}%");
+                        ->orWhere('last_name', 'LIKE', "%{$search}%")
+                        ->orWhere('username', 'LIKE', "%{$search}%");
                 });
             });
         }
 
-        $paginated = $baseQuery->with('following:id,first_name,last_name,title,profile_image')
+        $paginated = $baseQuery->with('following:id,username,first_name,last_name,title,profile_image')
             ->latest('id')
             ->paginate($limit);
 
@@ -394,9 +396,13 @@ class FollowController extends Controller
     //     ], 200);
     // }
 
-    public function unfollow(Request $request, User $user): JsonResponse
+    public function unfollow(Request $request, $identifier): JsonResponse
     {
         $currentUser = $request->user();
+
+        $user = User::where('username', $identifier)
+                ->orWhere('id', $identifier)
+                ->firstOrFail();
 
         UserFollow::query()
             ->where('follower_id', $currentUser->id)
@@ -413,9 +419,13 @@ class FollowController extends Controller
         ], 200);
     }
 
-    public function follow(Request $request, User $user): JsonResponse
+    public function follow(Request $request, $identifier): JsonResponse
     {
         $currentUser = $request->user();
+
+        $user = User::where('username', $identifier)
+                ->orWhere('id', $identifier)
+                ->firstOrFail();
 
         if ($currentUser->id === $user->id) {
             throw ValidationException::withMessages([
@@ -444,6 +454,7 @@ class FollowController extends Controller
     {
         return [
             'id' => $user->id,
+            'username' => $user->username,
             'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
@@ -487,7 +498,7 @@ class FollowController extends Controller
 
         $mutualUsers = User::query()
             ->whereIn('id', $mutualUserIds->all())
-            ->get(['id', 'first_name', 'last_name', 'title', 'profile_image'])
+            ->get(['id', 'username', 'first_name', 'last_name', 'title', 'profile_image'])
             ->keyBy('id');
 
         $mutualConnections = [];

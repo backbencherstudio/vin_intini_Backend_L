@@ -36,8 +36,8 @@ class ConnectionController extends Controller
             ->accepted()
             ->forUser($currentUser->id)
             ->with([
-                'sender:id,first_name,last_name,title,profile_image',
-                'receiver:id,first_name,last_name,title,profile_image',
+                'sender:id,username,first_name,last_name,title,profile_image',
+                'receiver:id,username,first_name,last_name,title,profile_image',
             ])
             ->orderByDesc('responded_at')
             ->orderByDesc('id')
@@ -169,8 +169,8 @@ class ConnectionController extends Controller
             ->pending()
             ->where('receiver_id', $currentUser->id)
             ->with([
-                'sender:id,first_name,last_name,title,profile_image',
-                'receiver:id,first_name,last_name,title,profile_image',
+                'sender:id,username,first_name,last_name,title,profile_image',
+                'receiver:id,username,first_name,last_name,title,profile_image',
             ])
             ->orderByDesc('responded_at')
             ->orderByDesc('created_at')
@@ -207,6 +207,7 @@ class ConnectionController extends Controller
                 'request' => $connectionRequest,
                 'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
                 'search_title' => (string) ($counterpart->title ?? ''),
+                'username' => $counterpart->username ?? '',
             ];
         });
 
@@ -214,7 +215,8 @@ class ConnectionController extends Controller
             $normalizedSearch = mb_strtolower($search);
             $items = $items->filter(function (array $item) use ($normalizedSearch): bool {
                 return str_contains(mb_strtolower($item['search_name']), $normalizedSearch)
-                    || str_contains(mb_strtolower($item['search_title']), $normalizedSearch);
+                    || str_contains(mb_strtolower($item['search_title']), $normalizedSearch)
+                    || str_contains(mb_strtolower($item['username']), $normalizedSearch);
             });
         }
 
@@ -299,7 +301,7 @@ class ConnectionController extends Controller
             ->values();
 
         $suggestionsQuery = User::query()
-            ->select(['users.id', 'users.first_name', 'users.last_name', 'users.title', 'users.profile_image', 'users.cover_image'])
+            ->select(['users.id', 'users.username', 'users.first_name', 'users.last_name', 'users.title', 'users.profile_image', 'users.cover_image'])
             ->join('user_profiles', 'users.id', '=', 'user_profiles.user_id')
             ->where('user_profiles.privacy_profile_visibility', 'everyone')
             ->where('users.id', '!=', $currentUser->id)
@@ -681,9 +683,13 @@ class ConnectionController extends Controller
         ], 200);
     }
 
-    public function removeConnection(Request $request, User $user): JsonResponse
+    public function removeConnection(Request $request, $identifier): JsonResponse
     {
         $currentUser = $request->user();
+
+        $user = User::where('username', $identifier)
+                ->orWhere('id', $identifier)
+                ->firstOrFail();
 
         if ($currentUser->id === $user->id) {
             throw ValidationException::withMessages([
@@ -820,7 +826,7 @@ class ConnectionController extends Controller
 
         $mutualUsers = User::query()
             ->whereIn('id', $mutualUserIds->unique()->values())
-            ->get(['id', 'first_name', 'last_name', 'title', 'profile_image', 'username'])
+            ->get(['id', 'username', 'first_name', 'last_name', 'title', 'profile_image'])
             ->keyBy('id');
 
         $formatted = [];

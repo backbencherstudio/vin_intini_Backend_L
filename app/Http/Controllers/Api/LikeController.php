@@ -140,7 +140,7 @@ class LikeController extends Controller
     {
         $perPage = $request->get('per_page', 10);
 
-        $likes = PostLike::with(['user:id,first_name,last_name,profile_image'])
+        $likes = PostLike::with(['user:id,username,first_name,last_name,profile_image'])
             ->where('post_id', $postId)
             ->latest()
             ->paginate($perPage);
@@ -148,6 +148,7 @@ class LikeController extends Controller
         $users = collect($likes->items())->map(function ($like) {
             return [
                 'id' => $like->user->id,
+                'username' => $like->user->username,
                 'name' => $like->user->first_name.' '.$like->user->last_name,
                 'profile_image' => $like->user->profile_image_url,
             ];
@@ -305,7 +306,7 @@ class LikeController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $likes = CommentLike::with([
-            'user:id,first_name,last_name,profile_image',
+            'user:id,username,first_name,last_name,profile_image',
         ])
             ->where('comment_id', $commentId)
             ->latest()
@@ -314,6 +315,7 @@ class LikeController extends Controller
         $users = collect($likes->items())->map(function ($like) {
             return [
                 'id' => $like->user->id,
+                'username' => $like->user->username,
                 'name' => $like->user->first_name.' '.$like->user->last_name,
                 'profile_image' => $like->user->profile_image_url,
             ];
@@ -337,7 +339,7 @@ class LikeController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $likes = ReplyLike::with([
-            'user:id,first_name,last_name,profile_image',
+            'user:id,username,first_name,last_name,profile_image',
         ])
             ->where('reply_id', $replyId)
             ->latest()
@@ -346,6 +348,7 @@ class LikeController extends Controller
         $users = $likes->map(function ($like) {
             return [
                 'id' => $like->user->id,
+                'username' => $like->user->username,
                 'name' => $like->user->first_name.' '.$like->user->last_name,
                 'profile_image' => $like->user->profile_image_url,
             ];

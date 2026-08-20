@@ -44,7 +44,7 @@ class NewsfeedController extends Controller
 
         $posts = Post::query()
             ->with([
-                'user:id,first_name,last_name,profile_image,title',
+                'user:id,username,first_name,last_name,profile_image,title',
                 'user.profile:user_id,privacy_profile_activity',
                 'media',
                 'groups:id,name,logo',
@@ -320,7 +320,7 @@ class NewsfeedController extends Controller
         $allowedConnectionIds = $connectionIds->intersect($followingIds);
 
         $post = Post::with([
-            'user:id,first_name,last_name,profile_image,title',
+            'user:id,username,first_name,last_name,profile_image,title',
             'media',
             'groups:id,name,logo',
             'likes' => function ($q) use ($user) {
