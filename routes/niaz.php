@@ -50,7 +50,7 @@ Route::post('/experience/add', [UserExperienceController::class, 'store']);
 Route::get('/experience/edit/{id}', [UserExperienceController::class, 'edit']);
 Route::post('/experience/update/{id}', [UserExperienceController::class, 'update']);
 Route::delete('/experience/delete/{id}', [UserExperienceController::class, 'destroy']);
-Route::get('/user-experiences/{id}', [UserExperienceController::class, 'showExperienceByUserId']);
+Route::get('/user-experiences/{identifier}', [UserExperienceController::class, 'showExperienceByUserId']);
 
 // user education routes
 Route::get('/education/list', [UserEducationController::class, 'index']); //list of user education (auth user)
@@ -58,14 +58,14 @@ Route::post('/education/add', [UserEducationController::class, 'store']);
 Route::get('/education/edit/{id}', [UserEducationController::class, 'edit']);
 Route::post('/education/update/{id}', [UserEducationController::class, 'update']);
 Route::delete('/education/delete/{id}', [UserEducationController::class, 'destroy']);
-Route::get('/user-educations/{id}', [UserEducationController::class, 'showEducationByUserId']);
+Route::get('/user-educations/{identifier}', [UserEducationController::class, 'showEducationByUserId']);
 
 // user connection routes
 Route::get('/connections', [ConnectionController::class, 'index']);
 Route::get('/connections/suggestions', [ConnectionController::class, 'suggestions']);
 Route::get('/connections/sent-requests', [ConnectionController::class, 'sentPendingRequests']);
 Route::get('/connections/requests', [ConnectionController::class, 'requests']);
-Route::delete('/connections/{user}/remove', [ConnectionController::class, 'removeConnection']);
+Route::delete('/connections/{identifier}/remove', [ConnectionController::class, 'removeConnection']);
 Route::post('/connections/request', [ConnectionController::class, 'sendRequest']);
 Route::post('/connections/requests/{connectionRequest}/accept', [ConnectionController::class, 'accept']);
 Route::post('/connections/requests/{connectionRequest}/ignore', [ConnectionController::class, 'ignore']);
@@ -73,8 +73,8 @@ Route::post('/connections/requests/{connectionRequest}/ignore', [ConnectionContr
 // followers and following routes
 Route::get('/connections/followers', [FollowController::class, 'followers']);
 Route::get('/connections/following', [FollowController::class, 'following']);
-Route::post('/connections/{user}/follow', [FollowController::class, 'follow']);
-Route::delete('/connections/{user}/unfollow', [FollowController::class, 'unfollow']);
+Route::post('/connections/{identifier}/follow', [FollowController::class, 'follow']);
+Route::delete('/connections/{identifier}/unfollow', [FollowController::class, 'unfollow']);
 
 // notification routes
 Route::get('/notifications', [NotificationController::class, 'index']);
