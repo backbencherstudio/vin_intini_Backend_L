@@ -34,6 +34,7 @@ class CommentLikedNotification extends Notification implements ShouldQueue
 
         return [
             'sender_id' => $this->sender->id,
+            'sender_username' => $this->sender->username,
             'sender_name' => trim(
                 ($this->sender->first_name ?? '').' '.
                 ($this->sender->last_name ?? '')

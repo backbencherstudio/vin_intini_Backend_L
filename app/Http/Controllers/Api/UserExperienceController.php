@@ -63,12 +63,14 @@ class UserExperienceController extends Controller
         ]);
     }
 
-    public function showExperienceByUserId(Request $request, $id)
+    public function showExperienceByUserId(Request $request, $identifier)
     {
         $viewer = auth('api')->user();
-        $isOwnExperience = $viewer && $viewer->id == $id;
 
-        $targetUser = User::with('profile:user_id,privacy_profile_activity')->find($id);
+        $targetUser = User::with('profile:user_id,privacy_profile_activity')
+            ->where('username', $identifier)
+            ->orWhere('id', $identifier)
+            ->first();
 
         if (!$targetUser) {
             return response()->json([
@@ -76,6 +78,9 @@ class UserExperienceController extends Controller
                 'message' => 'User not found',
             ], 404);
         }
+
+        $actualUserId = $targetUser->id;
+        $isOwnExperience = $viewer && $viewer->id == $actualUserId;
 
         $privacy = $targetUser->profile->privacy_profile_activity ?? 'everyone';
         $canSee = $isOwnExperience;
@@ -85,11 +90,11 @@ class UserExperienceController extends Controller
                 $canSee = true;
             } elseif ($privacy === 'only_connected' && $viewer) {
                 $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
-                    ->where(function ($q) use ($viewer, $id) {
-                        $q->where(function ($q1) use ($viewer, $id) {
-                            $q1->where('sender_id', $viewer->id)->where('receiver_id', $id);
-                        })->orWhere(function ($q2) use ($viewer, $id) {
-                            $q2->where('sender_id', $id)->where('receiver_id', $viewer->id);
+                    ->where(function ($q) use ($viewer, $actualUserId) {
+                        $q->where(function ($q1) use ($viewer, $actualUserId) {
+                            $q1->where('sender_id', $viewer->id)->where('receiver_id', $actualUserId);
+                        })->orWhere(function ($q2) use ($viewer, $actualUserId) {
+                            $q2->where('sender_id', $actualUserId)->where('receiver_id', $viewer->id);
                         });
                     })->exists();
 
@@ -109,7 +114,7 @@ class UserExperienceController extends Controller
         }
 
         $experiences = Experience::query()
-            ->where('user_id', $id)
+            ->where('user_id', $actualUserId)
             ->with('company')
             ->orderByDesc('start_date')
             ->get();

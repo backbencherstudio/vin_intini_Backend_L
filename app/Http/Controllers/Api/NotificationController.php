@@ -25,8 +25,8 @@ class NotificationController extends Controller
         if ($search !== '') {
             $query = $query->where(function ($notificationQuery) use ($search) {
                 $notificationQuery
-                    ->where('type', 'like', '%'.$search.'%')
-                    ->orWhere('data', 'like', '%'.$search.'%');
+                    ->where('type', 'like', '%' . $search . '%')
+                    ->orWhere('data', 'like', '%' . $search . '%');
             });
         }
 
@@ -44,7 +44,7 @@ class NotificationController extends Controller
                 'total_notifications' => $totalNotifications,
                 'unread_notifications' => $unreadNotifications,
             ],
-            'data' => $notifications->getCollection()->map(fn ($notification) => $this->formatNotification($notification))->values(),
+            'data' => $notifications->getCollection()->map(fn($notification) => $this->formatNotification($notification))->values(),
             'total' => $notifications->total(),
             'limit' => $notifications->perPage(),
             'current_page' => $notifications->currentPage(),
@@ -127,6 +127,30 @@ class NotificationController extends Controller
 
         if (is_string($data)) {
             $data = json_decode($data, true);
+        }
+
+        $usernameKeys = ['sender_username', 'username', 'acceptor_username', 'inviter_username'];
+        $hasUsername = false;
+
+        foreach ($usernameKeys as $key) {
+            if (isset($data[$key])) {
+                $hasUsername = true;
+                break;
+            }
+        }
+
+        if (!$hasUsername) {
+            $userId = $data['sender_id'] ?? $data['user_id'] ?? $data['acceptor_id'] ?? $data['inviter_id'] ?? null;
+
+            if ($userId) {
+                $user = \App\Models\User::find($userId);
+                if ($user) {
+                    $data['sender_username'] = $user->username;
+                    $data['username'] = $user->username;
+                    $data['acceptor_username'] = $user->username;
+                    $data['inviter_username'] = $user->username;
+                }
+            }
         }
 
         return [

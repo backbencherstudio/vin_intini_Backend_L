@@ -242,7 +242,7 @@ class PostController extends Controller
             DB::commit();
 
             $post->load([
-                'user:id,first_name,last_name,profile_image',
+                'user:id,username,first_name,last_name,profile_image',
                 'media',
             ]);
 
@@ -471,7 +471,7 @@ class PostController extends Controller
             DB::commit();
 
             $post->load([
-                'user:id,first_name,last_name,profile_image',
+                'user:id,username,first_name,last_name,profile_image',
                 'media',
             ]);
 
