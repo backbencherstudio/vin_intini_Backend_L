@@ -70,13 +70,14 @@ class LogLoginJob
             'login_at'   => now(),
             'status'     => $this->status,
             'is_active'  => ($this->status === 'Successful'),
+            'is_trusted' => User::find($this->userId)?->created_at->gt(now()->subMinutes(5)) ? true : false,
         ]);
 
         // base on the status, send an email alert if it's a successful login
         if ($this->status === 'Successful') {
             $user = User::find($this->userId);
 
-            if ($user) {
+            if ($user && $user->created_at->lt(now()->subMinutes(5))) {
                 $seenBefore = LoginActivity::where('user_id', $user->id)
                     ->where('status', 'Successful')
                     ->where('location', $locationName)
