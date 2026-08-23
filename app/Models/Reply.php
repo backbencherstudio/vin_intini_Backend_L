@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Reply extends Model
 {
@@ -20,7 +21,7 @@ class Reply extends Model
 
     public function getImageUrlAttribute()
     {
-        return $this->image ? asset('storage/'.$this->image) : null;
+        return $this->image ? asset('storage/' . $this->image) : null;
     }
 
     public function post()
@@ -41,5 +42,14 @@ class Reply extends Model
     public function likes()
     {
         return $this->hasMany(ReplyLike::class);
+    }
+
+    protected static function booted()
+    {
+        static::deleting(function ($reply) {
+            if ($reply->image) {
+                Storage::disk('public')->delete($reply->image);
+            }
+        });
     }
 }
