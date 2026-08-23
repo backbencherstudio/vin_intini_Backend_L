@@ -23,6 +23,7 @@ class ConversationController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $conversations = Conversation::forUser($currentUser->id)
+            ->notDeletedFor($currentUser->id)
             ->when(
                 $status === 'archived',
                 fn ($q) => $q->archivedOnlyFor($currentUser->id),
@@ -60,7 +61,7 @@ class ConversationController extends Controller
                     ] : null,
                     'is_archived' => $conversation->isArchivedFor($currentUser->id),
                     'unread_count' => $unreadCount,
-                    '_search_name' => $otherUser->first_name.' '.$otherUser->last_name,
+                    '_search_name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
                     'updated_at' => $conversation->updated_at->toISOString(),
                 ];
             })
@@ -93,11 +94,11 @@ class ConversationController extends Controller
      */
     public function markAsRead(Request $request, Conversation $conversation): JsonResponse
     {
-        $currentUser = $request->user();
-
-        if ($conversation->user_id_1 !== $currentUser->id && $conversation->user_id_2 !== $currentUser->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($error = $this->authorizeConversation($request, $conversation)) {
+            return $error;
         }
+
+        $currentUser = $request->user();
 
         $conversation->markAsReadFor($currentUser->id);
 
@@ -112,11 +113,11 @@ class ConversationController extends Controller
      */
     public function markAsUnread(Request $request, Conversation $conversation): JsonResponse
     {
-        $currentUser = $request->user();
-
-        if ($conversation->user_id_1 !== $currentUser->id && $conversation->user_id_2 !== $currentUser->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($error = $this->authorizeConversation($request, $conversation)) {
+            return $error;
         }
+
+        $currentUser = $request->user();
 
         $conversation->markAsUnreadFor($currentUser->id);
 
@@ -131,11 +132,11 @@ class ConversationController extends Controller
      */
     public function archive(Request $request, Conversation $conversation): JsonResponse
     {
-        $currentUser = $request->user();
-
-        if ($conversation->user_id_1 !== $currentUser->id && $conversation->user_id_2 !== $currentUser->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($error = $this->authorizeConversation($request, $conversation)) {
+            return $error;
         }
+
+        $currentUser = $request->user();
 
         if ($conversation->isArchivedFor($currentUser->id)) {
             return response()->json(['success' => false, 'message' => 'Conversation is already archived.'], 409);
@@ -155,11 +156,11 @@ class ConversationController extends Controller
      */
     public function unarchive(Request $request, Conversation $conversation): JsonResponse
     {
-        $currentUser = $request->user();
-
-        if ($conversation->user_id_1 !== $currentUser->id && $conversation->user_id_2 !== $currentUser->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($error = $this->authorizeConversation($request, $conversation)) {
+            return $error;
         }
+
+        $currentUser = $request->user();
 
         if (! $conversation->isArchivedFor($currentUser->id)) {
             return response()->json(['success' => false, 'message' => 'Conversation is not archived.'], 409);
@@ -199,6 +200,8 @@ class ConversationController extends Controller
 
         $conversation = Conversation::betweenUsers($currentUser->id, $user->id);
 
+        $conversation->restoreFor($currentUser->id);
+
         $conversation->load(['lastMessage', 'user1', 'user2']);
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
@@ -235,9 +238,33 @@ class ConversationController extends Controller
     }
 
     /**
-     * Delete a conversation and all its messages.
+     * Delete a conversation for the current user only.
+     *
+     * The other participant keeps full access to the conversation and its history.
+     * The conversation reappears for the deleting user when the other party sends
+     * a new message or when they open it again via show-or-create.
      */
     public function destroy(Request $request, Conversation $conversation): JsonResponse
+    {
+        if ($error = $this->authorizeConversation($request, $conversation)) {
+            return $error;
+        }
+
+        $currentUser = $request->user();
+
+        $conversation->deleteFor($currentUser->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Conversation deleted successfully.',
+        ]);
+    }
+
+    /**
+     * Authorize that the current user participates in the conversation
+     * and has not deleted it from their side.
+     */
+    private function authorizeConversation(Request $request, Conversation $conversation): ?JsonResponse
     {
         $currentUser = $request->user();
 
@@ -245,13 +272,11 @@ class ConversationController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
 
-        $conversation->messages()->delete();
-        $conversation->delete();
+        if ($conversation->isDeletedFor($currentUser->id)) {
+            return response()->json(['success' => false, 'message' => 'Conversation not found.'], 404);
+        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Conversation deleted successfully.',
-        ]);
+        return null;
     }
 
     /**
@@ -294,9 +319,7 @@ class ConversationController extends Controller
      */
     private function loadUnreadCounts($conversations, int $userId): array
     {
-        $conversationIds = $conversations->pluck('id');
-
-        if ($conversationIds->isEmpty()) {
+        if ($conversations->isEmpty()) {
             return [];
         }
 

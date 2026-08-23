@@ -25,8 +25,8 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($conversation->user_id_1 !== $currentUser->id && $conversation->user_id_2 !== $currentUser->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+            return $error;
         }
 
         $conversation->markAsReadFor($currentUser->id);
@@ -46,7 +46,7 @@ class MessageController extends Controller
             })
             ->exists();
 
-        $data = $messages->reverse()->values()->map(fn(Message $message) => [
+        $data = $messages->reverse()->values()->map(fn (Message $message) => [
             'id' => $message->id,
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
@@ -80,7 +80,7 @@ class MessageController extends Controller
             'success' => true,
             'other_user' => [
                 'id' => $otherUser->id,
-                'name' => trim(($otherUser->first_name ?? '') . ' ' . ($otherUser->last_name ?? '')),
+                'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
                 'first_name' => $otherUser->first_name,
                 'last_name' => $otherUser->last_name,
                 'title' => $otherUser->title,
@@ -102,8 +102,8 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($conversation->user_id_1 !== $currentUser->id && $conversation->user_id_2 !== $currentUser->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+            return $error;
         }
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
@@ -147,7 +147,7 @@ class MessageController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $file->store('conversations/' . $conversation->id, 'public');
+            $path = $file->store('conversations/'.$conversation->id, 'public');
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_size'] = $file->getSize();
@@ -158,6 +158,9 @@ class MessageController extends Controller
         }
 
         $message = Message::create($data)->load('replyTo.sender:id,first_name,last_name');
+
+        $conversation->restoreFor($currentUser->id);
+        $conversation->restoreFor($otherUser->id);
 
         $conversation->update(['last_message_id' => $message->id]);
 
@@ -205,8 +208,8 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if (! $this->isParticipant($currentUser->id, $message->conversation_id)) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($error = $this->authorizeMessage($message, $currentUser->id)) {
+            return $error;
         }
 
         $validated = $request->validate([
@@ -258,8 +261,8 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if (! $this->isParticipant($currentUser->id, $message->conversation_id)) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        if ($error = $this->authorizeMessage($message, $currentUser->id)) {
+            return $error;
         }
 
         $message->reactions()->where('user_id', $currentUser->id)->delete();
@@ -290,7 +293,7 @@ class MessageController extends Controller
         return [
             'id' => $message->id,
             'sender_id' => $message->sender_id,
-            'sender_name' => trim(($message->sender->first_name ?? '') . ' ' . ($message->sender->last_name ?? '')),
+            'sender_name' => trim(($message->sender->first_name ?? '').' '.($message->sender->last_name ?? '')),
             'type' => $message->type,
             'message' => $message->message,
             'file_url' => $message->file_url,
@@ -335,7 +338,7 @@ class MessageController extends Controller
     private function isParticipant(int $userId, int $conversationId): bool
     {
         return Conversation::where('id', $conversationId)
-            ->where(fn($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
+            ->where(fn ($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
             ->exists();
     }
 
@@ -354,13 +357,13 @@ class MessageController extends Controller
     {
         return $message->reactions
             ->groupBy('reaction')
-            ->map(fn($reactions, string $reaction) => [
+            ->map(fn ($reactions, string $reaction) => [
                 'reaction' => $reaction,
                 'count' => $reactions->count(),
                 'users' => $reactions
-                    ->map(fn($item) => [
+                    ->map(fn ($item) => [
                         'id' => $item->user_id,
-                        'name' => trim(($item->user->first_name ?? '') . ' ' . ($item->user->last_name ?? '')),
+                        'name' => trim(($item->user->first_name ?? '').' '.($item->user->last_name ?? '')),
                     ])
                     ->values(),
             ])
@@ -385,6 +388,10 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
+        if ($error = $this->authorizeMessage($message, $currentUser->id)) {
+            return $error;
+        }
+
         if ($message->sender_id !== $currentUser->id) {
             return response()->json([
                 'success' => false,
@@ -398,5 +405,39 @@ class MessageController extends Controller
             'success' => true,
             'message' => 'Message deleted successfully.',
         ]);
+    }
+
+    /**
+     * Authorize that the user participates in the message's conversation
+     * and has not deleted the conversation from their side.
+     */
+    private function authorizeMessage(Message $message, int $userId): ?JsonResponse
+    {
+        if (! $this->isParticipant($userId, $message->conversation_id)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        if ($message->conversation->isDeletedFor($userId)) {
+            return response()->json(['success' => false, 'message' => 'Conversation not found.'], 404);
+        }
+
+        return null;
+    }
+
+    /**
+     * Authorize that the user participates in the conversation
+     * and has not deleted it from their side.
+     */
+    private function authorizeConversation(Conversation $conversation, int $userId): ?JsonResponse
+    {
+        if ($conversation->user_id_1 !== $userId && $conversation->user_id_2 !== $userId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        if ($conversation->isDeletedFor($userId)) {
+            return response()->json(['success' => false, 'message' => 'Conversation not found.'], 404);
+        }
+
+        return null;
     }
 }

@@ -1130,6 +1130,196 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('my_reaction', '👍🏽');
     }
 
+    public function test_user_can_delete_conversation_for_self_only(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Keep me for the other user',
+        ]);
+        $conversation->update(['last_message_id' => $message->id]);
+
+        $this->actingAs($user, 'api')->deleteJson("/api/conversations/{$conversation->id}")
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Hidden for the deleting user
+        $deleterList = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $deleterList->assertOk()->assertJsonCount(0, 'data');
+
+        // Still visible for the other participant
+        $otherList = $this->actingAs($connectedUser, 'api')->getJson('/api/conversations');
+        $otherList
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.last_message.message', 'Keep me for the other user');
+
+        // Nothing is actually destroyed
+        $this->assertDatabaseHas('conversations', ['id' => $conversation->id]);
+        $this->assertDatabaseHas('messages', ['id' => $message->id, 'deleted_at' => null]);
+        $this->assertFalse($conversation->fresh()->isDeletedFor($connectedUser->id));
+        $this->assertTrue($conversation->fresh()->isDeletedFor($user->id));
+    }
+
+    public function test_both_users_can_delete_conversation_independently(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->deleteJson("/api/conversations/{$conversation->id}")->assertOk();
+        $this->actingAs($connectedUser, 'api')->deleteJson("/api/conversations/{$conversation->id}")->assertOk();
+
+        $this->actingAs($user, 'api')->getJson('/api/conversations')->assertJsonCount(0, 'data');
+        $this->actingAs($connectedUser, 'api')->getJson('/api/conversations')->assertJsonCount(0, 'data');
+
+        $this->assertDatabaseHas('conversations', ['id' => $conversation->id]);
+    }
+
+    public function test_deleted_conversation_is_inaccessible_for_deleter_but_visible_for_other(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $connectedUser->id,
+            'type' => 'text',
+            'message' => 'Hello',
+        ]);
+
+        $this->actingAs($user, 'api')->deleteJson("/api/conversations/{$conversation->id}")->assertOk();
+
+        // Deleter gets 404 everywhere
+        $this->actingAs($user, 'api')->getJson("/api/conversations/{$conversation->id}/messages")
+            ->assertNotFound()
+            ->assertJsonPath('success', false);
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Should fail',
+        ])->assertNotFound();
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/mark-read")
+            ->assertNotFound();
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/archive")
+            ->assertNotFound();
+
+        // Reacting to a message of a hidden conversation is blocked too
+        $this->actingAs($user, 'api')->postJson("/api/messages/{$message->id}/react", ['reaction' => '👍'])
+            ->assertNotFound();
+
+        // The other participant keeps full access
+        $this->actingAs($connectedUser, 'api')->getJson("/api/conversations/{$conversation->id}/messages")
+            ->assertOk()
+            ->assertJsonPath('data.0.message', 'Hello');
+    }
+
+    public function test_new_message_from_other_party_restores_deleted_conversation(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->deleteJson("/api/conversations/{$conversation->id}")->assertOk();
+
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Are you there?',
+        ])->assertCreated();
+
+        $list = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $list
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.last_message.message', 'Are you there?')
+            ->assertJsonPath('data.0.unread_count', 1);
+
+        $this->assertFalse($conversation->fresh()->isDeletedFor($user->id));
+    }
+
+    public function test_show_or_create_restores_deleted_conversation_for_caller(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->deleteJson("/api/conversations/{$conversation->id}")->assertOk();
+        $this->actingAs($connectedUser, 'api')->deleteJson("/api/conversations/{$conversation->id}")->assertOk();
+
+        $response = $this->actingAs($user, 'api')->postJson("/api/conversations/with/{$connectedUser->id}");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.id', $conversation->id);
+
+        // Restored only for the caller
+        $this->assertFalse($conversation->fresh()->isDeletedFor($user->id));
+        $this->assertTrue($conversation->fresh()->isDeletedFor($connectedUser->id));
+
+        $this->actingAs($user, 'api')->getJson('/api/conversations')->assertJsonCount(1, 'data');
+        $this->actingAs($connectedUser, 'api')->getJson('/api/conversations')->assertJsonCount(0, 'data');
+    }
+
+    public function test_unread_summary_excludes_deleted_conversations(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($connectedUser, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Unread message',
+        ])->assertCreated();
+
+        $before = $this->actingAs($user, 'api')->getJson('/api/conversations/unread-count');
+        $before
+            ->assertOk()
+            ->assertJsonPath('data.unread_conversation_count', 1)
+            ->assertJsonPath('data.total_unread_messages', 1);
+
+        $this->actingAs($user, 'api')->deleteJson("/api/conversations/{$conversation->id}")->assertOk();
+
+        $after = $this->actingAs($user, 'api')->getJson('/api/conversations/unread-count');
+        $after
+            ->assertOk()
+            ->assertJsonPath('data.unread_conversation_count', 0)
+            ->assertJsonPath('data.total_unread_messages', 0);
+
+        // Other user's summary is unaffected
+        $other = $this->actingAs($connectedUser, 'api')->getJson('/api/conversations/unread-count');
+        $other->assertJsonPath('data.total_unread_messages', 0);
+    }
+
     private function makeUser(?string $firstName = null, ?string $lastName = null): User
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();

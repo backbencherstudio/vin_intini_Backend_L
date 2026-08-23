@@ -18,6 +18,8 @@ class Conversation extends Model
         'user_2_last_read_at',
         'user_1_archived_at',
         'user_2_archived_at',
+        'user_1_deleted_at',
+        'user_2_deleted_at',
     ];
 
     protected function casts(): array
@@ -27,6 +29,8 @@ class Conversation extends Model
             'user_2_last_read_at' => 'datetime',
             'user_1_archived_at' => 'datetime',
             'user_2_archived_at' => 'datetime',
+            'user_1_deleted_at' => 'datetime',
+            'user_2_deleted_at' => 'datetime',
         ];
     }
 
@@ -106,6 +110,44 @@ class Conversation extends Model
         return $archivedAt !== null;
     }
 
+    /**
+     * Hide the conversation for the given user without affecting the other party.
+     */
+    public function deleteFor(int $userId): void
+    {
+        if ($userId === $this->user_id_1) {
+            $this->user_1_deleted_at = now();
+        } elseif ($userId === $this->user_id_2) {
+            $this->user_2_deleted_at = now();
+        }
+        $this->save();
+    }
+
+    /**
+     * Make the conversation visible again for the given user.
+     */
+    public function restoreFor(int $userId): void
+    {
+        if ($userId === $this->user_id_1) {
+            $this->user_1_deleted_at = null;
+        } elseif ($userId === $this->user_id_2) {
+            $this->user_2_deleted_at = null;
+        }
+
+        if ($this->isDirty()) {
+            $this->save();
+        }
+    }
+
+    public function isDeletedFor(int $userId): bool
+    {
+        $deletedAt = $userId === $this->user_id_1
+            ? $this->user_1_deleted_at
+            : $this->user_2_deleted_at;
+
+        return $deletedAt !== null;
+    }
+
     public function markAsReadFor(int $userId): void
     {
         if ($userId === $this->user_id_1) {
@@ -118,7 +160,17 @@ class Conversation extends Model
 
     public function scopeForUser(Builder $query, int $userId): Builder
     {
-        return $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId);
+        return $query->where(function (Builder $q) use ($userId) {
+            $q->where('user_id_1', $userId)->orWhere('user_id_2', $userId);
+        });
+    }
+
+    public function scopeNotDeletedFor(Builder $query, int $userId): Builder
+    {
+        return $query->where(function (Builder $q) use ($userId) {
+            $q->where('user_id_1', $userId)->whereNull('user_1_deleted_at')
+                ->orWhere('user_id_2', $userId)->whereNull('user_2_deleted_at');
+        });
     }
 
     public function scopeNotArchivedFor(Builder $query, int $userId): Builder
@@ -154,7 +206,7 @@ class Conversation extends Model
     {
         return DB::table('messages')
             ->join('conversations', 'messages.conversation_id', '=', 'conversations.id')
-            ->whereIn('messages.conversation_id', static::forUser($userId)->pluck('id'))
+            ->whereIn('messages.conversation_id', static::forUser($userId)->notDeletedFor($userId)->pluck('id'))
             ->where('messages.sender_id', '!=', $userId)
             ->where(function ($q) use ($userId) {
                 $q->where(function ($q) use ($userId) {
