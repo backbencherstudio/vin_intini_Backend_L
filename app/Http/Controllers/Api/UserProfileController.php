@@ -688,8 +688,8 @@ class UserProfileController extends Controller
     public function updateImages(Request $request, ProfileImageService $profileImageService)
     {
         $request->validate([
-            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:20480',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:20480',
         ]);
 
         if (! $request->hasFile('profile_image') && ! $request->hasFile('cover_image')) {
