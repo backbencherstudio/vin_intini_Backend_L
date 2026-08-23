@@ -34,7 +34,7 @@ class NewsfeedController extends Controller
         }
 
         $connectionIds = collect($relationshipMap)
-            ->filter(fn($status) => $status === Connection::STATUS_ACCEPTED)
+            ->filter(fn ($status) => $status === Connection::STATUS_ACCEPTED)
             ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)
@@ -101,7 +101,7 @@ class NewsfeedController extends Controller
                 $canEdit = ($post->user_id === $user->id);
                 $canDelete = ($post->user_id === $user->id);
 
-                if (!$canDelete) {
+                if (! $canDelete) {
                     foreach ($post->groups as $group) {
                         if (in_array($group->id, $adminGroupIds)) {
                             $canDelete = true;
@@ -147,7 +147,7 @@ class NewsfeedController extends Controller
         ]);
     }
 
-    //santos's code===================================
+    // santos's code===================================
     // public function newsFeed(Request $request)
     // {
     //     $user = auth('api')->user();
@@ -286,7 +286,7 @@ class NewsfeedController extends Controller
     //         ],
     //     ]);
     // }
-    //santos's code===================================
+    // santos's code===================================
 
     public function singlePost($id)
     {
@@ -311,7 +311,7 @@ class NewsfeedController extends Controller
         }
 
         $connectionIds = collect($relationshipMap)
-            ->filter(fn($status) => $status === Connection::STATUS_ACCEPTED)
+            ->filter(fn ($status) => $status === Connection::STATUS_ACCEPTED)
             ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)

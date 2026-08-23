@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Validation\Rule;
 use App\Models\Connection;
 use App\Models\Education;
 use App\Models\Experience;
@@ -13,10 +12,12 @@ use App\Models\Skill;
 use App\Models\User;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class UserProfileController extends Controller
 {
@@ -26,7 +27,7 @@ class UserProfileController extends Controller
             'profile.currentPosition',
             'profile.currentInstitute',
             'educations.institution',
-            'experiences.company'
+            'experiences.company',
         ]);
 
         $isOwnProfile = true;
@@ -187,7 +188,7 @@ class UserProfileController extends Controller
         $privacySetting = $user->profile->privacy_profile_activity ?? 'everyone';
         $isPrivateProfile = false;
 
-        if (!$isOwnProfile) {
+        if (! $isOwnProfile) {
             if ($privacySetting === 'nobody') {
                 $isPrivateProfile = true;
             } elseif ($privacySetting === 'only_connected' && $state !== 'accepted') {
@@ -195,7 +196,7 @@ class UserProfileController extends Controller
             }
         }
 
-        $canSeeDetails = !$isPrivateProfile;
+        $canSeeDetails = ! $isPrivateProfile;
 
         $totalConnections = Connection::query()
             ->accepted()
@@ -288,7 +289,7 @@ class UserProfileController extends Controller
         ], 200);
     }
 
-    //niaz's code=============================================
+    // niaz's code=============================================
     // public function showUserProfile(Request $request, $id)
     // {
     //     $currentUser = $request->user();
@@ -437,7 +438,7 @@ class UserProfileController extends Controller
     {
         if ($request->has('group_ids') && is_string($request->group_ids)) {
             $request->merge([
-                'group_ids' => explode(',', $request->group_ids)
+                'group_ids' => explode(',', $request->group_ids),
             ]);
         }
 
@@ -446,7 +447,7 @@ class UserProfileController extends Controller
             'notify_publications' => filter_var($request->notify_publications, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
             'notify_residency' => filter_var($request->notify_residency, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
             'notify_offers' => filter_var($request->notify_offers, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
-            'is_current'   => filter_var($request->is_current, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+            'is_current' => filter_var($request->is_current, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
         ]);
 
         $validated = $request->validate([
@@ -471,28 +472,28 @@ class UserProfileController extends Controller
 
             // Education
             'start_month' => 'required_with:institution|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year'  => 'required_with:institution|nullable|integer|min:1900|max:' . (date('Y') + 10),
-            'is_current'  => 'required_with:institution|nullable|boolean',
-            'end_month'   => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year'    => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'start_year' => 'required_with:institution|nullable|integer|min:1900|max:'.(date('Y') + 10),
+            'is_current' => 'required_with:institution|nullable|boolean',
+            'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
 
-            'notify_jobs'         => 'nullable|boolean',
+            'notify_jobs' => 'nullable|boolean',
             'notify_publications' => 'nullable|boolean',
-            'notify_residency'    => 'nullable|boolean',
-            'notify_offers'       => 'nullable|boolean',
-            'group_ids'           => 'nullable|array',
-            'group_ids.*'         => 'exists:groups,id'
+            'notify_residency' => 'nullable|boolean',
+            'notify_offers' => 'nullable|boolean',
+            'group_ids' => 'nullable|array',
+            'group_ids.*' => 'exists:groups,id',
         ]);
 
         $user = $request->user();
 
-        if (!$user->username) {
-            $baseSlug = \Illuminate\Support\Str::slug($request->first_name . ' ' . $request->last_name, '-');
+        if (! $user->username) {
+            $baseSlug = Str::slug($request->first_name.' '.$request->last_name, '-');
             $finalUsername = $baseSlug;
             $counter = 1;
 
             while (User::where('username', $finalUsername)->exists()) {
-                $finalUsername = $baseSlug . '-' . $counter;
+                $finalUsername = $baseSlug.'-'.$counter;
                 $counter++;
             }
             $user->username = $finalUsername;
@@ -545,10 +546,10 @@ class UserProfileController extends Controller
                 'current_institute_id' => $currentInstituteId,
                 'about' => $request->about,
 
-                'notify_jobs'         => $request->boolean('notify_jobs'),
+                'notify_jobs' => $request->boolean('notify_jobs'),
                 'notify_publications' => $request->boolean('notify_publications'),
-                'notify_residency'    => $request->boolean('notify_residency'),
-                'notify_offers'       => $request->boolean('notify_offers'),
+                'notify_residency' => $request->boolean('notify_residency'),
+                'notify_offers' => $request->boolean('notify_offers'),
             ]
         );
 
@@ -558,7 +559,6 @@ class UserProfileController extends Controller
 
         $institutionName = trim((string) ($validated['institution'] ?? ''));
         $degree = trim((string) ($validated['highest_degree'] ?? ''));
-
 
         // $endYear = trim((string) ($validated['graduation_year'] ?? ''));
 
@@ -576,15 +576,14 @@ class UserProfileController extends Controller
                 [
                     'field_study' => $validated['field_study'] ?? null,
                     'start_month' => $validated['start_month'],
-                    'start_year'  => $validated['start_year'],
-                    'end_month'   => $isCurrent ? null : $validated['end_month'],
-                    'end_year'    => $isCurrent ? null : $validated['end_year'],
-                    'is_current'  => $isCurrent,
-                    'skills_id'   => $skillIds,
+                    'start_year' => $validated['start_year'],
+                    'end_month' => $isCurrent ? null : $validated['end_month'],
+                    'end_year' => $isCurrent ? null : $validated['end_year'],
+                    'is_current' => $isCurrent,
+                    'skills_id' => $skillIds,
                 ]
             );
         }
-
 
         return response()->json([
             'status' => 'success',
@@ -788,30 +787,30 @@ class UserProfileController extends Controller
             'new_password' => [
                 'required',
                 'confirmed',
-                Password::min(8)->mixedCase()->numbers() // Minimum 8 chars, mixed case, and numbers
+                Password::min(8)->mixedCase()->numbers(), // Minimum 8 chars, mixed case, and numbers
             ],
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $user = $request->user();
 
         // 2. Check if current password matches
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'The current password you entered is incorrect.'
+                'message' => 'The current password you entered is incorrect.',
             ], 400);
         }
 
         // 3. Update the password
         $user->update([
-            'password' => Hash::make($request->new_password)
+            'password' => Hash::make($request->new_password),
         ]);
 
         // 4. Current token invalidation and logout other sessions
@@ -825,7 +824,7 @@ class UserProfileController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Password changed successfully.'
+            'message' => 'Password changed successfully.',
         ], 200);
     }
 }

@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PageController extends Controller
 {
@@ -354,5 +356,37 @@ class PageController extends Controller
             'message' => 'Page updated successfully',
             'data' => $page->fresh(),
         ]);
+    }
+
+    private function processAboutVideo($file)
+    {
+        $filename = 'pages/videos/'.Str::uuid().'.mp4';
+        $inputPath = $file->getRealPath();
+        $outputPath = storage_path('app/public/'.$filename);
+
+        if (! Storage::disk('public')->exists('pages/videos')) {
+            Storage::disk('public')->makeDirectory('pages/videos');
+        }
+
+        $ffmpegPath = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN'
+            ? 'C:/ffmpeg/bin/ffmpeg.exe'
+            : '/usr/bin/ffmpeg';
+
+        $command = sprintf(
+            '"%s" -i %s -vf "scale=\'min(1280,iw)\':-2" -c:v libx264 -preset superfast -crf 28 -movflags +faststart -c:a aac -b:a 128k %s -y 2>&1',
+            $ffmpegPath,
+            escapeshellarg($inputPath),
+            escapeshellarg($outputPath)
+        );
+
+        exec($command, $output, $status);
+
+        if ($status !== 0) {
+            Log::error('FFmpeg Error: '.implode("\n", $output));
+
+            return $file->store('pages/videos', 'public');
+        }
+
+        return $filename;
     }
 }

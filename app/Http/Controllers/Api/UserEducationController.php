@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Connection;
 use App\Models\Education;
 use App\Models\Institution;
 use App\Models\Skill;
@@ -32,7 +33,7 @@ class UserEducationController extends Controller
                     WHEN name LIKE ? THEN 2
                     ELSE 3
                 END
-            ', [$search, $search . '%']);
+            ', [$search, $search.'%']);
         }
 
         $institutions = $query->orderBy('name', 'asc')
@@ -72,7 +73,7 @@ class UserEducationController extends Controller
             ->orWhere('id', $identifier)
             ->first();
 
-        if (!$targetUser) {
+        if (! $targetUser) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'User not found',
@@ -85,11 +86,11 @@ class UserEducationController extends Controller
         $privacy = $targetUser->profile->privacy_profile_activity ?? 'everyone';
         $canSee = $isOwnEducation;
 
-        if (!$canSee) {
+        if (! $canSee) {
             if ($privacy === 'everyone') {
                 $canSee = true;
             } elseif ($privacy === 'only_connected' && $viewer) {
-                $isConnected = \App\Models\Connection::where('status', \App\Models\Connection::STATUS_ACCEPTED)
+                $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
                     ->where(function ($q) use ($viewer, $actualUserId) {
                         $q->where(function ($q1) use ($viewer, $actualUserId) {
                             $q1->where('sender_id', $viewer->id)->where('receiver_id', $actualUserId);
@@ -104,7 +105,7 @@ class UserEducationController extends Controller
             }
         }
 
-        if (!$canSee) {
+        if (! $canSee) {
             return response()->json([
                 'status' => 'success',
                 'is_own_education' => $isOwnEducation,
@@ -136,7 +137,7 @@ class UserEducationController extends Controller
         ]);
     }
 
-    //niaz's code================================
+    // niaz's code================================
     // public function showEducationByUserId($id)
     // {
     //     $isOwnEducation = auth()->check() && auth()->id() == $id;
@@ -163,7 +164,7 @@ class UserEducationController extends Controller
     //         'data' => $educations,
     //     ]);
     // }
-    //===========================================
+    // ===========================================
 
     public function store(Request $request)
     {
@@ -173,10 +174,10 @@ class UserEducationController extends Controller
             'degree' => 'required|string|max:255',
             'field_study' => 'nullable|string|max:255',
             'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
+            'start_year' => 'required|integer|min:1900|max:'.(date('Y') + 10),
             'is_current' => 'required|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
             'grade' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'activities' => 'nullable|string',
@@ -184,9 +185,9 @@ class UserEducationController extends Controller
             'skills.*' => 'string|distinct',
         ]);
 
-        $startDate = Carbon::parse($validated['start_month'] . ' ' . $validated['start_year'])->startOfMonth();
+        $startDate = Carbon::parse($validated['start_month'].' '.$validated['start_year'])->startOfMonth();
         if (! $validated['is_current']) {
-            $endDate = Carbon::parse($validated['end_month'] . ' ' . $validated['end_year'])->startOfMonth();
+            $endDate = Carbon::parse($validated['end_month'].' '.$validated['end_year'])->startOfMonth();
 
             if ($endDate->lt($startDate)) {
                 return response()->json([

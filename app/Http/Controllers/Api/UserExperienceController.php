@@ -49,7 +49,7 @@ class UserExperienceController extends Controller
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
-                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
                         : null,
                     'experiences' => $experiences,
                 ];
@@ -72,7 +72,7 @@ class UserExperienceController extends Controller
             ->orWhere('id', $identifier)
             ->first();
 
-        if (!$targetUser) {
+        if (! $targetUser) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'User not found',
@@ -85,7 +85,7 @@ class UserExperienceController extends Controller
         $privacy = $targetUser->profile->privacy_profile_activity ?? 'everyone';
         $canSee = $isOwnExperience;
 
-        if (!$canSee) {
+        if (! $canSee) {
             if ($privacy === 'everyone') {
                 $canSee = true;
             } elseif ($privacy === 'only_connected' && $viewer) {
@@ -104,7 +104,7 @@ class UserExperienceController extends Controller
             }
         }
 
-        if (!$canSee) {
+        if (! $canSee) {
             return response()->json([
                 'status' => 'success',
                 'is_own_experience' => $isOwnExperience,
@@ -144,7 +144,7 @@ class UserExperienceController extends Controller
                     'job_type' => $latestExperience?->employment_type,
                     'period' => $this->formatCompanyPeriod($companyExperiences),
                     'summary' => $latestExperience?->employment_type && $this->formatCompanyPeriod($companyExperiences)
-                        ? $latestExperience->employment_type . ' • ' . $this->formatCompanyPeriod($companyExperiences)
+                        ? $latestExperience->employment_type.' • '.$this->formatCompanyPeriod($companyExperiences)
                         : null,
                     'experiences' => $experiences,
                 ];
@@ -158,7 +158,7 @@ class UserExperienceController extends Controller
         ]);
     }
 
-    //niaz's code===================================================
+    // niaz's code===================================================
     // public function showExperienceByUserId(Request $request, $id)
     // {
     //     $isOwnExperience = auth()->check() && auth()->id() == $id;
@@ -236,8 +236,8 @@ class UserExperienceController extends Controller
             'total_time' => $totalTime,
             'timeline' => $startingDate && $totalTime
                 ? $experience->is_current
-                ? $startingDate . ' • ' . $statusLabel . ' • ' . $totalTime
-                : $startingDate . ' • ' . $endingDate . ' • ' . $totalTime
+                ? $startingDate.' • '.$statusLabel.' • '.$totalTime
+                : $startingDate.' • '.$endingDate.' • '.$totalTime
                 : null,
         ];
     }
@@ -263,11 +263,11 @@ class UserExperienceController extends Controller
         $parts = [];
 
         if ($years > 0) {
-            $parts[] = $years . ' year' . ($years === 1 ? '' : 's');
+            $parts[] = $years.' year'.($years === 1 ? '' : 's');
         }
 
         if ($remainingMonths > 0) {
-            $parts[] = $remainingMonths . ' month' . ($remainingMonths === 1 ? '' : 's');
+            $parts[] = $remainingMonths.' month'.($remainingMonths === 1 ? '' : 's');
         }
 
         if ($parts === []) {
@@ -332,20 +332,20 @@ class UserExperienceController extends Controller
             'location' => 'nullable|string',
             'location_type' => 'nullable|string',
             'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
+            'start_year' => 'required|integer|min:1900|max:'.(date('Y') + 10),
             'is_current' => 'required|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
             'description' => 'nullable|string',
             'skills' => 'nullable|array',
             'skills.*' => 'string|distinct',
         ]);
 
-        $startDate = Carbon::parse($request->start_month . ' ' . $request->start_year)->startOfMonth();
+        $startDate = Carbon::parse($request->start_month.' '.$request->start_year)->startOfMonth();
         $endDate = null;
 
         if (! $request->is_current) {
-            $endDate = Carbon::parse($request->end_month . ' ' . $request->end_year)->startOfMonth();
+            $endDate = Carbon::parse($request->end_month.' '.$request->end_year)->startOfMonth();
 
             if ($endDate->lt($startDate)) {
                 return response()->json([

@@ -29,7 +29,7 @@ class InstitutionReportController extends Controller
                 'educations as completed_programs' => function ($query) {
                     $query->where('is_current', false)
                         ->select(DB::raw('count(distinct(user_id))'));
-                }
+                },
             ])
             ->orderBy('total_students', 'desc')
             ->paginate(20);
@@ -56,7 +56,6 @@ class InstitutionReportController extends Controller
             ],
         ]);
     }
-
 
     public function showStudents(Request $request, $id)
     {
@@ -95,16 +94,16 @@ class InstitutionReportController extends Controller
             $user = $education->user;
 
             $studentName = $user
-                ? trim($user->first_name . ' ' . $user->last_name)
+                ? trim($user->first_name.' '.$user->last_name)
                 : null;
 
             $status = $education->is_current ? 'Present' : 'Completed';
 
             $academicPeriod = $education->is_current
-                ? $education->start_month . ' ' . $education->start_year . ' — Present'
-                : $education->start_month . ' ' . $education->start_year
-                . ' — ' .
-                $education->end_month . ' ' . $education->end_year;
+                ? $education->start_month.' '.$education->start_year.' — Present'
+                : $education->start_month.' '.$education->start_year
+                .' — '.
+                $education->end_month.' '.$education->end_year;
 
             return [
                 'sl_no' => (($educations->currentPage() - 1) * $educations->perPage()) + $index + 1,
@@ -118,14 +117,13 @@ class InstitutionReportController extends Controller
             ];
         });
 
-
         return response()->json([
             'success' => true,
 
             'institution' => [
                 'id' => $institution->id,
                 'logo' => $institution->logo,
-                'name' => $institution->name
+                'name' => $institution->name,
             ],
 
             'data' => $data,

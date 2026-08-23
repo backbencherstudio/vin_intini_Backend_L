@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -260,8 +261,8 @@ class PagesController extends Controller
         }
 
         $ffmpegPath = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN'
-                      ? 'C:/ffmpeg/bin/ffmpeg.exe'
-                      : '/usr/bin/ffmpeg';
+            ? 'C:/ffmpeg/bin/ffmpeg.exe'
+            : '/usr/bin/ffmpeg';
 
         $command = sprintf(
             "\"%s\" -i %s -vf \"scale='min(1280,iw)':-2\" -c:v libx264 -preset superfast -crf 28 -movflags +faststart -c:a aac -b:a 128k %s -y 2>&1",
@@ -273,7 +274,7 @@ class PagesController extends Controller
         exec($command, $output, $status);
 
         if ($status !== 0) {
-            \Log::error('FFmpeg Error: '.implode("\n", $output));
+            Log::error('FFmpeg Error: '.implode("\n", $output));
 
             return $file->store('pages/videos', 'public');
         }

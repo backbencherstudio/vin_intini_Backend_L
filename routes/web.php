@@ -10,11 +10,11 @@ use App\Http\Controllers\Admin\InstitutionReportController;
 use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Api\SecuritySettingsController;
+use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
-use App\Models\User;
 
 Route::redirect('/', '/welcome');
 Route::get('/welcome', function () {
@@ -51,7 +51,6 @@ Route::get('/security/email-resolve/{id}', [SecuritySettingsController::class, '
 // Security Routes when user clicks on the email link for suspicious login activities
 Route::post('/security/update-password', [SecuritySettingsController::class, 'updatePasswordFromAlert'])
     ->name('security.update-password')->middleware('signed');
-
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'active_session']], function () {
 
@@ -127,7 +126,6 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'a
         Route::post('/update/{id}', [PagesController::class, 'update'])->name('admin.pages.update');
     });
 
-
     Route::post('/logout', [AdminAuthController::class, 'adminLogout'])->name('admin.logout');
 });
 
@@ -157,13 +155,12 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'a
 //     return redirect()->back()->with('success', 'All notifications have been removed!');
 // })->name('notifications.clearAll');
 
-
 Route::get('/generate-usernames', function () {
     $users = User::whereNull('username')->get();
     $count = 0;
 
     foreach ($users as $user) {
-        $baseSlug = Str::slug($user->first_name . ' ' . $user->last_name, '-');
+        $baseSlug = Str::slug($user->first_name.' '.$user->last_name, '-');
 
         if (empty($baseSlug)) {
             $baseSlug = Str::slug(explode('@', $user->email)[0], '-');
@@ -173,7 +170,7 @@ Route::get('/generate-usernames', function () {
         $counter = 1;
 
         while (User::where('username', $username)->exists()) {
-            $username = $baseSlug . '-' . $counter;
+            $username = $baseSlug.'-'.$counter;
             $counter++;
         }
 
@@ -185,5 +182,4 @@ Route::get('/generate-usernames', function () {
     return response()->json(['message' => "$count users updated with usernames!"]);
 });
 
-
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

@@ -2,20 +2,24 @@
 
 namespace App\Mail;
 
+use App\Models\LoginActivity;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use App\Models\LoginActivity;
-use Stevebauman\Location\Facades\Location; 
+use Stevebauman\Location\Facades\Location;
 
 class NewLoginAlertMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $activity;
+
     public $trustUrl;
+
     public $blockUrl;
+
     public $localTime;
+
     public $userTimezone;
 
     public function __construct(LoginActivity $activity, $trustUrl, $blockUrl)

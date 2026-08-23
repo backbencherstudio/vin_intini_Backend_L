@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Throwable;
 use App\Services\ProfileImageService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Throwable;
 
 class SettingsController extends Controller
 {
@@ -117,5 +117,4 @@ class SettingsController extends Controller
             ], 500);
         }
     }
-
 }

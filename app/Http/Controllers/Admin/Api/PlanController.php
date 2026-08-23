@@ -28,7 +28,7 @@ class PlanController extends Controller
 
     public function features(): JsonResponse
     {
-        $features = collect(PlanFeature::cases())->map(fn(PlanFeature $f) => [
+        $features = collect(PlanFeature::cases())->map(fn (PlanFeature $f) => [
             'value' => $f->value,
             'label' => PlanFeature::labels()[$f->value],
         ]);

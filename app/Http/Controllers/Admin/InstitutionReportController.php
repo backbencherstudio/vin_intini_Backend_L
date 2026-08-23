@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Education;
-use Illuminate\Support\Facades\DB;
 use App\Models\Institution;
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class InstitutionReportController extends Controller
 {
@@ -30,7 +29,7 @@ class InstitutionReportController extends Controller
                 'educations as completed_students' => function ($query) {
                     $query->where('is_current', false)
                         ->select(DB::raw('count(distinct(user_id))'));
-                }
+                },
             ])
             ->orderBy('total_students', 'desc')
             ->paginate(20)
@@ -38,7 +37,6 @@ class InstitutionReportController extends Controller
 
         return view('admin.institution_report.index', compact('institutions'));
     }
-
 
     public function showStudents(Request $request, $id)
     {

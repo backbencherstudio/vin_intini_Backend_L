@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RegisterOtpMail;
+use App\Models\LoginActivity;
 use App\Models\Skill;
 use App\Models\User;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -14,7 +17,6 @@ use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
-use Illuminate\Auth\Events\Login;
 
 class AuthController extends Controller
 {
@@ -41,8 +43,9 @@ class AuthController extends Controller
 
             // Trigger the Failed event to log the failed login activity--------------
             if ($user) {
-                event(new \Illuminate\Auth\Events\Failed('api', $user, $credentials));
+                event(new Failed('api', $user, $credentials));
             }
+
             // ------------------------------------------------------------------------
             return response()->json([
                 'success' => false,
@@ -63,7 +66,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => '2fa_required',
                 'email' => $user->email,
-                'message' => 'Two-factor authentication is required. Please provide your code.'
+                'message' => 'Two-factor authentication is required. Please provide your code.',
             ], 200);
         }
 
@@ -74,7 +77,6 @@ class AuthController extends Controller
                 'message' => 'Invalid credentials',
             ], 401);
         }
-
 
         $user = auth('api')->user();
 
@@ -172,14 +174,14 @@ class AuthController extends Controller
         try {
             $user = auth('api')->user();
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json(['success' => false, 'message' => 'User not found'], 401);
             }
 
             $payload = auth('api')->payload();
             if ($payload) {
                 $tokenId = $payload->get('jti');
-                \App\Models\LoginActivity::where('token_id', $tokenId)
+                LoginActivity::where('token_id', $tokenId)
                     ->where('user_id', $user->id)
                     ->update(['is_active' => 0]);
             }
@@ -193,11 +195,10 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => true,
-                'message' => 'Successfully logged out'
+                'message' => 'Successfully logged out',
             ]);
         }
     }
-
 
     // public function logout()
     // {

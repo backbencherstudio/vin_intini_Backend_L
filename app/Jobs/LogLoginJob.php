@@ -10,13 +10,24 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Jenssegers\Agent\Agent;
 use Stevebauman\Location\Facades\Location;
-use App\Jobs\SendLoginAlertEmailJob;
 
 class LogLoginJob
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $userId, $ip, $userAgent, $tokenId, $status, $customDevice, $customPlatform;
+    protected $userId;
+
+    protected $ip;
+
+    protected $userAgent;
+
+    protected $tokenId;
+
+    protected $status;
+
+    protected $customDevice;
+
+    protected $customPlatform;
 
     public function __construct($userId, $ip, $userAgent, $tokenId = null, $status = 'Successful', $customDevice = null, $customPlatform = null)
     {
@@ -31,19 +42,19 @@ class LogLoginJob
 
     public function handle()
     {
-        $agent = new Agent();
+        $agent = new Agent;
         $agent->setUserAgent($this->userAgent);
 
         $platform = $agent->platform();
         $browser = $agent->browser();
 
         if ($this->customDevice) {
-            $device = $this->customDevice . ($this->customPlatform ? ' (' . $this->customPlatform . ')' : '');
+            $device = $this->customDevice.($this->customPlatform ? ' ('.$this->customPlatform.')' : '');
             $browser = 'Native Mobile App';
         } else {
             if ($agent->isPhone() || $agent->isTablet()) {
                 $brand = $agent->device();
-                $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
+                $device = ($brand && $brand != 'WebKit') ? $brand.' ('.$platform.')' : $platform;
             } else {
                 $device = $platform ?: 'Unknown Device';
             }
@@ -58,18 +69,18 @@ class LogLoginJob
         // }
 
         $loc = Location::get($this->ip);
-        $locationName = $loc ? $loc->cityName . ', ' . $loc->countryName : 'Unknown';
+        $locationName = $loc ? $loc->cityName.', '.$loc->countryName : 'Unknown';
 
         $activity = LoginActivity::create([
-            'user_id'    => $this->userId,
-            'token_id'   => $this->tokenId,
-            'device'     => $device ?: 'Unknown Device',
-            'browser'    => $browser ?: 'Unknown Browser',
+            'user_id' => $this->userId,
+            'token_id' => $this->tokenId,
+            'device' => $device ?: 'Unknown Device',
+            'browser' => $browser ?: 'Unknown Browser',
             'ip_address' => $this->ip,
-            'location'   => $locationName,
-            'login_at'   => now(),
-            'status'     => $this->status,
-            'is_active'  => ($this->status === 'Successful'),
+            'location' => $locationName,
+            'login_at' => now(),
+            'status' => $this->status,
+            'is_active' => ($this->status === 'Successful'),
             'is_trusted' => User::find($this->userId)?->created_at->gt(now()->subMinutes(5)) ? true : false,
         ]);
 
@@ -85,7 +96,7 @@ class LogLoginJob
                     ->where('is_trusted', true)
                     ->exists();
 
-                if (!$seenBefore) {
+                if (! $seenBefore) {
                     SendLoginAlertEmailJob::dispatch($activity);
                 }
             }

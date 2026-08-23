@@ -38,7 +38,7 @@ return new class extends Migration
             // Drop columns
             $table->dropColumn([
                 'privacy_profile_activity',
-                'privacy_profile_visibility'
+                'privacy_profile_visibility',
             ]);
         });
     }

@@ -12,7 +12,6 @@ use Illuminate\Http\Request;
 
 class AcademiaController extends Controller
 {
-
     public function indexUniversities(Request $request)
     {
         $perPage = (int) $request->input('per_page', 20);
@@ -24,7 +23,7 @@ class AcademiaController extends Controller
             $query->where(
                 'name',
                 'LIKE',
-                '%' . $request->input('search') . '%'
+                '%'.$request->input('search').'%'
             );
         }
 
@@ -75,7 +74,6 @@ class AcademiaController extends Controller
         ]);
     }
 
-
     public function storeUniversity(Request $request)
     {
         $validated = $request->validate([
@@ -119,7 +117,6 @@ class AcademiaController extends Controller
             'website' => $validated['website'] ?? null,
         ]);
 
-
         $university->load('state');
 
         return response()->json([
@@ -149,12 +146,11 @@ class AcademiaController extends Controller
         ], 201);
     }
 
-
     public function updateUniversity(Request $request, $id)
     {
         $university = AcademiaUniversity::find($id);
 
-        if (!$university) {
+        if (! $university) {
             return response()->json([
                 'success' => false,
                 'message' => 'University not found.',
@@ -183,8 +179,6 @@ class AcademiaController extends Controller
             'location' => 'sometimes|nullable|string|max:500',
             'website' => 'sometimes|nullable|url|max:500',
         ]);
-
-
 
         if ($request->has('name')) {
             $university->name = $validated['name'];
@@ -265,12 +259,11 @@ class AcademiaController extends Controller
         ]);
     }
 
-
     public function destroyUniversity($id)
     {
         $university = AcademiaUniversity::find($id);
 
-        if (!$university) {
+        if (! $university) {
             return response()->json([
                 'success' => false,
                 'message' => 'University not found.',
@@ -284,7 +277,6 @@ class AcademiaController extends Controller
             'message' => 'University deleted successfully.',
         ], 200);
     }
-
 
     public function indexResidencies(Request $request)
     {
@@ -345,7 +337,6 @@ class AcademiaController extends Controller
         ]);
     }
 
-
     public function storeResidency(Request $request)
     {
         $validated = $request->validate([
@@ -359,7 +350,7 @@ class AcademiaController extends Controller
             'phone' => 'nullable|string|max:255',
         ]);
 
-        $degrees = !empty($validated['degree_types'])
+        $degrees = ! empty($validated['degree_types'])
             ? array_map('trim', explode(',', $validated['degree_types']))
             : [];
 
@@ -395,7 +386,6 @@ class AcademiaController extends Controller
         ], 201);
     }
 
-
     public function updateResidency(Request $request, $id)
     {
         $residency = AcademiaMedicalResidency::findOrFail($id);
@@ -412,7 +402,7 @@ class AcademiaController extends Controller
         ]);
 
         if (array_key_exists('degree_types', $validated)) {
-            $validated['degree_types'] = !empty($validated['degree_types'])
+            $validated['degree_types'] = ! empty($validated['degree_types'])
                 ? array_map('trim', explode(',', $validated['degree_types']))
                 : [];
         }
@@ -440,12 +430,11 @@ class AcademiaController extends Controller
         ]);
     }
 
-
     public function destroyResidency($id)
     {
         $residency = AcademiaMedicalResidency::find($id);
 
-        if (!$residency) {
+        if (! $residency) {
             return response()->json([
                 'success' => false,
                 'message' => 'Residency not found.',
@@ -459,7 +448,6 @@ class AcademiaController extends Controller
             'message' => 'Residency deleted successfully.',
         ], 200);
     }
-
 
     public function indexFacilities(Request $request)
     {
@@ -526,7 +514,6 @@ class AcademiaController extends Controller
         ]);
     }
 
-
     public function storeFacility(Request $request)
     {
         $validated = $request->validate([
@@ -572,7 +559,6 @@ class AcademiaController extends Controller
         ], 201);
     }
 
-
     public function updateFacility(Request $request, $id)
     {
         $facility = AcademiaFacility::findOrFail($id);
@@ -611,7 +597,6 @@ class AcademiaController extends Controller
         ]);
     }
 
-
     public function destroyFacility($id)
     {
         $facility = AcademiaFacility::find($id);
@@ -619,17 +604,17 @@ class AcademiaController extends Controller
         if (! $facility) {
             return response()->json([
                 'success' => false,
-                'message' => 'Facility not found.'
+                'message' => 'Facility not found.',
             ], 404);
         }
 
         $facility->delete();
+
         return response()->json([
             'success' => true,
-            'message' => 'Facility deleted successfully.'
+            'message' => 'Facility deleted successfully.',
         ], 200);
     }
-
 
     public function indexJobs(Request $request)
     {
@@ -664,15 +649,15 @@ class AcademiaController extends Controller
                 $salaryRange = null;
 
                 if ($job->salary_min !== null && $job->salary_max !== null) {
-                    $salaryRange = '$' .
-                        number_format($job->salary_min / 1000, 0) . 'k - $' .
-                        number_format($job->salary_max / 1000, 0) . 'k';
+                    $salaryRange = '$'.
+                        number_format($job->salary_min / 1000, 0).'k - $'.
+                        number_format($job->salary_max / 1000, 0).'k';
                 } elseif ($job->salary_min !== null) {
-                    $salaryRange = '$' .
-                        number_format($job->salary_min / 1000, 0) . 'k+';
+                    $salaryRange = '$'.
+                        number_format($job->salary_min / 1000, 0).'k+';
                 } elseif ($job->salary_max !== null) {
-                    $salaryRange = 'Up to $' .
-                        number_format($job->salary_max / 1000, 0) . 'k';
+                    $salaryRange = 'Up to $'.
+                        number_format($job->salary_max / 1000, 0).'k';
                 }
 
                 return [
@@ -706,7 +691,6 @@ class AcademiaController extends Controller
             ],
         ]);
     }
-
 
     public function storeJob(Request $request)
     {
@@ -761,7 +745,6 @@ class AcademiaController extends Controller
         ], 201);
     }
 
-
     public function updateJob(Request $request, $id)
     {
         $job = AcademiaJob::findOrFail($id);
@@ -806,24 +789,23 @@ class AcademiaController extends Controller
         ]);
     }
 
-
     public function destroyJob($id)
     {
         $job = AcademiaJob::find($id);
 
-        if (!$job) {
+        if (! $job) {
             return response()->json([
                 'success' => false,
-                'message' => 'Job not found.'
+                'message' => 'Job not found.',
             ], 404);
         }
         $job->delete();
+
         return response()->json([
             'success' => true,
-            'message' => 'Job deleted successfully.'
+            'message' => 'Job deleted successfully.',
         ], 200);
     }
-
 
     // For State.....
     public function getState()

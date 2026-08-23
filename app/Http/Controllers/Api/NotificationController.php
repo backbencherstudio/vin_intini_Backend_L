@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,8 +26,8 @@ class NotificationController extends Controller
         if ($search !== '') {
             $query = $query->where(function ($notificationQuery) use ($search) {
                 $notificationQuery
-                    ->where('type', 'like', '%' . $search . '%')
-                    ->orWhere('data', 'like', '%' . $search . '%');
+                    ->where('type', 'like', '%'.$search.'%')
+                    ->orWhere('data', 'like', '%'.$search.'%');
             });
         }
 
@@ -44,7 +45,7 @@ class NotificationController extends Controller
                 'total_notifications' => $totalNotifications,
                 'unread_notifications' => $unreadNotifications,
             ],
-            'data' => $notifications->getCollection()->map(fn($notification) => $this->formatNotification($notification))->values(),
+            'data' => $notifications->getCollection()->map(fn ($notification) => $this->formatNotification($notification))->values(),
             'total' => $notifications->total(),
             'limit' => $notifications->perPage(),
             'current_page' => $notifications->currentPage(),
@@ -139,11 +140,11 @@ class NotificationController extends Controller
             }
         }
 
-        if (!$hasUsername) {
+        if (! $hasUsername) {
             $userId = $data['sender_id'] ?? $data['user_id'] ?? $data['acceptor_id'] ?? $data['inviter_id'] ?? null;
 
             if ($userId) {
-                $user = \App\Models\User::find($userId);
+                $user = User::find($userId);
                 if ($user) {
                     $data['sender_username'] = $user->username;
                     $data['username'] = $user->username;

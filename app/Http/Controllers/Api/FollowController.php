@@ -401,8 +401,8 @@ class FollowController extends Controller
         $currentUser = $request->user();
 
         $user = User::where('username', $identifier)
-                ->orWhere('id', $identifier)
-                ->firstOrFail();
+            ->orWhere('id', $identifier)
+            ->firstOrFail();
 
         UserFollow::query()
             ->where('follower_id', $currentUser->id)
@@ -424,8 +424,8 @@ class FollowController extends Controller
         $currentUser = $request->user();
 
         $user = User::where('username', $identifier)
-                ->orWhere('id', $identifier)
-                ->firstOrFail();
+            ->orWhere('id', $identifier)
+            ->firstOrFail();
 
         if ($currentUser->id === $user->id) {
             throw ValidationException::withMessages([

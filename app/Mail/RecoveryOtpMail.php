@@ -11,7 +11,6 @@ class RecoveryOtpMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-
     public $otp;
 
     public function __construct($otp)

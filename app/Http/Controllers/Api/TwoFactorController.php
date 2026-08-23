@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\RecoveryOtpMail;
 use App\Models\User;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\RecoveryOtpMail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
-use Illuminate\Auth\Events\Login;
-use Illuminate\Auth\Events\Failed;
 
 class TwoFactorController extends Controller
 {
@@ -19,7 +19,7 @@ class TwoFactorController extends Controller
 
     public function __construct()
     {
-        $this->google2fa = new Google2FA();
+        $this->google2fa = new Google2FA;
     }
 
     public function setup(Request $request)
@@ -28,17 +28,17 @@ class TwoFactorController extends Controller
 
         $user = auth('api')->user();
 
-        if (!Hash::check($request->password, $user->password)) {
+        if (! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'Incorrect password. Please try again.'
+                'message' => 'Incorrect password. Please try again.',
             ], 403);
         }
 
         if ($user->two_factor_confirmed_at) {
             return response()->json([
                 'status' => false,
-                'message' => '2FA is already enabled'
+                'message' => '2FA is already enabled',
             ], 400);
         }
 
@@ -54,7 +54,7 @@ class TwoFactorController extends Controller
         return response()->json([
             'status' => true,
             'secret' => $secret,
-            'qr_code_url' => $qrCodeUrl
+            'qr_code_url' => $qrCodeUrl,
         ]);
     }
 
@@ -63,24 +63,24 @@ class TwoFactorController extends Controller
         $request->validate(['code' => 'required']);
         $user = auth('api')->user();
 
-        if (!$user->two_factor_secret) {
+        if (! $user->two_factor_secret) {
             return response()->json(['status' => false, 'message' => 'Please initiate 2FA setup first.'], 400);
         }
 
         if ($this->google2fa->verifyKey($user->two_factor_secret, $request->code)) {
-            $plainRecoveryCodes = collect(range(1, 10))->map(fn() => Str::random(10))->toArray();
+            $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
 
-            $hashedCodes = array_map(fn($code) => bcrypt($code), $plainRecoveryCodes);
+            $hashedCodes = array_map(fn ($code) => bcrypt($code), $plainRecoveryCodes);
 
             $user->update([
                 'two_factor_confirmed_at' => now(),
-                'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes))
+                'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
             ]);
 
             return response()->json([
                 'status' => true,
                 'message' => '2FA has been successfully enabled.',
-                'recovery_codes' => $plainRecoveryCodes
+                'recovery_codes' => $plainRecoveryCodes,
             ]);
         }
 
@@ -92,13 +92,13 @@ class TwoFactorController extends Controller
         $request->validate(['email' => 'required|email', 'code' => 'required']);
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !$user->two_factor_confirmed_at) {
+        if (! $user || ! $user->two_factor_confirmed_at) {
             return response()->json(['status' => false, 'message' => 'Invalid request'], 403);
         }
 
         $valid = $this->google2fa->verifyKey($user->two_factor_secret, $request->code);
 
-        if (!$valid && $user->two_factor_recovery_codes) {
+        if (! $valid && $user->two_factor_recovery_codes) {
             $hashedCodes = json_decode(decrypt($user->two_factor_recovery_codes), true);
 
             foreach ($hashedCodes as $index => $hashedCode) {
@@ -107,7 +107,7 @@ class TwoFactorController extends Controller
                     unset($hashedCodes[$index]);
 
                     $user->update([
-                        'two_factor_recovery_codes' => encrypt(json_encode(array_values($hashedCodes)))
+                        'two_factor_recovery_codes' => encrypt(json_encode(array_values($hashedCodes))),
                     ]);
                     break;
                 }
@@ -144,8 +144,9 @@ class TwoFactorController extends Controller
             $user->update([
                 'two_factor_secret' => null,
                 'two_factor_confirmed_at' => null,
-                'two_factor_recovery_codes' => null
+                'two_factor_recovery_codes' => null,
             ]);
+
             return response()->json(['status' => true, 'message' => '2FA has been disabled.']);
         }
 
@@ -157,25 +158,25 @@ class TwoFactorController extends Controller
         $request->validate(['password' => 'required']);
         $user = auth('api')->user();
 
-        if (!$user->two_factor_confirmed_at) {
+        if (! $user->two_factor_confirmed_at) {
             return response()->json([
                 'status' => false,
-                'message' => 'Please enable Two-Factor Authentication first.'
+                'message' => 'Please enable Two-Factor Authentication first.',
             ], 400);
         }
 
         if (Hash::check($request->password, $user->password)) {
-            $plainRecoveryCodes = collect(range(1, 10))->map(fn() => Str::random(10))->toArray();
-            $hashedCodes = array_map(fn($code) => bcrypt($code), $plainRecoveryCodes);
+            $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
+            $hashedCodes = array_map(fn ($code) => bcrypt($code), $plainRecoveryCodes);
 
             $user->update([
-                'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes))
+                'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
             ]);
 
             return response()->json([
                 'status' => true,
                 'message' => 'New recovery codes generated successfully.',
-                'recovery_codes' => $plainRecoveryCodes
+                'recovery_codes' => $plainRecoveryCodes,
             ]);
         }
 
@@ -186,22 +187,22 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
         $user = auth('api')->user();
 
-        if (!Hash::check($request->password, $user->password)) {
+        if (! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'Incorrect password. Please try again.'
+                'message' => 'Incorrect password. Please try again.',
             ], 403);
         }
 
         if ($request->email === $user->email) {
             return response()->json([
                 'status' => false,
-                'message' => 'Recovery email cannot be the same as your primary email address.'
+                'message' => 'Recovery email cannot be the same as your primary email address.',
             ], 422);
         }
 
@@ -211,7 +212,7 @@ class TwoFactorController extends Controller
             'recovery_email' => $request->email,
             'otp' => $otp,
             'otp_expires_at' => now()->addMinutes(3),
-            'recovery_email_verified_at' => null
+            'recovery_email_verified_at' => null,
         ]);
 
         Mail::to($request->email)->send(new RecoveryOtpMail($otp));
@@ -224,11 +225,11 @@ class TwoFactorController extends Controller
         $request->validate(['otp' => 'required|digits:4']);
         $user = auth('api')->user();
 
-        if ((string)$user->otp === (string)$request->otp && now()->lt($user->otp_expires_at)) {
+        if ((string) $user->otp === (string) $request->otp && now()->lt($user->otp_expires_at)) {
             $user->update([
                 'recovery_email_verified_at' => now(),
                 'otp' => null,
-                'otp_expires_at' => null
+                'otp_expires_at' => null,
             ]);
 
             return response()->json(['status' => true, 'message' => 'Recovery email verified successfully.']);
@@ -242,17 +243,17 @@ class TwoFactorController extends Controller
         $request->validate(['email' => 'required|email']);
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !$user->recovery_email || !$user->recovery_email_verified_at) {
+        if (! $user || ! $user->recovery_email || ! $user->recovery_email_verified_at) {
             return response()->json(['status' => false, 'message' => 'No recovery options found for this account.'], 404);
         }
 
         $parts = explode('@', $user->recovery_email);
-        $maskedEmail = substr($parts[0], 0, 3) . '****' . substr($parts[0], -2) . '@' . $parts[1];
+        $maskedEmail = substr($parts[0], 0, 3).'****'.substr($parts[0], -2).'@'.$parts[1];
 
         return response()->json([
             'status' => true,
             'masked_email' => $maskedEmail,
-            'message' => 'Please enter your full recovery email to receive the code.'
+            'message' => 'Please enter your full recovery email to receive the code.',
         ]);
     }
 
@@ -260,34 +261,34 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'recovery_email' => 'required|email'
+            'recovery_email' => 'required|email',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
         if (
-            !$user ||
-            !$user->recovery_email ||
+            ! $user ||
+            ! $user->recovery_email ||
             $user->recovery_email !== $request->recovery_email ||
-            !$user->recovery_email_verified_at
+            ! $user->recovery_email_verified_at
         ) {
             return response()->json([
                 'status' => false,
-                'message' => 'The recovery email address is incorrect or not verified.'
+                'message' => 'The recovery email address is incorrect or not verified.',
             ], 422);
         }
 
         $otp = rand(1000, 9999);
         $user->update([
             'otp' => $otp,
-            'otp_expires_at' => now()->addMinutes(10)
+            'otp_expires_at' => now()->addMinutes(10),
         ]);
 
         Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
 
         return response()->json([
             'status' => true,
-            'message' => 'Verification code sent to your recovery email.'
+            'message' => 'Verification code sent to your recovery email.',
         ]);
     }
 
@@ -295,19 +296,19 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'otp' => 'required|digits:4'
+            'otp' => 'required|digits:4',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
-        if ($user && (string)$user->otp === (string)$request->otp && now()->lt($user->otp_expires_at)) {
+        if ($user && (string) $user->otp === (string) $request->otp && now()->lt($user->otp_expires_at)) {
 
             $user->update([
                 // 'two_factor_confirmed_at' => null,
                 // 'two_factor_secret' => null,
                 // 'two_factor_recovery_codes' => null,
                 'otp' => null,
-                'otp_expires_at' => null
+                'otp_expires_at' => null,
             ]);
 
             $token = auth('api')->login($user);

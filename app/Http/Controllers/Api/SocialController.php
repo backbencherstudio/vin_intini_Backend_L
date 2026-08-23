@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\ProfileImageService;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Auth\Events\Login;
 
 class SocialController extends Controller
 {

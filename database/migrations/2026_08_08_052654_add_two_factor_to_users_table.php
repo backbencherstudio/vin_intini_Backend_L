@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->text('two_factor_secret')->nullable()->after('terms_accepted_at'); 
+            $table->text('two_factor_secret')->nullable()->after('terms_accepted_at');
             $table->timestamp('two_factor_confirmed_at')->nullable()->after('two_factor_secret');
             $table->text('two_factor_recovery_codes')->nullable()->after('two_factor_confirmed_at'); // Encrypted JSON
             $table->string('recovery_email')->nullable()->after('two_factor_recovery_codes');

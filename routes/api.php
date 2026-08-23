@@ -4,15 +4,14 @@ use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\SocialController;
 use App\Http\Controllers\Api\StripeWebhookController;
-use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
-use App\Http\Controllers\Api\SecuritySettingsController;
-use App\Http\Controllers\Api\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', function () {
@@ -54,24 +53,23 @@ Route::prefix('2fa')->group(function () {
     Route::post('/recovery-verify', [TwoFactorController::class, 'recoveryVerify'])->middleware('throttle:5,1');
 });
 
-
 Route::middleware('auth:api', 'active_session')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
-    //user login activities and active sessions routes
+    // user login activities and active sessions routes
     Route::prefix('security')->group(function () {
-        Route::get('/overview', [SecuritySettingsController::class, 'getSecurityOverview']); //security overview route
-        Route::get('/active-sessions', [SecuritySettingsController::class, 'getActiveSessions']);  //active sessions route
+        Route::get('/overview', [SecuritySettingsController::class, 'getSecurityOverview']); // security overview route
+        Route::get('/active-sessions', [SecuritySettingsController::class, 'getActiveSessions']);  // active sessions route
         Route::get('/login-activities', [SecuritySettingsController::class, 'getLoginActivities']);  // user login activities
-        Route::post('/sessions/revoke/{id}', [SecuritySettingsController::class, 'revokeSession']);   //remove active session
-        Route::post('/sessions/sign-out-all', [SecuritySettingsController::class, 'signOutAllSessions']);  //sign out all sessions
-        Route::get('/suspicious-activities-list', [SecuritySettingsController::class, 'getSuspiciousActivitiesList']); //get suspicious activities list
-        Route::post('/resolve-all', [SecuritySettingsController::class, 'resolveAllActivities']); //resolve all unresolved activities (Yes, it was me for all)
-        Route::post('/resolve/{id}', [SecuritySettingsController::class, 'resolveSuspiciousLogin']); //resolve suspicious login (Yes, it was me)
-        Route::post('/secure-account/{id}', [SecuritySettingsController::class, 'secureAccount']); //secure account (No, it wasn't me)
-        Route::delete('/login-activities/clear-all', [SecuritySettingsController::class, 'deleteAllLoginActivities']); //delete all login activities
-        Route::delete('/login-activities/{id}', [SecuritySettingsController::class, 'deleteLoginActivity']); //delete single login activity
+        Route::post('/sessions/revoke/{id}', [SecuritySettingsController::class, 'revokeSession']);   // remove active session
+        Route::post('/sessions/sign-out-all', [SecuritySettingsController::class, 'signOutAllSessions']);  // sign out all sessions
+        Route::get('/suspicious-activities-list', [SecuritySettingsController::class, 'getSuspiciousActivitiesList']); // get suspicious activities list
+        Route::post('/resolve-all', [SecuritySettingsController::class, 'resolveAllActivities']); // resolve all unresolved activities (Yes, it was me for all)
+        Route::post('/resolve/{id}', [SecuritySettingsController::class, 'resolveSuspiciousLogin']); // resolve suspicious login (Yes, it was me)
+        Route::post('/secure-account/{id}', [SecuritySettingsController::class, 'secureAccount']); // secure account (No, it wasn't me)
+        Route::delete('/login-activities/clear-all', [SecuritySettingsController::class, 'deleteAllLoginActivities']); // delete all login activities
+        Route::delete('/login-activities/{id}', [SecuritySettingsController::class, 'deleteLoginActivity']); // delete single login activity
     });
 
     Route::prefix('2fa')->group(function () {
@@ -94,15 +92,14 @@ Route::middleware('auth:api', 'active_session')->group(function () {
         Route::post('/setup-profile', [UserProfileController::class, 'setupProfile'])->middleware('verified_user');
 
         Route::middleware('profile_completed')->group(function () {
-            require __DIR__ . '/niaz.php';
-            require __DIR__ . '/shanto.php';
+            require __DIR__.'/niaz.php';
+            require __DIR__.'/shanto.php';
         });
     });
 
     Route::middleware('role:admin')->group(function () {
-        require __DIR__ . '/admin.php';
+        require __DIR__.'/admin.php';
     });
 
-
-    require __DIR__ . '/kamruzzaman.php';
+    require __DIR__.'/kamruzzaman.php';
 });

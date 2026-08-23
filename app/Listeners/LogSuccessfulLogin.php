@@ -2,8 +2,8 @@
 
 namespace App\Listeners;
 
-use Illuminate\Auth\Events\Login;
 use App\Jobs\LogLoginJob;
+use Illuminate\Auth\Events\Login;
 
 class LogSuccessfulLogin
 {

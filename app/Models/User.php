@@ -57,7 +57,7 @@ class User extends Authenticatable implements JWTSubject
         'created_at',
         'updated_at',
         'two_factor_secret',
-        'two_factor_recovery_codes'
+        'two_factor_recovery_codes',
     ];
 
     protected function casts(): array
@@ -153,7 +153,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/' . ltrim($value, '/'));
+        return asset('storage/'.ltrim($value, '/'));
     }
 
     public function getCoverImageUrlAttribute(): ?string
@@ -167,7 +167,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/' . ltrim($value, '/'));
+        return asset('storage/'.ltrim($value, '/'));
     }
 
     public function posts()

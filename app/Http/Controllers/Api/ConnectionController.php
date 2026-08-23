@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Mail\ConnectionRequestMail;
 use App\Models\Connection;
 use App\Models\Conversation;
-use App\Models\GroupInvitation;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Notifications\ConnectionRequestAcceptedNotification;
@@ -87,7 +86,7 @@ class ConnectionController extends Controller
 
             return [
                 'payload' => $this->formatConnectionRequest($connectionRequest, $currentUser->id, []),
-                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+                'search_name' => trim(($counterpart->first_name ?? '').' '.($counterpart->last_name ?? '')),
                 'connected_at' => $connectionRequest->responded_at?->timestamp ?? $connectionRequest->created_at?->timestamp ?? 0,
             ];
         });
@@ -205,7 +204,7 @@ class ConnectionController extends Controller
 
             return [
                 'request' => $connectionRequest,
-                'search_name' => trim(($counterpart->first_name ?? '') . ' ' . ($counterpart->last_name ?? '')),
+                'search_name' => trim(($counterpart->first_name ?? '').' '.($counterpart->last_name ?? '')),
                 'search_title' => (string) ($counterpart->title ?? ''),
                 'username' => $counterpart->username ?? '',
             ];
@@ -310,9 +309,9 @@ class ConnectionController extends Controller
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('users.first_name', 'like', $search . '%')
-                        ->orWhere('users.last_name', 'like', $search . '%')
-                        ->orWhere('users.title', 'like', '%' . $search . '%');
+                    $q->where('users.first_name', 'like', $search.'%')
+                        ->orWhere('users.last_name', 'like', $search.'%')
+                        ->orWhere('users.title', 'like', '%'.$search.'%');
                 });
             })
             ->latest('users.id');
@@ -356,7 +355,7 @@ class ConnectionController extends Controller
         ], 200);
     }
 
-    //niaz's code=================================================
+    // niaz's code=================================================
     // public function suggestions(Request $request): JsonResponse
     // {
     //     $currentUser = $request->user();
@@ -439,7 +438,7 @@ class ConnectionController extends Controller
     //         ],
     //     ], 200);
     // }
-    //============================================================
+    // ============================================================
 
     public function sentPendingRequests(Request $request): JsonResponse
     {
@@ -457,9 +456,9 @@ class ConnectionController extends Controller
                 $query->whereHas('profile');
                 if ($search !== '') {
                     $query->where(function ($q) use ($search) {
-                        $q->where('first_name', 'like', '%' . $search . '%')
-                            ->orWhere('last_name', 'like', '%' . $search . '%')
-                            ->orWhere('title', 'like', '%' . $search . '%');
+                        $q->where('first_name', 'like', '%'.$search.'%')
+                            ->orWhere('last_name', 'like', '%'.$search.'%')
+                            ->orWhere('title', 'like', '%'.$search.'%');
                     });
                 }
             })
@@ -688,8 +687,8 @@ class ConnectionController extends Controller
         $currentUser = $request->user();
 
         $user = User::where('username', $identifier)
-                ->orWhere('id', $identifier)
-                ->firstOrFail();
+            ->orWhere('id', $identifier)
+            ->firstOrFail();
 
         if ($currentUser->id === $user->id) {
             throw ValidationException::withMessages([
@@ -897,13 +896,13 @@ class ConnectionController extends Controller
 
         if ($connectionRequest->status === Connection::STATUS_IGNORED) {
             return $connectionRequest->receiver_id === $currentUserId
-                ? 'You ignored ' . $counterpartName . '\'s invitation'
-                : $counterpartName . ' ignored your invitation';
+                ? 'You ignored '.$counterpartName.'\'s invitation'
+                : $counterpartName.' ignored your invitation';
         }
 
         return $connectionRequest->sender_id === $currentUserId
             ? 'Connection request sent'
-            : $counterpartName . ' sent you a connection request';
+            : $counterpartName.' sent you a connection request';
     }
 
     private function formatUser(User $user): array
@@ -911,7 +910,7 @@ class ConnectionController extends Controller
         return [
             'id' => $user->id,
             'username' => $user->username,
-            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'title' => $user->title,

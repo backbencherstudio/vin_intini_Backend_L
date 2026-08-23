@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Models\LoginActivity;
 use App\Mail\NewLoginAlertMail;
+use App\Models\LoginActivity;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -28,7 +28,9 @@ class SendLoginAlertEmailJob implements ShouldQueue
         $activity = $this->activity;
         $user = $activity->user;
 
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         $trustUrl = URL::temporarySignedRoute(
             'security.email-resolve',

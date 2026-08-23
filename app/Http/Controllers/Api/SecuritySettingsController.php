@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Carbon\Carbon;
 use App\Models\LoginActivity;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password;
 
 class SecuritySettingsController extends Controller
@@ -18,8 +20,8 @@ class SecuritySettingsController extends Controller
         $lookBackDays = now()->subDays(15);
         $currentTokenId = auth('api')->check() ? auth('api')->payload()->get('jti') : session()->getId();
 
-        $is2faEnabled = !is_null($user->two_factor_confirmed_at);
-        $isRecoveryVerified = !is_null($user->recovery_email_verified_at);
+        $is2faEnabled = ! is_null($user->two_factor_confirmed_at);
+        $isRecoveryVerified = ! is_null($user->recovery_email_verified_at);
 
         $unresolvedLogins = LoginActivity::where('user_id', $user->id)
             ->where('status', 'Successful')
@@ -28,7 +30,7 @@ class SecuritySettingsController extends Controller
             ->get();
 
         $isSuspicious = false;
-        $suspiciousStatus = "No suspicious activity";
+        $suspiciousStatus = 'No suspicious activity';
         $suspiciousId = null;
         $canResolveFromHere = true;
 
@@ -40,15 +42,15 @@ class SecuritySettingsController extends Controller
                 ->where('is_trusted', true)
                 ->exists();
 
-            if (!$seenBefore) {
+            if (! $seenBefore) {
                 $isSuspicious = true;
                 $suspiciousId = $login->id;
 
                 if ($login->token_id === $currentTokenId) {
-                    $suspiciousStatus = "New login detected. Please verify this session via email.";
+                    $suspiciousStatus = 'New login detected. Please verify this session via email.';
                     $canResolveFromHere = false;
                 } else {
-                    $suspiciousStatus = "New login from unrecognized location/device. Was this you?";
+                    $suspiciousStatus = 'New login from unrecognized location/device. Was this you?';
                     $canResolveFromHere = true;
                 }
                 break;
@@ -61,24 +63,32 @@ class SecuritySettingsController extends Controller
             ->where('created_at', '>=', now()->subDay())
             ->count();
 
-        if (!$isSuspicious && $failedCount >= 5) {
+        if (! $isSuspicious && $failedCount >= 5) {
             $isSuspicious = true;
             $suspiciousStatus = "Multiple failed login attempts detected ($failedCount)";
             $canResolveFromHere = true;
         }
 
         $score = 20;
-        if ($is2faEnabled) $score += 40;
-        if ($isRecoveryVerified) $score += 20;
-        if ($user->profile()->exists()) $score += 10;
-        if (!$isSuspicious) $score += 10;
+        if ($is2faEnabled) {
+            $score += 40;
+        }
+        if ($isRecoveryVerified) {
+            $score += 20;
+        }
+        if ($user->profile()->exists()) {
+            $score += 10;
+        }
+        if (! $isSuspicious) {
+            $score += 10;
+        }
 
         $score = max(0, min($score, 100));
-        $securityRating = ($score > 80) ? "Strong" : (($score > 50) ? "Medium" : "Weak");
+        $securityRating = ($score > 80) ? 'Strong' : (($score > 50) ? 'Medium' : 'Weak');
 
         // --- backup codes count ---
-        if (!$user->two_factor_confirmed_at) {
-            $backupCodesCountText = "Enable 2FA to generate backup codes";
+        if (! $user->two_factor_confirmed_at) {
+            $backupCodesCountText = 'Enable 2FA to generate backup codes';
         } else {
             $recoveryCodes = $user->two_factor_recovery_codes
                 ? json_decode(decrypt($user->two_factor_recovery_codes), true)
@@ -100,7 +110,7 @@ class SecuritySettingsController extends Controller
                 ],
                 'password_strength' => 'Strong',
                 'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
-                'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . " active devices",
+                'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count().' active devices',
                 'account_recovery' => $isRecoveryVerified ? 'Email verified' : 'Not verified',
                 'login_activity' => $suspiciousStatus,
                 // 'suspicious_id' => $suspiciousId,
@@ -110,7 +120,7 @@ class SecuritySettingsController extends Controller
                 'backup_codes_count' => $backupCodesCountText,
                 'recovery_email' => $user->recovery_email,
                 'recovery_email_verified' => $user->recovery_email_verified_at ? true : false,
-            ]
+            ],
         ]);
     }
 
@@ -136,14 +146,14 @@ class SecuritySettingsController extends Controller
                 ->where('is_trusted', true)
                 ->exists();
 
-            if (!$seenBefore) {
+            if (! $seenBefore) {
                 $suspiciousList[] = [
                     'id' => $login->id,
                     'device' => $login->device,
                     'browser' => $login->browser,
                     'location' => $login->location,
                     'ip_address' => $login->ip_address,
-                    'login_at' => \Carbon\Carbon::parse($login->login_at)->toISOString(),
+                    'login_at' => Carbon::parse($login->login_at)->toISOString(),
                     'warning_message' => "Unrecognized login from {$login->location}",
                 ];
             }
@@ -151,7 +161,7 @@ class SecuritySettingsController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $suspiciousList
+            'data' => $suspiciousList,
         ]);
     }
 
@@ -163,7 +173,7 @@ class SecuritySettingsController extends Controller
 
         $sessions = LoginActivity::where('user_id', auth()->id())
             ->where('is_active', true)
-            ->orderByRaw("token_id = ? DESC", [$currentTokenId])
+            ->orderByRaw('token_id = ? DESC', [$currentTokenId])
             ->orderBy('login_at', 'desc')
             ->get();
 
@@ -187,10 +197,9 @@ class SecuritySettingsController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $items
+            'data' => $items,
         ]);
     }
-
 
     public function getLoginActivities(Request $request): JsonResponse
     {
@@ -202,7 +211,7 @@ class SecuritySettingsController extends Controller
             : session()->getId();
 
         $paginator = LoginActivity::where('user_id', auth()->id())
-            ->orderByRaw("CASE WHEN token_id = ? THEN 1 ELSE 0 END DESC", [$currentTokenId])
+            ->orderByRaw('CASE WHEN token_id = ? THEN 1 ELSE 0 END DESC', [$currentTokenId])
             ->orderBy('login_at', 'desc')
             ->paginate($perPage);
 
@@ -230,7 +239,7 @@ class SecuritySettingsController extends Controller
                 'is_active' => $isActive,
                 'is_current' => $isCurrent,
                 'signin_status' => $signinStatus,
-                'login_at' => $activity->login_at ? \Carbon\Carbon::parse($activity->login_at)->toISOString() : null,
+                'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
                 'created_at' => $activity->created_at->toISOString(),
             ];
         });
@@ -254,7 +263,7 @@ class SecuritySettingsController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$session) {
+        if (! $session) {
             return response()->json(['success' => false, 'message' => 'Session not found or already revoked.'], 404);
         }
 
@@ -262,7 +271,7 @@ class SecuritySettingsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Device has been signed out successfully.'
+            'message' => 'Device has been signed out successfully.',
         ]);
     }
 
@@ -279,7 +288,7 @@ class SecuritySettingsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'All other sessions have been signed out successfully.'
+            'message' => 'All other sessions have been signed out successfully.',
         ]);
     }
 
@@ -295,14 +304,14 @@ class SecuritySettingsController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$activity) {
+        if (! $activity) {
             return response()->json(['success' => false, 'message' => 'Activity not found.'], 404);
         }
 
         if ($activity->token_id === $currentTokenId) {
             return response()->json([
                 'success' => false,
-                'message' => 'You cannot delete your current active session.'
+                'message' => 'You cannot delete your current active session.',
             ], 403);
         }
 
@@ -310,7 +319,7 @@ class SecuritySettingsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Login activity deleted successfully.'
+            'message' => 'Login activity deleted successfully.',
         ]);
     }
 
@@ -331,7 +340,7 @@ class SecuritySettingsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "All other login activities for your account have been cleared."
+            'message' => 'All other login activities for your account have been cleared.',
         ]);
     }
 
@@ -347,10 +356,12 @@ class SecuritySettingsController extends Controller
         if ($activity) {
             $activity->update([
                 'is_resolved' => true,
-                'is_trusted' => true
+                'is_trusted' => true,
             ]);
+
             return response()->json(['success' => true, 'message' => 'Device marked as trusted.']);
         }
+
         return response()->json(['success' => false, 'message' => 'Activity not found.'], 404);
     }
 
@@ -364,7 +375,7 @@ class SecuritySettingsController extends Controller
             ->where('is_resolved', false)
             ->update([
                 'is_resolved' => true,
-                'is_trusted' => true
+                'is_trusted' => true,
             ]);
 
         return response()->json(['success' => true, 'message' => 'All activities marked as trusted.']);
@@ -383,15 +394,15 @@ class SecuritySettingsController extends Controller
 
         if ($activity) {
             $activity->update([
-                'is_active'   => false,
+                'is_active' => false,
                 'is_resolved' => true,
-                'is_trusted'  => false
+                'is_trusted' => false,
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'The suspicious session has been blocked successfully. We recommend changing your password as soon as possible.',
-                'action_required' => 'change_password'
+                'action_required' => 'change_password',
             ]);
         }
 
@@ -411,6 +422,7 @@ class SecuritySettingsController extends Controller
 
         if ($action === 'trust') {
             $activity->update(['is_resolved' => true, 'is_trusted' => true]);
+
             return view('security.resolution', ['type' => 'trust']);
         }
 
@@ -418,7 +430,7 @@ class SecuritySettingsController extends Controller
             $activity->update(['is_active' => false]);
             LoginActivity::where('user_id', $activity->user_id)->update(['is_active' => false]);
 
-            $postUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            $postUrl = URL::temporarySignedRoute(
                 'security.update-password',
                 now()->addMinutes(20),
                 ['user_id' => $activity->user_id, 'activity_id' => $activity->id]
@@ -427,7 +439,7 @@ class SecuritySettingsController extends Controller
             return view('security.resolution', [
                 'type' => 'block',
                 'postUrl' => $postUrl,
-                'user_id' => $activity->user_id
+                'user_id' => $activity->user_id,
             ]);
         }
     }
@@ -447,13 +459,13 @@ class SecuritySettingsController extends Controller
             'password' => [
                 'required',
                 'confirmed',
-                Password::min(8)->mixedCase()->numbers()
+                Password::min(8)->mixedCase()->numbers(),
             ],
         ]);
 
-        $user = \App\Models\User::find($request->user_id);
+        $user = User::find($request->user_id);
         $user->update([
-            'password' => Hash::make($request->password)
+            'password' => Hash::make($request->password),
         ]);
 
         $activity->update(['is_resolved' => true, 'is_trusted' => false]);
@@ -472,13 +484,13 @@ class SecuritySettingsController extends Controller
 
         $profile->update($request->only([
             'privacy_profile_activity',
-            'privacy_profile_visibility'
+            'privacy_profile_visibility',
         ]));
 
         return response()->json([
             'status' => 'success',
             'message' => 'Privacy settings updated successfully',
-            'data' => $profile
+            'data' => $profile,
         ]);
     }
 }

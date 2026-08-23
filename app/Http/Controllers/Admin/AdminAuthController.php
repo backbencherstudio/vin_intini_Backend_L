@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Education;
-use App\Models\User;
 use App\Models\Group;
 use App\Models\Institution;
+use App\Models\LoginActivity;
 use App\Models\Post;
 use App\Models\Skill;
+use App\Models\User;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +36,7 @@ class AdminAuthController extends Controller
         $credentials = $request->only('email', 'password');
 
         if (Auth::guard('web')->validate($credentials)) {
-            $user = \App\Models\User::where('email', $request->email)->first();
+            $user = User::where('email', $request->email)->first();
 
             if ($user->email === 'admin@gmail.com') {
                 $request->session()->regenerate();
@@ -44,18 +46,17 @@ class AdminAuthController extends Controller
                 return redirect()->intended(route('admin.user.management'));
             }
 
-            event(new \Illuminate\Auth\Events\Failed('web', $user, $credentials));
+            event(new Failed('web', $user, $credentials));
 
             Auth::guard('web')->logout();
 
             return back()->withErrors(['email' => 'You do not have permission to access the admin panel.']);
         }
 
-        $user = \App\Models\User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->first();
         if ($user) {
-            event(new \Illuminate\Auth\Events\Failed('web', $user, $credentials));
+            event(new Failed('web', $user, $credentials));
         }
-
 
         return back()->withErrors(['email' => 'Invalid credentials.']);
     }
@@ -88,7 +89,7 @@ class AdminAuthController extends Controller
     public function adminLogout(Request $request)
     {
         $sessionId = $request->session()->getId();
-        \App\Models\LoginActivity::where('token_id', $sessionId)
+        LoginActivity::where('token_id', $sessionId)
             ->where('user_id', Auth::guard('web')->id())
             ->update(['is_active' => false]);
 
@@ -210,7 +211,6 @@ class AdminAuthController extends Controller
 
     //     return redirect()->back()->with('success', 'User and Education updated successfully');
     // }
-
 
     // public function groupIndex()
     // {

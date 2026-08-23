@@ -21,7 +21,7 @@ class IndustryCategoryController extends Controller
                         'section_id',
                         'category_name'
                     );
-                }
+                },
             ])
             ->latest();
 
@@ -56,7 +56,6 @@ class IndustryCategoryController extends Controller
         ]);
     }
 
-
     public function storeSection(Request $request)
     {
         $validated = $request->validate([
@@ -87,7 +86,7 @@ class IndustryCategoryController extends Controller
                     'section_id',
                     'category_name'
                 );
-            }
+            },
         ]);
 
         return response()->json([
@@ -108,7 +107,6 @@ class IndustryCategoryController extends Controller
             ],
         ], 201);
     }
-
 
     public function updateSection(Request $request, $id)
     {
@@ -132,7 +130,7 @@ class IndustryCategoryController extends Controller
                     'section_id',
                     'category_name'
                 );
-            }
+            },
         ]);
 
         return response()->json([
@@ -154,7 +152,6 @@ class IndustryCategoryController extends Controller
         ]);
     }
 
-
     public function neuroscience(Request $request)
     {
         $query = IndustrySections::where('network_type', 'neuroscience')
@@ -166,7 +163,7 @@ class IndustryCategoryController extends Controller
                         'section_id',
                         'category_name'
                     );
-                }
+                },
             ])
             ->latest();
 
@@ -199,7 +196,6 @@ class IndustryCategoryController extends Controller
         ]);
     }
 
-
     public function storeNeuroSection(Request $request)
     {
         $validated = $request->validate([
@@ -230,7 +226,7 @@ class IndustryCategoryController extends Controller
                     'section_id',
                     'category_name'
                 );
-            }
+            },
         ]);
 
         return response()->json([
@@ -251,7 +247,6 @@ class IndustryCategoryController extends Controller
             ],
         ], 201);
     }
-
 
     public function updateNeuroSection(Request $request, $id)
     {
@@ -275,7 +270,7 @@ class IndustryCategoryController extends Controller
                     'section_id',
                     'category_name'
                 );
-            }
+            },
         ]);
 
         return response()->json([
@@ -297,7 +292,6 @@ class IndustryCategoryController extends Controller
         ]);
     }
 
-
     public function destroySection($id)
     {
         $section = IndustrySections::findOrFail($id);
@@ -306,11 +300,9 @@ class IndustryCategoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Section removed successfully'
+            'message' => 'Section removed successfully',
         ]);
     }
-
-
 
     public function storeSubCategory(Request $request)
     {
@@ -335,7 +327,6 @@ class IndustryCategoryController extends Controller
         ], 201);
     }
 
-
     public function updateSubCategory(Request $request, $id)
     {
         $validated = $request->validate([
@@ -359,7 +350,6 @@ class IndustryCategoryController extends Controller
         ]);
     }
 
-
     public function destroySubCategory($id)
     {
         $category = IndustryCategory::findOrFail($id);
@@ -368,7 +358,7 @@ class IndustryCategoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Category removed successfully.'
+            'message' => 'Category removed successfully.',
         ]);
     }
 }

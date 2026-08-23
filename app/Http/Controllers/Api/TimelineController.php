@@ -7,6 +7,7 @@ use App\Models\Connection;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class TimelineController extends Controller
@@ -16,12 +17,12 @@ class TimelineController extends Controller
         $authUser = auth('api')->user();
         $isOwnProfile = $authUser->id == $userId;
 
-        $targetUser = \App\Models\User::with('profile:user_id,privacy_profile_activity')
+        $targetUser = User::with('profile:user_id,privacy_profile_activity')
             ->where('username', $userId)
             ->orWhere('id', $userId)
             ->first();
 
-        if (!$targetUser) {
+        if (! $targetUser) {
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
@@ -34,9 +35,9 @@ class TimelineController extends Controller
         if ($isOwnProfile) {
             $relationshipStatus = 'connected';
         } else {
-            $connection = Connection::where(function ($q) use ($authUser, $actualId ) {
+            $connection = Connection::where(function ($q) use ($authUser, $actualId) {
                 $q->where(function ($q1) use ($authUser, $actualId) {
-                    $q1->where('sender_id', $authUser->id)->where('receiver_id', $actualId );
+                    $q1->where('sender_id', $authUser->id)->where('receiver_id', $actualId);
                 })->orWhere(function ($q2) use ($authUser, $actualId) {
                     $q2->where('sender_id', $actualId)->where('receiver_id', $authUser->id);
                 });
@@ -93,7 +94,7 @@ class TimelineController extends Controller
             'success' => true,
             'message' => 'Timeline fetched successfully',
 
-            'data' => collect($posts->items())->map(function ($post) use ($authUser) {
+            'data' => collect($posts->items())->map(function ($post) {
                 return [
                     'id' => $post->id,
                     'user' => $post->user,
@@ -122,7 +123,7 @@ class TimelineController extends Controller
         ]);
     }
 
-    //santos's code===================================
+    // santos's code===================================
     // public function timeline(Request $request, $userId)
     // {
     //     $authUser = auth('api')->user();
@@ -218,7 +219,7 @@ class TimelineController extends Controller
     //         ],
     //     ]);
     // }
-    //santos's code===================================
+    // santos's code===================================
 
     public function groupPosts(Request $request, $groupId)
     {
