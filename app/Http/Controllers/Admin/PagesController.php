@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -29,7 +30,7 @@ class PagesController extends Controller
         abort(404);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, OptimizedImageUploadService $imageUploadService)
     {
         $page = Page::findOrFail($id);
 
@@ -68,7 +69,7 @@ class PagesController extends Controller
             if (isset($founder['photo'])) {
                 Storage::disk('public')->delete($founder['photo']);
             }
-            $founder['photo'] = $request->file('founder_photo')->store('pages/founder', 'public');
+            $founder['photo'] = $imageUploadService->store($request->file('founder_photo'), 'pages/founder');
         }
 
         $page->founder_info = $founder;
@@ -88,7 +89,7 @@ class PagesController extends Controller
                     if ($photoPath) {
                         Storage::disk('public')->delete($photoPath);
                     }
-                    $photoPath = $request->file("team.$key.photo")->store('pages/team', 'public');
+                    $photoPath = $imageUploadService->store($request->file("team.$key.photo"), 'pages/team');
                 }
                 $newTeamData[] = [
                     'name' => $member['name'],
@@ -105,9 +106,6 @@ class PagesController extends Controller
         }
         $page->team_members = $newTeamData;
 
-
-
-
         $newVideoData = [];
         if ($request->has('videos')) {
             foreach ($request->videos as $vKey => $video) {
@@ -119,8 +117,10 @@ class PagesController extends Controller
 
                 $thumbPath = $video['old_thumbnail'] ?? null;
                 if ($request->hasFile("videos.$vKey.thumbnail")) {
-                    if ($thumbPath) Storage::disk('public')->delete($thumbPath);
-                    $thumbPath = $request->file("videos.$vKey.thumbnail")->store('pages/videos/thumbnails', 'public');
+                    if ($thumbPath) {
+                        Storage::disk('public')->delete($thumbPath);
+                    }
+                    $thumbPath = $imageUploadService->store($request->file("videos.$vKey.thumbnail"), 'pages/videos/thumbnails');
                 }
                 $item['thumbnail'] = $thumbPath;
 
@@ -130,7 +130,9 @@ class PagesController extends Controller
                 } else {
                     $vPath = $video['path'] ?? null;
                     if ($request->hasFile("videos.$vKey.file")) {
-                        if ($vPath) Storage::disk('public')->delete($vPath);
+                        if ($vPath) {
+                            Storage::disk('public')->delete($vPath);
+                        }
                         $vPath = $this->processAboutVideo($request->file("videos.$vKey.file"));
                     }
                     $item['path'] = $vPath;
@@ -140,10 +142,10 @@ class PagesController extends Controller
             }
         }
         foreach ($oldVideos as $oVideo) {
-            if (isset($oVideo['path']) && !collect($newVideoData)->contains('path', $oVideo['path'])) {
+            if (isset($oVideo['path']) && ! collect($newVideoData)->contains('path', $oVideo['path'])) {
                 Storage::disk('public')->delete($oVideo['path']);
             }
-            if (isset($oVideo['thumbnail']) && !collect($newVideoData)->contains('thumbnail', $oVideo['thumbnail'])) {
+            if (isset($oVideo['thumbnail']) && ! collect($newVideoData)->contains('thumbnail', $oVideo['thumbnail'])) {
                 Storage::disk('public')->delete($oVideo['thumbnail']);
             }
         }
@@ -223,7 +225,7 @@ class PagesController extends Controller
                     if ($logoPath) {
                         Storage::disk('public')->delete($logoPath);
                     }
-                    $logoPath = $request->file("leading_institutions.$key.logo")->store('pages/institutions', 'public');
+                    $logoPath = $imageUploadService->store($request->file("leading_institutions.$key.logo"), 'pages/institutions');
                 }
 
                 $newInstitutionsData[] = [
@@ -247,14 +249,13 @@ class PagesController extends Controller
         return back()->with('success', 'Page content updated successfully!');
     }
 
-
     private function processAboutVideo($file)
     {
-        $filename = 'pages/videos/' . Str::uuid() . '.mp4';
+        $filename = 'pages/videos/'.Str::uuid().'.mp4';
         $inputPath = $file->getRealPath();
-        $outputPath = storage_path('app/public/' . $filename);
+        $outputPath = storage_path('app/public/'.$filename);
 
-        if (!Storage::disk('public')->exists('pages/videos')) {
+        if (! Storage::disk('public')->exists('pages/videos')) {
             Storage::disk('public')->makeDirectory('pages/videos');
         }
 
@@ -272,13 +273,13 @@ class PagesController extends Controller
         exec($command, $output, $status);
 
         if ($status !== 0) {
-            \Log::error("FFmpeg Error: " . implode("\n", $output));
+            \Log::error('FFmpeg Error: '.implode("\n", $output));
+
             return $file->store('pages/videos', 'public');
         }
 
         return $filename;
     }
-
 
     // get page data for API
     public function getPageData(Request $request, $slug)
@@ -318,7 +319,7 @@ class PagesController extends Controller
         if (empty($sections) || in_array('founder', $sections)) {
             $founder = $page->founder_info ?? [];
             if (isset($founder['photo'])) {
-                $founder['photo_url'] = asset('storage/' . $founder['photo']);
+                $founder['photo_url'] = asset('storage/'.$founder['photo']);
             }
             $responseData['founder'] = $founder;
         }
@@ -326,7 +327,7 @@ class PagesController extends Controller
         // 3. What We Do (Diagram)
         if (empty($sections) || in_array('what_we_do', $sections)) {
             $responseData['what_we_do'] = [
-                'diagram_url' => $page->what_we_do_image ? asset('storage/' . $page->what_we_do_image) : null,
+                'diagram_url' => $page->what_we_do_image ? asset('storage/'.$page->what_we_do_image) : null,
             ];
         }
 
@@ -337,7 +338,7 @@ class PagesController extends Controller
                     'name' => $member['name'] ?? '',
                     'title' => $member['title'] ?? '',
                     'bio' => $member['bio'] ?? '',
-                    'photo_url' => ! empty($member['photo']) ? asset('storage/' . $member['photo']) : null,
+                    'photo_url' => ! empty($member['photo']) ? asset('storage/'.$member['photo']) : null,
                 ];
             });
         }
@@ -350,8 +351,8 @@ class PagesController extends Controller
                     'source' => $video['source'] ?? '',
                     'type' => $video['type'] ?? '',
                     'url' => $video['url'] ?? null,
-                    'file_url' => isset($video['path']) ? asset('storage/' . $video['path']) : null,
-                    'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/' . $video['thumbnail']) : null,
+                    'file_url' => isset($video['path']) ? asset('storage/'.$video['path']) : null,
+                    'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/'.$video['thumbnail']) : null,
                 ];
             });
         }
@@ -368,7 +369,7 @@ class PagesController extends Controller
                 ->map(function ($item) {
                     return [
                         'name' => $item['name'],
-                        'logo_url' => ! empty($item['logo']) ? asset('storage/' . $item['logo']) : null,
+                        'logo_url' => ! empty($item['logo']) ? asset('storage/'.$item['logo']) : null,
                     ];
                 })->values();
         }

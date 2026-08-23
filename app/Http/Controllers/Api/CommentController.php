@@ -9,13 +9,14 @@ use App\Models\Post;
 use App\Models\Reply;
 use App\Notifications\CommentRepliedNotification;
 use App\Notifications\PostCommentedNotification;
+use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class CommentController extends Controller
 {
-    public function comment(Request $request, $postId)
+    public function comment(Request $request, $postId, OptimizedImageUploadService $imageUploadService)
     {
         $request->validate([
             'comment' => 'nullable|string|max:1000|required_without:image',
@@ -62,7 +63,7 @@ class CommentController extends Controller
             $imagePath = null;
 
             if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store('comments', 'public');
+                $imagePath = $imageUploadService->store($request->file('image'), 'comments');
             }
 
             if (! $request->parent_id) {

@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 
 class ProfileImageService
 {
+    public function __construct(private readonly OptimizedImageUploadService $optimizedImageUploadService) {}
+
     private const DEFAULT_FOLDER = 'profile_photos';
 
     private const MAX_BYTES = 5_242_880; // 5MB
@@ -20,7 +22,7 @@ class ProfileImageService
     ): string {
         $this->deleteIfLocal($existingPath);
 
-        return $file->store($folder, 'public');
+        return $this->optimizedImageUploadService->store($file, $folder);
     }
 
     public function storeFromUrl(

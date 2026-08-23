@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Image;
 use Illuminate\Support\Str;
 
 class MediaUploadService
@@ -21,26 +21,13 @@ class MediaUploadService
 
     private function processImage(UploadedFile $file): array
     {
-        $filename = 'posts/'.Str::uuid().'.jpg';
-
-        $image = imagecreatefromstring(file_get_contents($file));
-
-        $width = imagesx($image);
-        $height = imagesy($image);
-
-        $newWidth = 1920;
-        $newHeight = intval(($height / $width) * $newWidth);
-
-        $newImage = imagescale($image, $newWidth, $newHeight);
-
-        ob_start();
-        imagejpeg($newImage, null, 80);
-        $data = ob_get_clean();
-
-        Storage::disk('public')->put($filename, $data);
+        $path = Image::fromUpload($file)
+            ->scale(width: 1920)
+            ->optimize(format: 'jpg', quality: 80)
+            ->storePubliclyAs('posts', Str::uuid().'.jpg', 'public');
 
         return [
-            'file_path' => $filename,
+            'file_path' => $path,
             'type' => 'image',
         ];
     }

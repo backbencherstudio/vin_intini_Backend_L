@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\User;
+use App\Services\OptimizedImageUploadService;
 use App\Services\ProfileImageService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +21,7 @@ class ProfileImageServiceTest extends TestCase
             ]),
         ]);
 
-        $service = new ProfileImageService;
+        $service = new ProfileImageService(new OptimizedImageUploadService);
         $path = $service->storeFromUrl('https://example.com/avatar.jpg');
 
         $this->assertNotNull($path);

@@ -8,6 +8,7 @@ use App\Models\GroupInvitation;
 use App\Models\GroupUser;
 use App\Models\User;
 use App\Notifications\GroupInvitationNotification;
+use App\Services\OptimizedImageUploadService;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -80,7 +81,7 @@ class GroupController extends Controller
         ], 200);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, OptimizedImageUploadService $imageUploadService)
     {
         $data = $request->all();
 
@@ -105,11 +106,11 @@ class GroupController extends Controller
         ]);
 
         if ($request->hasFile('logo')) {
-            $validated['logo'] = $request->file('logo')->store('group_logos', 'public');
+            $validated['logo'] = $imageUploadService->store($request->file('logo'), 'group_logos');
         }
 
         if ($request->hasFile('cover_photo')) {
-            $validated['cover_photo'] = $request->file('cover_photo')->store('group_covers', 'public');
+            $validated['cover_photo'] = $imageUploadService->store($request->file('cover_photo'), 'group_covers');
         }
 
         $validated['creator_id'] = auth()->id();
@@ -133,7 +134,7 @@ class GroupController extends Controller
             }])
             ->find($id);
 
-        if (!$group) {
+        if (! $group) {
             return response()->json(['status' => 'error', 'message' => 'Group not found'], 404);
         }
 
@@ -182,7 +183,7 @@ class GroupController extends Controller
             }
         }
 
-        if ($group->type === 'private' && !$isMember && !$isAdmin) {
+        if ($group->type === 'private' && ! $isMember && ! $isAdmin) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'This is a private group. You must be a member to see details.',
@@ -465,7 +466,7 @@ class GroupController extends Controller
         ], 200);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, OptimizedImageUploadService $imageUploadService)
     {
         $group = Group::findOrFail($id);
 
@@ -500,14 +501,14 @@ class GroupController extends Controller
             if ($group->logo && Storage::disk('public')->exists($group->logo)) {
                 Storage::disk('public')->delete($group->logo);
             }
-            $validated['logo'] = $request->file('logo')->store('group_logos', 'public');
+            $validated['logo'] = $imageUploadService->store($request->file('logo'), 'group_logos');
         }
 
         if ($request->hasFile('cover_photo')) {
             if ($group->cover_photo && Storage::disk('public')->exists($group->cover_photo)) {
                 Storage::disk('public')->delete($group->cover_photo);
             }
-            $validated['cover_photo'] = $request->file('cover_photo')->store('group_covers', 'public');
+            $validated['cover_photo'] = $imageUploadService->store($request->file('cover_photo'), 'group_covers');
         }
 
         if ($request->has('allow_member_invites')) {

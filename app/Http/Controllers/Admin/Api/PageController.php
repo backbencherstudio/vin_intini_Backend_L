@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -46,7 +47,7 @@ class PageController extends Controller
         if (empty($sections) || in_array('founder', $sections)) {
             $founder = $page->founder_info ?? [];
             if (isset($founder['photo'])) {
-                $founder['photo_url'] = asset('storage/' . $founder['photo']);
+                $founder['photo_url'] = asset('storage/'.$founder['photo']);
             }
             $responseData['founder'] = $founder;
         }
@@ -54,7 +55,7 @@ class PageController extends Controller
         // 3. What We Do (Diagram)
         if (empty($sections) || in_array('what_we_do', $sections)) {
             $responseData['what_we_do'] = [
-                'diagram_url' => $page->what_we_do_image ? asset('storage/' . $page->what_we_do_image) : null,
+                'diagram_url' => $page->what_we_do_image ? asset('storage/'.$page->what_we_do_image) : null,
             ];
         }
 
@@ -65,7 +66,7 @@ class PageController extends Controller
                     'name' => $member['name'] ?? '',
                     'title' => $member['title'] ?? '',
                     'bio' => $member['bio'] ?? '',
-                    'photo_url' => ! empty($member['photo']) ? asset('storage/' . $member['photo']) : null,
+                    'photo_url' => ! empty($member['photo']) ? asset('storage/'.$member['photo']) : null,
                 ];
             });
         }
@@ -78,8 +79,8 @@ class PageController extends Controller
                     'source' => $video['source'] ?? '',
                     'type' => $video['type'] ?? '',
                     'url' => $video['url'] ?? null,
-                    'file_url' => isset($video['path']) ? asset('storage/' . $video['path']) : null,
-                    'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/' . $video['thumbnail']) : null,
+                    'file_url' => isset($video['path']) ? asset('storage/'.$video['path']) : null,
+                    'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/'.$video['thumbnail']) : null,
                 ];
             });
         }
@@ -96,7 +97,7 @@ class PageController extends Controller
                 ->map(function ($item) {
                     return [
                         'name' => $item['name'],
-                        'logo_url' => ! empty($item['logo']) ? asset('storage/' . $item['logo']) : null,
+                        'logo_url' => ! empty($item['logo']) ? asset('storage/'.$item['logo']) : null,
                     ];
                 })->values();
         }
@@ -107,9 +108,7 @@ class PageController extends Controller
         ], 200);
     }
 
-
-
-    public function update(Request $request, $slug)
+    public function update(Request $request, $slug, OptimizedImageUploadService $imageUploadService)
     {
         $page = Page::where('slug', $slug)->firstOrFail();
 
@@ -119,8 +118,7 @@ class PageController extends Controller
             'team.*.photo' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'videos.*.file' => 'sometimes|nullable|mimes:mp4,mov,avi,wmv|max:102400',
             'videos.*.thumbnail' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'leading_institutions.*.logo' =>
-            'sometimes|nullable|file|mimes:jpeg,png,jpg,webp,svg|max:2048',
+            'leading_institutions.*.logo' => 'sometimes|nullable|file|mimes:jpeg,png,jpg,webp,svg|max:2048',
         ]);
 
         $page->fill(
@@ -141,7 +139,7 @@ class PageController extends Controller
                 'founder_designation',
                 'founder_bio',
                 'founder_signature',
-                'founder_photo'
+                'founder_photo',
             ])
         ) {
 
@@ -164,19 +162,17 @@ class PageController extends Controller
             }
             if ($request->hasFile('founder_photo')) {
 
-                if (!empty($founder['photo'])) {
+                if (! empty($founder['photo'])) {
                     Storage::disk('public')
                         ->delete($founder['photo']);
                 }
 
                 $founder['photo'] =
-                    $request->file('founder_photo')
-                    ->store('pages/founder', 'public');
+                    $imageUploadService->store($request->file('founder_photo'), 'pages/founder');
             }
 
             $page->founder_info = $founder;
         }
-
 
         // Team Members
 
@@ -198,14 +194,13 @@ class PageController extends Controller
 
                 if ($request->hasFile("team.$index.photo")) {
 
-                    if (!empty($oldMember['photo'])) {
+                    if (! empty($oldMember['photo'])) {
                         Storage::disk('public')
                             ->delete($oldMember['photo']);
                     }
 
                     $oldMember['photo'] =
-                        $request->file("team.$index.photo")
-                        ->store('pages/team', 'public');
+                        $imageUploadService->store($request->file("team.$index.photo"), 'pages/team');
                 }
 
                 $team[$index] = $oldMember;
@@ -241,7 +236,7 @@ class PageController extends Controller
                     $video['source'] == 'url'
                 ) {
 
-                    if (!empty($oldVideo['path'])) {
+                    if (! empty($oldVideo['path'])) {
                         Storage::disk('public')
                             ->delete($oldVideo['path']);
                     }
@@ -257,7 +252,7 @@ class PageController extends Controller
                         $request->hasFile("videos.$index.file")
                     ) {
 
-                        if (!empty($oldVideo['path'])) {
+                        if (! empty($oldVideo['path'])) {
                             Storage::disk('public')
                                 ->delete($oldVideo['path']);
                         }
@@ -275,18 +270,16 @@ class PageController extends Controller
                     $request->hasFile("videos.$index.thumbnail")
                 ) {
 
-                    if (!empty($oldVideo['thumbnail'])) {
+                    if (! empty($oldVideo['thumbnail'])) {
 
                         Storage::disk('public')
                             ->delete($oldVideo['thumbnail']);
                     }
 
                     $oldVideo['thumbnail'] =
-                        $request
-                        ->file("videos.$index.thumbnail")
-                        ->store(
-                            'pages/videos/thumbnails',
-                            'public'
+                        $imageUploadService->store(
+                            $request->file("videos.$index.thumbnail"),
+                            'pages/videos/thumbnails'
                         );
                 }
 
@@ -313,8 +306,7 @@ class PageController extends Controller
                 $page->leading_institutions ?? [];
 
             foreach (
-                $request->leading_institutions
-                as $index => $item
+                $request->leading_institutions as $index => $item
             ) {
 
                 $old =
@@ -330,23 +322,21 @@ class PageController extends Controller
                     )
                 ) {
 
-                    if (!empty($old['logo'])) {
+                    if (! empty($old['logo'])) {
 
                         Storage::disk('public')
                             ->delete($old['logo']);
                     }
 
                     $old['logo'] =
-                        $request
-                        ->file("leading_institutions.$index.logo")
-                        ->store(
-                            'pages/institutions',
-                            'public'
+                        $imageUploadService->store(
+                            $request->file("leading_institutions.$index.logo"),
+                            'pages/institutions'
                         );
                 }
 
                 if (isset($item['is_active'])) {
-                    $old['is_active'] = (bool)$item['is_active'];
+                    $old['is_active'] = (bool) $item['is_active'];
                 }
 
                 $institutions[$index] =
@@ -362,7 +352,7 @@ class PageController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Page updated successfully',
-            'data' => $page->fresh()
+            'data' => $page->fresh(),
         ]);
     }
 }

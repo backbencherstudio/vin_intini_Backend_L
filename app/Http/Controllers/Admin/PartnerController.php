@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\IndustryPartner;
+use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -30,7 +31,7 @@ class PartnerController extends Controller
         return view('admin.industry.partner', compact('partners'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, OptimizedImageUploadService $imageUploadService)
     {
         $request->validate([
             'partner_name' => 'required',
@@ -55,7 +56,7 @@ class PartnerController extends Controller
                     Storage::disk('public')->delete($oldPartner->partner_logo);
                 }
             }
-            $path = $request->file('partner_logo')->store('partners', 'public');
+            $path = $imageUploadService->store($request->file('partner_logo'), 'partners');
             $data['partner_logo'] = $path;
         }
 

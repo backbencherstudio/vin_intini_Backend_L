@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\IndustryItem;
 use App\Models\IndustrySections;
+use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -40,7 +41,7 @@ class BiotechController extends Controller
         return view('admin.industry.biotech', compact('items', 'sections', 'network'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, OptimizedImageUploadService $imageUploadService)
     {
         $request->validate(['category_id' => 'required', 'title' => 'required']);
         $data = $request->only(['category_id', 'title', 'tag', 'sub_title', 'description', 'link']);
@@ -52,7 +53,7 @@ class BiotechController extends Controller
                     Storage::disk('public')->delete($oldItem->image);
                 }
             }
-            $data['image'] = $request->file('image')->store('industry', 'public');
+            $data['image'] = $imageUploadService->store($request->file('image'), 'industry');
         }
 
         IndustryItem::updateOrCreate(['id' => $request->item_id], $data);

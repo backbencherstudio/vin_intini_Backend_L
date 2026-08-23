@@ -11,6 +11,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Subscription;
 use App\Notifications\NewMessageNotification;
+use App\Services\OptimizedImageUploadService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -98,7 +99,7 @@ class MessageController extends Controller
     /**
      * Create and send a new message in a conversation.
      */
-    public function store(Request $request, Conversation $conversation): JsonResponse
+    public function store(Request $request, Conversation $conversation, OptimizedImageUploadService $imageUploadService): JsonResponse
     {
         $currentUser = $request->user();
 
@@ -147,7 +148,7 @@ class MessageController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $file->store('conversations/'.$conversation->id, 'public');
+            $path = $imageUploadService->store($file, 'conversations/'.$conversation->id);
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_size'] = $file->getSize();
