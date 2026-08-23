@@ -85,7 +85,6 @@ class PostController extends Controller
 
                     $posts[] = $post;
                 }
-
             } else {
 
                 $post = Post::create([
@@ -109,7 +108,6 @@ class PostController extends Controller
                 'message' => 'Post(s) created successfully',
                 'data' => $posts,
             ], 200);
-
         } catch (\Throwable $e) {
 
             DB::rollBack();
@@ -251,7 +249,6 @@ class PostController extends Controller
                 'message' => 'Post updated successfully',
                 'data' => $post,
             ]);
-
         } catch (\Throwable $e) {
 
             DB::rollBack();
@@ -268,7 +265,7 @@ class PostController extends Controller
     {
         $user = auth('api')->user();
 
-        $post = Post::with(['media', 'comments', 'likes'])->findOrFail($id);
+        $post = Post::with(['media', 'comments.replies', 'likes'])->findOrFail($id);
 
         if ($post->user_id !== $user->id) {
             return response()->json([
@@ -287,21 +284,25 @@ class PostController extends Controller
         DB::beginTransaction();
 
         try {
-
             foreach ($post->media as $media) {
+                $filePath = parse_url($media->file_path, PHP_URL_PATH);
+                $relativePath = str_replace('/storage/', '', $filePath);
 
                 $count = PostMedia::where('file_path', $media->file_path)->count();
 
                 if ($count === 1) {
-                    Storage::disk('public')->delete($media->file_path);
+                    if (Storage::disk('public')->exists($relativePath)) {
+                        Storage::disk('public')->delete($relativePath);
+                    }
                 }
-
                 $media->delete();
             }
 
-            Comment::where('post_id', $post->id)->delete();
-            PostLike::where('post_id', $post->id)->delete();
+            foreach ($post->comments as $comment) {
+                $comment->delete();
+            }
 
+            PostLike::where('post_id', $post->id)->delete();
             $post->groups()->detach();
 
             $post->delete();
@@ -312,9 +313,7 @@ class PostController extends Controller
                 'success' => true,
                 'message' => 'Post deleted successfully',
             ]);
-
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return response()->json([
@@ -324,6 +323,67 @@ class PostController extends Controller
             ], 500);
         }
     }
+
+    // public function destroyProfilePost($id)
+    // {
+    //     $user = auth('api')->user();
+
+    //     $post = Post::with(['media', 'comments', 'likes'])->findOrFail($id);
+
+    //     if ($post->user_id !== $user->id) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Unauthorized',
+    //         ], 403);
+    //     }
+
+    //     if (! in_array($post->visibility, ['public', 'connections'])) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Group posts cannot be deleted from profile',
+    //         ], 403);
+    //     }
+
+    //     DB::beginTransaction();
+
+    //     try {
+
+    //         foreach ($post->media as $media) {
+
+    //             $count = PostMedia::where('file_path', $media->file_path)->count();
+
+    //             if ($count === 1) {
+    //                 Storage::disk('public')->delete($media->file_path);
+    //             }
+
+    //             $media->delete();
+    //         }
+
+    //         Comment::where('post_id', $post->id)->delete();
+    //         PostLike::where('post_id', $post->id)->delete();
+
+    //         $post->groups()->detach();
+
+    //         $post->delete();
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Post deleted successfully',
+    //         ]);
+
+    //     } catch (\Throwable $e) {
+
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Post deletion failed',
+    //             'error' => app()->environment('local') ? $e->getMessage() : null,
+    //         ], 500);
+    //     }
+    // }
 
     public function editGroupPost($groupId, $postId)
     {
@@ -480,7 +540,6 @@ class PostController extends Controller
                 'message' => 'Group post updated successfully',
                 'data' => $post,
             ]);
-
         } catch (\Throwable $e) {
 
             DB::rollBack();
@@ -493,11 +552,12 @@ class PostController extends Controller
         }
     }
 
+
     public function destroyGroupPost($groupId, $postId)
     {
         $user = auth('api')->user();
 
-        $post = Post::with(['media', 'groups'])->findOrFail($postId);
+        $post = Post::with(['media', 'groups', 'comments.replies'])->findOrFail($postId);
 
         if ($post->visibility !== 'groups') {
             return response()->json([
@@ -536,23 +596,28 @@ class PostController extends Controller
         DB::beginTransaction();
 
         try {
-
             $post->groups()->detach($groupId);
 
             if ($post->groups()->count() === 0) {
 
                 foreach ($post->media as $media) {
+                    $filePath = parse_url($media->file_path, PHP_URL_PATH);
+                    $relativePath = str_replace('/storage/', '', $filePath);
 
                     $count = PostMedia::where('file_path', $media->file_path)->count();
 
                     if ($count === 1) {
-                        Storage::disk('public')->delete($media->file_path);
+                        if (Storage::disk('public')->exists($relativePath)) {
+                            Storage::disk('public')->delete($relativePath);
+                        }
                     }
-
                     $media->delete();
                 }
 
-                Comment::where('post_id', $post->id)->delete();
+                foreach ($post->comments as $comment) {
+                    $comment->delete();
+                }
+
                 PostLike::where('post_id', $post->id)->delete();
 
                 $post->delete();
@@ -564,9 +629,7 @@ class PostController extends Controller
                 'success' => true,
                 'message' => 'Post removed successfully',
             ]);
-
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return response()->json([
@@ -576,4 +639,87 @@ class PostController extends Controller
             ], 500);
         }
     }
+
+    // public function destroyGroupPost($groupId, $postId)
+    // {
+    //     $user = auth('api')->user();
+
+    //     $post = Post::with(['media', 'groups'])->findOrFail($postId);
+
+    //     if ($post->visibility !== 'groups') {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'This is not a group post',
+    //         ], 400);
+    //     }
+
+    //     $existsInGroup = $post->groups()
+    //         ->where('groups.id', $groupId)
+    //         ->exists();
+
+    //     if (! $existsInGroup) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Post not found in this group',
+    //         ], 404);
+    //     }
+
+    //     $groupRole = GroupUser::where('group_id', $groupId)
+    //         ->where('user_id', $user->id)
+    //         ->value('role');
+
+    //     $canDelete = (
+    //         $post->user_id === $user->id ||
+    //         in_array($groupRole, ['admin'])
+    //     );
+
+    //     if (! $canDelete) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'You are not authorized to delete this post',
+    //         ], 403);
+    //     }
+
+    //     DB::beginTransaction();
+
+    //     try {
+
+    //         $post->groups()->detach($groupId);
+
+    //         if ($post->groups()->count() === 0) {
+
+    //             foreach ($post->media as $media) {
+
+    //                 $count = PostMedia::where('file_path', $media->file_path)->count();
+
+    //                 if ($count === 1) {
+    //                     Storage::disk('public')->delete($media->file_path);
+    //                 }
+
+    //                 $media->delete();
+    //             }
+
+    //             Comment::where('post_id', $post->id)->delete();
+    //             PostLike::where('post_id', $post->id)->delete();
+
+    //             $post->delete();
+    //         }
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Post removed successfully',
+    //         ]);
+    //     } catch (\Throwable $e) {
+
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Failed to remove post',
+    //             'error' => app()->environment('local') ? $e->getMessage() : null,
+    //         ], 500);
+    //     }
+    // }
 }
