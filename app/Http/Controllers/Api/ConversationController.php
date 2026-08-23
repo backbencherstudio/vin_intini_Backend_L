@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Connection;
 use App\Models\Conversation;
+use App\Models\Message;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -40,6 +41,7 @@ class ConversationController extends Controller
             ->map(function (Conversation $conversation) use ($currentUser, $unreadCounts, $premiumUserIds) {
                 $otherUser = $conversation->getOtherUser($currentUser->id);
                 $unreadCount = $unreadCounts[$conversation->id] ?? 0;
+                $lastMessage = $this->visibleLastMessageFor($conversation, $currentUser->id);
 
                 return [
                     'id' => $conversation->id,
@@ -49,15 +51,15 @@ class ConversationController extends Controller
                         'profile_image_url' => $otherUser->profile_image_url,
                         'has_premium' => in_array($otherUser->id, $premiumUserIds),
                     ],
-                    'last_message' => $conversation->lastMessage ? [
-                        'id' => $conversation->lastMessage->id,
-                        'type' => $conversation->lastMessage->display_type,
-                        'message' => $conversation->lastMessage->message,
-                        'file_url' => $conversation->lastMessage->file_url,
-                        'file_name' => $conversation->lastMessage->file_name,
-                        'sender_id' => $conversation->lastMessage->sender_id,
-                        'created_at' => $conversation->lastMessage->created_at->toISOString(),
-                        'created_at_diff' => $conversation->lastMessage->created_at->diffForHumans(),
+                    'last_message' => $lastMessage ? [
+                        'id' => $lastMessage->id,
+                        'type' => $lastMessage->display_type,
+                        'message' => $lastMessage->message,
+                        'file_url' => $lastMessage->file_url,
+                        'file_name' => $lastMessage->file_name,
+                        'sender_id' => $lastMessage->sender_id,
+                        'created_at' => $lastMessage->created_at->toISOString(),
+                        'created_at_diff' => $lastMessage->created_at->diffForHumans(),
                     ] : null,
                     'is_archived' => $conversation->isArchivedFor($currentUser->id),
                     'unread_count' => $unreadCount,
@@ -206,6 +208,7 @@ class ConversationController extends Controller
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
         $unreadCount = $conversation->unreadCountFor($currentUser->id);
+        $lastMessage = $this->visibleLastMessageFor($conversation, $currentUser->id);
 
         return response()->json([
             'success' => true,
@@ -221,14 +224,14 @@ class ConversationController extends Controller
                     'cover_image_url' => $otherUser->cover_image_url,
                     'has_premium' => $this->userHasActiveSubscription($otherUser->id),
                 ],
-                'last_message' => $conversation->lastMessage ? [
-                    'id' => $conversation->lastMessage->id,
-                    'type' => $conversation->lastMessage->display_type,
-                    'message' => $conversation->lastMessage->message,
-                    'file_url' => $conversation->lastMessage->file_url,
-                    'file_name' => $conversation->lastMessage->file_name,
-                    'sender_id' => $conversation->lastMessage->sender_id,
-                    'created_at' => $conversation->lastMessage->created_at->toISOString(),
+                'last_message' => $lastMessage ? [
+                    'id' => $lastMessage->id,
+                    'type' => $lastMessage->display_type,
+                    'message' => $lastMessage->message,
+                    'file_url' => $lastMessage->file_url,
+                    'file_name' => $lastMessage->file_name,
+                    'sender_id' => $lastMessage->sender_id,
+                    'created_at' => $lastMessage->created_at->toISOString(),
                 ] : null,
                 'unread_count' => $unreadCount,
                 'is_archived' => $conversation->isArchivedFor($currentUser->id),
@@ -242,7 +245,8 @@ class ConversationController extends Controller
      *
      * The other participant keeps full access to the conversation and its history.
      * The conversation reappears for the deleting user when the other party sends
-     * a new message or when they open it again via show-or-create.
+     * a new message or when they open it again via show-or-create, but every
+     * message created before the deletion stays permanently hidden from them.
      */
     public function destroy(Request $request, Conversation $conversation): JsonResponse
     {
@@ -258,6 +262,27 @@ class ConversationController extends Controller
             'success' => true,
             'message' => 'Conversation deleted successfully.',
         ]);
+    }
+
+    /**
+     * The conversation's last message, unless it was cleared by the user's
+     * earlier deletion of the conversation.
+     */
+    private function visibleLastMessageFor(Conversation $conversation, int $userId): ?Message
+    {
+        $lastMessage = $conversation->lastMessage;
+
+        if (! $lastMessage) {
+            return null;
+        }
+
+        $clearedMessageId = $conversation->clearedMessageIdFor($userId);
+
+        if ($clearedMessageId !== null && $lastMessage->id <= $clearedMessageId) {
+            return null;
+        }
+
+        return $lastMessage;
     }
 
     /**

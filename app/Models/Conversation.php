@@ -20,6 +20,8 @@ class Conversation extends Model
         'user_2_archived_at',
         'user_1_deleted_at',
         'user_2_deleted_at',
+        'user_1_cleared_message_id',
+        'user_2_cleared_message_id',
     ];
 
     protected function casts(): array
@@ -31,6 +33,8 @@ class Conversation extends Model
             'user_2_archived_at' => 'datetime',
             'user_1_deleted_at' => 'datetime',
             'user_2_deleted_at' => 'datetime',
+            'user_1_cleared_message_id' => 'integer',
+            'user_2_cleared_message_id' => 'integer',
         ];
     }
 
@@ -65,10 +69,35 @@ class Conversation extends Model
             ? $this->user_1_last_read_at
             : $this->user_2_last_read_at;
 
-        return $this->messages()
+        return $this->visibleMessagesFor($userId)
             ->where('sender_id', '!=', $userId)
             ->when($lastReadAt, fn ($q) => $q->where('created_at', '>', $lastReadAt))
             ->count();
+    }
+
+    /**
+     * Messages visible to the given user.
+     *
+     * Everything up to the message that was the latest when the user deleted
+     * the conversation stays permanently hidden, even after the conversation
+     * is restored. Newer messages become visible normally.
+     */
+    public function visibleMessagesFor(int $userId): HasMany
+    {
+        return $this->messages()
+            ->when(
+                $this->clearedMessageIdFor($userId),
+                fn (Builder $q, int $clearedMessageId) => $q->where('messages.id', '>', $clearedMessageId)
+            );
+    }
+
+    public function clearedMessageIdFor(int $userId): ?int
+    {
+        if ($userId === $this->user_id_1) {
+            return $this->user_1_cleared_message_id;
+        }
+
+        return $userId === $this->user_id_2 ? $this->user_2_cleared_message_id : null;
     }
 
     public function markAsUnreadFor(int $userId): void
@@ -112,13 +141,19 @@ class Conversation extends Model
 
     /**
      * Hide the conversation for the given user without affecting the other party.
+     *
+     * The deletion also permanently hides all existing history for this user:
+     * if the conversation is restored later, only messages created afterwards
+     * become visible to them.
      */
     public function deleteFor(int $userId): void
     {
         if ($userId === $this->user_id_1) {
             $this->user_1_deleted_at = now();
+            $this->user_1_cleared_message_id = $this->messages()->max('id');
         } elseif ($userId === $this->user_id_2) {
             $this->user_2_deleted_at = now();
+            $this->user_2_cleared_message_id = $this->messages()->max('id');
         }
         $this->save();
     }
@@ -206,20 +241,31 @@ class Conversation extends Model
     {
         return DB::table('messages')
             ->join('conversations', 'messages.conversation_id', '=', 'conversations.id')
+            ->whereNull('messages.deleted_at')
             ->whereIn('messages.conversation_id', static::forUser($userId)->notDeletedFor($userId)->pluck('id'))
             ->where('messages.sender_id', '!=', $userId)
             ->where(function ($q) use ($userId) {
                 $q->where(function ($q) use ($userId) {
                     $q->where('conversations.user_id_1', $userId)
                         ->where(function ($q) {
-                            $q->whereColumn('messages.created_at', '>', 'conversations.user_1_last_read_at')
-                                ->orWhereNull('conversations.user_1_last_read_at');
+                            $q->where(function ($q) {
+                                $q->whereColumn('messages.created_at', '>', 'conversations.user_1_last_read_at')
+                                    ->orWhereNull('conversations.user_1_last_read_at');
+                            })->where(function ($q) {
+                                $q->whereNull('conversations.user_1_cleared_message_id')
+                                    ->orWhereColumn('messages.id', '>', 'conversations.user_1_cleared_message_id');
+                            });
                         });
                 })->orWhere(function ($q) use ($userId) {
                     $q->where('conversations.user_id_2', $userId)
                         ->where(function ($q) {
-                            $q->whereColumn('messages.created_at', '>', 'conversations.user_2_last_read_at')
-                                ->orWhereNull('conversations.user_2_last_read_at');
+                            $q->where(function ($q) {
+                                $q->whereColumn('messages.created_at', '>', 'conversations.user_2_last_read_at')
+                                    ->orWhereNull('conversations.user_2_last_read_at');
+                            })->where(function ($q) {
+                                $q->whereNull('conversations.user_2_cleared_message_id')
+                                    ->orWhereColumn('messages.id', '>', 'conversations.user_2_cleared_message_id');
+                            });
                         });
                 });
             })

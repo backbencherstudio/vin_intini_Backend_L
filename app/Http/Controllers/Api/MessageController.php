@@ -31,7 +31,7 @@ class MessageController extends Controller
 
         $conversation->markAsReadFor($currentUser->id);
 
-        $messages = $conversation->messages()
+        $messages = $conversation->visibleMessagesFor($currentUser->id)
             ->with(['sender:id,first_name,last_name,title,profile_image', 'replyTo.sender:id,first_name,last_name', 'reactions.user:id,first_name,last_name'])
             ->orderBy('id', 'desc')
             ->cursorPaginate(50);
@@ -128,8 +128,8 @@ class MessageController extends Controller
             'reply_to_id' => [
                 'nullable',
                 'integer',
-                function (string $attribute, mixed $value, Closure $fail) use ($conversation): void {
-                    if ($value && ! Message::where('id', $value)->where('conversation_id', $conversation->id)->exists()) {
+                function (string $attribute, mixed $value, Closure $fail) use ($conversation, $currentUser): void {
+                    if ($value && ! $conversation->visibleMessagesFor($currentUser->id)->where('id', $value)->exists()) {
                         $fail('The replied message does not exist in this conversation.');
                     }
                 },
@@ -400,6 +400,25 @@ class MessageController extends Controller
         }
 
         $message->delete();
+
+        $conversation = $message->conversation;
+
+        if ($conversation->last_message_id === $message->id) {
+            $conversation->update(['last_message_id' => $conversation->messages()->max('id')]);
+        }
+
+        $otherUser = $conversation->getOtherUser($currentUser->id);
+
+        $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
+
+        event(new ConversationUpdated(
+            $conversation,
+            $otherUser,
+            $conversation->unreadCountFor($otherUser->id),
+            null,
+            $unreadSummary['unread_conversation_count'],
+            $unreadSummary['total_unread_messages'],
+        ));
 
         return response()->json([
             'success' => true,
