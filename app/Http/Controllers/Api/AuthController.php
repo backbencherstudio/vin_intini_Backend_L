@@ -36,7 +36,7 @@ class AuthController extends Controller
 
         $credentials = $validator->validated();
 
-        $user = User::where('email', $credentials['email'])->first();
+        $user = User::withTrashed()->where('email', $credentials['email'])->first();
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
 
             // Trigger the Failed event to log the failed login activity--------------
@@ -48,6 +48,28 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'Invalid credentials',
             ], 401);
+        }
+
+        // Check if the user is soft-deleted (account scheduled for deletion)
+        if ($user->trashed()) {
+            $token = auth('api')->login($user);
+
+            $deletionLog = \App\Models\DeletedAccountLog::where('user_id', $user->id)->latest()->first();
+
+            $daysRemaining = 0;
+            if ($deletionLog) {
+                $seconds = now()->diffInSeconds($deletionLog->permanent_delete_at, false);
+                $daysRemaining = ceil($seconds / (60 * 60 * 24));
+            }
+
+            if ($daysRemaining <= 0) $daysRemaining = 1;
+
+            return response()->json([
+                'status' => 'pending_deletion',
+                'days_left' => (int) $daysRemaining,
+                'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Would you like to restore it?",
+                'token' => $token,
+            ], 200);
         }
 
         // if (! $user->is_verified) {
