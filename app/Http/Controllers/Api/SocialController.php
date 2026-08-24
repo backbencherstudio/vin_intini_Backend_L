@@ -52,17 +52,27 @@ class SocialController extends Controller
             $avatarUrl = (string) ($socialUser->getAvatar() ?: '');
 
             $user = DB::transaction(function () use ($provider, $providerId, $socialUser, $avatarUrl) {
-                $socialAccount = SocialAccount::with('user')
+                // $socialAccount = SocialAccount::with('user')
+                //     ->where('provider', $provider)
+                //     ->where('provider_id', $providerId)
+                //     ->first();
+
+                // if ($socialAccount && $socialAccount->user) {
+                //     return $socialAccount->user;
+                // }
+
+                $socialAccount = SocialAccount::query()
                     ->where('provider', $provider)
                     ->where('provider_id', $providerId)
                     ->first();
 
-                if ($socialAccount && $socialAccount->user) {
-                    return $socialAccount->user;
+                if ($socialAccount) {
+                    $existingUser = User::withTrashed()->find($socialAccount->user_id);
+                    if ($existingUser) return $existingUser;
                 }
 
                 $email = $socialUser->getEmail();
-                $user = $email ? User::where('email', $email)->first() : null;
+                $user = $email ? User::withTrashed()->where('email', $email)->first() : null;
 
                 if (! $user) {
                     $name = trim((string) $socialUser->getName());
@@ -92,6 +102,34 @@ class SocialController extends Controller
 
                 return $user;
             });
+
+            if ($user->trashed()) {
+                $token = JWTAuth::fromUser($user);
+
+                $deletionLog = \App\Models\DeletedAccountLog::where('user_id', $user->id)->latest()->first();
+                $daysRemaining = 0;
+                if ($deletionLog) {
+                    $seconds = now()->diffInSeconds($deletionLog->permanent_delete_at, false);
+                    $daysRemaining = ceil($seconds / (60 * 60 * 24));
+                }
+                if ($daysRemaining <= 0) $daysRemaining = 1;
+
+                $pendingResponse = [
+                    'status' => 'pending_deletion',
+                    'days_left' => (int) $daysRemaining,
+                    'name' => $user->first_name . ' ' . $user->last_name,
+                    'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Would you like to restore it?",
+                    'token' => $token,
+                ];
+
+                if ($platform === 'web') {
+                    $frontendUrl = rtrim(config('app.frontend_url'), '/');
+                    $encodedAuth = base64_encode(json_encode($pendingResponse));
+                    return redirect("{$frontendUrl}/mu/home?auth={$encodedAuth}");
+                }
+
+                return response()->json($pendingResponse, 200);
+            }
 
             if ($avatarUrl !== '' && (! $user->profile_image || preg_match('/^https?:\\/\\//i', (string) $user->profile_image) === 1)) {
                 $storedAvatarPath = $profileImageService->storeFromUrl($avatarUrl, $user->profile_image);
