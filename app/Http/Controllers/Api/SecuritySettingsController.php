@@ -9,6 +9,9 @@ use App\Models\LoginActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use App\Models\DeletedAccountLog;
+use App\Models\User;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SecuritySettingsController extends Controller
 {
@@ -480,5 +483,93 @@ class SecuritySettingsController extends Controller
             'message' => 'Privacy settings updated successfully',
             'data' => $profile
         ]);
+    }
+
+    public function requestDelete(Request $request)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:1000',
+            'password' => 'required'
+        ]);
+
+        $user = auth('api')->user();
+
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json(['errors' => ['password' => ['The provided password is incorrect.']]], 422);
+        }
+
+        DeletedAccountLog::create([
+            'user_id' => $user->id,
+            'user_name' => $user->first_name . ' ' . $user->last_name,
+            'user_email' => $user->email,
+            'reason' => $request->reason,
+            'requested_at' => now(),
+            'permanent_delete_at' => now()->addDays(30),
+            // 'permanent_delete_at' => now()->addMinutes(2)
+        ]);
+
+        try {
+            $payload = auth('api')->payload();
+            if ($payload) {
+                $tokenId = $payload->get('jti');
+                LoginActivity::where('token_id', $tokenId)
+                    ->where('user_id', $user->id)
+                    ->update(['is_active' => 0]);
+            }
+        } catch (\Exception $e) {
+            //
+        }
+
+        $user->delete();
+        auth('api')->logout();
+
+        return response()->json([
+            'message' => 'Your account deletion request has been received. You have 30 days to reactivate it before permanent deletion.'
+        ]);
+    }
+
+    public function restore(Request $request)
+    {
+        $token = $request->bearerToken();
+
+        if (!$token) {
+            return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
+        }
+
+        try {
+            $payload = JWTAuth::setToken($token)->getPayload();
+            $userId = $payload->get('sub');
+
+            $user = User::withTrashed()->find($userId);
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User account not found.'
+                ], 404);
+            }
+
+            if ($user->trashed()) {
+                $user->restore();
+
+                DeletedAccountLog::where('user_id', $user->id)->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Welcome back! Your account has been successfully reactivated.'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Your account is already active.'
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired token.',
+                'error' => $e->getMessage()
+            ], 401);
+        }
     }
 }
