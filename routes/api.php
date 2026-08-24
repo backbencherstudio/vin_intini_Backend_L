@@ -6,7 +6,6 @@ use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\SocialController;
 use App\Http\Controllers\Api\StripeWebhookController;
-use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
@@ -29,6 +28,8 @@ Route::post('/contact-submit', [ContactUsController::class, 'store']);
 Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword']);
+// Account Restoration Routes
+Route::post('/account/restore', [SecuritySettingsController::class, 'restore']);
 
 // User Register Routes
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
