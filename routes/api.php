@@ -28,6 +28,8 @@ Route::post('/contact-submit', [ContactUsController::class, 'store']);
 Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword']);
+// Account Restoration Routes
+Route::post('/account/restore', [SecuritySettingsController::class, 'restore']);
 
 // User Register Routes
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');

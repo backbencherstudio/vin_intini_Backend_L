@@ -69,8 +69,11 @@ class UserEducationController extends Controller
         $viewer = auth('api')->user();
 
         $targetUser = User::with('profile:user_id,privacy_profile_activity')
-            ->where('username', $identifier)
-            ->orWhere('id', $identifier)
+            ->where(function ($query) use ($identifier) {
+                $query->where('username', $identifier)
+                    ->orWhere('id', $identifier);
+            })
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $targetUser) {
@@ -97,7 +100,10 @@ class UserEducationController extends Controller
                         })->orWhere(function ($q2) use ($viewer, $actualUserId) {
                             $q2->where('sender_id', $actualUserId)->where('receiver_id', $viewer->id);
                         });
-                    })->exists();
+                    })
+                    ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
+                    ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+                    ->exists();
 
                 if ($isConnected) {
                     $canSee = true;

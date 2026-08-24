@@ -22,7 +22,8 @@ class FollowController extends Controller
             $limit = 100;
         }
 
-        $baseQuery = UserFollow::query()->where('following_id', $currentUser->id);
+        $baseQuery = UserFollow::query()->where('following_id', $currentUser->id)
+            ->whereHas('follower', fn($q) => $q->whereNull('deleted_at'));
 
         $totalFollowersCount = (clone $baseQuery)->count();
 
@@ -51,6 +52,9 @@ class FollowController extends Controller
         );
 
         $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
+
+            if (!$follow->follower) return null;
+
             $mutualConnectionData = $mutualConnections[$follow->follower_id] ?? [
                 'count' => 0,
                 'preview' => [],
@@ -64,7 +68,7 @@ class FollowController extends Controller
                 'mutual_connections' => $mutualConnectionData['preview'],
                 'followed_at' => optional($follow->created_at)?->toDateTimeString(),
             ];
-        })->values();
+        })->filter()->values();
 
         if ($paginated->isEmpty()) {
             return response()->json([
@@ -214,7 +218,8 @@ class FollowController extends Controller
             $limit = 100;
         }
 
-        $baseQuery = UserFollow::query()->where('follower_id', $currentUser->id);
+        $baseQuery = UserFollow::query()->where('follower_id', $currentUser->id)
+            ->whereHas('following', fn($q) => $q->whereNull('deleted_at'));
 
         $totalFollowingCount = (clone $baseQuery)->count();
 
@@ -243,6 +248,9 @@ class FollowController extends Controller
         );
 
         $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
+
+            if (!$follow->following) return null;
+
             $mutualConnectionData = $mutualConnections[$follow->following_id] ?? [
                 'count' => 0,
                 'preview' => [],
@@ -256,7 +264,7 @@ class FollowController extends Controller
                 'mutual_connections' => $mutualConnectionData['preview'],
                 'followed_at' => optional($follow->created_at)?->toDateTimeString(),
             ];
-        })->values();
+        })->filter()->values();
 
         if ($paginated->isEmpty()) {
             return response()->json([
@@ -400,7 +408,7 @@ class FollowController extends Controller
     {
         $currentUser = $request->user();
 
-        $user = User::where('username', $identifier)
+        $user = User::withTrashed()->where('username', $identifier)
             ->orWhere('id', $identifier)
             ->firstOrFail();
 
@@ -452,10 +460,12 @@ class FollowController extends Controller
 
     private function formatUser(User $user): array
     {
+        if (!$user) return [];
+
         return [
             'id' => $user->id,
             'username' => $user->username,
-            'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
+            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'title' => $user->title,
@@ -474,6 +484,7 @@ class FollowController extends Controller
 
         $currentFollowingIds = UserFollow::query()
             ->where('follower_id', $currentUserId)
+            ->whereHas('following', fn($q) => $q->whereNull('deleted_at'))
             ->pluck('following_id')
             ->unique()
             ->values();
@@ -485,6 +496,8 @@ class FollowController extends Controller
         $mutualFollowRows = UserFollow::query()
             ->whereIn('follower_id', $counterpartIds->all())
             ->whereIn('following_id', $currentFollowingIds->all())
+            ->whereHas('follower', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('following', fn($q) => $q->whereNull('deleted_at'))
             ->get(['follower_id', 'following_id']);
 
         $mutualUserIds = $mutualFollowRows
@@ -497,7 +510,7 @@ class FollowController extends Controller
         }
 
         $mutualUsers = User::query()
-            ->whereIn('id', $mutualUserIds->all())
+            ->whereIn('id', $mutualFollowRows->pluck('following_id')->unique())
             ->get(['id', 'username', 'first_name', 'last_name', 'title', 'profile_image'])
             ->keyBy('id');
 

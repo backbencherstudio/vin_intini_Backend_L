@@ -2,6 +2,7 @@
 
 use App\Models\Conversation;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Schedule;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
@@ -14,3 +15,6 @@ Broadcast::channel('conversation.{id}', function ($user, $id) {
         })
         ->exists();
 });
+
+// Schedule::command('model:prune')->daily();
+Schedule::command('model:prune')->dailyAt('02:00')->timezone('America/New_York');

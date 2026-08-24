@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\PasswordOtpMail;
 use App\Models\LoginActivity;
 use App\Models\User;
+use App\Models\DeletedAccountLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,7 @@ class ForgotPasswordController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::withTrashed()->where('email', $request->email)->first();
 
         $otp = rand(1000, 9999);
 
@@ -67,7 +68,7 @@ class ForgotPasswordController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::withTrashed()->where('email', $request->email)->first();
 
         $otpRecord = DB::table('password_otps')
             ->where('user_id', $user->id)
@@ -115,7 +116,7 @@ class ForgotPasswordController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::withTrashed()->where('email', $request->email)->first();
 
         $otpRecord = DB::table('password_otps')
             ->where('user_id', $user->id)
@@ -126,6 +127,11 @@ class ForgotPasswordController extends Controller
                 'status' => false,
                 'message' => 'OTP verification required or expired',
             ], 400);
+        }
+
+        if ($user->trashed()) {
+            $user->restore();
+            DeletedAccountLog::where('user_id', $user->id)->delete();
         }
 
         $user->password = Hash::make($request->new_password);

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Post extends Model
 {
@@ -41,5 +42,23 @@ class Post extends Model
     public function media()
     {
         return $this->hasMany(PostMedia::class)->orderBy('order');
+    }
+
+    protected static function booted()
+    {
+        static::deleting(function ($post) {
+            if ($post->media) {
+                foreach ($post->media as $item) {
+                    if ($item->file_path) {
+                        Storage::disk('public')->delete($item->file_path);
+                    }
+                    $item->delete();
+                }
+            }
+
+            $post->comments()->get()->each(function ($comment) {
+                $comment->delete();
+            });
+        });
     }
 }

@@ -113,4 +113,8 @@ Route::prefix('neuroscience-network/industry')->group(function () {
     Route::get('/pub-partners', [IndustryApiController::class, 'getNeurosciencePubPartners']);
 });
 
+//account privacy settings route
 Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'updatePrivacySettings']);
+
+//account deletion request route
+Route::post('/account/delete-request', [SecuritySettingsController::class, 'requestDelete']);

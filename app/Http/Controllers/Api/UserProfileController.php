@@ -35,6 +35,8 @@ class UserProfileController extends Controller
         $totalConnections = Connection::query()
             ->accepted()
             ->forUser($user->id)
+            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
             ->count();
 
         $skills = Skill::query()
@@ -133,8 +135,11 @@ class UserProfileController extends Controller
             'experiences.company',
         ])
             // ->find($id);
-            ->where('username', $username)
-            ->orWhere('id', $username)
+            ->where(function ($q) use ($username) {
+                $q->where('username', $username)
+                    ->orWhere('id', $username);
+            })
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $user) {
@@ -201,6 +206,8 @@ class UserProfileController extends Controller
         $totalConnections = Connection::query()
             ->accepted()
             ->forUser($user->id)
+            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
             ->count();
 
         $skills = ($canSeeDetails) ? Skill::query()

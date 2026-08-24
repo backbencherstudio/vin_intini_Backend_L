@@ -34,6 +34,8 @@ class ConnectionController extends Controller
         $connections = Connection::query()
             ->accepted()
             ->forUser($currentUser->id)
+            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
             ->with([
                 'sender:id,username,first_name,last_name,title,profile_image',
                 'receiver:id,username,first_name,last_name,title,profile_image',
@@ -124,6 +126,11 @@ class ConnectionController extends Controller
 
         $connectionData = $paginator->getCollection()->map(function (array $item) use ($mutualConnections, $followingIds) {
             $connection = $item['payload'];
+
+            if (!$connection['user']) {
+                return null;
+            }
+
             $counterpartId = $connection['user']['id'];
 
             $connection['mutual_connections_count'] = $mutualConnections[$counterpartId]['count'] ?? 0;
@@ -132,7 +139,7 @@ class ConnectionController extends Controller
             $connection['user']['is_following'] = in_array($counterpartId, $followingIds);
 
             return $connection;
-        })->values();
+        })->filter()->values();
 
         return response()->json([
             'success' => true,
@@ -167,6 +174,8 @@ class ConnectionController extends Controller
         $requests = Connection::query()
             ->pending()
             ->where('receiver_id', $currentUser->id)
+            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
             ->with([
                 'sender:id,username,first_name,last_name,title,profile_image',
                 'receiver:id,username,first_name,last_name,title,profile_image',
@@ -304,14 +313,34 @@ class ConnectionController extends Controller
             ->join('user_profiles', 'users.id', '=', 'user_profiles.user_id')
             ->where('user_profiles.privacy_profile_visibility', 'everyone')
             ->where('users.id', '!=', $currentUser->id)
+            ->whereNull('users.deleted_at')
             ->when($excludedUserIds->isNotEmpty(), function ($query) use ($excludedUserIds) {
                 $query->whereNotIn('users.id', $excludedUserIds->all());
             })
+            // ->when($search !== '', function ($query) use ($search) {
+            //     $query->where(function ($q) use ($search) {
+            //         $q->where('users.first_name', 'like', $search . '%')
+            //             ->orWhere('users.last_name', 'like', $search . '%')
+            //             ->orWhere('users.title', 'like', '%' . $search . '%');
+            //     });
+            // })
             ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('users.first_name', 'like', $search.'%')
-                        ->orWhere('users.last_name', 'like', $search.'%')
-                        ->orWhere('users.title', 'like', '%'.$search.'%');
+                $searchTerms = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY);
+
+                $query->where(function ($q) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $q->where(function ($subQuery) use ($term) {
+                            $subQuery
+                                ->where('users.first_name', 'like', $term . '%')
+                                ->orWhere('users.last_name', 'like', $term . '%')
+                                ->orWhere('users.username', 'like', '%' . $term . '%')
+                                ->orWhere('users.title', 'like', '%' . $term . '%')
+                                ->orWhereRaw(
+                                    "CONCAT_WS(' ', users.first_name, users.last_name) LIKE ?",
+                                    ['%' . $term . '%']
+                                );
+                        });
+                    }
                 });
             })
             ->latest('users.id');
@@ -454,6 +483,7 @@ class ConnectionController extends Controller
             ->whereHas('receiver', function ($query) use ($search) {
 
                 $query->whereHas('profile');
+                $query->whereNull('deleted_at');
                 if ($search !== '') {
                     $query->where(function ($q) use ($search) {
                         $q->where('first_name', 'like', '%'.$search.'%')
@@ -617,6 +647,13 @@ class ConnectionController extends Controller
             ], 403);
         }
 
+        if (!$connectionRequest->sender) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The sender of this request no longer has an active account.',
+            ], 404);
+        }
+
         if ($connectionRequest->status === Connection::STATUS_ACCEPTED) {
             return response()->json([
                 'status' => 'success',
@@ -686,7 +723,7 @@ class ConnectionController extends Controller
     {
         $currentUser = $request->user();
 
-        $user = User::where('username', $identifier)
+        $user = User::withTrashed()->where('username', $identifier)
             ->orWhere('id', $identifier)
             ->firstOrFail();
 
@@ -776,6 +813,8 @@ class ConnectionController extends Controller
                 $query->where('sender_id', $currentUserId)
                     ->orWhere('receiver_id', $currentUserId);
             })
+            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
             ->get(['sender_id', 'receiver_id'])
             ->map(function (Connection $connectionRequest) use ($currentUserId) {
                 return $connectionRequest->sender_id === $currentUserId
@@ -789,33 +828,37 @@ class ConnectionController extends Controller
             return [];
         }
 
-        $adjacency = [];
-        foreach ($currentConnections as $connectedUserId) {
-            $adjacency[$connectedUserId] = [];
-        }
-
         $relatedConnections = Connection::query()
             ->accepted()
             ->where(function ($query) use ($currentConnections) {
                 $query->whereIn('sender_id', $currentConnections->all())
                     ->orWhereIn('receiver_id', $currentConnections->all());
             })
+            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
             ->get(['sender_id', 'receiver_id']);
 
-        foreach ($relatedConnections as $connectionRequest) {
-            $adjacency[$connectionRequest->sender_id][] = $connectionRequest->receiver_id;
-            $adjacency[$connectionRequest->receiver_id][] = $connectionRequest->sender_id;
+        $adjacency = [];
+        foreach ($currentConnections as $connectedUserId) {
+            $adjacency[$connectedUserId] = [];
         }
 
-        $mutualUserIds = collect();
+        foreach ($relatedConnections as $connectionRequest) {
+            if (isset($adjacency[$connectionRequest->sender_id])) {
+                $adjacency[$connectionRequest->sender_id][] = $connectionRequest->receiver_id;
+            }
+            if (isset($adjacency[$connectionRequest->receiver_id])) {
+                $adjacency[$connectionRequest->receiver_id][] = $connectionRequest->sender_id;
+            }
+        }
+
         $map = [];
+        $mutualUserIds = collect();
 
         foreach ($counterpartIds as $counterpartId) {
             $mutualIds = collect($adjacency[$counterpartId] ?? [])
                 ->intersect($currentConnections)
-                ->reject(function (int $userId) use ($currentUserId, $counterpartId) {
-                    return $userId === $currentUserId || $userId === $counterpartId;
-                })
+                ->reject(fn(int $userId) => $userId === $currentUserId || $userId === $counterpartId)
                 ->unique()
                 ->values();
 
@@ -829,33 +872,117 @@ class ConnectionController extends Controller
             ->keyBy('id');
 
         $formatted = [];
-
         foreach ($map as $counterpartId => $mutualIds) {
-            $preview = $mutualIds
-                ->map(function (int $userId) use ($mutualUsers) {
-                    return $mutualUsers->get($userId);
-                })
-                ->filter()
-                ->map(function (User $user) {
-                    return $this->formatUser($user);
-                })
-                ->take(1)
-                ->values();
+            $validMutualIds = $mutualIds->filter(fn($id) => $mutualUsers->has($id));
 
             $formatted[$counterpartId] = [
-                'count' => $mutualIds->count(),
-                'preview' => $preview,
+                'count' => $validMutualIds->count(),
+                'preview' => $validMutualIds->take(1)
+                    ->map(fn($id) => $this->formatUser($mutualUsers->get($id)))
+                    ->values()
+                    ->toArray(),
             ];
         }
 
         return $formatted;
     }
 
+    // private function buildMutualConnectionsMap(int $currentUserId, Collection $counterpartIds): array
+    // {
+    //     if ($counterpartIds->isEmpty()) {
+    //         return [];
+    //     }
+
+    //     $currentConnections = Connection::query()
+    //         ->accepted()
+    //         ->where(function ($query) use ($currentUserId) {
+    //             $query->where('sender_id', $currentUserId)
+    //                 ->orWhere('receiver_id', $currentUserId);
+    //         })
+    //         ->get(['sender_id', 'receiver_id'])
+    //         ->map(function (Connection $connectionRequest) use ($currentUserId) {
+    //             return $connectionRequest->sender_id === $currentUserId
+    //                 ? $connectionRequest->receiver_id
+    //                 : $connectionRequest->sender_id;
+    //         })
+    //         ->unique()
+    //         ->values();
+
+    //     if ($currentConnections->isEmpty()) {
+    //         return [];
+    //     }
+
+    //     $adjacency = [];
+    //     foreach ($currentConnections as $connectedUserId) {
+    //         $adjacency[$connectedUserId] = [];
+    //     }
+
+    //     $relatedConnections = Connection::query()
+    //         ->accepted()
+    //         ->where(function ($query) use ($currentConnections) {
+    //             $query->whereIn('sender_id', $currentConnections->all())
+    //                 ->orWhereIn('receiver_id', $currentConnections->all());
+    //         })
+    //         ->get(['sender_id', 'receiver_id']);
+
+    //     foreach ($relatedConnections as $connectionRequest) {
+    //         $adjacency[$connectionRequest->sender_id][] = $connectionRequest->receiver_id;
+    //         $adjacency[$connectionRequest->receiver_id][] = $connectionRequest->sender_id;
+    //     }
+
+    //     $mutualUserIds = collect();
+    //     $map = [];
+
+    //     foreach ($counterpartIds as $counterpartId) {
+    //         $mutualIds = collect($adjacency[$counterpartId] ?? [])
+    //             ->intersect($currentConnections)
+    //             ->reject(function (int $userId) use ($currentUserId, $counterpartId) {
+    //                 return $userId === $currentUserId || $userId === $counterpartId;
+    //             })
+    //             ->unique()
+    //             ->values();
+
+    //         $map[$counterpartId] = $mutualIds;
+    //         $mutualUserIds = $mutualUserIds->merge($mutualIds);
+    //     }
+
+    //     $mutualUsers = User::query()
+    //         ->whereIn('id', $mutualUserIds->unique()->values())
+    //         ->get(['id', 'username', 'first_name', 'last_name', 'title', 'profile_image'])
+    //         ->keyBy('id');
+
+    //     $formatted = [];
+
+    //     foreach ($map as $counterpartId => $mutualIds) {
+    //         $preview = $mutualIds
+    //             ->map(function (int $userId) use ($mutualUsers) {
+    //                 return $mutualUsers->get($userId);
+    //             })
+    //             ->filter()
+    //             ->map(function (User $user) {
+    //                 return $this->formatUser($user);
+    //             })
+    //             ->take(1)
+    //             ->values();
+
+    //         $formatted[$counterpartId] = [
+    //             'count' => $mutualIds->count(),
+    //             'preview' => $preview,
+    //         ];
+    //     }
+
+    //     return $formatted;
+    // }
+
     private function formatConnectionRequest(Connection $connectionRequest, int $currentUserId, array $mutualConnections, bool $includeHistoryDetails = false): array
     {
         $counterpart = $connectionRequest->sender_id === $currentUserId
             ? $connectionRequest->receiver
             : $connectionRequest->sender;
+
+        if (!$counterpart) {
+            return ['id' => $connectionRequest->id, 'user' => null, 'status' => 'deleted'];
+        }
 
         $counterpartData = $this->formatUser($counterpart);
         $mutualConnectionData = $mutualConnections[$counterpart->id] ?? ['count' => 0, 'preview' => []];
@@ -907,6 +1034,8 @@ class ConnectionController extends Controller
 
     private function formatUser(User $user): array
     {
+        if (!$user) return [];
+
         return [
             'id' => $user->id,
             'username' => $user->username,

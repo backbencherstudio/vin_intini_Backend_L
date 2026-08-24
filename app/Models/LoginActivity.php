@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 
 class LoginActivity extends Model
 {
+    use Prunable;
+
     protected $fillable = [
         'user_id',
         'token_id',
@@ -27,5 +30,11 @@ class LoginActivity extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function prunable()
+    {
+        // 3 months before, we can prune the login activities
+        return static::where('created_at', '<=', now()->subMonths(3));
     }
 }
