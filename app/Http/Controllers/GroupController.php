@@ -121,7 +121,7 @@ class GroupController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Group created successfully!',
-            'data' => $group->load(['creator:id,first_name,last_name,email']),
+            'data' => $group->load(['creator:id,username,first_name,last_name,email']),
         ], 201);
     }
 
@@ -167,13 +167,15 @@ class GroupController extends Controller
             if ($myFriendIds->isNotEmpty()) {
                 $mutualQuery = $group->members()
                     ->wherePivot('status', 'active')
+                    ->whereNull('users.deleted_at')
                     ->whereIn('users.id', $myFriendIds)
-                    ->select('users.id', 'first_name', 'last_name', 'profile_image');
+                    ->select('users.id', 'username', 'first_name', 'last_name', 'profile_image');
 
                 $mutualMembersCount = $mutualQuery->count();
                 $mutualMembers = $mutualQuery->limit(5)->get()->map(function ($member) {
                     return [
                         'id' => $member->id,
+                        'username' => $member->username,
                         'first_name' => $member->first_name,
                         'last_name' => $member->last_name,
                         'profile_image_url' => $member->profile_image_url,
@@ -342,7 +344,7 @@ class GroupController extends Controller
         }
 
         $inviteableUserIds = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
             ->diff($this->pendingInvitationUserIds($group->id))
             ->values();
 
@@ -351,13 +353,15 @@ class GroupController extends Controller
 
         $query = User::query()
             ->whereIn('id', $inviteableUserIds)
-            ->select(['id', 'first_name', 'last_name', 'title', 'profile_image'])
+            ->whereNull('deleted_at')
+            ->select(['id', 'username', 'first_name', 'last_name', 'title', 'profile_image'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery
-                        ->where('first_name', 'like', '%'.$search.'%')
-                        ->orWhere('last_name', 'like', '%'.$search.'%')
-                        ->orWhere('title', 'like', '%'.$search.'%');
+                        ->where('first_name', 'like', '%' . $search . '%')
+                        ->orWhere('last_name', 'like', '%' . $search . '%')
+                        ->orWhere('title', 'like', '%' . $search . '%')
+                        ->orWhere('username', 'like', '%' . $search . '%');
                 });
             })
             ->orderBy('first_name')
@@ -423,7 +427,7 @@ class GroupController extends Controller
         $requestedUserId = (int) $validated['user_id'];
 
         $isInviteable = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn($userId) => (int) $userId))
             ->diff($this->pendingInvitationUserIds($group->id))
             ->contains($requestedUserId);
 
@@ -483,7 +487,7 @@ class GroupController extends Controller
         $request->merge($input);
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255|unique:groups,name,'.$id,
+            'name' => 'sometimes|required|string|max:255|unique:groups,name,' . $id,
             'description' => 'sometimes|required|string|max:2500',
             'industry' => 'nullable|array|max:3',
             'location' => 'nullable|string|max:255',
@@ -659,12 +663,13 @@ class GroupController extends Controller
 
         $baseQuery = $user->groups()
             ->wherePivot('status', 'active')
+            ->whereHas('creator', fn($q) => $q->whereNull('deleted_at'))
             ->where('groups.creator_id', '!=', $user->id);
 
         $totalJoinedEver = (clone $baseQuery)->count();
 
         $query = $baseQuery
-            ->with(['creator:id,first_name,last_name,email,profile_image'])
+            ->with(['creator:id,username,first_name,last_name,email,profile_image'])
             ->withCount(['members' => function ($query) {
                 $query->where('group_users.status', 'active');
             }]);
@@ -879,6 +884,8 @@ class GroupController extends Controller
 
         $invitations = GroupInvitation::query()
             ->where('invited_user_id', $request->user()->id)
+            ->whereHas('inviter', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('group.creator', fn($q) => $q->whereNull('deleted_at'))
             ->with([
                 'group' => function ($query) {
                     $query->select('id', 'name', 'type', 'logo', 'creator_id', 'description')
@@ -886,11 +893,11 @@ class GroupController extends Controller
                             $q->where('group_users.status', 'active');
                         }]);
                 },
-                'inviter:id,first_name,last_name,title,profile_image',
+                'inviter:id,username,first_name,last_name,title,profile_image',
             ])
             ->when($search !== '', function ($query) use ($search) {
                 $query->whereHas('group', function ($groupQuery) use ($search) {
-                    $groupQuery->where('name', 'like', '%'.$search.'%');
+                    $groupQuery->where('name', 'like', '%' . $search . '%');
                 });
             })
             ->latest('id')
@@ -898,7 +905,8 @@ class GroupController extends Controller
 
         $data = $invitations->getCollection()
             ->map(function (GroupInvitation $invitation): array {
-                $inviterName = trim(($invitation->inviter?->first_name ?? '').' '.($invitation->inviter?->last_name ?? ''));
+                $inviterName = trim(($invitation->inviter?->first_name ?? '') . ' ' . ($invitation->inviter?->last_name ?? ''));
+                $inviterUsername = $invitation->inviter?->username ?? '';
 
                 return [
                     'invitation_id' => $invitation->id,
@@ -912,6 +920,7 @@ class GroupController extends Controller
                     ],
                     'inviter' => [
                         'id' => $invitation->inviter?->id,
+                        'username' => $inviterUsername,
                         'name' => $inviterName,
                         'title' => $invitation->inviter?->title,
                         'profile_image_url' => $invitation->inviter?->profile_image_url,
@@ -1049,9 +1058,9 @@ class GroupController extends Controller
         if ($group->type === 'private') {
             return $group->creator_id === $userId
                 || $group->members()
-                    ->where('user_id', $userId)
-                    ->wherePivot('role', 'admin')
-                    ->exists();
+                ->where('user_id', $userId)
+                ->wherePivot('role', 'admin')
+                ->exists();
         }
 
         return $group->creator_id === $userId
@@ -1063,7 +1072,7 @@ class GroupController extends Controller
         return GroupInvitation::query()
             ->where('group_id', $groupId)
             ->pluck('invited_user_id')
-            ->map(fn ($userId) => (int) $userId)
+            ->map(fn($userId) => (int) $userId)
             ->values();
     }
 
@@ -1083,6 +1092,8 @@ class GroupController extends Controller
                 $query->where('sender_id', $userId)
                     ->orWhere('receiver_id', $userId);
             })
+            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
             ->get(['sender_id', 'receiver_id'])
             ->toBase()
             ->map(function (Connection $connectionRequest) use ($userId) {
@@ -1125,9 +1136,9 @@ class GroupController extends Controller
 
         $isAdmin = $group->creator_id === $currentUser->id ||
             $group->members()
-                ->where('users.id', $currentUser->id)
-                ->wherePivot('role', 'admin')
-                ->exists();
+            ->where('users.id', $currentUser->id)
+            ->wherePivot('role', 'admin')
+            ->exists();
 
         if (! $isAdmin) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized! Only admins can ban users.'], 403);
