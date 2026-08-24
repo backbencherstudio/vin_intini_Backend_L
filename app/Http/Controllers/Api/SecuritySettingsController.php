@@ -112,7 +112,7 @@ class SecuritySettingsController extends Controller
                 ],
                 'password_strength' => 'Strong',
                 'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
-                'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count().' active devices',
+                'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . ' active devices',
                 'account_recovery' => $isRecoveryVerified ? 'Email verified' : 'Not verified',
                 'login_activity' => $suspiciousStatus,
                 // 'suspicious_id' => $suspiciousId,
@@ -565,9 +565,23 @@ class SecuritySettingsController extends Controller
 
                 DeletedAccountLog::where('user_id', $user->id)->delete();
 
+                $tokenId = $payload->get('jti');
+                request()->merge(['current_token_id' => $tokenId]);
+                event(new \Illuminate\Auth\Events\Login('api', $user, false));
+
+                $roleName = $user->getRoleNames()->first();
+                $user->makeHidden('roles');
+                $user->role = $roleName;
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'Welcome back! Your account has been successfully reactivated.'
+                    'message' => 'Welcome back! Your account has been successfully reactivated.',
+                    'data' => [
+                        'is_onboarding' => $user->profile()->exists(),
+                        'user' => $user,
+                        'token' => $token,
+                        'token_type' => 'bearer',
+                    ]
                 ]);
             } else {
                 return response()->json([
@@ -583,4 +597,49 @@ class SecuritySettingsController extends Controller
             ], 401);
         }
     }
+
+    // public function restore(Request $request)
+    // {
+    //     $token = $request->bearerToken();
+
+    //     if (!$token) {
+    //         return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
+    //     }
+
+    //     try {
+    //         $payload = JWTAuth::setToken($token)->getPayload();
+    //         $userId = $payload->get('sub');
+
+    //         $user = User::withTrashed()->find($userId);
+
+    //         if (!$user) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'User account not found.'
+    //             ], 404);
+    //         }
+
+    //         if ($user->trashed()) {
+    //             $user->restore();
+
+    //             DeletedAccountLog::where('user_id', $user->id)->delete();
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'Welcome back! Your account has been successfully reactivated.'
+    //             ]);
+    //         } else {
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'Your account is already active.'
+    //             ]);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Invalid or expired token.',
+    //             'error' => $e->getMessage()
+    //         ], 401);
+    //     }
+    // }
 }
