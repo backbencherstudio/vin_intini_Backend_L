@@ -16,4 +16,5 @@ Broadcast::channel('conversation.{id}', function ($user, $id) {
         ->exists();
 });
 
-Schedule::command('model:prune')->daily();
+// Schedule::command('model:prune')->daily();
+Schedule::command('model:prune')->dailyAt('02:00')->timezone('America/New_York');

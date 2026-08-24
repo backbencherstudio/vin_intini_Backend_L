@@ -11,10 +11,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Support\Facades\Storage;
+use App\Models\LoginActivity;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasFactory, HasRoles, Notifiable;
+    use HasFactory, HasRoles, Notifiable, SoftDeletes, Prunable;
 
     protected $appends = [
         'profile_image_url',
@@ -201,4 +205,64 @@ class User extends Authenticatable implements JWTSubject
     //     return $this->hasOne(Education::class, 'user_id');
     // }
     // --------------------------------------------------------
+
+    public function prunable()
+    {
+        return static::onlyTrashed()->where('deleted_at', '<=', now()->subDays(30));
+    }
+
+    protected static function booted()
+    {
+        static::deleting(function ($user) {
+            if ($user->isForceDeleting()) {
+                $filesToDelete = [];
+
+                if ($user->profile_image) $filesToDelete[] = $user->profile_image;
+                if ($user->cover_image) $filesToDelete[] = $user->cover_image;
+
+                $user->posts()->with(['media', 'comments.replies'])->each(function ($post) use (&$filesToDelete) {
+
+                    foreach ($post->media as $media) {
+                        if ($media->file_path) $filesToDelete[] = $media->file_path;
+                    }
+
+                    foreach ($post->comments as $comment) {
+                        if ($comment->image) $filesToDelete[] = $comment->image;
+                        foreach ($comment->replies as $reply) {
+                            if ($reply->image) $filesToDelete[] = $reply->image;
+                        }
+                    }
+                });
+
+                $user->comments()->each(function ($comment) use (&$filesToDelete) {
+                    if ($comment->image) $filesToDelete[] = $comment->image;
+                });
+
+                if (method_exists($user, 'replies')) {
+                    $user->replies()->each(function ($reply) use (&$filesToDelete) {
+                        if ($reply->image) $filesToDelete[] = $reply->image;
+                    });
+                }
+
+                if (!empty($filesToDelete)) {
+                    dispatch(new \App\Jobs\CleanupUserFiles(array_unique($filesToDelete)));
+                }
+
+                LoginActivity::where('user_id', $user->id)->delete();
+                $user->profile()?->delete();
+                $user->posts()->delete();
+                $user->comments()->delete();
+                $user->educations()->delete();
+                $user->experiences()->delete();
+                $user->socialAccounts()->delete();
+                $user->fcmTokens()->delete();
+                $user->connectionRequestsSent()->delete();
+                $user->connectionRequestsReceived()->delete();
+                $user->followers()->detach();
+                $user->following()->detach();
+                $user->likedPosts()->detach();
+                $user->groups()->detach();
+            }
+        });
+    }
 }
