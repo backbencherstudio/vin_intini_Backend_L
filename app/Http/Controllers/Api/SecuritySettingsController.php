@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password;
 use App\Models\DeletedAccountLog;
-use App\Models\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SecuritySettingsController extends Controller
