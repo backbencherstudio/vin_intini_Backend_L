@@ -53,6 +53,15 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Check if 2FA is enabled and confirmed
+        if ($user->two_factor_confirmed_at) {
+            return response()->json([
+                'status' => '2fa_required',
+                'email' => $user->email,
+                'message' => 'Two-factor authentication is required. Please provide your code.',
+            ], 200);
+        }
+
         // Check if the user is soft-deleted (account scheduled for deletion)
         if ($user->trashed()) {
             $token = auth('api')->login($user);
@@ -82,15 +91,6 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'Please verify your email with OTP before login.',
             ], 403);
-        }
-
-        // Check if 2FA is enabled and confirmed
-        if ($user->two_factor_confirmed_at) {
-            return response()->json([
-                'status' => '2fa_required',
-                'email' => $user->email,
-                'message' => 'Two-factor authentication is required. Please provide your code.',
-            ], 200);
         }
 
         // Attempt login (JWT token)
