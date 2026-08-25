@@ -10,6 +10,8 @@ class UserProfile extends Model
     protected $fillable = [
         'user_id',
         'country',
+        'state_id',
+        'address',
         'postal_code',
         'profession',
         'highest_degree',
@@ -67,4 +69,9 @@ class UserProfile extends Model
         'created_at',
         'updated_at',
     ];
+
+    public function state()
+    {
+        return $this->belongsTo(State::class, 'state_id');
+    }
 }

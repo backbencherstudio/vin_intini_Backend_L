@@ -168,9 +168,11 @@ class AuthController extends Controller
                 'last_name' => $user->last_name,
                 'title' => $user->title,
                 'email' => $user->email,
+                'mobile' => $user->mobile,
                 'profile_image_url' => $user->profile_image_url,
                 'cover_image_url' => $user->cover_image_url,
                 'role' => $user->roles->pluck('name')->implode(', '),
+                'member_since' => $user->created_at->toDateString(),
 
                 'two_factor_enabled' => $user->two_factor_confirmed_at ? true : false,
                 'recovery_email' => $user->recovery_email,
@@ -180,7 +182,14 @@ class AuthController extends Controller
                 'profile' => $user->profile ? [
                     'privacy_profile_activity' => $user->profile->privacy_profile_activity,
                     'privacy_profile_visibility' => $user->profile->privacy_profile_visibility,
+                    'address' => $user->profile->address,
                     'country' => $user->profile->country,
+
+                    'state' => $user->profile->state ? [
+                        'id' => $user->profile->state->id,
+                        'name' => $user->profile->state->name,
+                    ] : null,
+
                     'postal_code' => $user->profile->postal_code,
                     'profession' => $user->profile->profession,
 

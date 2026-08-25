@@ -479,10 +479,10 @@ class UserProfileController extends Controller
 
             // Education
             'start_month' => 'required_with:institution|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required_with:institution|nullable|integer|min:1900|max:'.(date('Y') + 10),
+            'start_year' => 'required_with:institution|nullable|integer|min:1900|max:' . (date('Y') + 10),
             'is_current' => 'required_with:institution|nullable|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
+            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
 
             'notify_jobs' => 'nullable|boolean',
             'notify_publications' => 'nullable|boolean',
@@ -495,12 +495,12 @@ class UserProfileController extends Controller
         $user = $request->user();
 
         if (! $user->username) {
-            $baseSlug = Str::slug($request->first_name.' '.$request->last_name, '-');
+            $baseSlug = Str::slug($request->first_name . ' ' . $request->last_name, '-');
             $finalUsername = $baseSlug;
             $counter = 1;
 
             while (User::where('username', $finalUsername)->exists()) {
-                $finalUsername = $baseSlug.'-'.$counter;
+                $finalUsername = $baseSlug . '-' . $counter;
                 $counter++;
             }
             $user->username = $finalUsername;
@@ -603,85 +603,53 @@ class UserProfileController extends Controller
     {
         $validated = $request->validate([
             'first_name' => 'sometimes|required|string',
-            'last_name' => 'sometimes|required|string',
-            'title' => 'sometimes|required|string|max:120',
-            'country' => 'sometimes|required|string',
-            'skills' => 'nullable|array|max:5',
-            'skills.*' => 'string',
-            // 'current_position_id' => 'nullable|integer|exists:experiences,id',
-            // 'current_position_id' => 'nullable|integer|exists:companies,id',
+            'last_name'  => 'sometimes|required|string',
+            'title'      => 'sometimes|required|string|max:120',
+            'mobile'     => 'nullable|string|max:20',
+            'country'    => 'sometimes|required|string',
+            'address'    => 'nullable|string',
+            'state_id'   => 'nullable|integer|exists:states,id',
+            'postal_code' => 'nullable|string', 
+            'skills'     => 'nullable|array|max:5',
+            'skills.*'   => 'string',
             'current_position_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('experiences', 'company_id')->where(function ($query) use ($request) {
-                    $query->where('user_id', $request->user()->id);
-                }),
+                Rule::exists('experiences', 'company_id')->where(fn($q) => $q->where('user_id', $request->user()->id)),
             ],
             'current_institute_id' => 'nullable|integer|exists:institutions,id',
-            'about' => 'sometimes|required|string',
+            'about'      => 'sometimes|required|string',
         ]);
 
         $user = $request->user();
 
-        $userData = [];
-
-        if (array_key_exists('first_name', $validated)) {
-            $userData['first_name'] = $validated['first_name'];
-        }
-
-        if (array_key_exists('last_name', $validated)) {
-            $userData['last_name'] = $validated['last_name'];
-        }
-
-        if (array_key_exists('title', $validated)) {
-            $userData['title'] = $validated['title'];
-        }
-
-        if ($userData !== []) {
-            $user->update($userData);
-        }
+        $user->update(collect($validated)->only(['first_name', 'last_name', 'title', 'mobile'])->toArray());
 
         $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
-        $profileData = [];
 
-        if (array_key_exists('country', $validated)) {
-            $profileData['country'] = $validated['country'];
+        $profileData = collect($validated)->only([
+            'country',
+            'address',
+            'state_id',
+            'postal_code',
+            'about',
+            'current_position_id'
+        ])->toArray();
+
+        if ($request->has('skills')) {
+            $profileData['skills_id'] = collect($request->skills)->map(function ($skillName) {
+                return Skill::firstOrCreate(['name' => trim($skillName)])->id;
+            })->toArray();
         }
 
-        if (array_key_exists('skills', $validated)) {
-            $skillIds = [];
-
-            foreach ($validated['skills'] as $skillName) {
-                $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
-                $skillIds[] = $skill->id;
-            }
-
-            $profileData['skills_id'] = $skillIds;
-        }
-
-        if (array_key_exists('current_position_id', $validated)) {
-            $profileData['current_position_id'] = $validated['current_position_id'];
-        }
-
-        // if (array_key_exists('current_position_id', $validated)) {
-        //     $profileData['current_position_id'] = $this->resolveCurrentPositionId(
-        //         $request,
-        //         $validated['current_position_id'],
-        //     );
-        // }
-
-        if (array_key_exists('current_institute_id', $validated)) {
+        if ($request->has('current_institute_id')) {
             $profileData['current_institute_id'] = $this->resolveCurrentInstituteId(
                 $request,
-                $validated['current_institute_id'],
+                $validated['current_institute_id']
             );
         }
 
-        if (array_key_exists('about', $validated)) {
-            $profileData['about'] = $validated['about'];
-        }
-
-        if ($profileData !== []) {
+        if (!empty($profileData)) {
             $profile->update($profileData);
         }
 
@@ -691,6 +659,118 @@ class UserProfileController extends Controller
             'data' => $user->fresh()->load('profile'),
         ], 200);
     }
+
+    // public function update(Request $request, ProfileImageService $profileImageService)
+    // {
+    //     $validated = $request->validate([
+    //         'first_name' => 'sometimes|required|string',
+    //         'last_name' => 'sometimes|required|string',
+    //         'title' => 'sometimes|required|string|max:120',
+    //         'country' => 'sometimes|required|string',
+    //         'mobile'        => 'nullable|string|max:20',
+    //         'address'      => 'nullable|string',
+    //         'state_id'     => 'nullable|integer|exists:states,id',
+    //         'skills' => 'nullable|array|max:5',
+    //         'skills.*' => 'string',
+    //         // 'current_position_id' => 'nullable|integer|exists:experiences,id',
+    //         // 'current_position_id' => 'nullable|integer|exists:companies,id',
+    //         'current_position_id' => [
+    //             'nullable',
+    //             'integer',
+    //             Rule::exists('experiences', 'company_id')->where(function ($query) use ($request) {
+    //                 $query->where('user_id', $request->user()->id);
+    //             }),
+    //         ],
+    //         'current_institute_id' => 'nullable|integer|exists:institutions,id',
+    //         'about' => 'sometimes|required|string',
+    //     ]);
+
+    //     $user = $request->user();
+
+    //     $userData = [];
+
+    //     if (array_key_exists('first_name', $validated)) {
+    //         $userData['first_name'] = $validated['first_name'];
+    //     }
+
+    //     if (array_key_exists('last_name', $validated)) {
+    //         $userData['last_name'] = $validated['last_name'];
+    //     }
+
+    //     if (array_key_exists('title', $validated)) {
+    //         $userData['title'] = $validated['title'];
+    //     }
+
+    //     if (array_key_exists('mobile', $validated)) {
+    //         $userData['mobile'] = $validated['mobile'];
+    //     }
+
+    //     if ($userData !== []) {
+    //         $user->update($userData);
+    //     }
+
+    //     $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
+    //     $profileData = [];
+
+    //     if (array_key_exists('postal_code', $validated)) {
+    //         $profileData['postal_code'] = $validated['postal_code'];
+    //     }
+
+    //     if (array_key_exists('address', $validated)) {
+    //         $profileData['address'] = $validated['address'];
+    //     }
+
+    //     if (array_key_exists('state_id', $validated)) {
+    //         $profileData['state_id'] = $validated['state_id'];
+    //     }
+
+    //     if (array_key_exists('country', $validated)) {
+    //         $profileData['country'] = $validated['country'];
+    //     }
+
+    //     if (array_key_exists('skills', $validated)) {
+    //         $skillIds = [];
+
+    //         foreach ($validated['skills'] as $skillName) {
+    //             $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+    //             $skillIds[] = $skill->id;
+    //         }
+
+    //         $profileData['skills_id'] = $skillIds;
+    //     }
+
+    //     if (array_key_exists('current_position_id', $validated)) {
+    //         $profileData['current_position_id'] = $validated['current_position_id'];
+    //     }
+
+    //     // if (array_key_exists('current_position_id', $validated)) {
+    //     //     $profileData['current_position_id'] = $this->resolveCurrentPositionId(
+    //     //         $request,
+    //     //         $validated['current_position_id'],
+    //     //     );
+    //     // }
+
+    //     if (array_key_exists('current_institute_id', $validated)) {
+    //         $profileData['current_institute_id'] = $this->resolveCurrentInstituteId(
+    //             $request,
+    //             $validated['current_institute_id'],
+    //         );
+    //     }
+
+    //     if (array_key_exists('about', $validated)) {
+    //         $profileData['about'] = $validated['about'];
+    //     }
+
+    //     if ($profileData !== []) {
+    //         $profile->update($profileData);
+    //     }
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Profile updated successfully!',
+    //         'data' => $user->fresh()->load('profile'),
+    //     ], 200);
+    // }
 
     public function updateImages(Request $request, ProfileImageService $profileImageService)
     {
