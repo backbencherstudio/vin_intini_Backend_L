@@ -28,6 +28,7 @@ Homestead.json
 
 /public/build
 /storage/pail
+/storage/app/firebase/*.json
 .env.backup
 .env.production
 .phpactor.json
