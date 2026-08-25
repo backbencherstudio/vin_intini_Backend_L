@@ -3,22 +3,21 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Jobs\CleanupUserFiles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Tymon\JWTAuth\Contracts\JWTSubject;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Prunable;
-use Illuminate\Support\Facades\Storage;
-use App\Models\LoginActivity;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasFactory, HasRoles, Notifiable, SoftDeletes, Prunable;
+    use HasFactory, HasRoles, Notifiable, Prunable, SoftDeletes;
 
     protected $appends = [
         'profile_image_url',
@@ -124,6 +123,17 @@ class User extends Authenticatable implements JWTSubject
         return $this->fcmTokens()->pluck('fcm_token')->toArray();
     }
 
+    /**
+     * Absolute, public URL suitable for the FCM notification image field.
+     * Falls back to the app logo when the user has no profile photo.
+     */
+    public function notificationImageUrl(): string
+    {
+        return $this->profile_image
+            ? (string) $this->profile_image_url
+            : asset('logo.png');
+    }
+
     public function connectionRequestsSent(): HasMany
     {
         return $this->hasMany(Connection::class, 'sender_id');
@@ -217,35 +227,49 @@ class User extends Authenticatable implements JWTSubject
             if ($user->isForceDeleting()) {
                 $filesToDelete = [];
 
-                if ($user->profile_image) $filesToDelete[] = $user->profile_image;
-                if ($user->cover_image) $filesToDelete[] = $user->cover_image;
+                if ($user->profile_image) {
+                    $filesToDelete[] = $user->profile_image;
+                }
+                if ($user->cover_image) {
+                    $filesToDelete[] = $user->cover_image;
+                }
 
                 $user->posts()->with(['media', 'comments.replies'])->each(function ($post) use (&$filesToDelete) {
 
                     foreach ($post->media as $media) {
-                        if ($media->file_path) $filesToDelete[] = $media->file_path;
+                        if ($media->file_path) {
+                            $filesToDelete[] = $media->file_path;
+                        }
                     }
 
                     foreach ($post->comments as $comment) {
-                        if ($comment->image) $filesToDelete[] = $comment->image;
+                        if ($comment->image) {
+                            $filesToDelete[] = $comment->image;
+                        }
                         foreach ($comment->replies as $reply) {
-                            if ($reply->image) $filesToDelete[] = $reply->image;
+                            if ($reply->image) {
+                                $filesToDelete[] = $reply->image;
+                            }
                         }
                     }
                 });
 
                 $user->comments()->each(function ($comment) use (&$filesToDelete) {
-                    if ($comment->image) $filesToDelete[] = $comment->image;
+                    if ($comment->image) {
+                        $filesToDelete[] = $comment->image;
+                    }
                 });
 
                 if (method_exists($user, 'replies')) {
                     $user->replies()->each(function ($reply) use (&$filesToDelete) {
-                        if ($reply->image) $filesToDelete[] = $reply->image;
+                        if ($reply->image) {
+                            $filesToDelete[] = $reply->image;
+                        }
                     });
                 }
 
-                if (!empty($filesToDelete)) {
-                    dispatch(new \App\Jobs\CleanupUserFiles(array_unique($filesToDelete)));
+                if (! empty($filesToDelete)) {
+                    dispatch(new CleanupUserFiles(array_unique($filesToDelete)));
                 }
 
                 LoginActivity::where('user_id', $user->id)->delete();

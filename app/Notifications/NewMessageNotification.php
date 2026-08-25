@@ -26,18 +26,23 @@ class NewMessageNotification extends Notification implements ShouldQueue
 
     public function toFcm($notifiable): FcmMessage
     {
+        $sender = $this->message->sender;
+        $senderImage = $sender->notificationImageUrl();
+
         return FcmMessage::create()
             ->notification(
                 FcmNotification::create()
-                    ->title($this->message->sender->first_name)
+                    ->title($sender->first_name)
                     ->body($this->message->type === 'text'
                         ? $this->message->message
                         : 'Sent a '.$this->message->type)
+                    ->image($senderImage)
             )
             ->data([
                 'conversation_id' => (string) $this->message->conversation_id,
                 'message_id' => (string) $this->message->id,
-                'sender_id' => (string) $this->message->sender_id,
+                'sender_id' => (string) $sender->id,
+                'sender_name' => trim(($sender->first_name ?? '').' '.($sender->last_name ?? '')),
                 'type' => $this->message->type,
             ]);
     }
