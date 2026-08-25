@@ -5,11 +5,15 @@ use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
 use App\Http\Controllers\Admin\Api\InstitutionReportController;
 use App\Http\Controllers\Admin\Api\PageController;
+use App\Http\Controllers\Admin\Api\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('role:admin')->prefix('admin')->group(function () {
-    Route::get('/pages/{slug}', [PageController::class, 'getPageData']);
-    Route::post('/pages/{slug}', [PageController::class, 'update']);
+
+    // User Management.....
+    Route::prefix('user-manage')->group(function () {
+        Route::get('leave-request', [UserManagementController::class, 'getDeletedAccountLogs']);
+    });
 
     // Academia.....
     Route::prefix('academia')->group(function () {
@@ -70,7 +74,12 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::put('sub-cateroy/update/{id}', [IndustryCategoryController::class, 'updateSubCategory']);
         Route::delete('sub-cateroy/delete/{id}', [IndustryCategoryController::class, 'destroySubCategory']);
     });
+
+    // Pages.....
+    Route::get('/pages/{slug}', [PageController::class, 'getPageData']);
+    Route::post('/pages/{slug}', [PageController::class, 'update']);
 });
+
 
 Route::middleware('role:user')->group(function () {
     Route::middleware('profile_completed')->group(function () {});
