@@ -43,6 +43,7 @@ class NewMessageNotification extends Notification implements ShouldQueue
                 'message_id' => (string) $this->message->id,
                 'sender_id' => (string) $sender->id,
                 'sender_name' => trim(($sender->first_name ?? '').' '.($sender->last_name ?? '')),
+                'sender_image' => $senderImage,
                 'type' => $this->message->type,
             ]);
     }
