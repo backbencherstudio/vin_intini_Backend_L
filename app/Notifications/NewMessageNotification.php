@@ -9,7 +9,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\Fcm\FcmChannel;
 use NotificationChannels\Fcm\FcmMessage;
-use NotificationChannels\Fcm\Resources\Notification as FcmNotification;
 
 class NewMessageNotification extends Notification implements ShouldQueue
 {
@@ -30,14 +29,11 @@ class NewMessageNotification extends Notification implements ShouldQueue
         $senderImage = $sender->notificationImageUrl();
 
         return FcmMessage::create()
-            ->notification(
-                FcmNotification::create()
-                    ->title($sender->first_name)
-                    ->body($this->message->type === 'text'
-                        ? $this->message->message
-                        : 'Sent a '.$this->message->type)
-            )
             ->data([
+                'title' => $sender->first_name,
+                'body' => $this->message->type === 'text'
+                    ? $this->message->message
+                    : 'Sent a '.$this->message->type,
                 'conversation_id' => (string) $this->message->conversation_id,
                 'message_id' => (string) $this->message->id,
                 'sender_id' => (string) $sender->id,
