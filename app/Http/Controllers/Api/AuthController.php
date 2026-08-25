@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RegisterOtpMail;
+use App\Models\DeletedAccountLog;
 use App\Models\LoginActivity;
 use App\Models\Skill;
 use App\Models\User;
@@ -66,7 +67,7 @@ class AuthController extends Controller
         if ($user->trashed()) {
             $token = auth('api')->login($user);
 
-            $deletionLog = \App\Models\DeletedAccountLog::where('user_id', $user->id)->latest()->first();
+            $deletionLog = DeletedAccountLog::where('user_id', $user->id)->latest()->first();
 
             $daysRemaining = 0;
             if ($deletionLog) {
@@ -74,7 +75,9 @@ class AuthController extends Controller
                 $daysRemaining = ceil($seconds / (60 * 60 * 24));
             }
 
-            if ($daysRemaining <= 0) $daysRemaining = 1;
+            if ($daysRemaining <= 0) {
+                $daysRemaining = 1;
+            }
 
             return response()->json([
                 'status' => 'pending_deletion',
@@ -93,8 +96,21 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Attempt login (JWT token)
-        if (! $token = auth('api')->attempt($credentials)) {
+        // Check if 2FA is enabled and confirmed
+        if ($user->two_factor_confirmed_at) {
+            return response()->json([
+                'status' => '2fa_required',
+                'email' => $user->email,
+                'message' => 'Two-factor authentication is required. Please provide your code.',
+            ], 200);
+        }
+
+        // Attempt login (JWT token) — only pass actual auth columns,
+        // fcm_token/device fields are handled separately below.
+        if (! $token = auth('api')->attempt([
+            'email' => $credentials['email'],
+            'password' => $credentials['password'],
+        ])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
