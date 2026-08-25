@@ -9,6 +9,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\Fcm\FcmChannel;
+use NotificationChannels\Fcm\FcmMessage;
+use NotificationChannels\Fcm\Resources\Notification as FcmNotification;
 
 class ConnectionRequestAcceptedNotification extends Notification implements ShouldQueue
 {
@@ -25,6 +28,10 @@ class ConnectionRequestAcceptedNotification extends Notification implements Shou
 
         if ($this->hasValidPusherBroadcastConfig()) {
             $channels[] = 'broadcast';
+        }
+
+        if ($notifiable->routeNotificationForFcm($this) !== []) {
+            $channels[] = FcmChannel::class;
         }
 
         return $channels;
@@ -74,6 +81,30 @@ class ConnectionRequestAcceptedNotification extends Notification implements Shou
                 'App.Models.User.'.$this->connectionRequest->sender_id
             ),
         ];
+    }
+
+    public function toFcm($notifiable): FcmMessage
+    {
+        $acceptorName = trim(
+            ($this->acceptor->first_name ?? '').' '.
+            ($this->acceptor->last_name ?? '')
+        );
+
+        return FcmMessage::create()
+            ->notification(
+                FcmNotification::create()
+                    ->title($acceptorName)
+                    ->body('accepted your connection request')
+            )
+            ->data([
+                'connection_request_id' => (string) $this->connectionRequest->id,
+                'acceptor_id' => (string) $this->acceptor->id,
+                'acceptor_username' => (string) $this->acceptor->username,
+                'acceptor_name' => $acceptorName,
+                'sender_image' => $this->acceptor->notificationImageUrl(),
+                'type' => class_basename(self::class),
+                'responded_at' => $this->connectionRequest->responded_at?->toIso8601String(),
+            ]);
     }
 
     private function hasValidPusherBroadcastConfig(): bool

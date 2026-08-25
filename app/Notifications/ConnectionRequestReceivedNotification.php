@@ -9,6 +9,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\Fcm\FcmChannel;
+use NotificationChannels\Fcm\FcmMessage;
+use NotificationChannels\Fcm\Resources\Notification as FcmNotification;
 
 class ConnectionRequestReceivedNotification extends Notification implements ShouldQueue
 {
@@ -25,6 +28,10 @@ class ConnectionRequestReceivedNotification extends Notification implements Shou
 
         if ($this->hasValidPusherBroadcastConfig()) {
             $channels[] = 'broadcast';
+        }
+
+        if ($notifiable->routeNotificationForFcm($this) !== []) {
+            $channels[] = FcmChannel::class;
         }
 
         return $channels;
@@ -72,6 +79,30 @@ class ConnectionRequestReceivedNotification extends Notification implements Shou
                 'App.Models.User.'.$this->connectionRequest->receiver_id
             ),
         ];
+    }
+
+    public function toFcm($notifiable): FcmMessage
+    {
+        $senderName = trim(
+            ($this->sender->first_name ?? '').' '.
+            ($this->sender->last_name ?? '')
+        );
+
+        return FcmMessage::create()
+            ->notification(
+                FcmNotification::create()
+                    ->title($senderName)
+                    ->body('sent you a connection request')
+            )
+            ->data([
+                'connection_request_id' => (string) $this->connectionRequest->id,
+                'sender_id' => (string) $this->sender->id,
+                'sender_username' => (string) $this->sender->username,
+                'sender_name' => $senderName,
+                'sender_image' => $this->sender->notificationImageUrl(),
+                'type' => class_basename(self::class),
+                'requested_at' => $this->connectionRequest->created_at?->toIso8601String(),
+            ]);
     }
 
     private function hasValidPusherBroadcastConfig(): bool
