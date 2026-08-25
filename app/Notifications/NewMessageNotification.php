@@ -36,7 +36,6 @@ class NewMessageNotification extends Notification implements ShouldQueue
                     ->body($this->message->type === 'text'
                         ? $this->message->message
                         : 'Sent a '.$this->message->type)
-                    ->image($senderImage)
             )
             ->data([
                 'conversation_id' => (string) $this->message->conversation_id,
