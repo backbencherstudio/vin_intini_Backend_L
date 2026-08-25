@@ -82,7 +82,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'pending_deletion',
                 'days_left' => (int) $daysRemaining,
-                'name' => $user->first_name . ' ' . $user->last_name,
+                'name' => $user->first_name.' '.$user->last_name,
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Would you like to restore it?",
                 'token' => $token,
             ], 200);
@@ -158,6 +158,7 @@ class AuthController extends Controller
                 'plan_id' => $isSubscribed ? $subscription->plan_id : null,
                 'plan_name' => $isSubscribed ? $subscription->plan?->name : null,
                 'status' => $isSubscribed ? $subscription->status : null,
+                'features' => $isSubscribed ? ($subscription->plan?->features ?? []) : [],
                 'expires_at' => $isSubscribed ? $subscription->current_period_end?->toIso8601String() : null,
                 'will_renew' => $isSubscribed ? ! $subscription->cancel_at_period_end : null,
             ],
