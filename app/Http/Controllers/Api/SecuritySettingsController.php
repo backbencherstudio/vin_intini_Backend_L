@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password;
 use App\Models\DeletedAccountLog;
+use App\Mail\AccountDeletionRequestedMail;
+use Illuminate\Support\Facades\Mail;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SecuritySettingsController extends Controller
@@ -509,15 +511,18 @@ class SecuritySettingsController extends Controller
             return response()->json(['errors' => ['password' => ['The provided password is incorrect.']]], 422);
         }
 
+        $permanentDeleteAt = now()->addDays(30);
+
         DeletedAccountLog::create([
             'user_id' => $user->id,
             'user_name' => $user->first_name . ' ' . $user->last_name,
             'user_email' => $user->email,
             'reason' => $request->reason,
             'requested_at' => now(),
-            'permanent_delete_at' => now()->addDays(30),
-            // 'permanent_delete_at' => now()->addMinutes(2)
+            'permanent_delete_at' => $permanentDeleteAt,
         ]);
+
+        Mail::to($user->email)->queue(new AccountDeletionRequestedMail($user, $permanentDeleteAt));
 
         try {
             $payload = auth('api')->payload();
