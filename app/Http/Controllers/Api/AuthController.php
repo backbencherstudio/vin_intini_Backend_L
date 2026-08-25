@@ -259,28 +259,61 @@ class AuthController extends Controller
     //     ]);
     // }
 
+
     public function refresh()
     {
         try {
-            $token = auth('api')->refresh();
+            $oldPayload = auth('api')->payload();
+            $oldTokenId = $oldPayload->get('jti');
 
-            $user = auth('api')->user();
+            $token = auth('api')->refresh();
+            $user = auth('api')->setToken($token)->user();
+
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'User not found'], 401);
+            }
+
+            $newPayload = auth('api')->setToken($token)->getPayload();
+            $newTokenId = $newPayload->get('jti');
+
+            \App\Models\LoginActivity::where('token_id', $oldTokenId)
+                ->where('user_id', $user->id)
+                ->update([
+                    'token_id' => $newTokenId,
+                    'updated_at' => now()
+                ]);
 
             return $this->respondWithToken($token, $user);
         } catch (TokenExpiredException $e) {
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Refresh token expired. Please login again.',
-            ], 401);
+            return response()->json(['success' => false, 'message' => 'Refresh token expired'], 401);
         } catch (JWTException $e) {
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Token invalid or not provided',
-            ], 401);
+            return response()->json(['success' => false, 'message' => 'Token invalid'], 401);
         }
     }
+
+
+    // public function refresh()
+    // {
+    //     try {
+    //         $token = auth('api')->refresh();
+
+    //         $user = auth('api')->user();
+
+    //         return $this->respondWithToken($token, $user);
+    //     } catch (TokenExpiredException $e) {
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Refresh token expired. Please login again.',
+    //         ], 401);
+    //     } catch (JWTException $e) {
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Token invalid or not provided',
+    //         ], 401);
+    //     }
+    // }
 
     protected function respondWithToken($token, $user)
     {
