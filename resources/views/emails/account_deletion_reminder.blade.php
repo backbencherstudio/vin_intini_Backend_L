@@ -25,7 +25,7 @@
 
         .header {
             background-color: #043940;
-            padding: 35px 20px;
+            padding: 40px 20px;
             text-align: center;
         }
 
@@ -93,6 +93,7 @@
             .responsive-logo {
                 width: 250px !important;
             }
+
             .content {
                 padding: 30px 20px;
             }
@@ -103,7 +104,7 @@
 <body>
     <div class="container">
         <!-- Header -->
-        <div class="header">
+        <div class="header" style="text-align: center; padding: 20px;">
             <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
                 <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
                     style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
@@ -115,17 +116,20 @@
 
             <p>Hi <strong>{{ $user->first_name }}</strong>,</p>
 
-            <p>This is a final reminder that your <strong>Mind Unite</strong> account is scheduled for permanent deletion on
+            <p>This is a final reminder that your <strong>Mind Unite</strong> account is scheduled for permanent
+                deletion on
                 <strong>{{ \Carbon\Carbon::parse($permanentDeleteAt)->format('F d, Y') }}</strong>.
             </p>
 
             <!-- Warning Box with Left Border Accent -->
             <div class="warning-box">
-                ⚠️ <strong>Warning:</strong> In 3 days, all your account data will be permanently erased and cannot be recovered.
+                ⚠️ <strong>Warning:</strong> In 3 days, all your account data will be permanently erased and cannot be
+                recovered.
             </div>
 
             <p><strong>Still want to keep your account?</strong><br>
-                If you wish to cancel this deletion request and retain your access, simply log back into your account before the scheduled date.
+                If you wish to cancel this deletion request and retain your access, simply log back into your account
+                before the scheduled date.
             </p>
 
             <!-- Primary Action Call to Action -->
@@ -141,7 +145,8 @@
         <!-- Footer -->
         <div class="footer">
             &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
-                style="text-decoration: none; color: #00c2cb; font-weight: bold;">Mind Unite</a>. All rights reserved.<br>
+                style="text-decoration: none; color: #00c2cb; font-weight: bold;">Mind Unite</a>. All rights
+            reserved.<br>
             Psychology and Neuroscience Community.
         </div>
     </div>
