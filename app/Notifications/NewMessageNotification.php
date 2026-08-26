@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\Fcm\FcmChannel;
 use NotificationChannels\Fcm\FcmMessage;
+use NotificationChannels\Fcm\Resources\Notification as FcmNotification;
 
 class NewMessageNotification extends Notification implements ShouldQueue
 {
@@ -18,7 +19,7 @@ class NewMessageNotification extends Notification implements ShouldQueue
 
     public function via(User $notifiable): array
     {
-        return $notifiable->routeNotificationForFcm($this) !== []
+        return ! empty($notifiable->routeNotificationForFcm($this))
             ? [FcmChannel::class]
             : [];
     }
@@ -28,18 +29,25 @@ class NewMessageNotification extends Notification implements ShouldQueue
         $sender = $this->message->sender;
         $senderImage = $sender->notificationImageUrl();
 
+        $body = $this->message->type === 'text'
+            ? $this->message->message
+            : 'Sent a ' . $this->message->type;
+
         return FcmMessage::create()
+            ->notification(
+                FcmNotification::create()
+                    ->title($sender->first_name)
+                    ->body($body)
+            )
             ->data([
                 'title' => $sender->first_name,
-                'body' => $this->message->type === 'text'
-                    ? $this->message->message
-                    : 'Sent a '.$this->message->type,
+                'body' => $body,
                 'conversation_id' => (string) $this->message->conversation_id,
                 'message_id' => (string) $this->message->id,
                 'sender_id' => (string) $sender->id,
-                'sender_name' => trim(($sender->first_name ?? '').' '.($sender->last_name ?? '')),
+                'sender_name' => trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? '')),
                 'sender_image' => $senderImage,
-                'has_premium' => $sender->subscriptions()->whereIn('status', ['active', 'trialing', 'paused'])->exists(),
+                'has_premium' => $sender->subscriptions()->whereIn('status', ['active', 'trialing', 'paused'])->exists() ? '1' : '0',
                 'type' => $this->message->type,
             ]);
     }
