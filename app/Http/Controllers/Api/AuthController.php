@@ -120,7 +120,9 @@ class AuthController extends Controller
         $user = auth('api')->user();
 
         if (! empty($credentials['fcm_token'])) {
+            $user->fcmTokens()->where('fcm_token', '!=', $credentials['fcm_token'])->delete();
             $user->fcmTokens()->updateOrCreate(
+                ['user_id' => $user->id],
                 ['fcm_token' => $credentials['fcm_token']]
             );
         }
@@ -259,7 +261,6 @@ class AuthController extends Controller
     //     ]);
     // }
 
-
     public function refresh()
     {
         try {
@@ -269,18 +270,18 @@ class AuthController extends Controller
             $token = auth('api')->refresh();
             $user = auth('api')->setToken($token)->user();
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json(['success' => false, 'message' => 'User not found'], 401);
             }
 
             $newPayload = auth('api')->setToken($token)->getPayload();
             $newTokenId = $newPayload->get('jti');
 
-            \App\Models\LoginActivity::where('token_id', $oldTokenId)
+            LoginActivity::where('token_id', $oldTokenId)
                 ->where('user_id', $user->id)
                 ->update([
                     'token_id' => $newTokenId,
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]);
 
             return $this->respondWithToken($token, $user);
@@ -290,7 +291,6 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => 'Token invalid'], 401);
         }
     }
-
 
     // public function refresh()
     // {

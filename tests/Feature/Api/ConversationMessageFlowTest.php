@@ -569,6 +569,30 @@ class ConversationMessageFlowTest extends TestCase
         });
     }
 
+    public function test_no_event_or_notification_when_receiver_archived_conversation(): void
+    {
+        Event::fake([MessageSent::class, ConversationUpdated::class]);
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $conversation->archiveFor($connectedUser->id);
+
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Hello!',
+        ])->assertCreated();
+
+        Event::assertNotDispatched(ConversationUpdated::class, function (ConversationUpdated $event) use ($connectedUser) {
+            return $event->receiver->id === $connectedUser->id;
+        });
+
+        Notification::assertNotSentTo($connectedUser, NewMessageNotification::class);
+    }
+
     public function test_conversation_updated_event_broadcasts_zeroed_counts_when_opening_chat(): void
     {
         Event::fake([MessageSent::class, ConversationUpdated::class]);
