@@ -91,7 +91,8 @@
 
         @media only screen and (max-width: 600px) {
             .responsive-logo {
-                width: 250px !important;
+                width: 300px !important;
+                max-width: 300px !important;
             }
 
             .content {

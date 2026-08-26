@@ -144,6 +144,7 @@
         @media only screen and (max-width: 600px) {
             .responsive-logo {
                 width: 300px !important;
+                max-width: 300px !important;
             }
         }
     </style>
