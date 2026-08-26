@@ -258,35 +258,34 @@ class AuthController extends Controller
     //     ]);
     // }
 
-
     public function refresh()
     {
         try {
-            $oldPayload = auth('api')->payload();
-            $oldTokenId = $oldPayload->get('jti');
+            $token = auth('api')->refresh(true, true);
 
-            $token = auth('api')->refresh();
             $user = auth('api')->setToken($token)->user();
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json(['success' => false, 'message' => 'User not found'], 401);
             }
 
             $newPayload = auth('api')->setToken($token)->getPayload();
             $newTokenId = $newPayload->get('jti');
 
-            \App\Models\LoginActivity::where('token_id', $oldTokenId)
-                ->where('user_id', $user->id)
+            LoginActivity::where('user_id', $user->id)
+                ->where('is_active', 1)
+                ->latest()
+                ->limit(1)
                 ->update([
                     'token_id' => $newTokenId,
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]);
 
             return $this->respondWithToken($token, $user);
         } catch (TokenExpiredException $e) {
-            return response()->json(['success' => false, 'message' => 'Refresh token expired'], 401);
+            return response()->json(['success' => false, 'message' => 'Your session has completely expired. Please login again.'], 401);
         } catch (JWTException $e) {
-            return response()->json(['success' => false, 'message' => 'Token invalid'], 401);
+            return response()->json(['success' => false, 'message' => 'Invalid token'], 401);
         }
     }
 
