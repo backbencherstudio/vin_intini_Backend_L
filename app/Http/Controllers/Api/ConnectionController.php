@@ -104,6 +104,7 @@ class ConnectionController extends Controller
         $items = (match ($sort) {
             'old', 'oldest' => $items->sortBy('connected_at'),
             'az', 'a-z', 'name' => $items->sortBy('search_name', SORT_NATURAL | SORT_FLAG_CASE),
+            'za', 'z-a' => $items->sortByDesc('search_name', SORT_NATURAL | SORT_FLAG_CASE),
             default => $items->sortByDesc('connected_at'),
         })->values();
 
