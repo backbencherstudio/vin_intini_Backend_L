@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
+use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -13,6 +14,36 @@ class IndustryController extends Controller
 {
     public function store(Request $request)
     {
+        $subscription = Subscription::where('user_id', auth()->id())
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('current_period_end')
+                    ->orWhere('current_period_end', '>', now());
+            })
+            ->whereHas('plan', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->with('plan')
+            ->latest('id')
+            ->first();
+
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You need an active subscription to create an industry.',
+            ], 403);
+        }
+
+        $features = $subscription->plan->features ?? [];
+
+        if (empty($features['company_profile'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your current plan does not include company profile creation.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'alpha_dash', 'unique:industries,slug'],
