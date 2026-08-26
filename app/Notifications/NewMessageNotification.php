@@ -31,24 +31,26 @@ class NewMessageNotification extends Notification implements ShouldQueue
 
         $body = $this->message->type === 'text'
             ? $this->message->message
-            : 'Sent a ' . $this->message->type;
+            : 'Sent a '.$this->message->type;
+
+        $senderName = trim(($sender->first_name ?? '').' '.($sender->last_name ?? ''));
 
         return FcmMessage::create()
             ->notification(
                 FcmNotification::create()
-                    ->title($sender->first_name)
+                    ->title($sender->first_name ?? '')
                     ->body($body)
             )
             ->data([
-                'title' => $sender->first_name,
-                'body' => $body,
+                'title' => (string) $sender->first_name,
+                'body' => (string) $body,
                 'conversation_id' => (string) $this->message->conversation_id,
                 'message_id' => (string) $this->message->id,
                 'sender_id' => (string) $sender->id,
-                'sender_name' => trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? '')),
-                'sender_image' => $senderImage,
+                'sender_name' => $senderName,
+                'sender_image' => (string) $senderImage,
                 'has_premium' => $sender->subscriptions()->whereIn('status', ['active', 'trialing', 'paused'])->exists() ? '1' : '0',
-                'type' => $this->message->type,
+                'type' => (string) $this->message->type,
             ]);
     }
 }
