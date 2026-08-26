@@ -65,6 +65,10 @@ class Conversation extends Model
 
     public function unreadCountFor(int $userId): int
     {
+        if ($this->isArchivedFor($userId)) {
+            return 0;
+        }
+
         $lastReadAt = $userId === $this->user_id_1
             ? $this->user_1_last_read_at
             : $this->user_2_last_read_at;
@@ -242,7 +246,7 @@ class Conversation extends Model
         return DB::table('messages')
             ->join('conversations', 'messages.conversation_id', '=', 'conversations.id')
             ->whereNull('messages.deleted_at')
-            ->whereIn('messages.conversation_id', static::forUser($userId)->notDeletedFor($userId)->pluck('id'))
+            ->whereIn('messages.conversation_id', static::forUser($userId)->notDeletedFor($userId)->notArchivedFor($userId)->pluck('id'))
             ->where('messages.sender_id', '!=', $userId)
             ->where(function ($q) use ($userId) {
                 $q->where(function ($q) use ($userId) {
