@@ -20,6 +20,7 @@ class Industry extends Model
         'logo',
         'cover_image',
         'tagline',
+        'description',
         'authorization_confirmed',
         'authorization_confirmed_at',
         'created_by',

@@ -23,6 +23,7 @@ class IndustryController extends Controller
             'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'cover_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'tagline' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'authorization_confirmed' => ['required', 'accepted'],
         ]);
 
@@ -88,6 +89,7 @@ class IndustryController extends Controller
                         : null,
 
                     'tagline' => $industry->tagline,
+                    'description' => $industry->description,
 
                     'authorization_confirmed' =>
                     $industry->authorization_confirmed,
