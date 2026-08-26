@@ -601,6 +601,35 @@ class UserProfileController extends Controller
 
     public function update(Request $request, ProfileImageService $profileImageService)
     {
+        $allowedFields = [
+            'first_name',
+            'last_name',
+            'title',
+            'mobile',
+            'country',
+            'address',
+            'state_id',
+            'postal_code',
+            'skills',
+            'current_position_id',
+            'current_institute_id',
+            'about'
+        ];
+
+        $requestedFields = array_keys($request->all());
+
+        $extraFields = array_diff($requestedFields, $allowedFields);
+
+        if (!empty($extraFields)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed: Unexpected fields detected.',
+                'errors' => collect($extraFields)->mapWithKeys(fn($field) => [
+                    $field => ["The $field field is not allowed."]
+                ])
+            ], 422);
+        }
+
         $validated = $request->validate([
             'first_name' => 'sometimes|required|string',
             'last_name'  => 'sometimes|required|string',
@@ -609,7 +638,7 @@ class UserProfileController extends Controller
             'country'    => 'sometimes|required|string',
             'address'    => 'nullable|string',
             'state_id'   => 'nullable|integer|exists:states,id',
-            'postal_code' => 'nullable|string', 
+            'postal_code' => 'nullable|string',
             'skills'     => 'nullable|array|max:5',
             'skills.*'   => 'string',
             'current_position_id' => [
