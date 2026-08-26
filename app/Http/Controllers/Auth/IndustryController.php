@@ -37,12 +37,13 @@ class IndustryController extends Controller
 
         $features = $subscription->plan->features ?? [];
 
-        if (empty($features['company_profile'])) {
+        if (!in_array('company_profile', $features, true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your current plan does not include company profile creation.',
             ], 403);
         }
+
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -58,6 +59,10 @@ class IndustryController extends Controller
             'authorization_confirmed' => ['required', 'accepted'],
         ]);
 
+        $logoPath = null;
+        $coverImagePath = null;
+
+
         try {
             DB::beginTransaction();
 
@@ -66,23 +71,30 @@ class IndustryController extends Controller
             $originalSlug = $slug;
             $counter = 1;
 
+
             while (Industry::where('slug', $slug)->exists()) {
                 $slug = $originalSlug . '-' . $counter++;
             }
 
             if ($request->hasFile('logo')) {
-                $validated['logo'] = $request->file('logo')->store(
+                $logoPath = $request->file('logo')->store(
                     'industries/logos',
                     'public'
                 );
+
+                $validated['logo'] = $logoPath;
             }
 
+
             if ($request->hasFile('cover_image')) {
-                $validated['cover_image'] = $request->file('cover_image')->store(
+                $coverImagePath = $request->file('cover_image')->store(
                     'industries/covers',
                     'public'
                 );
+
+                $validated['cover_image'] = $coverImagePath;
             }
+
 
             $validated['slug'] = $slug;
 
@@ -137,6 +149,14 @@ class IndustryController extends Controller
         } catch (\Throwable $e) {
 
             DB::rollBack();
+
+            if ($logoPath) {
+                Storage::disk('public')->delete($logoPath);
+            }
+
+            if ($coverImagePath) {
+                Storage::disk('public')->delete($coverImagePath);
+            }
 
             return response()->json([
                 'success' => false,
