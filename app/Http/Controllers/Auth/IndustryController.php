@@ -180,6 +180,50 @@ class IndustryController extends Controller
     }
 
 
+    public function show(Request $request)
+    {
+        $industry = Industry::where('created_by', auth()->id())
+            ->with('category')
+            ->first();
+
+        if (!$industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Industry not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Industry retrieved successfully.',
+            'data' => [
+                'id' => $industry->id,
+                'name' => $industry->name,
+                'slug' => $industry->slug,
+
+                'industry_category_id' => $industry->industry_category_id,
+
+                'website' => $industry->website,
+                'address' => $industry->address,
+                'company_size' => $industry->company_size,
+
+                'logo' => $industry->logo
+                    ? Storage::disk('public')->url($industry->logo)
+                    : null,
+
+                'cover_image' => $industry->cover_image
+                    ? Storage::disk('public')->url($industry->cover_image)
+                    : null,
+
+                'tagline' => $industry->tagline,
+                'description' => $industry->description,
+
+                'category' => $industry->category->category_name,
+            ],
+        ], 200);
+    }
+
+
     public function update(Request $request)
     {
         $subscription = Subscription::where('user_id', auth()->id())
