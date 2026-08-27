@@ -87,6 +87,7 @@ Route::middleware('role:user')->group(function () {
     // Recruiter Dashboard.....
     Route::prefix('industry')->group(function () {
         Route::post('create', [IndustryController::class, 'store']);
+        Route::post('update', [IndustryController::class, 'update']);
     });
 
     Route::middleware('profile_completed')->group(function () {});
