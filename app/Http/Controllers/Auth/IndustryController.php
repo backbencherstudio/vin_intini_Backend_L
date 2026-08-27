@@ -266,45 +266,26 @@ class IndustryController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-
+            'name' => ['sometimes', 'string', 'max:255'],
             'slug' => [
-                'nullable',
+                'sometimes',
                 'string',
                 'max:255',
                 'alpha_dash',
                 Rule::unique('industries', 'slug')->ignore($industry->id),
             ],
 
-            'industry_category_id' => [
-                'required',
-                'integer',
-                'exists:industry_categories,id',
-            ],
+            'industry_category_id' => ['sometimes', 'integer', 'exists:industry_categories,id'],
 
-            'website' => ['nullable', 'url', 'max:255'],
-            'address' => ['nullable', 'string', 'max:2000'],
-            'company_size' => ['nullable', 'string', 'max:100'],
-
-            'logo' => [
-                'nullable',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:2048',
-            ],
-
-            'cover_image' => [
-                'nullable',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-
-            'tagline' => ['nullable', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:5000'],
-
-            'authorization_confirmed' => ['required', 'accepted'],
+            'website' => ['sometimes', 'nullable', 'url', 'max:255'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'company_size' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'logo' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'cover_image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'tagline' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
         ]);
+
 
         $oldLogoPath = $industry->logo;
         $oldCoverImagePath = $industry->cover_image;
@@ -315,25 +296,33 @@ class IndustryController extends Controller
         try {
             DB::beginTransaction();
 
-            $slug = $validated['slug'] ?? Str::slug($validated['name']);
+            if (array_key_exists('name', $validated)) {
 
-            if ($slug === '') {
-                $slug = 'industry';
+                $slug = $validated['slug'] ?? Str::slug($validated['name']);
+            } elseif (array_key_exists('slug', $validated)) {
+
+                $slug = $validated['slug'];
             }
 
-            $originalSlug = $slug;
-            $counter = 1;
+            if (isset($slug)) {
 
-            while (
-                Industry::where('slug', $slug)
-                ->where('id', '!=', $industry->id)
-                ->exists()
-            ) {
-                $slug = $originalSlug . '-' . $counter++;
+                if ($slug === '') {
+                    $slug = 'industry';
+                }
+
+                $originalSlug = $slug;
+                $counter = 1;
+
+                while (
+                    Industry::where('slug', $slug)
+                    ->where('id', '!=', $industry->id)
+                    ->exists()
+                ) {
+                    $slug = $originalSlug . '-' . $counter++;
+                }
+
+                $validated['slug'] = $slug;
             }
-
-            $validated['slug'] = $slug;
-
 
             if ($request->hasFile('logo')) {
                 $newLogoPath = $request->file('logo')->store(
@@ -352,10 +341,6 @@ class IndustryController extends Controller
 
                 $validated['cover_image'] = $newCoverImagePath;
             }
-
-            $validated['authorization_confirmed'] = true;
-            $validated['authorization_confirmed_at'] = now();
-
 
             $industry->update($validated);
 
@@ -396,12 +381,6 @@ class IndustryController extends Controller
 
                     'tagline' => $industry->tagline,
                     'description' => $industry->description,
-
-                    'authorization_confirmed' =>
-                    $industry->authorization_confirmed,
-
-                    'authorization_confirmed_at' =>
-                    $industry->authorization_confirmed_at,
 
                     'created_by' => $industry->created_by,
 
