@@ -167,18 +167,20 @@ class MessageController extends Controller
 
         event(new MessageSent($message));
 
-        $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
+        if (! $conversation->isArchivedFor($otherUser->id)) {
+            $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
 
-        event(new ConversationUpdated(
-            $conversation,
-            $otherUser,
-            $conversation->unreadCountFor($otherUser->id),
-            $message,
-            $unreadSummary['unread_conversation_count'],
-            $unreadSummary['total_unread_messages'],
-        ));
+            event(new ConversationUpdated(
+                $conversation,
+                $otherUser,
+                $conversation->unreadCountFor($otherUser->id),
+                $message,
+                $unreadSummary['unread_conversation_count'],
+                $unreadSummary['total_unread_messages'],
+            ));
 
-        $otherUser->notify(new NewMessageNotification($message));
+            $otherUser->notify(new NewMessageNotification($message));
+        }
 
         return response()->json([
             'success' => true,
@@ -410,16 +412,18 @@ class MessageController extends Controller
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
-        $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
+        if (! $conversation->isArchivedFor($otherUser->id)) {
+            $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
 
-        event(new ConversationUpdated(
-            $conversation,
-            $otherUser,
-            $conversation->unreadCountFor($otherUser->id),
-            null,
-            $unreadSummary['unread_conversation_count'],
-            $unreadSummary['total_unread_messages'],
-        ));
+            event(new ConversationUpdated(
+                $conversation,
+                $otherUser,
+                $conversation->unreadCountFor($otherUser->id),
+                null,
+                $unreadSummary['unread_conversation_count'],
+                $unreadSummary['total_unread_messages'],
+            ));
+        }
 
         return response()->json([
             'success' => true,

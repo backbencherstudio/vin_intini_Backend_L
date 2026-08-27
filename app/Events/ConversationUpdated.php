@@ -54,6 +54,7 @@ class ConversationUpdated implements ShouldBroadcastNow
                 'id' => $otherUser->id,
                 'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
                 'profile_image_url' => $otherUser->profile_image_url,
+                'has_premium' => $otherUser->subscriptions()->whereIn('status', ['active', 'trialing', 'paused'])->exists(),
             ];
             $payload['last_message'] = [
                 'id' => $this->message->id,

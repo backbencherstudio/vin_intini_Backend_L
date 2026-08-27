@@ -28,7 +28,7 @@
         }
 
         .content {
-            padding: 40px 30px;
+            padding: 20px 30px;
             color: #333333;
             text-align: center;
         }
@@ -129,7 +129,8 @@
 
         @media only screen and (max-width: 600px) {
             .responsive-logo {
-                width: 250px !important;
+                width: 300px !important;
+                max-width: 300px !important;
             }
             .security-card {
                 padding: 20px 15px;
@@ -192,7 +193,7 @@
                 </div>
             </div>
 
-            <p style="font-size: 14px; margin-top: 20px; color: #64748b;">If this wasn't you, your password might be compromised. We highly recommend changing it immediately.</p>
+            <p style="font-size: 14px; margin-top: 20px; color: #64748b; margin-bottom: 0;">If this wasn't you, your password might be compromised. We highly recommend changing it immediately.</p>
         </div>
 
         <!-- Footer -->
