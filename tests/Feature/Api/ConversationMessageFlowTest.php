@@ -17,6 +17,7 @@ use App\Models\UserProfile;
 use App\Notifications\NewMessageNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -1643,6 +1644,63 @@ class ConversationMessageFlowTest extends TestCase
         $list->assertJsonPath('data.0.last_message', null);
 
         $this->assertNull($conversation->fresh()->last_message_id);
+    }
+
+    public function test_fetching_messages_does_not_reorder_conversation_list(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $alice = $this->makeUser('Alice', 'Smith');
+        $bob = $this->makeUser('Bob', 'Jones');
+        $this->connectUsers($user, $alice);
+        $this->connectUsers($user, $bob);
+
+        // Older conversation with Alice (created first), then a newer one with Bob.
+        $aliceConversation = Conversation::betweenUsers($user->id, $alice->id);
+        $aliceMessage = Message::create([
+            'conversation_id' => $aliceConversation->id,
+            'sender_id' => $alice->id,
+            'type' => 'text',
+            'message' => 'From Alice',
+        ]);
+        $aliceConversation->update(['last_message_id' => $aliceMessage->id]);
+
+        $bobConversation = Conversation::betweenUsers($user->id, $bob->id);
+        $bobMessage = Message::create([
+            'conversation_id' => $bobConversation->id,
+            'sender_id' => $bob->id,
+            'type' => 'text',
+            'message' => 'From Bob',
+        ]);
+        $bobConversation->update(['last_message_id' => $bobMessage->id]);
+
+        // Force Alice's conversation to be clearly older so ordering is deterministic.
+        DB::table('conversations')
+            ->where('id', $aliceConversation->id)
+            ->update(['updated_at' => now()->subMinutes(10)]);
+
+        // Bob is most recent, so his conversation should be first.
+        $list = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $list->assertJsonPath('data.0.user.name', 'Bob Jones');
+
+        // Opening the Alice conversation (GET messages) must mark as read
+        // but must NOT move it to the top.
+        $this->actingAs($user, 'api')->getJson("/api/conversations/{$aliceConversation->id}/messages")
+            ->assertOk();
+
+        $listAfter = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $listAfter->assertJsonPath('data.0.user.name', 'Bob Jones');
+        $listAfter->assertJsonPath('data.1.user.name', 'Alice Smith');
+
+        // Sending a message to Alice SHOULD move her conversation to the top.
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$aliceConversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Reply to Alice',
+        ])->assertCreated();
+
+        $listFinal = $this->actingAs($user, 'api')->getJson('/api/conversations');
+        $listFinal->assertJsonPath('data.0.user.name', 'Alice Smith');
     }
 
     private function makeUser(?string $firstName = null, ?string $lastName = null): User

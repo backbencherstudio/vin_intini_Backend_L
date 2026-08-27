@@ -111,7 +111,7 @@ class Conversation extends Model
         } elseif ($userId === $this->user_id_2) {
             $this->user_2_last_read_at = null;
         }
-        $this->save();
+        $this->saveWithoutTouchingTimestamps();
     }
 
     public function archiveFor(int $userId): void
@@ -194,7 +194,19 @@ class Conversation extends Model
         } elseif ($userId === $this->user_id_2) {
             $this->user_2_last_read_at = now();
         }
+        $this->saveWithoutTouchingTimestamps();
+    }
+
+    /**
+     * Persist read/archive state without bumping the conversation's
+     * updated_at timestamp. Marking a conversation as read or unread must
+     * not reorder the conversation list; only sending a message does that.
+     */
+    protected function saveWithoutTouchingTimestamps(): void
+    {
+        $this->timestamps = false;
         $this->save();
+        $this->timestamps = true;
     }
 
     public function scopeForUser(Builder $query, int $userId): Builder
