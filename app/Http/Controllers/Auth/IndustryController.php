@@ -200,11 +200,10 @@ class IndustryController extends Controller
                 'id' => $industry->id,
                 'name' => $industry->name,
                 'slug' => $industry->slug,
-
                 'industry_category_id' => $industry->industry_category_id,
-
-                'website' => $industry->website,
+                'category' => $industry->category->category_name,
                 'address' => $industry->address,
+                'website' => $industry->website,
                 'company_size' => $industry->company_size,
 
                 'logo' => $industry->logo
@@ -218,7 +217,6 @@ class IndustryController extends Controller
                 'tagline' => $industry->tagline,
                 'description' => $industry->description,
 
-                'category' => $industry->category->category_name,
             ],
         ], 200);
     }
