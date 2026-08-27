@@ -40,8 +40,18 @@ class IndustryController extends Controller
         if (!in_array('company_profile', $features, true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Your current plan does not include company profile creation.',
+                'message' => 'Your current plan does not include industry creation.',
             ], 403);
+        }
+
+        // Check if user already has an industry
+        $existingIndustry = Industry::where('created_by', auth()->id())->first();
+
+        if ($existingIndustry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have an industry.',
+            ], 409);
         }
 
 

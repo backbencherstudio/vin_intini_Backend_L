@@ -38,6 +38,7 @@ return new class extends Migration
                 ->nullable();
 
             $table->foreignId('created_by')
+                ->unique()
                 ->constrained('users')
                 ->restrictOnDelete();
 
