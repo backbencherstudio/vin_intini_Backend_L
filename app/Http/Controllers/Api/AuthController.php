@@ -43,10 +43,9 @@ class AuthController extends Controller
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
 
             // Trigger the Failed event to log the failed login activity--------------
-            if ($user) {
-                event(new Failed('api', $user, $credentials));
-            }
-
+            // if ($user) {
+            //     event(new Failed('api', $user, $credentials));
+            // }
             // ------------------------------------------------------------------------
             return response()->json([
                 'success' => false,
@@ -94,15 +93,6 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'Please verify your email with OTP before login.',
             ], 403);
-        }
-
-        // Check if 2FA is enabled and confirmed
-        if ($user->two_factor_confirmed_at) {
-            return response()->json([
-                'status' => '2fa_required',
-                'email' => $user->email,
-                'message' => 'Two-factor authentication is required. Please provide your code.',
-            ], 200);
         }
 
         // Attempt login (JWT token) — only pass actual auth columns,
