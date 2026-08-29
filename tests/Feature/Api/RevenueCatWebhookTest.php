@@ -129,4 +129,59 @@ class RevenueCatWebhookTest extends TestCase
         $this->postJson('/api/webhooks/revenuecat', ['event' => ['type' => 'INITIAL_PURCHASE']])
             ->assertStatus(403);
     }
+
+    private function postWebhookWithAuthorization(string $token, array $payload): TestResponse
+    {
+        $body = json_encode($payload);
+
+        return $this->call(
+            'POST',
+            '/api/webhooks/revenuecat',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => $token],
+            $body,
+        );
+    }
+
+    public function test_webhook_accepts_authorization_header(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->makePlan();
+
+        $this->postWebhookWithAuthorization('Bearer test_secret', [
+            'event' => [
+                'id' => 'evt_3',
+                'type' => 'INITIAL_PURCHASE',
+                'app_user_id' => (string) $user->id,
+                'product_id' => 'rc_prod_pro',
+                'entitlement_id' => 'premium',
+                'store' => 'PLAY_STORE',
+                'transaction_id' => 'txn_3',
+                'original_transaction_id' => 'orig_3',
+                'price' => 999,
+                'currency' => 'USD',
+                'expiration_at' => now()->addMonth()->toIso8601String(),
+                'event_timestamp' => now()->timestamp * 1000,
+            ],
+            'subscriber' => ['app_user_id' => (string) $user->id],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('subscriptions', [
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'revenuecat',
+            'provider_subscription_id' => 'orig_3',
+            'status' => 'active',
+            'store' => 'PLAY_STORE',
+        ]);
+    }
+
+    public function test_webhook_rejects_wrong_authorization_header(): void
+    {
+        $this->postWebhookWithAuthorization('Bearer wrong_secret', [
+            'event' => ['type' => 'INITIAL_PURCHASE'],
+        ])->assertStatus(403);
+    }
 }
