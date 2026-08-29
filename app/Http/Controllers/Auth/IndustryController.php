@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
+use App\Models\RecruiterPost;
 use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -405,6 +406,142 @@ class IndustryController extends Controller
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
+            ], 500);
+        }
+    }
+
+
+    public function storePost(Request $request)
+    {
+        $userId = auth()->id();
+
+        $industry = Industry::where(
+            'created_by',
+            $userId
+        )->first();
+
+        if (!$industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have an industry.',
+            ], 403);
+        }
+
+
+        $validated = $request->validate([
+            'content' => ['nullable', 'string', 'max:10000'],
+
+            'media' => ['nullable', 'array', 'max:10'],
+
+            'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:102400'],
+        ]);
+
+        $content = trim($validated['content'] ?? '');
+
+        if (
+            blank($content) &&
+            !$request->hasFile('media')
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post must contain text or media.',
+            ], 422);
+        }
+
+
+        $uploadedFiles = [];
+
+        DB::beginTransaction();
+
+        try {
+
+            $post = RecruiterPost::create([
+                'industry_id' => $industry->id,
+                'created_by' => $userId,
+                'content' => $content ?: null,
+            ]);
+
+            if ($request->hasFile('media')) {
+
+                foreach ($request->file('media') as $index => $file) {
+
+                    $mimeType = $file->getMimeType();
+
+                    $type = str_starts_with($mimeType, 'video/')
+                        ? 'video'
+                        : 'image';
+
+
+                    $path = $file->store(
+                        'recruiters/posts',
+                        'public'
+                    );
+
+                    $uploadedFiles[] = $path;
+
+                    $post->media()->create([
+                        'type' => $type,
+                        'path' => $path,
+                        'sort_order' => $index,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $post->load('media');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Recruiter post created successfully.',
+
+                'data' => [
+                    'id' => $post->id,
+
+                    'industry_id' => $post->industry_id,
+
+                    'created_by' => $post->created_by,
+
+                    'content' => $post->content,
+
+                    'media' => $post->media->map(function ($media) {
+
+                        return [
+                            'id' => $media->id,
+
+                            'type' => $media->type,
+
+                            'url' => Storage::disk('public')
+                                ->url($media->path),
+
+                            'sort_order' => $media->sort_order,
+                        ];
+                    })->values(),
+
+                    'created_at' => $post->created_at,
+
+                    'updated_at' => $post->updated_at,
+                ],
+            ], 201);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            foreach ($uploadedFiles as $file) {
+
+                if (Storage::disk('public')->exists($file)) {
+                    Storage::disk('public')->delete($file);
+                }
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create recruiter post.',
+
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+
             ], 500);
         }
     }
