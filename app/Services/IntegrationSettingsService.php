@@ -97,10 +97,13 @@ class IntegrationSettingsService
         }
 
         foreach ($this->all() as $key => $value) {
-            if ($value === null || $value === '' || ! isset(self::CONFIG_MAP[$key])) {
+            if ($value === null || ! isset(self::CONFIG_MAP[$key])) {
                 continue;
             }
 
+            // The database is the single source of truth: any value stored in
+            // integration_settings (including an empty string) overrides the
+            // corresponding env()-based default from the config files.
             config()->set(self::CONFIG_MAP[$key], $value);
         }
     }

@@ -52,7 +52,7 @@ class IntegrationSettingSeeder extends Seeder
         ];
 
         foreach ($settings as $key => $section) {
-            IntegrationSetting::updateOrCreate(
+            IntegrationSetting::firstOrCreate(
                 ['key' => $key],
                 ['value' => '', 'section' => $section]
             );
