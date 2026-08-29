@@ -46,4 +46,9 @@ class Industry extends Model
             'created_by'
         );
     }
+
+    public function recruiterPosts()
+    {
+        return $this->hasMany(RecruiterPost::class);
+    }
 }
