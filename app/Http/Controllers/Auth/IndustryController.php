@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Industry;
 use App\Models\RecruiterPost;
 use App\Models\Subscription;
+use App\Services\RecruiterMediaUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -411,7 +412,7 @@ class IndustryController extends Controller
     }
 
 
-    public function storePost(Request $request)
+    public function storePost(Request $request, RecruiterMediaUploadService $mediaUploadService)
     {
         $userId = auth()->id();
 
@@ -465,27 +466,18 @@ class IndustryController extends Controller
 
                 foreach ($request->file('media') as $index => $file) {
 
-                    $mimeType = $file->getMimeType();
+                    $media = $mediaUploadService->upload($file);
 
-                    $type = str_starts_with($mimeType, 'video/')
-                        ? 'video'
-                        : 'image';
-
-
-                    $path = $file->store(
-                        'recruiters/posts',
-                        'public'
-                    );
-
-                    $uploadedFiles[] = $path;
+                    $uploadedFiles[] = $media['file_path'];
 
                     $post->media()->create([
-                        'type' => $type,
-                        'path' => $path,
+                        'type' => $media['type'],
+                        'path' => $media['file_path'],
                         'sort_order' => $index,
                     ]);
                 }
             }
+
 
             DB::commit();
 

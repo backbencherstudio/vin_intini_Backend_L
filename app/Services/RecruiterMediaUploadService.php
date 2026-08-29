@@ -9,7 +9,7 @@ class RecruiterMediaUploadService
 {
     public function upload(UploadedFile $file): array
     {
-        $mime = $file->getMimeType();
+        $mime = $file->getMimeType() ?? '';
 
         if (str_starts_with($mime, 'video/')) {
             return $this->processVideo($file);
@@ -53,11 +53,14 @@ class RecruiterMediaUploadService
         );
 
         $command = sprintf(
-            '"%s" -i %s -vf "scale=min(1280,iw):-2" -c:v libx264 -preset medium -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1',
+            '"%s" -i %s -vf "scale=min(1280\,iw):-2" -c:v libx264 -preset medium -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1',
             $ffmpeg,
             escapeshellarg($inputPath),
             escapeshellarg($outputPath)
         );
+
+        $output = [];
+        $status = 0;
 
         exec($command, $output, $status);
 
@@ -65,6 +68,12 @@ class RecruiterMediaUploadService
             throw new \Exception(
                 'Video compression failed: ' .
                     implode("\n", $output)
+            );
+        }
+
+        if (!file_exists($outputPath)) {
+            throw new \Exception(
+                'Video compression completed but output file was not created.'
             );
         }
 
