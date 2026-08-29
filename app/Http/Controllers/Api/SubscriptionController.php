@@ -8,6 +8,8 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\RevenueCatException;
+use App\Services\RevenueCatService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,14 +21,17 @@ use Stripe\Subscription as StripeSubscription;
 
 class SubscriptionController extends Controller
 {
-    public function __construct(private StripeService $stripe) {}
+    public function __construct(
+        private StripeService $stripe,
+        private RevenueCatService $revenueCat,
+    ) {}
 
     public function plans(): JsonResponse
     {
         $plans = Plan::where('status', 'active')
             ->whereNotNull('stripe_price_id')
             ->orderBy('billing_rate')
-            ->get(['id', 'name', 'short_description', 'billing_cycle', 'billing_rate', 'badge_color', 'features', 'stripe_price_id']);
+            ->get(['id', 'name', 'short_description', 'billing_cycle', 'billing_rate', 'badge_color', 'features', 'stripe_price_id', 'revenuecat_product_id', 'revenuecat_entitlement_id', 'revenuecat_offering_id', 'revenuecat_package_id', 'revenuecat_store_identifier', 'revenuecat_product_id_ios', 'revenuecat_product_id_android', 'revenuecat_store_identifier_ios', 'revenuecat_store_identifier_android']);
 
         return response()->json([
             'success' => true,
@@ -131,6 +136,70 @@ class SubscriptionController extends Controller
                 ],
                 'expiresAt' => $subscription->current_period_end?->toIso8601String(),
                 'willRenew' => ! $subscription->cancel_at_period_end,
+            ],
+        ], 200);
+    }
+
+    public function cancel(Request $request, Subscription $subscription): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($subscription->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This subscription does not belong to you.',
+            ], 403);
+        }
+
+        if ($subscription->platform !== 'revenuecat') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only app store subscriptions can be canceled from here.',
+            ], 422);
+        }
+
+        if ($subscription->status === 'canceled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This subscription is already canceled.',
+            ], 422);
+        }
+
+        $entitlementId = $subscription->plan?->revenuecat_entitlement_id;
+
+        if (! $entitlementId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This subscription is not linked to a RevenueCat entitlement.',
+            ], 422);
+        }
+
+        $appUserId = $subscription->provider_customer_id ?? $this->revenueCat->appUserIdFor($user);
+
+        try {
+            $this->revenueCat->revokeEntitlements($appUserId, [$entitlementId]);
+        } catch (RevenueCatException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel subscription: ' . $e->getMessage(),
+            ], 422);
+        }
+
+        $subscription->update([
+            'status' => 'canceled',
+            'cancel_at_period_end' => false,
+            'canceled_at' => now(),
+            'ends_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Subscription canceled successfully.',
+            'data' => [
+                'subscription' => [
+                    'id' => $subscription->id,
+                    'status' => $subscription->status,
+                ],
             ],
         ], 200);
     }

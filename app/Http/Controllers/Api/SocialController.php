@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeletedAccountLog;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\ProfileImageService;
@@ -15,7 +16,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SocialController extends Controller
 {
-    private const ALLOWED_PROVIDERS = ['google', 'facebook', 'apple'];
+    private const ALLOWED_PROVIDERS = ['google', 'apple'];
 
     public function redirect($provider)
     {
@@ -68,7 +69,9 @@ class SocialController extends Controller
 
                 if ($socialAccount) {
                     $existingUser = User::withTrashed()->find($socialAccount->user_id);
-                    if ($existingUser) return $existingUser;
+                    if ($existingUser) {
+                        return $existingUser;
+                    }
                 }
 
                 $email = $socialUser->getEmail();
@@ -106,18 +109,20 @@ class SocialController extends Controller
             if ($user->trashed()) {
                 $token = JWTAuth::fromUser($user);
 
-                $deletionLog = \App\Models\DeletedAccountLog::where('user_id', $user->id)->latest()->first();
+                $deletionLog = DeletedAccountLog::where('user_id', $user->id)->latest()->first();
                 $daysRemaining = 0;
                 if ($deletionLog) {
                     $seconds = now()->diffInSeconds($deletionLog->permanent_delete_at, false);
                     $daysRemaining = ceil($seconds / (60 * 60 * 24));
                 }
-                if ($daysRemaining <= 0) $daysRemaining = 1;
+                if ($daysRemaining <= 0) {
+                    $daysRemaining = 1;
+                }
 
                 $pendingResponse = [
                     'status' => 'pending_deletion',
                     'days_left' => (int) $daysRemaining,
-                    'name' => $user->first_name . ' ' . $user->last_name,
+                    'name' => $user->first_name.' '.$user->last_name,
                     'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Would you like to restore it?",
                     'token' => $token,
                 ];
@@ -125,6 +130,7 @@ class SocialController extends Controller
                 if ($platform === 'web') {
                     $frontendUrl = rtrim(config('app.frontend_url'), '/');
                     $encodedAuth = base64_encode(json_encode($pendingResponse));
+
                     return redirect("{$frontendUrl}/mu/home?auth={$encodedAuth}");
                 }
 

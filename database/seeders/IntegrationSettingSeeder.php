@@ -25,15 +25,20 @@ class IntegrationSettingSeeder extends Seeder
             'apple_private_key' => 'Apple OAuth',
             'apple_redirect_uri' => 'Apple OAuth',
 
-            // Facebook OAuth
-            'facebook_client_id' => 'Facebook OAuth',
-            'facebook_client_secret' => 'Facebook OAuth',
-            'facebook_redirect_uri' => 'Facebook OAuth',
-
             // Stripe
             'stripe_public_key' => 'Stripe',
             'stripe_secret_key' => 'Stripe',
             'stripe_webhook_secret' => 'Stripe',
+
+            // RevenueCat
+            'revenuecat_api_key' => 'RevenueCat',
+            'revenuecat_project_id' => 'RevenueCat',
+            'revenuecat_app_id' => 'RevenueCat',
+            'revenuecat_app_id_ios' => 'RevenueCat',
+            'revenuecat_app_id_android' => 'RevenueCat',
+            'revenuecat_webhook_secret' => 'RevenueCat',
+            'revenuecat_api_base_url' => 'RevenueCat',
+            'revenuecat_app_user_id_strategy' => 'RevenueCat',
 
             // Mail
             'mail_mailer' => 'Mail',
