@@ -5,14 +5,21 @@ namespace App\Http\Controllers\Admin\Api;
 use App\Enums\PlanFeature;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
+use App\Services\RevenueCatException;
+use App\Services\RevenueCatPlanSyncService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 
 class PlanController extends Controller
 {
-    public function __construct(private StripeService $stripe) {}
+    public function __construct(
+        private StripeService $stripe,
+        private RevenueCatPlanSyncService $revenueCatSync,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -49,6 +56,8 @@ class PlanController extends Controller
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'features' => ['required', 'array'],
             'features.*' => ['required', Rule::in(PlanFeature::values())],
+            'revenuecat_store_identifier_ios' => ['nullable', 'string', 'max:255'],
+            'revenuecat_store_identifier_android' => ['nullable', 'string', 'max:255'],
         ]);
 
         $stripeProduct = $this->stripe->createProduct(
@@ -65,21 +74,25 @@ class PlanController extends Controller
             $stripeProduct->id,
         );
 
-        $plan = Plan::create([
+        $plan = DB::transaction(fn () => Plan::create([
             'name' => $validated['name'],
-            'short_description' => $validated['short_description'],
+            'short_description' => $validated['short_description'] ?? null,
             'billing_rate' => $validated['billing_rate'],
             'billing_cycle' => $validated['billing_cycle'],
-            'discount_percent' => $validated['discount_percent'],
-            'discount_duration' => $validated['discount_duration'],
-            'badge_color' => $validated['badge_color'],
+            'discount_percent' => $validated['discount_percent'] ?? null,
+            'discount_duration' => $validated['discount_duration'] ?? null,
+            'badge_color' => $validated['badge_color'] ?? null,
             'status' => $validated['status'],
             'features' => $validated['features'],
             'stripe_product_id' => $stripeProduct->id,
             'stripe_price_id' => $stripePrice->id,
-        ]);
+            'revenuecat_store_identifier_ios' => $validated['revenuecat_store_identifier_ios'] ?? null,
+            'revenuecat_store_identifier_android' => $validated['revenuecat_store_identifier_android'] ?? null,
+        ]));
 
-        return response()->json(['success' => true, 'data' => $plan], 201);
+        $this->syncRevenueCat($plan);
+
+        return response()->json(['success' => true, 'data' => $plan->fresh()], 201);
     }
 
     public function update(Request $request, Plan $plan): JsonResponse
@@ -95,6 +108,8 @@ class PlanController extends Controller
             'status' => ['sometimes', 'required', Rule::in(['active', 'inactive'])],
             'features' => ['sometimes', 'required', 'array'],
             'features.*' => ['required_with:features', Rule::in(PlanFeature::values())],
+            'revenuecat_store_identifier_ios' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'revenuecat_store_identifier_android' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         $data = [];
@@ -140,6 +155,8 @@ class PlanController extends Controller
             'badge_color',
             'status',
             'features',
+            'revenuecat_store_identifier_ios',
+            'revenuecat_store_identifier_android',
         ];
 
         foreach ($fillableFields as $field) {
@@ -150,7 +167,9 @@ class PlanController extends Controller
 
         $plan->update($data);
 
-        return response()->json(['success' => true, 'data' => $plan], 200);
+        $this->syncRevenueCat($plan);
+
+        return response()->json(['success' => true, 'data' => $plan->fresh()], 200);
     }
 
     public function toggleStatus(Plan $plan): JsonResponse
@@ -163,5 +182,14 @@ class PlanController extends Controller
         ]);
 
         return response()->json(['success' => true, 'data' => $plan], 200);
+    }
+
+    private function syncRevenueCat(Plan $plan): void
+    {
+        try {
+            $this->revenueCatSync->sync($plan);
+        } catch (RevenueCatException|RuntimeException $e) {
+            report($e);
+        }
     }
 }
