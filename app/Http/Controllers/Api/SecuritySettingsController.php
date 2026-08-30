@@ -221,6 +221,7 @@ class SecuritySettingsController extends Controller
 
         $sessions = LoginActivity::where('user_id', auth()->id())
             ->where('is_active', true)
+            ->where('login_at', '>=', now()->subDays(30)) 
             ->orderByRaw('token_id = ? DESC', [$currentTokenId])
             ->orderBy('login_at', 'desc')
             ->get();

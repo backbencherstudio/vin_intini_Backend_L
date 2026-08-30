@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Conversation;
+use App\Models\LoginActivity;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Schedule;
 
@@ -22,4 +23,9 @@ Schedule::command('model:prune')->dailyAt('02:00')->timezone('America/New_York')
 //added for sending account deletion reminder emails
 Schedule::command('account:send-deletion-reminders')->dailyAt('10:00')->timezone('America/New_York');
 
-
+//
+Schedule::call(function () {
+    LoginActivity::where('is_active', true)
+        ->where('login_at', '<', now()->subDays(30))
+        ->update(['is_active' => false]);
+})->dailyAt('03:00')->timezone('America/New_York');
