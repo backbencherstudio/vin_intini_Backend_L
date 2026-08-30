@@ -252,72 +252,6 @@ class AuthController extends Controller
     // }
 
 
-    public function refresh()
-    {
-        $token = auth('api')->getToken();
-
-        if (!$token) {
-            return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
-        }
-
-        try {
-            $oldJti = $this->getJtiFromToken($token);
-
-            $loginActivity = \App\Models\LoginActivity::where('token_id', $oldJti)->first();
-
-            if (!$loginActivity || !$loginActivity->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Session is inactive or logged out. Please login again.'
-                ], 401);
-            }
-
-            $newToken = auth('api')->refresh(true, true);
-            $user = auth('api')->setToken($newToken)->user();
-
-            if (!$user) {
-                return response()->json(['success' => false, 'message' => 'User not found'], 401);
-            }
-
-            $newJti = auth('api')->setToken($newToken)->getPayload()->get('jti');
-
-            $loginActivity->update([
-                'token_id' => $newJti,
-                'updated_at' => now(),
-            ]);
-
-            return $this->respondWithToken($newToken, $user);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenBlacklistedException $e) {
-            return response()->json(['success' => false, 'message' => 'Token has been blacklisted. Please login again.'], 401);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
-            $oldJti = $this->getJtiFromToken($token);
-            if ($oldJti) {
-                \App\Models\LoginActivity::where('token_id', $oldJti)
-                    ->update(['is_active' => false]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Your session has completely expired. Please login again.'
-            ], 401);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Invalid token or session error'], 401);
-        }
-    }
-
-    private function getJtiFromToken($token)
-    {
-        try {
-            $parts = explode('.', $token);
-            if (count($parts) !== 3) return null;
-            $payload = json_decode(base64_decode($parts[1]), true);
-            return $payload['jti'] ?? null;
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
-
-
     // public function refresh()
     // {
     //     $token = auth('api')->getToken();
@@ -329,6 +263,15 @@ class AuthController extends Controller
     //     try {
     //         $oldJti = $this->getJtiFromToken($token);
 
+    //         $loginActivity = \App\Models\LoginActivity::where('token_id', $oldJti)->first();
+
+    //         if (!$loginActivity || !$loginActivity->is_active) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Session is inactive or logged out. Please login again.'
+    //             ], 401);
+    //         }
+
     //         $newToken = auth('api')->refresh(true, true);
     //         $user = auth('api')->setToken($newToken)->user();
 
@@ -338,15 +281,14 @@ class AuthController extends Controller
 
     //         $newJti = auth('api')->setToken($newToken)->getPayload()->get('jti');
 
-    //         if ($oldJti) {
-    //             \App\Models\LoginActivity::where('token_id', $oldJti)
-    //                 ->update([
-    //                     'token_id' => $newJti,
-    //                     'updated_at' => now(),
-    //                 ]);
-    //         }
+    //         $loginActivity->update([
+    //             'token_id' => $newJti,
+    //             'updated_at' => now(),
+    //         ]);
 
     //         return $this->respondWithToken($newToken, $user);
+    //     } catch (\Tymon\JWTAuth\Exceptions\TokenBlacklistedException $e) {
+    //         return response()->json(['success' => false, 'message' => 'Token has been blacklisted. Please login again.'], 401);
     //     } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
     //         $oldJti = $this->getJtiFromToken($token);
     //         if ($oldJti) {
@@ -367,15 +309,69 @@ class AuthController extends Controller
     // {
     //     try {
     //         $parts = explode('.', $token);
-    //         if (count($parts) !== 3) {
-    //             return null;
-    //         }
+    //         if (count($parts) !== 3) return null;
     //         $payload = json_decode(base64_decode($parts[1]), true);
     //         return $payload['jti'] ?? null;
     //     } catch (\Exception $e) {
     //         return null;
     //     }
     // }
+
+
+    public function refresh()
+    {
+        $token = auth('api')->getToken();
+
+        if (!$token) {
+            return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
+        }
+
+        try {
+            $oldJti = $this->getJtiFromToken($token);
+
+            $newToken = auth('api')->refresh();
+
+            $user = auth('api')->setToken($newToken)->user();
+
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'User not found'], 401);
+            }
+
+            $newJti = auth('api')->setToken($newToken)->getPayload()->get('jti');
+
+            if ($oldJti) {
+                \App\Models\LoginActivity::where('token_id', $oldJti)
+                    ->where('user_id', $user->id)
+                    ->update([
+                        'token_id' => $newJti,
+                        'updated_at' => now(),
+                        'is_active' => true,
+                    ]);
+            }
+
+            return $this->respondWithToken($newToken, $user);
+        } catch (\Tymon\JWTAuth\Exceptions\TokenBlacklistedException $e) {
+            return response()->json(['success' => false, 'message' => 'Session expired. Please login again.'], 401);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            if (isset($oldJti)) {
+                \App\Models\LoginActivity::where('token_id', $oldJti)->update(['is_active' => false]);
+            }
+            return response()->json(['success' => false, 'message' => 'Session completely expired. Please login again.'], 401);
+        }
+    }
+
+    private function getJtiFromToken($token)
+    {
+        try {
+            $parts = explode('.', $token);
+            if (count($parts) !== 3) return null;
+            $payload = json_decode(base64_decode($parts[1]), true);
+            return $payload['jti'] ?? null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
 
     // public function refresh()
     // {

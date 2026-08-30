@@ -140,17 +140,20 @@ class SecuritySettingsController extends Controller
             ->orderBy('login_at', 'desc')
             ->get();
 
+        $trustedCombinations = LoginActivity::where('user_id', $user->id)
+            ->where('is_trusted', true)
+            ->select('device', 'location')
+            ->distinct()
+            ->get()
+            ->map(fn($item) => $item->device . '|' . $item->location)
+            ->toArray();
+
         $suspiciousList = [];
 
         foreach ($unresolvedLogins as $login) {
-            $seenBefore = LoginActivity::where('user_id', $user->id)
-                ->where('status', 'Successful')
-                ->where('location', $login->location)
-                ->where('device', $login->device)
-                ->where('is_trusted', true)
-                ->exists();
+            $currentCombo = $login->device . '|' . $login->location;
 
-            if (! $seenBefore) {
+            if (!in_array($currentCombo, $trustedCombinations)) {
                 $suspiciousList[] = [
                     'id' => $login->id,
                     'device' => $login->device,
@@ -168,6 +171,47 @@ class SecuritySettingsController extends Controller
             'data' => $suspiciousList,
         ]);
     }
+
+    // public function getSuspiciousActivitiesList(): JsonResponse
+    // {
+    //     $user = auth()->user();
+    //     $lookBackDays = now()->subDays(15);
+
+    //     $unresolvedLogins = LoginActivity::where('user_id', $user->id)
+    //         ->where('status', 'Successful')
+    //         ->where('is_resolved', false)
+    //         ->where('created_at', '>=', $lookBackDays)
+    //         ->orderBy('login_at', 'desc')
+    //         ->get();
+
+    //     $suspiciousList = [];
+
+    //     foreach ($unresolvedLogins as $login) {
+    //         $seenBefore = LoginActivity::where('user_id', $user->id)
+    //             ->where('status', 'Successful')
+    //             ->where('location', $login->location)
+    //             ->where('device', $login->device)
+    //             ->where('is_trusted', true)
+    //             ->exists();
+
+    //         if (! $seenBefore) {
+    //             $suspiciousList[] = [
+    //                 'id' => $login->id,
+    //                 'device' => $login->device,
+    //                 'browser' => $login->browser,
+    //                 'location' => $login->location,
+    //                 'ip_address' => $login->ip_address,
+    //                 'login_at' => Carbon::parse($login->login_at)->toISOString(),
+    //                 'warning_message' => "Unrecognized login from {$login->location}",
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => $suspiciousList,
+    //     ]);
+    // }
 
     public function getActiveSessions(): JsonResponse
     {
