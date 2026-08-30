@@ -48,4 +48,11 @@ class Plan extends Model
     {
         return $this->hasMany(Subscription::class);
     }
+
+    public function isRevenueCat(): bool
+    {
+        return ! is_null($this->revenuecat_product_id)
+            || ! is_null($this->revenuecat_product_id_ios)
+            || ! is_null($this->revenuecat_product_id_android);
+    }
 }
