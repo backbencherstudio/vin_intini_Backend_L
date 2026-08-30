@@ -88,7 +88,9 @@ class IntegrationSettingsService
     /**
      * Apply all stored settings on top of the loaded config values.
      * This is called at application boot so Stripe, Socialite and Mail
-     * pick up the admin-configured credentials automatically.
+     * pick up the admin-configured credentials automatically. Empty or
+     * null values are skipped so the config-file / .env defaults remain
+     * in effect as a fallback.
      */
     public function applyOverrides(): void
     {
@@ -97,13 +99,14 @@ class IntegrationSettingsService
         }
 
         foreach ($this->all() as $key => $value) {
-            if ($value === null || ! isset(self::CONFIG_MAP[$key])) {
+            if ($value === null || $value === '' || ! isset(self::CONFIG_MAP[$key])) {
                 continue;
             }
 
-            // The database is the single source of truth: any value stored in
-            // integration_settings (including an empty string) overrides the
-            // corresponding env()-based default from the config files.
+            // The database is the single source of truth: any non-empty value
+            // stored in integration_settings overrides the corresponding
+            // env()-based default from the config files. Empty strings fall
+            // back to the config file defaults (and thus .env) instead.
             config()->set(self::CONFIG_MAP[$key], $value);
         }
     }
