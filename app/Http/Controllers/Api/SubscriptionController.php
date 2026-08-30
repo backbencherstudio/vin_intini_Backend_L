@@ -29,9 +29,18 @@ class SubscriptionController extends Controller
     public function plans(): JsonResponse
     {
         $plans = Plan::where('status', 'active')
-            ->whereNotNull('stripe_price_id')
+            ->where(function ($query) {
+                $query->whereNotNull('stripe_price_id')
+                    ->orWhereNotNull('revenuecat_product_id')
+                    ->orWhereNotNull('revenuecat_product_id_ios')
+                    ->orWhereNotNull('revenuecat_product_id_android');
+            })
             ->orderBy('billing_rate')
             ->get(['id', 'name', 'short_description', 'billing_cycle', 'billing_rate', 'badge_color', 'features', 'stripe_price_id', 'revenuecat_product_id', 'revenuecat_entitlement_id', 'revenuecat_offering_id', 'revenuecat_package_id', 'revenuecat_store_identifier', 'revenuecat_product_id_ios', 'revenuecat_product_id_android', 'revenuecat_store_identifier_ios', 'revenuecat_store_identifier_android']);
+
+        $plans->each(function (Plan $plan) {
+            $plan->setAttribute('checkout_type', $plan->isRevenueCat() ? 'revenuecat' : 'stripe');
+        });
 
         return response()->json([
             'success' => true,
@@ -47,6 +56,15 @@ class SubscriptionController extends Controller
         $validated = $request->validate([
             'plan_id' => ['required', 'integer', 'exists:plans,id'],
         ]);
+
+        $plan = Plan::findOrFail($validated['plan_id']);
+
+        if ($plan->isRevenueCat()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This plan is purchased in the app store via RevenueCat. Complete the purchase in the app and your subscription will activate automatically.',
+            ], 422);
+        }
 
         $user = $request->user();
 
@@ -71,6 +89,13 @@ class SubscriptionController extends Controller
         $user = $request->user();
 
         $plan = Plan::findOrFail($validated['plan_id']);
+
+        if ($plan->isRevenueCat()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This plan is purchased in the app store via RevenueCat. Complete the purchase in the app and your subscription will activate automatically.',
+            ], 422);
+        }
 
         if ($plan->status !== 'active') {
             return response()->json([
@@ -123,17 +148,19 @@ class SubscriptionController extends Controller
             ], 200);
         }
 
+        $plan = $subscription->plan;
+
         return response()->json([
             'success' => true,
             'data' => [
                 'isActive' => true,
-                'plan' => [
-                    'id' => $subscription->plan->id,
-                    'name' => $subscription->plan->name,
-                    'features' => $subscription->plan->features,
-                    'billing_cycle' => $subscription->plan->billing_cycle,
-                    'billing_rate' => $subscription->plan->billing_rate,
-                ],
+                'plan' => $plan ? [
+                    'id' => $plan->id,
+                    'name' => $plan->name,
+                    'features' => $plan->features,
+                    'billing_cycle' => $plan->billing_cycle,
+                    'billing_rate' => $plan->billing_rate,
+                ] : null,
                 'expiresAt' => $subscription->current_period_end?->toIso8601String(),
                 'willRenew' => ! $subscription->cancel_at_period_end,
             ],
@@ -151,17 +178,49 @@ class SubscriptionController extends Controller
             ], 403);
         }
 
-        if ($subscription->platform !== 'revenuecat') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only app store subscriptions can be canceled from here.',
-            ], 422);
-        }
-
         if ($subscription->status === 'canceled') {
             return response()->json([
                 'success' => false,
                 'message' => 'This subscription is already canceled.',
+            ], 422);
+        }
+
+        if ($subscription->platform === 'stripe') {
+            if (! $subscription->provider_subscription_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This subscription cannot be canceled from here.',
+                ], 422);
+            }
+
+            try {
+                $this->stripe->cancelSubscription($subscription->provider_subscription_id, true);
+            } catch (ApiErrorException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to cancel subscription: '.$e->getMessage(),
+                ], 422);
+            }
+
+            $subscription->update(['cancel_at_period_end' => true]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription will be canceled at the end of the current billing period.',
+                'data' => [
+                    'subscription' => [
+                        'id' => $subscription->id,
+                        'status' => $subscription->status,
+                        'cancel_at_period_end' => true,
+                    ],
+                ],
+            ], 200);
+        }
+
+        if ($subscription->platform !== 'revenuecat') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This subscription platform is not supported for cancellation.',
             ], 422);
         }
 
@@ -181,7 +240,7 @@ class SubscriptionController extends Controller
         } catch (RevenueCatException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to cancel subscription: ' . $e->getMessage(),
+                'message' => 'Failed to cancel subscription: '.$e->getMessage(),
             ], 422);
         }
 
