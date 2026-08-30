@@ -124,7 +124,20 @@ return [
     |
     */
 
-    'refresh_ttl' => env('JWT_REFRESH_TTL', 20160),
+    'refresh_ttl' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rolling Window
+    |--------------------------------------------------------------------------
+    |
+    | Specify the length of time (in minutes) that the token can be refreshed
+    | within, after which the token will be invalidated.
+    | Defaults to 43200 (30 days).
+    |
+    */
+
+    'rolling_window' => env('JWT_REFRESH_TTL', 43200),
 
     /*
     |--------------------------------------------------------------------------

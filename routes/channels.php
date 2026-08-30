@@ -23,9 +23,11 @@ Schedule::command('model:prune')->dailyAt('02:00')->timezone('America/New_York')
 //added for sending account deletion reminder emails
 Schedule::command('account:send-deletion-reminders')->dailyAt('10:00')->timezone('America/New_York');
 
-//
+//session cleanup for login activities older than 30 days and not from native mobile app
 Schedule::call(function () {
+    $rollingMinutes = config('jwt.rolling_window', 43200);
     LoginActivity::where('is_active', true)
-        ->where('login_at', '<', now()->subDays(30))
+        ->where('browser', '!=', 'Native Mobile App')
+        ->where('updated_at', '<', now()->subMinutes($rollingMinutes))
         ->update(['is_active' => false]);
 })->dailyAt('03:00')->timezone('America/New_York');
