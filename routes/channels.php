@@ -27,7 +27,6 @@ Schedule::command('account:send-deletion-reminders')->dailyAt('10:00')->timezone
 Schedule::call(function () {
     $rollingMinutes = config('jwt.rolling_window', 43200);
     LoginActivity::where('is_active', true)
-        ->where('browser', '!=', 'Native Mobile App')
         ->where('updated_at', '<', now()->subMinutes($rollingMinutes))
         ->update(['is_active' => false]);
 })->dailyAt('03:00')->timezone('America/New_York');
