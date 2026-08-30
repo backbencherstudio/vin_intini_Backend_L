@@ -40,7 +40,8 @@ class RevenueCatWebhookService
             return;
         }
 
-        $subscription = $this->upsertSubscription($event, $user, $event['is_trial_period'] ?? false ? 'trialing' : 'active');
+        $isTrial = ($event['period_type'] ?? null) === 'TRIAL' || ! empty($event['is_trial_period']);
+        $subscription = $this->upsertSubscription($event, $user, $isTrial ? 'trialing' : 'active');
 
         $this->recordTransaction($event, $subscription, 'succeeded');
     }
@@ -68,7 +69,7 @@ class RevenueCatWebhookService
             'status' => 'canceled',
             'cancel_at_period_end' => false,
             'canceled_at' => now(),
-            'ends_at' => $this->fromTimestamp($event['expiration_at'] ?? $event['cancel_at']) ?? $subscription->current_period_end,
+            'ends_at' => $this->fromTimestamp($event['expiration_at_ms'] ?? $event['expiration_at'] ?? $event['cancel_at']) ?? $subscription->current_period_end,
         ]);
     }
 
@@ -162,8 +163,8 @@ class RevenueCatWebhookService
         }
 
         $subscription->update([
-            'current_period_start' => $this->fromTimestamp($event['start_at'] ?? $event['period_start']),
-            'current_period_end' => $this->fromTimestamp($event['expiration_at'] ?? $event['period_end']),
+            'current_period_start' => $this->fromTimestamp($event['purchased_at_ms'] ?? $event['purchase_date_ms'] ?? $event['start_at'] ?? $event['period_start']),
+            'current_period_end' => $this->fromTimestamp($event['expiration_at_ms'] ?? $event['expiration_at'] ?? $event['period_end']),
         ]);
     }
 
@@ -176,7 +177,7 @@ class RevenueCatWebhookService
 
         $subscription->update([
             'status' => 'expired',
-            'ends_at' => $this->fromTimestamp($event['expiration_at'] ?? null) ?? $subscription->current_period_end,
+            'ends_at' => $this->fromTimestamp($event['expiration_at_ms'] ?? $event['expiration_at'] ?? null) ?? $subscription->current_period_end,
         ]);
     }
 
@@ -217,8 +218,8 @@ class RevenueCatWebhookService
                 'product_id' => $event['product_id'] ?? null,
                 'status' => $status,
                 'store' => $event['store'] ?? null,
-                'current_period_start' => $this->fromTimestamp($event['event_timestamp'] ?? $event['purchase_date']),
-                'current_period_end' => $this->fromTimestamp($event['expiration_at'] ?? null),
+                'current_period_start' => $this->fromTimestamp($event['event_timestamp_ms'] ?? $event['event_timestamp'] ?? $event['purchased_at_ms'] ?? $event['purchase_date_ms'] ?? $event['purchase_date'] ?? null),
+                'current_period_end' => $this->fromTimestamp($event['expiration_at_ms'] ?? $event['expiration_at'] ?? null),
                 'cancel_at_period_end' => false,
                 'canceled_at' => null,
                 'ends_at' => null,
@@ -239,7 +240,7 @@ class RevenueCatWebhookService
                 'user_id' => $subscription->user_id,
                 'plan_id' => $subscription->plan_id,
                 'subscription_id' => $subscription->id,
-                'amount' => ($event['price'] ?? 0) / 100,
+                'amount' => (float) ($event['price_in_purchased_currency'] ?? $event['price'] ?? 0),
                 'currency' => strtolower($event['currency'] ?? 'usd'),
                 'status' => $status,
                 'refunded_amount' => 0,
