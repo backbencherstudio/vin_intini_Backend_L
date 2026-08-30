@@ -337,11 +337,9 @@ class AuthController extends Controller
 
             $rollingMinutes = config('jwt.rolling_window');
 
-            if ($loginActivity->browser !== 'Native Mobile App') {
-                if ($loginActivity->updated_at->lt(now()->subMinutes($rollingMinutes))) {
-                    $loginActivity->update(['is_active' => false]);
-                    return response()->json(['success' => false, 'message' => 'Session completely expired. Please login again.'], 401);
-                }
+            if ($loginActivity->updated_at->lt(now()->subMinutes($rollingMinutes))) {
+                $loginActivity->update(['is_active' => false]);
+                return response()->json(['success' => false, 'message' => 'Session expired. Please login again.'], 401);
             }
 
             $newToken = auth('api')->refresh();

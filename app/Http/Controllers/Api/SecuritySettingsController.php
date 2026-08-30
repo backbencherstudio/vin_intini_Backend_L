@@ -107,10 +107,7 @@ class SecuritySettingsController extends Controller
         $rollingMinutes = config('jwt.rolling_window', 43200);
         $activeCount = LoginActivity::where('user_id', $user->id)
             ->where('is_active', true)
-            ->where(function ($query) use ($rollingMinutes) {
-                $query->where('browser', 'Native Mobile App')
-                    ->orWhere('updated_at', '>=', now()->subMinutes($rollingMinutes));
-            })
+            ->where('updated_at', '>=', now()->subMinutes($rollingMinutes))
             ->count();
 
         return response()->json([
@@ -275,10 +272,7 @@ class SecuritySettingsController extends Controller
 
         $sessions = LoginActivity::where('user_id', $user->id)
             ->where('is_active', true)
-            ->where(function ($query) use ($rollingMinutes) {
-                $query->where('browser', 'Native Mobile App')
-                    ->orWhere('updated_at', '>=', now()->subMinutes($rollingMinutes));
-            })
+            ->where('updated_at', '>=', now()->subMinutes($rollingMinutes))
             ->orderByRaw('token_id = ? DESC', [$currentTokenId])
             ->orderBy('updated_at', 'desc')
             ->get();
@@ -296,7 +290,7 @@ class SecuritySettingsController extends Controller
                 'is_current' => $isCurrent,
                 'status' => $isCurrent ? 'Current device' : 'Signed in',
                 'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
-                // 'last_activity' => $activity->updated_at ? Carbon::parse($activity->updated_at)->toISOString() : null, // চাইলে ফ্রন্টএন্ডের জন্য পাঠাতে পারেন
+                // 'last_activity' => $activity->updated_at ? Carbon::parse($activity->updated_at)->toISOString() : null,
             ];
         });
 
