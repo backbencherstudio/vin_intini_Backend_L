@@ -104,6 +104,15 @@ class SecuritySettingsController extends Controller
         }
         // ------------------------------------
 
+        $rollingMinutes = config('jwt.rolling_window', 43200);
+        $activeCount = LoginActivity::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->where(function ($query) use ($rollingMinutes) {
+                $query->where('browser', 'Native Mobile App')
+                    ->orWhere('updated_at', '>=', now()->subMinutes($rollingMinutes));
+            })
+            ->count();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -114,7 +123,8 @@ class SecuritySettingsController extends Controller
                 ],
                 'password_strength' => 'Strong',
                 'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
-                'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . ' active devices',
+                // 'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . ' active devices',
+                'active_sessions' => $activeCount . ' active devices',
                 'account_recovery' => $isRecoveryVerified ? 'Email verified' : 'Not verified',
                 'login_activity' => $suspiciousStatus,
                 // 'suspicious_id' => $suspiciousId,
@@ -213,17 +223,64 @@ class SecuritySettingsController extends Controller
     //     ]);
     // }
 
+    // public function getActiveSessions(): JsonResponse
+    // {
+    //     $user = auth()->user();
+    //     $currentTokenId = auth('api')->check()
+    //         ? auth('api')->payload()->get('jti')
+    //         : session()->getId();
+
+    //     $sessions = LoginActivity::where('user_id', $user->id)
+    //         ->where('is_active', true)
+    //         ->where(function ($query) {
+    //             $query->where('browser', 'Native Mobile App')
+    //                 ->orWhere('login_at', '>=', now()->subDays(30));
+    //         })
+    //         ->orderByRaw('token_id = ? DESC', [$currentTokenId])
+    //         ->orderBy('login_at', 'desc')
+    //         ->get();
+
+    //     $items = $sessions->map(function ($activity) use ($currentTokenId) {
+    //         $isCurrent = $activity->token_id === $currentTokenId;
+
+    //         return [
+    //             'id' => $activity->id,
+    //             'device' => $activity->device,
+    //             'browser' => $activity->browser,
+    //             'ip_address' => $activity->ip_address,
+    //             'location' => $activity->location,
+    //             'is_active' => (bool) $activity->is_active,
+    //             'is_current' => $isCurrent,
+
+    //             'status' => $isCurrent ? 'Current device' : 'Signed in',
+
+    //             'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
+    //         ];
+    //     });
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => $items,
+    //     ]);
+    // }
+
     public function getActiveSessions(): JsonResponse
     {
+        $user = auth()->user();
+        $rollingMinutes = config('jwt.rolling_window', 43200);
+
         $currentTokenId = auth('api')->check()
             ? auth('api')->payload()->get('jti')
             : session()->getId();
 
-        $sessions = LoginActivity::where('user_id', auth()->id())
+        $sessions = LoginActivity::where('user_id', $user->id)
             ->where('is_active', true)
-            ->where('login_at', '>=', now()->subDays(30)) 
+            ->where(function ($query) use ($rollingMinutes) {
+                $query->where('browser', 'Native Mobile App')
+                    ->orWhere('updated_at', '>=', now()->subMinutes($rollingMinutes));
+            })
             ->orderByRaw('token_id = ? DESC', [$currentTokenId])
-            ->orderBy('login_at', 'desc')
+            ->orderBy('updated_at', 'desc')
             ->get();
 
         $items = $sessions->map(function ($activity) use ($currentTokenId) {
@@ -237,17 +294,13 @@ class SecuritySettingsController extends Controller
                 'location' => $activity->location,
                 'is_active' => (bool) $activity->is_active,
                 'is_current' => $isCurrent,
-
                 'status' => $isCurrent ? 'Current device' : 'Signed in',
-
                 'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
+                // 'last_activity' => $activity->updated_at ? Carbon::parse($activity->updated_at)->toISOString() : null, // চাইলে ফ্রন্টএন্ডের জন্য পাঠাতে পারেন
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => $items,
-        ]);
+        return response()->json(['success' => true, 'data' => $items]);
     }
 
     public function getLoginActivities(Request $request): JsonResponse
