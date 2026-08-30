@@ -58,6 +58,10 @@ class IntegrationSettingsService
 
     public function all(): array
     {
+        if (! $this->isMigrated()) {
+            return [];
+        }
+
         return Cache::rememberForever(self::CACHE_KEY, function () {
             return IntegrationSetting::query()
                 ->orderBy('section')
@@ -72,7 +76,16 @@ class IntegrationSettingsService
     {
         $value = $this->all()[$key] ?? null;
 
-        return $value !== null && $value !== '' ? $value : $default;
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+
+        $configPath = self::CONFIG_MAP[$key] ?? null;
+        if ($configPath !== null) {
+            return config($configPath, $default);
+        }
+
+        return $default;
     }
 
     public function set(string $key, string $value, string $section): void
@@ -98,7 +111,14 @@ class IntegrationSettingsService
             return;
         }
 
-        foreach ($this->all() as $key => $value) {
+        try {
+            $settings = $this->all();
+        } catch (\Throwable $e) {
+            // Database is unavailable: keep the config-file / .env defaults.
+            return;
+        }
+
+        foreach ($settings as $key => $value) {
             if ($value === null || $value === '' || ! isset(self::CONFIG_MAP[$key])) {
                 continue;
             }
