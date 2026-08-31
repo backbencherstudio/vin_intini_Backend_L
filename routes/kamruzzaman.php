@@ -92,6 +92,7 @@ Route::middleware('role:user')->group(function () {
 
         // Recruiter post
         Route::post('post/create', [IndustryController::class, 'storePost']);
+        Route::get('post/view', [IndustryController::class, 'indexPost']);
     });
 
 

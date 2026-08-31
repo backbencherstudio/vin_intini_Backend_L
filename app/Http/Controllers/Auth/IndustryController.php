@@ -537,4 +537,57 @@ class IndustryController extends Controller
             ], 500);
         }
     }
+
+
+    public function indexPost()
+    {
+        $posts = RecruiterPost::with([
+            'media' => function ($query) {
+                $query->orderBy('sort_order');
+            },
+            'industry',
+        ])
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Recruiter posts fetched successfully.',
+
+            'data' => $posts->map(function ($post) {
+
+                return [
+                    'id' => $post->id,
+                    'industry_name' => $post->industry?->name,
+                    'tagline' => $post->industry?->tagline,
+                    'time_ago' => $post->created_at
+                        ? $post->created_at->diffForHumans()
+                        : null,
+                    'logo' => $post->industry?->logo
+                        ? Storage::disk('public')->url(
+                            $post->industry->logo
+                        )
+                        : null,
+                    'content' => $post->content,
+
+
+                    'media' => $post->media
+                        ->map(function ($media) {
+
+                            return [
+                                'id' => $media->id,
+
+                                'type' => $media->type,
+
+                                'url' => Storage::disk('public')
+                                    ->url($media->path),
+
+                                'sort_order' => $media->sort_order,
+                            ];
+                        })
+                        ->values(),
+                ];
+            })->values(),
+        ], 200);
+    }
 }
