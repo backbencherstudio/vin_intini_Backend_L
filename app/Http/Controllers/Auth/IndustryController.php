@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
 use App\Models\RecruiterPost;
+use App\Models\RecruiterPostLike;
 use App\Models\Subscription;
 use App\Services\RecruiterMediaUploadService;
 use Illuminate\Http\Request;
@@ -648,5 +649,80 @@ class IndustryController extends Controller
             })->values(),
         ], 200);
     }
-    
+
+
+    public function togglePostLike($postId)
+    {
+        $userId = auth()->id();
+
+        $post = RecruiterPost::find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $like = RecruiterPostLike::where('post_id', $postId)
+                ->where('user_id', $userId)
+                ->first();
+
+            if ($like) {
+
+                $like->delete();
+
+                $post->decrement('likes_count');
+
+                $liked = false;
+
+                $message = 'Post unliked successfully.';
+            } else {
+
+                RecruiterPostLike::create([
+                    'post_id' => $postId,
+                    'user_id' => $userId,
+                ]);
+
+                $post->increment('likes_count');
+
+                $liked = true;
+
+                $message = 'Post liked successfully.';
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+
+                'message' => $message,
+
+                'data' => [
+                    'post_id' => $post->id,
+
+                    'liked' => $liked,
+
+                    'likes_count' => $post->likes_count,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+
+                'message' => 'Failed to update post like.',
+
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
 }

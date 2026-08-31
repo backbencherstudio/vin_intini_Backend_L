@@ -94,6 +94,7 @@ Route::middleware('role:user')->group(function () {
         Route::post('post/create', [IndustryController::class, 'storePost']);
         Route::get('post/view', [IndustryController::class, 'indexPost']);
         Route::get('post/recent', [IndustryController::class, 'latestPosts']);
+        Route::post('post/like/{postId}', [IndustryController::class, 'togglePostLike']);
     });
 
 
