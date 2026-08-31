@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\RevenueCatWebhookController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\SocialController;
 use App\Http\Controllers\Api\StripeWebhookController;
@@ -45,6 +46,10 @@ Route::get('/pages/{slug}', [PagesController::class, 'getPageData']);
 
 // Stripe webhook (must be public, no auth)
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
+
+// RevenueCat webhook (must be public, no auth, signature verified)
+Route::post('/webhooks/revenuecat', [RevenueCatWebhookController::class, 'handle'])
+    ->middleware('verify_revenuecat_webhook');
 
 Route::prefix('2fa')->group(function () {
     // 2FA Verification during Login

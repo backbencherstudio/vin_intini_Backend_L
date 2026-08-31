@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\Admin;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\RevenueCatService;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
@@ -242,5 +243,46 @@ class SubscriptionManagementTest extends TestCase
             ->postJson("/api/admin/subscriptions/{$subscription->id}/cancel");
 
         $response->assertStatus(422)->assertJsonPath('success', false);
+    }
+
+    public function test_admin_can_revoke_revenuecat_subscription(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+            'revenuecat_product_id' => 'rc_prod_pro',
+            'revenuecat_entitlement_id' => 'premium',
+        ]);
+
+        $user = User::factory()->create();
+
+        $subscription = Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'revenuecat',
+            'provider_subscription_id' => 'sub_rc_1',
+            'provider_customer_id' => (string) $user->id,
+            'product_id' => 'rc_prod_pro',
+            'status' => 'active',
+        ]);
+
+        $this->mock(RevenueCatService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('appUserIdFor')->andReturn('1');
+            $mock->shouldReceive('revokeEntitlements')
+                ->once()
+                ->with(\Mockery::any(), ['premium'])
+                ->andReturn([]);
+        });
+
+        $response = $this->actingAs($this->admin, 'api')
+            ->postJson("/api/admin/subscriptions/{$subscription->id}/cancel");
+
+        $response->assertOk()->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('subscriptions', [
+            'id' => $subscription->id,
+            'status' => 'canceled',
+            'cancel_at_period_end' => false,
+        ]);
     }
 }

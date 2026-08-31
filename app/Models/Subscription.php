@@ -22,6 +22,7 @@ class Subscription extends Model
         'cancel_at_period_end',
         'canceled_at',
         'ends_at',
+        'store',
     ];
 
     protected $casts = [

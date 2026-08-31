@@ -111,6 +111,74 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.plans.0.stripe_price_id', 'price_1');
     }
 
+    public function test_plans_returns_revenuecat_checkout_type_for_rc_plans(): void
+    {
+        Plan::create([
+            'name' => 'RC Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+            'revenuecat_product_id' => 'rc_prod', 'revenuecat_entitlement_id' => 'premium',
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/plans');
+
+        $response->assertOk();
+
+        $plans = collect($response->json('data.plans'));
+        $this->assertContains('RC Pro', $plans->pluck('name')->all());
+
+        $rcPlan = $plans->firstWhere('name', 'RC Pro');
+        $this->assertSame('revenuecat', $rcPlan['checkout_type']);
+    }
+
+    public function test_send_otp_rejects_revenuecat_plan(): void
+    {
+        $plan = $this->makePlan([
+            'stripe_price_id' => null,
+            'revenuecat_product_id' => 'rc_prod',
+            'revenuecat_entitlement_id' => 'premium',
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/subscriptions/send-otp', ['plan_id' => $plan->id]);
+
+        $response->assertStatus(422)->assertJsonPath('success', false);
+    }
+
+    public function test_user_can_cancel_own_stripe_subscription(): void
+    {
+        $plan = $this->makePlan();
+        $subscription = Subscription::create([
+            'user_id' => $this->user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_mock',
+            'status' => 'active',
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('cancelSubscription')
+                ->once()
+                ->with('sub_mock', true)
+                ->andReturn(StripeSubscription::constructFrom([
+                    'id' => 'sub_mock', 'status' => 'active', 'cancel_at_period_end' => true,
+                ]));
+        });
+
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson("/api/subscriptions/{$subscription->id}/cancel");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.subscription.cancel_at_period_end', true);
+
+        $this->assertDatabaseHas('subscriptions', [
+            'id' => $subscription->id,
+            'cancel_at_period_end' => true,
+            'status' => 'active',
+        ]);
+    }
+
     public function test_send_otp_sends_otp_and_requires_verification(): void
     {
         Mail::fake();

@@ -20,12 +20,17 @@ class IntegrationSettingsService
         'apple_key_id' => 'services.apple.key_id',
         'apple_private_key' => 'services.apple.private_key',
         'apple_redirect_uri' => 'services.apple.redirect',
-        'facebook_client_id' => 'services.facebook.client_id',
-        'facebook_client_secret' => 'services.facebook.client_secret',
-        'facebook_redirect_uri' => 'services.facebook.redirect',
         'stripe_public_key' => 'services.stripe.key',
         'stripe_secret_key' => 'services.stripe.secret',
         'stripe_webhook_secret' => 'services.stripe.webhook_secret',
+        'revenuecat_api_key' => 'revenuecat.api_key',
+        'revenuecat_project_id' => 'revenuecat.project_id',
+        'revenuecat_app_id' => 'revenuecat.app_id',
+        'revenuecat_app_id_ios' => 'revenuecat.app_id_ios',
+        'revenuecat_app_id_android' => 'revenuecat.app_id_android',
+        'revenuecat_webhook_secret' => 'revenuecat.webhook_secret',
+        'revenuecat_api_base_url' => 'revenuecat.base_url',
+        'revenuecat_app_user_id_strategy' => 'revenuecat.app_user_id_strategy',
         'mail_mailer' => 'mail.default',
         'mail_host' => 'mail.mailers.smtp.host',
         'mail_port' => 'mail.mailers.smtp.port',
@@ -42,9 +47,10 @@ class IntegrationSettingsService
     private const SECRET_KEYS = [
         'google_client_secret',
         'apple_private_key',
-        'facebook_client_secret',
         'stripe_secret_key',
         'stripe_webhook_secret',
+        'revenuecat_api_key',
+        'revenuecat_webhook_secret',
         'mail_password',
     ];
 
@@ -52,6 +58,10 @@ class IntegrationSettingsService
 
     public function all(): array
     {
+        if (! $this->isMigrated()) {
+            return [];
+        }
+
         return Cache::rememberForever(self::CACHE_KEY, function () {
             return IntegrationSetting::query()
                 ->orderBy('section')
@@ -66,7 +76,16 @@ class IntegrationSettingsService
     {
         $value = $this->all()[$key] ?? null;
 
-        return $value !== null && $value !== '' ? $value : $default;
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+
+        $configPath = self::CONFIG_MAP[$key] ?? null;
+        if ($configPath !== null) {
+            return config($configPath, $default);
+        }
+
+        return $default;
     }
 
     public function set(string $key, string $value, string $section): void
@@ -82,7 +101,9 @@ class IntegrationSettingsService
     /**
      * Apply all stored settings on top of the loaded config values.
      * This is called at application boot so Stripe, Socialite and Mail
-     * pick up the admin-configured credentials automatically.
+     * pick up the admin-configured credentials automatically. Empty or
+     * null values are skipped so the config-file / .env defaults remain
+     * in effect as a fallback.
      */
     public function applyOverrides(): void
     {
@@ -90,11 +111,22 @@ class IntegrationSettingsService
             return;
         }
 
-        foreach ($this->all() as $key => $value) {
+        try {
+            $settings = $this->all();
+        } catch (\Throwable $e) {
+            // Database is unavailable: keep the config-file / .env defaults.
+            return;
+        }
+
+        foreach ($settings as $key => $value) {
             if ($value === null || $value === '' || ! isset(self::CONFIG_MAP[$key])) {
                 continue;
             }
 
+            // The database is the single source of truth: any non-empty value
+            // stored in integration_settings overrides the corresponding
+            // env()-based default from the config files. Empty strings fall
+            // back to the config file defaults (and thus .env) instead.
             config()->set(self::CONFIG_MAP[$key], $value);
         }
     }

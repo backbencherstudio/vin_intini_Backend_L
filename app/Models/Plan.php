@@ -19,6 +19,15 @@ class Plan extends Model
         'features',
         'stripe_product_id',
         'stripe_price_id',
+        'revenuecat_product_id',
+        'revenuecat_entitlement_id',
+        'revenuecat_offering_id',
+        'revenuecat_package_id',
+        'revenuecat_store_identifier',
+        'revenuecat_store_identifier_ios',
+        'revenuecat_store_identifier_android',
+        'revenuecat_product_id_ios',
+        'revenuecat_product_id_android',
     ];
 
     protected $attributes = [
@@ -38,5 +47,12 @@ class Plan extends Model
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    public function isRevenueCat(): bool
+    {
+        return ! is_null($this->revenuecat_product_id)
+            || ! is_null($this->revenuecat_product_id_ios)
+            || ! is_null($this->revenuecat_product_id_android);
     }
 }
