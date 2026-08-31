@@ -39,4 +39,12 @@ class RecruiterPost extends Model
             'post_id'
         );
     }
+
+    public function comments()
+    {
+        return $this->hasMany(
+            RecruiterPostComment::class,
+            'post_id'
+        );
+    }
 }
