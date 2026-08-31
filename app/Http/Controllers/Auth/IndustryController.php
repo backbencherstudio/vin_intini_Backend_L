@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
 use App\Models\RecruiterPost;
+use App\Models\RecruiterPostComment;
 use App\Models\RecruiterPostLike;
 use App\Models\Subscription;
 use App\Services\RecruiterMediaUploadService;
@@ -256,7 +257,7 @@ class IndustryController extends Controller
             ], 403);
         }
 
-        // Get authenticated user's industry
+
         $industry = Industry::where('created_by', auth()->id())->first();
 
         if (!$industry) {
@@ -750,6 +751,113 @@ class IndustryController extends Controller
                 'success' => false,
 
                 'message' => 'Failed to update post like.',
+
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+
+    public function storeComment(Request $request, $postId)
+    {
+        $validated = $request->validate([
+            'comment' => ['nullable', 'string', 'max:5000'],
+
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        if (
+            blank($validated['comment'] ?? null)
+            && !$request->hasFile('image')
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment must contain text or image.',
+            ], 422);
+        }
+
+        $post = RecruiterPost::find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $imagePath = null;
+
+            if ($request->hasFile('image')) {
+
+                $imagePath = $request->file('image')
+                    ->store(
+                        'recruiters/comments',
+                        'public'
+                    );
+            }
+
+            $comment = RecruiterPostComment::create([
+                'post_id' => $post->id,
+                'user_id' => auth()->id(),
+                'parent_id' => null,
+                'comment' => $validated['comment'] ?? null,
+                'image' => $imagePath,
+            ]);
+
+            $post->increment('comments_count');
+
+            DB::commit();
+
+            $comment->load('user');
+
+            return response()->json([
+                'success' => true,
+
+                'message' => 'Comment added successfully.',
+
+                'data' => [
+                    'id' => $comment->id,
+
+                    'post_id' => $comment->post_id,
+
+                    'user_id' => $comment->user_id,
+
+                    'comment' => $comment->comment,
+
+                    'image' => $comment->image
+                        ? Storage::disk('public')
+                        ->url($comment->image)
+                        : null,
+
+                    'likes_count' => $comment->likes_count,
+
+                    'created_at' => $comment->created_at,
+
+                    'time_ago' => $comment->created_at
+                        ->diffForHumans(),
+                ],
+            ], 201);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            if (
+                $imagePath &&
+                Storage::disk('public')->exists($imagePath)
+            ) {
+                Storage::disk('public')->delete($imagePath);
+            }
+
+            return response()->json([
+                'success' => false,
+
+                'message' => 'Failed to add comment.',
 
                 'error' => config('app.debug')
                     ? $e->getMessage()
