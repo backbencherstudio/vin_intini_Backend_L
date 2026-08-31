@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\String\TruncateMode;
 
 class TwoFactorController extends Controller
 {
@@ -129,6 +130,7 @@ class TwoFactorController extends Controller
             if ($isBackupCode && !$isValid) {
                 return response()->json([
                     'status' => false,
+                    'invalid_backup_code' => true,
                     'message' => 'The backup code is invalid or has already been used.'
                 ], 401);
             }
@@ -150,6 +152,7 @@ class TwoFactorController extends Controller
 
         return response()->json([
             'status' => false,
+            'invalid_verification_code' => true,
             'message' => 'The verification code you entered is incorrect.'
         ], 401);
     }
