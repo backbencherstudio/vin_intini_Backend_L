@@ -648,4 +648,5 @@ class IndustryController extends Controller
             })->values(),
         ], 200);
     }
+    
 }
