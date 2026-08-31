@@ -761,6 +761,82 @@ class IndustryController extends Controller
     }
 
 
+    public function likeList(Request $request, $postId)
+    {
+        $perPage = min(
+            (int) $request->get('per_page', 10),
+            100
+        );
+
+        $post = RecruiterPost::find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        $likes = RecruiterPostLike::with([
+            'user:id,username,first_name,last_name,profile_image'
+        ])
+            ->where('post_id', $postId)
+
+            ->whereHas('user', function ($query) {
+                $query->whereNull('deleted_at');
+            })
+
+            ->latest()
+
+            ->paginate($perPage);
+
+        $users = collect($likes->items())
+            ->map(function ($like) {
+
+                if (!$like->user) {
+                    return null;
+                }
+
+                return [
+                    'id' => $like->user->id,
+
+                    'username' => $like->user->username,
+
+                    'name' => trim(
+                        ($like->user->first_name ?? '') .
+                            ' ' .
+                            ($like->user->last_name ?? '')
+                    ),
+
+                    'profile_image' =>
+                    $like->user->profile_image_url,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+
+            'message' => 'Post liked users fetched successfully.',
+
+            'data' => $users,
+
+            'pagination' => [
+                'current_page' => $likes->currentPage(),
+
+                'per_page' => $likes->perPage(),
+
+                'total' => $likes->total(),
+
+                'last_page' => $likes->lastPage(),
+
+                'has_more_pages' => $likes->hasMorePages(),
+            ],
+        ], 200);
+    }
+
+
     public function storeComment(Request $request, $postId)
     {
         $validated = $request->validate([
