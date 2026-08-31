@@ -41,20 +41,9 @@ class RecruiterMediaUploadService
             'app/public/' . $filename
         );
 
-        $outputDirectory = dirname($outputPath);
-
-        if (!is_dir($outputDirectory)) {
-            mkdir($outputDirectory, 0755, true);
-        }
-
-        $ffmpeg = env(
-            'FFMPEG_BINARY',
-            'C:\ffmpeg\bin\ffmpeg.exe'
-        );
-
         $command = sprintf(
-            '"%s" -i %s -vf "scale=min(1280\,iw):-2" -c:v libx264 -preset medium -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1',
-            $ffmpeg,
+            '"%s" -i %s -vf "scale=\'min(1280,iw)\':-2" -c:v libx264 -preset veryfast -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1',
+            env('FFMPEG_BINARY', 'C:\ffmpeg\bin\ffmpeg.exe'),
             escapeshellarg($inputPath),
             escapeshellarg($outputPath)
         );
@@ -66,14 +55,7 @@ class RecruiterMediaUploadService
 
         if ($status !== 0) {
             throw new \Exception(
-                'Video compression failed: ' .
-                    implode("\n", $output)
-            );
-        }
-
-        if (!file_exists($outputPath)) {
-            throw new \Exception(
-                'Video compression completed but output file was not created.'
+                'Video compression failed: ' . implode("\n", $output)
             );
         }
 
