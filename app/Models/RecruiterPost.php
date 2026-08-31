@@ -12,6 +12,8 @@ class RecruiterPost extends Model
         'industry_id',
         'created_by',
         'content',
+        'likes_count',
+        'comments_count',
     ];
 
     public function industry(): BelongsTo
