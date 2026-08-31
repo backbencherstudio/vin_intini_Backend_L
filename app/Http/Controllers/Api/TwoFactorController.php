@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
+use Illuminate\Support\Facades\DB;
 
 class TwoFactorController extends Controller
 {
@@ -68,20 +69,22 @@ class TwoFactorController extends Controller
         }
 
         if ($this->google2fa->verifyKey($user->two_factor_secret, $request->code)) {
-            $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
+            return DB::transaction(function () use ($user) {
+                $plainRecoveryCodes = collect(range(1, 10))->map(fn() => Str::random(10))->toArray();
 
-            $hashedCodes = array_map(fn ($code) => bcrypt($code), $plainRecoveryCodes);
+                $hashedCodes = array_map(fn($code) => bcrypt($code), $plainRecoveryCodes);
 
-            $user->update([
-                'two_factor_confirmed_at' => now(),
-                'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
-            ]);
+                $user->update([
+                    'two_factor_confirmed_at' => now(),
+                    'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
+                ]);
 
-            return response()->json([
-                'status' => true,
-                'message' => '2FA has been successfully enabled.',
-                'recovery_codes' => $plainRecoveryCodes,
-            ]);
+                return response()->json([
+                    'status' => true,
+                    'message' => '2FA has been successfully enabled.',
+                    'recovery_codes' => $plainRecoveryCodes,
+                ]);
+            });
         }
 
         return response()->json(['status' => false, 'message' => 'Invalid OTP code from app'], 422);
@@ -89,51 +92,115 @@ class TwoFactorController extends Controller
 
     public function verifyLogin(Request $request)
     {
-        $request->validate(['email' => 'required|email', 'code' => 'required']);
+        $request->validate([
+            'email' => 'required|email',
+            'code' => 'required'
+        ]);
+
         $user = User::where('email', $request->email)->first();
 
         if (! $user || ! $user->two_factor_confirmed_at) {
             return response()->json(['status' => false, 'message' => 'Invalid request'], 403);
         }
 
-        $valid = $this->google2fa->verifyKey($user->two_factor_secret, $request->code);
+        $inputCode = $request->code;
+        $isValid = false;
+        $isBackupCode = (strlen($inputCode) !== 6);
 
-        if (! $valid && $user->two_factor_recovery_codes) {
+        if (!$isBackupCode) {
+            $isValid = $this->google2fa->verifyKey($user->two_factor_secret, $inputCode);
+        }
+
+        if (!$isValid && $user->two_factor_recovery_codes) {
             $hashedCodes = json_decode(decrypt($user->two_factor_recovery_codes), true);
 
             foreach ($hashedCodes as $index => $hashedCode) {
-                if (Hash::check($request->code, $hashedCode)) {
-                    $valid = true;
-                    unset($hashedCodes[$index]);
+                if (Hash::check($inputCode, $hashedCode)) {
+                    $isValid = true;
 
+                    unset($hashedCodes[$index]);
                     $user->update([
                         'two_factor_recovery_codes' => encrypt(json_encode(array_values($hashedCodes))),
                     ]);
                     break;
                 }
             }
+
+            if ($isBackupCode && !$isValid) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The backup code is invalid or has already been used.'
+                ], 401);
+            }
         }
 
-        if ($valid) {
+        if ($isValid) {
             $token = auth('api')->login($user);
 
-            // -----------------------------------------
-            // Trigger the Login event to log the successful login activity
-            $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
-            $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
-            request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
-            event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
-            // -----------------------------------------
+            $payload = auth('api')->setToken($token)->getPayload();
+            $tokenId = $payload->get('jti');
+            request()->merge(['current_token_id' => $tokenId]);
+            event(new Login('api', $user, false));
 
             return $this->respondWithToken($token, $user);
         }
 
-        // if login fails (Suspicious Activity tracking) ---
-        event(new Failed('api', $user, ['code' => $request->code]));
-        // --------------------------------------------------
+        // suspicious activity tracking: if Failed triggered, log the failed attempt with the provided code
+        // event(new Failed('api', $user, ['code' => $inputCode]));
 
-        return response()->json(['status' => false, 'message' => 'Invalid verification code'], 401);
+        return response()->json([
+            'status' => false,
+            'message' => 'The verification code you entered is incorrect.'
+        ], 401);
     }
+
+    // public function verifyLogin(Request $request)
+    // {
+    //     $request->validate(['email' => 'required|email', 'code' => 'required']);
+    //     $user = User::where('email', $request->email)->first();
+
+    //     if (! $user || ! $user->two_factor_confirmed_at) {
+    //         return response()->json(['status' => false, 'message' => 'Invalid request'], 403);
+    //     }
+
+    //     $valid = $this->google2fa->verifyKey($user->two_factor_secret, $request->code);
+
+    //     if (! $valid && $user->two_factor_recovery_codes) {
+    //         $hashedCodes = json_decode(decrypt($user->two_factor_recovery_codes), true);
+
+    //         foreach ($hashedCodes as $index => $hashedCode) {
+    //             if (Hash::check($request->code, $hashedCode)) {
+    //                 $valid = true;
+    //                 unset($hashedCodes[$index]);
+
+    //                 $user->update([
+    //                     'two_factor_recovery_codes' => encrypt(json_encode(array_values($hashedCodes))),
+    //                 ]);
+    //                 break;
+    //             }
+    //         }
+    //     }
+
+    //     if ($valid) {
+    //         $token = auth('api')->login($user);
+
+    //         // -----------------------------------------
+    //         // Trigger the Login event to log the successful login activity
+    //         $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
+    //         $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
+    //         request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
+    //         event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
+    //         // -----------------------------------------
+
+    //         return $this->respondWithToken($token, $user);
+    //     }
+
+    //     // if login fails (Suspicious Activity tracking) ---
+    //     // event(new Failed('api', $user, ['code' => $request->code]));
+    //     // --------------------------------------------------
+
+    //     return response()->json(['status' => false, 'message' => 'Invalid verification code'], 401);
+    // }
 
     public function disable(Request $request)
     {
@@ -166,8 +233,8 @@ class TwoFactorController extends Controller
         }
 
         if (Hash::check($request->password, $user->password)) {
-            $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
-            $hashedCodes = array_map(fn ($code) => bcrypt($code), $plainRecoveryCodes);
+            $plainRecoveryCodes = collect(range(1, 10))->map(fn() => Str::random(10))->toArray();
+            $hashedCodes = array_map(fn($code) => bcrypt($code), $plainRecoveryCodes);
 
             $user->update([
                 'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
@@ -248,7 +315,7 @@ class TwoFactorController extends Controller
         }
 
         $parts = explode('@', $user->recovery_email);
-        $maskedEmail = substr($parts[0], 0, 3).'****'.substr($parts[0], -2).'@'.$parts[1];
+        $maskedEmail = substr($parts[0], 0, 3) . '****' . substr($parts[0], -2) . '@' . $parts[1];
 
         return response()->json([
             'status' => true,
