@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
+use App\Models\RecruiterCommentLike;
 use App\Models\RecruiterPost;
 use App\Models\RecruiterPostComment;
 use App\Models\RecruiterPostLike;
@@ -974,6 +975,95 @@ class IndustryController extends Controller
                 'success' => false,
 
                 'message' => 'Failed to add reply.',
+
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+
+    public function toggleCommentLike($commentId)
+    {
+        $userId = auth()->id();
+
+        $comment = RecruiterPostComment::find($commentId);
+
+        if (!$comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $like = RecruiterCommentLike::where(
+                'comment_id',
+                $commentId
+            )
+                ->where(
+                    'user_id',
+                    $userId
+                )
+                ->first();
+
+            if ($like) {
+
+                $like->delete();
+
+                $comment->update([
+                    'likes_count' => max(
+                        0,
+                        $comment->likes_count - 1
+                    ),
+                ]);
+
+                $liked = false;
+
+                $message = 'Comment unliked successfully.';
+            } else {
+
+                RecruiterCommentLike::create([
+                    'comment_id' => $commentId,
+                    'user_id' => $userId,
+                ]);
+
+                $comment->increment('likes_count');
+
+                $liked = true;
+
+                $message = 'Comment liked successfully.';
+            }
+
+            DB::commit();
+
+            $comment->refresh();
+
+            return response()->json([
+                'success' => true,
+
+                'message' => $message,
+
+                'data' => [
+                    'comment_id' => $comment->id,
+
+                    'liked' => $liked,
+
+                    'likes_count' => $comment->likes_count,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+
+                'message' => 'Failed to update comment like.',
 
                 'error' => config('app.debug')
                     ? $e->getMessage()
