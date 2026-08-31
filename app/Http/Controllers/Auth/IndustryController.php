@@ -548,11 +548,20 @@ class IndustryController extends Controller
             },
             'industry',
         ])
+            ->withExists([
+                'likes as is_liked' => function ($query) {
+                    $query->where(
+                        'user_id',
+                        auth()->id()
+                    );
+                },
+            ])
             ->latest()
             ->get();
 
         return response()->json([
             'success' => true,
+
             'message' => 'Recruiter posts fetched successfully.',
 
             'data' => $posts->map(function ($post) {
@@ -564,12 +573,15 @@ class IndustryController extends Controller
                     'time_ago' => $post->created_at
                         ? $post->created_at->diffForHumans()
                         : null,
+
                     'logo' => $post->industry?->logo
                         ? Storage::disk('public')->url(
                             $post->industry->logo
                         )
                         : null,
+
                     'content' => $post->content,
+
 
 
                     'media' => $post->media
@@ -587,6 +599,11 @@ class IndustryController extends Controller
                             ];
                         })
                         ->values(),
+                    'likes_count' => $post->likes_count,
+
+                    'comments_count' => $post->comments_count,
+
+                    'is_liked' => (bool) $post->is_liked,
                 ];
             })->values(),
         ], 200);
