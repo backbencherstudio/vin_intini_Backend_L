@@ -618,13 +618,22 @@ class IndustryController extends Controller
             },
             'industry',
         ])
+            ->withExists([
+                'likes as is_liked' => function ($query) {
+                    $query->where(
+                        'user_id',
+                        auth()->id()
+                    );
+                },
+            ])
             ->latest()
             ->limit(5)
             ->get();
 
         return response()->json([
             'success' => true,
-            'message' => 'Latest 5 recruiter posts fetched successfully.',
+
+            'message' => 'Latest recruiter posts fetched successfully.',
 
             'data' => $posts->map(function ($post) {
 
@@ -662,6 +671,12 @@ class IndustryController extends Controller
                             ];
                         })
                         ->values(),
+
+                    'likes_count' => $post->likes_count,
+
+                    'comments_count' => $post->comments_count,
+
+                    'is_liked' => (bool) $post->is_liked,
                 ];
             })->values(),
         ], 200);
