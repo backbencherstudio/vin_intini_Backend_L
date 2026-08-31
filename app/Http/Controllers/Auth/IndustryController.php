@@ -865,4 +865,120 @@ class IndustryController extends Controller
             ], 500);
         }
     }
+
+
+    public function replyComment(Request $request, $commentId)
+    {
+        $validated = $request->validate([
+            'comment' => ['nullable', 'string', 'max:5000'],
+
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        if (
+            blank($validated['comment'] ?? null)
+            && !$request->hasFile('image')
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Reply must contain text or image.',
+            ], 422);
+        }
+
+        $parentComment = RecruiterPostComment::find(
+            $commentId
+        );
+
+        if (!$parentComment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $imagePath = null;
+
+            if ($request->hasFile('image')) {
+
+                $imagePath = $request->file('image')
+                    ->store(
+                        'recruiters/comments',
+                        'public'
+                    );
+            }
+
+            $reply = RecruiterPostComment::create([
+                'post_id' => $parentComment->post_id,
+
+                'user_id' => auth()->id(),
+
+                'parent_id' => $parentComment->id,
+
+                'comment' => $validated['comment'] ?? null,
+
+                'image' => $imagePath,
+            ]);
+
+            $parentComment->post
+                ->increment('comments_count');
+
+            DB::commit();
+
+            $reply->load('user');
+
+            return response()->json([
+                'success' => true,
+
+                'message' => 'Reply added successfully.',
+
+                'data' => [
+                    'id' => $reply->id,
+
+                    'post_id' => $reply->post_id,
+
+                    'parent_id' => $reply->parent_id,
+
+                    'user_id' => $reply->user_id,
+
+                    'comment' => $reply->comment,
+
+                    'image' => $reply->image
+                        ? Storage::disk('public')
+                        ->url($reply->image)
+                        : null,
+
+                    'likes_count' => $reply->likes_count,
+
+                    'created_at' => $reply->created_at,
+
+                    'time_ago' => $reply->created_at
+                        ->diffForHumans(),
+                ],
+            ], 201);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            if (
+                $imagePath &&
+                Storage::disk('public')->exists($imagePath)
+            ) {
+                Storage::disk('public')->delete($imagePath);
+            }
+
+            return response()->json([
+                'success' => false,
+
+                'message' => 'Failed to add reply.',
+
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
 }
