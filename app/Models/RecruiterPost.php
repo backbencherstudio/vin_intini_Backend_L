@@ -29,4 +29,12 @@ class RecruiterPost extends Model
         return $this->hasMany(RecruiterPostMedia::class)
             ->orderBy('sort_order');
     }
+
+    public function likes()
+    {
+        return $this->hasMany(
+            RecruiterPostLike::class,
+            'post_id'
+        );
+    }
 }
