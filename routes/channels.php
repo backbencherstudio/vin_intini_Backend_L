@@ -18,10 +18,10 @@ Broadcast::channel('conversation.{id}', function ($user, $id) {
 });
 
 // Schedule::command('model:prune')->daily();
-Schedule::command('model:prune')->dailyAt('05:36')->timezone('America/New_York');
+Schedule::command('model:prune')->dailyAt('02:00')->timezone('America/New_York');
 
 //added for sending account deletion reminder emails
-Schedule::command('account:send-deletion-reminders')->dailyAt('10:00')->timezone('America/New_York');
+Schedule::command('account:send-deletion-reminders')->dailyAt('05:38')->timezone('America/New_York');
 
 //session cleanup for login activities older than 30 days and not from native mobile app
 Schedule::call(function () {
