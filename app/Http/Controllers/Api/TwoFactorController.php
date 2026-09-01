@@ -37,6 +37,13 @@ class TwoFactorController extends Controller
             ], 403);
         }
 
+        if (! $user->recovery_email_verified_at) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Please add and verify a recovery email before setting up Two-Factor Authentication.',
+            ], 403);
+        }
+
         if ($user->two_factor_confirmed_at) {
             return response()->json([
                 'status' => false,
