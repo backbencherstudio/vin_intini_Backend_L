@@ -1469,4 +1469,126 @@ class IndustryController extends Controller
             ],
         ], 200);
     }
+
+
+    public function replyList(Request $request, $commentId)
+    {
+        $perPage = min(
+            (int) $request->get('per_page', 10),
+            100
+        );
+
+        $comment = RecruiterPostComment::whereNull('parent_id')
+            ->find($commentId);
+
+        if (!$comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        $replies = RecruiterPostComment::with([
+            'user:id,username,first_name,last_name,title,profile_image',
+        ])
+            ->withExists([
+                'likes as is_liked' => function ($query) {
+                    $query->where(
+                        'user_id',
+                        auth()->id()
+                    );
+                },
+            ])
+            ->where(
+                'parent_id',
+                $commentId
+            )
+            ->latest()
+            ->paginate($perPage);
+
+        $data = collect($replies->items())
+            ->map(function ($reply) {
+
+                return [
+                    'id' => $reply->id,
+
+                    'post_id' =>
+                    $reply->post_id,
+
+                    'parent_id' =>
+                    $reply->parent_id,
+
+                    'user' => $reply->user ? [
+                        'id' =>
+                        $reply->user->id,
+
+                        'username' =>
+                        $reply->user->username,
+
+                        'name' => trim(
+                            ($reply->user->first_name ?? '') .
+                                ' ' .
+                                ($reply->user->last_name ?? '')
+                        ),
+
+                        'title' =>
+                        $reply->user->title,
+
+                        'profile_image' =>
+                        $reply->user->profile_image_url,
+                    ] : null,
+
+                    'comment' =>
+                    $reply->comment,
+
+                    'image' => $reply->image
+                        ? Storage::disk('public')->url(
+                            $reply->image
+                        )
+                        : null,
+
+                    'likes_count' =>
+                    $reply->likes_count,
+
+                    'is_liked' =>
+                    (bool) $reply->is_liked,
+
+                    'created_at' =>
+                    $reply->created_at,
+
+                    'time_ago' =>
+                    $reply->created_at
+                        ? $reply->created_at->diffForHumans()
+                        : null,
+                ];
+            })
+            ->values();
+
+
+        return response()->json([
+            'success' => true,
+
+            'message' =>
+            'Comment replies fetched successfully.',
+
+            'data' => $data,
+
+            'pagination' => [
+                'current_page' =>
+                $replies->currentPage(),
+
+                'per_page' =>
+                $replies->perPage(),
+
+                'total' =>
+                $replies->total(),
+
+                'last_page' =>
+                $replies->lastPage(),
+
+                'has_more_pages' =>
+                $replies->hasMorePages(),
+            ],
+        ], 200);
+    }
 }
