@@ -543,13 +543,9 @@ class SecuritySettingsController extends Controller
         Mail::to($user->email)->queue(new AccountDeletionRequestedMail($user, $permanentDeleteAt));
 
         try {
-            $payload = auth('api')->payload();
-            if ($payload) {
-                $tokenId = $payload->get('jti');
-                LoginActivity::where('token_id', $tokenId)
-                    ->where('user_id', $user->id)
-                    ->update(['is_active' => 0]);
-            }
+            LoginActivity::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
         } catch (\Exception $e) {
             //
         }
