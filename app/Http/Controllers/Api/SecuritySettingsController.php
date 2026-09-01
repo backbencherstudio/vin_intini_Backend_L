@@ -51,10 +51,10 @@ class SecuritySettingsController extends Controller
                 $suspiciousId = $login->id;
 
                 if ($login->token_id === $currentTokenId) {
-                    $suspiciousStatus = 'New login detected. Please verify this session via email.';
+                    $suspiciousStatus = 'New login detected';
                     $canResolveFromHere = false;
                 } else {
-                    $suspiciousStatus = 'New login from unrecognized location/device. Was this you?';
+                    $suspiciousStatus = 'Suspicious activity detected';
                     $canResolveFromHere = true;
                 }
                 break;
