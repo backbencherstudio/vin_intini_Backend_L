@@ -401,9 +401,9 @@ class TwoFactorController extends Controller
             return $this->respondWithToken($token, $user);
         }
 
-        if ($user) {
-            event(new Failed('api', $user, ['otp' => $request->otp]));
-        }
+        // if ($user) {
+        //     event(new Failed('api', $user, ['otp' => $request->otp]));
+        // }
 
         return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.'], 422);
     }
@@ -422,5 +422,39 @@ class TwoFactorController extends Controller
             'token_type' => 'bearer',
             'expires_in' => auth('api')->factory()->getTTL() * 60,
         ]);
+    }
+
+    public function recoveryResendOtp(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !$user->recovery_email_verified_at) {
+            return response()->json(['status' => false, 'message' => 'No verified recovery email found.'], 422);
+        }
+
+        if ($user->otp_expires_at) {
+            $totalExpirySeconds = 600;
+            $currentRemainingSeconds = now()->diffInSeconds($user->otp_expires_at, false);
+
+            $waitAttempt = $currentRemainingSeconds - 540;
+
+            if ($waitAttempt > 0) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Please wait {$waitAttempt} seconds before requesting a new code.",
+                ], 429);
+            }
+        }
+
+        $otp = rand(1000, 9999);
+        $user->update([
+            'otp' => $otp,
+            'otp_expires_at' => now()->addMinutes(10),
+        ]);
+
+        Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
+
+        return response()->json(['status' => true, 'message' => 'A new verification code has been sent.']);
     }
 }
