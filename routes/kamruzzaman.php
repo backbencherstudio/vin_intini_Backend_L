@@ -101,6 +101,7 @@ Route::middleware('role:user')->group(function () {
         Route::post('post/comment/{postId}', [IndustryController::class, 'storeComment']);
         Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
         Route::post('post/comment/like/{commentId}', [IndustryController::class, 'toggleCommentLike']);
+        Route::get('post/comment/likes/{commentId}', [IndustryController::class, 'commentLikeList']);
     });
 
 

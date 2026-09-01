@@ -1147,4 +1147,79 @@ class IndustryController extends Controller
             ], 500);
         }
     }
+
+
+    public function commentLikeList(Request $request, $commentId)
+    {
+        $perPage = min(
+            (int) $request->get('per_page', 10),
+            100
+        );
+
+        $comment = RecruiterPostComment::find($commentId);
+
+        if (!$comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        $likes = RecruiterCommentLike::with([
+            'user:id,username,first_name,last_name,profile_image'
+        ])
+            ->where('comment_id', $commentId)
+
+            ->whereHas('user', function ($query) {
+                $query->whereNull('deleted_at');
+            })
+
+            ->latest()
+
+            ->paginate($perPage);
+
+        $users = collect($likes->items())
+            ->map(function ($like) {
+
+                if (!$like->user) {
+                    return null;
+                }
+
+                return [
+                    'id' => $like->user->id,
+
+                    'username' => $like->user->username,
+
+                    'name' => trim(
+                        ($like->user->first_name ?? '') .
+                            ' ' .
+                            ($like->user->last_name ?? '')
+                    ),
+
+                    'profile_image' => $like->user->profile_image_url,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+
+            'message' => 'Comment liked users fetched successfully.',
+
+            'data' => $users,
+
+            'pagination' => [
+                'current_page' => $likes->currentPage(),
+
+                'per_page' => $likes->perPage(),
+
+                'total' => $likes->total(),
+
+                'last_page' => $likes->lastPage(),
+
+                'has_more_pages' => $likes->hasMorePages(),
+            ],
+        ], 200);
+    }
 }
