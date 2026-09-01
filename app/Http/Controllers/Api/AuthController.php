@@ -53,16 +53,6 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Check if 2FA is enabled and confirmed
-        if ($user->two_factor_confirmed_at) {
-            return response()->json([
-                'status' => '2fa_required',
-                'two_factor_enabled' => true,
-                'email' => $user->email,
-                'message' => 'Two-factor authentication is required. Please provide your code.',
-            ], 200);
-        }
-
         // Check if the user is soft-deleted (account scheduled for deletion)
         if ($user->trashed()) {
             $token = auth('api')->login($user);
@@ -85,6 +75,16 @@ class AuthController extends Controller
                 'name' => $user->first_name . ' ' . $user->last_name,
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Would you like to restore it?",
                 'token' => $token,
+            ], 200);
+        }
+
+        // Check if 2FA is enabled and confirmed
+        if ($user->two_factor_confirmed_at) {
+            return response()->json([
+                'status' => '2fa_required',
+                'two_factor_enabled' => true,
+                'email' => $user->email,
+                'message' => 'Two-factor authentication is required. Please provide your code.',
             ], 200);
         }
 
