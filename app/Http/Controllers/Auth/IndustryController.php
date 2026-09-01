@@ -542,8 +542,13 @@ class IndustryController extends Controller
     }
 
 
-    public function indexPost()
+    public function indexPost(Request $request)
     {
+        $perPage = min(
+            (int) $request->get('per_page', 10),
+            100
+        );
+
         $posts = RecruiterPost::with([
             'media' => function ($query) {
                 $query->orderBy('sort_order');
@@ -559,14 +564,14 @@ class IndustryController extends Controller
                 },
             ])
             ->latest()
-            ->get();
+            ->paginate($perPage);
 
         return response()->json([
             'success' => true,
 
             'message' => 'Recruiter posts fetched successfully.',
 
-            'data' => $posts->map(function ($post) {
+            'data' => collect($posts->items())->map(function ($post) {
 
                 return [
                     'id' => $post->id,
@@ -608,6 +613,19 @@ class IndustryController extends Controller
                     'is_liked' => (bool) $post->is_liked,
                 ];
             })->values(),
+
+            'pagination' => [
+                'current_page' => $posts->currentPage(),
+
+                'per_page' => $posts->perPage(),
+
+                'total' => $posts->total(),
+
+                'last_page' => $posts->lastPage(),
+
+                'has_more_pages' => $posts->hasMorePages(),
+            ],
+
         ], 200);
     }
 
