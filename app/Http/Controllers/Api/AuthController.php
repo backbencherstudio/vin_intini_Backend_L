@@ -71,6 +71,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'status' => 'pending_deletion',
+                'is_onboarding' => $user->profile ? true : false,
                 'days_left' => (int) $daysRemaining,
                 'name' => $user->first_name . ' ' . $user->last_name,
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Would you like to restore it?",
