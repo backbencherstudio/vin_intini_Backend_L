@@ -542,8 +542,13 @@ class IndustryController extends Controller
     }
 
 
-    public function indexPost()
+    public function indexPost(Request $request)
     {
+        $perPage = min(
+            (int) $request->get('per_page', 10),
+            100
+        );
+
         $posts = RecruiterPost::with([
             'media' => function ($query) {
                 $query->orderBy('sort_order');
@@ -559,14 +564,14 @@ class IndustryController extends Controller
                 },
             ])
             ->latest()
-            ->get();
+            ->paginate($perPage);
 
         return response()->json([
             'success' => true,
 
             'message' => 'Recruiter posts fetched successfully.',
 
-            'data' => $posts->map(function ($post) {
+            'data' => collect($posts->items())->map(function ($post) {
 
                 return [
                     'id' => $post->id,
@@ -608,6 +613,19 @@ class IndustryController extends Controller
                     'is_liked' => (bool) $post->is_liked,
                 ];
             })->values(),
+
+            'pagination' => [
+                'current_page' => $posts->currentPage(),
+
+                'per_page' => $posts->perPage(),
+
+                'total' => $posts->total(),
+
+                'last_page' => $posts->lastPage(),
+
+                'has_more_pages' => $posts->hasMorePages(),
+            ],
+
         ], 200);
     }
 
@@ -1146,5 +1164,449 @@ class IndustryController extends Controller
                     : null,
             ], 500);
         }
+    }
+
+
+    public function commentLikeList(Request $request, $commentId)
+    {
+        $perPage = min(
+            (int) $request->get('per_page', 10),
+            100
+        );
+
+        $comment = RecruiterPostComment::find($commentId);
+
+        if (!$comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        $likes = RecruiterCommentLike::with([
+            'user:id,username,first_name,last_name,profile_image'
+        ])
+            ->where('comment_id', $commentId)
+
+            ->whereHas('user', function ($query) {
+                $query->whereNull('deleted_at');
+            })
+
+            ->latest()
+
+            ->paginate($perPage);
+
+        $users = collect($likes->items())
+            ->map(function ($like) {
+
+                if (!$like->user) {
+                    return null;
+                }
+
+                return [
+                    'id' => $like->user->id,
+
+                    'username' => $like->user->username,
+
+                    'name' => trim(
+                        ($like->user->first_name ?? '') .
+                            ' ' .
+                            ($like->user->last_name ?? '')
+                    ),
+
+                    'profile_image' => $like->user->profile_image_url,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+
+            'message' => 'Comment liked users fetched successfully.',
+
+            'data' => $users,
+
+            'pagination' => [
+                'current_page' => $likes->currentPage(),
+
+                'per_page' => $likes->perPage(),
+
+                'total' => $likes->total(),
+
+                'last_page' => $likes->lastPage(),
+
+                'has_more_pages' => $likes->hasMorePages(),
+            ],
+        ], 200);
+    }
+
+
+    public function commentList(Request $request, $postId)
+    {
+        $perPage = min(
+            (int) $request->get('per_page', 10),
+            100
+        );
+
+        $post = RecruiterPost::find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        $comments = RecruiterPostComment::with([
+            'user:id,username,first_name,last_name,title,profile_image',
+        ])
+            ->withExists([
+                'likes as is_liked' => function ($query) {
+                    $query->where(
+                        'user_id',
+                        auth()->id()
+                    );
+                },
+            ])
+            ->withCount('replies')
+            ->where('post_id', $postId)
+            ->whereNull('parent_id')
+            ->latest()
+            ->paginate($perPage);
+
+        $commentIds = collect($comments->items())
+            ->pluck('id')
+            ->values();
+
+        $replies = collect();
+
+        if ($commentIds->isNotEmpty()) {
+
+            $rankedReplies = DB::query()
+                ->fromSub(
+                    RecruiterPostComment::query()
+                        ->select([
+                            'id',
+                            'post_id',
+                            'parent_id',
+                            'user_id',
+                            'comment',
+                            'image',
+                            'likes_count',
+                            'created_at',
+                        ])
+                        ->selectRaw(
+                            'ROW_NUMBER() OVER (
+                            PARTITION BY parent_id
+                            ORDER BY created_at DESC, id DESC
+                        ) as reply_rank'
+                        )
+                        ->whereIn(
+                            'parent_id',
+                            $commentIds
+                        ),
+                    'ranked_replies'
+                )
+                ->where('reply_rank', '<=', 3)
+                ->get();
+
+            $replyIds = $rankedReplies
+                ->pluck('id')
+                ->values();
+
+            if ($replyIds->isNotEmpty()) {
+
+                $replies = RecruiterPostComment::with([
+                    'user:id,username,first_name,last_name,title,profile_image',
+                ])
+                    ->withExists([
+                        'likes as is_liked' => function ($query) {
+                            $query->where(
+                                'user_id',
+                                auth()->id()
+                            );
+                        },
+                    ])
+                    ->whereIn('id', $replyIds)
+                    ->get()
+                    ->groupBy('parent_id');
+            }
+        }
+
+
+        $data = collect($comments->items())
+            ->map(function ($comment) use ($replies) {
+
+                return [
+                    'id' => $comment->id,
+
+                    'post_id' =>
+                    $comment->post_id,
+
+                    'parent_id' =>
+                    $comment->parent_id,
+
+                    'user' => $comment->user ? [
+                        'id' =>
+                        $comment->user->id,
+
+                        'username' =>
+                        $comment->user->username,
+
+                        'name' => trim(
+                            ($comment->user->first_name ?? '') .
+                                ' ' .
+                                ($comment->user->last_name ?? '')
+                        ),
+
+                        'title' =>
+                        $comment->user->title,
+
+                        'profile_image' =>
+                        $comment->user->profile_image_url,
+                    ] : null,
+
+                    'comment' =>
+                    $comment->comment,
+
+                    'image' => $comment->image
+                        ? Storage::disk('public')->url(
+                            $comment->image
+                        )
+                        : null,
+
+                    'likes_count' =>
+                    $comment->likes_count,
+
+                    'is_liked' =>
+                    (bool) $comment->is_liked,
+
+                    'replies_count' =>
+                    $comment->replies_count,
+
+                    'created_at' =>
+                    $comment->created_at,
+
+                    'time_ago' =>
+                    $comment->created_at
+                        ? $comment->created_at->diffForHumans()
+                        : null,
+
+                    'replies' =>
+                    $replies
+                        ->get($comment->id, collect())
+                        ->sortByDesc(function ($reply) {
+                            return $reply->created_at;
+                        })
+                        ->values()
+                        ->map(function ($reply) {
+
+                            return [
+                                'id' =>
+                                $reply->id,
+
+                                'post_id' =>
+                                $reply->post_id,
+
+                                'parent_id' =>
+                                $reply->parent_id,
+
+                                'user' => $reply->user ? [
+                                    'id' =>
+                                    $reply->user->id,
+
+                                    'username' =>
+                                    $reply->user->username,
+
+                                    'name' => trim(
+                                        ($reply->user->first_name ?? '') .
+                                            ' ' .
+                                            ($reply->user->last_name ?? '')
+                                    ),
+
+                                    'title' =>
+                                    $reply->user->title,
+
+                                    'profile_image' =>
+                                    $reply->user->profile_image_url,
+                                ] : null,
+
+                                'comment' =>
+                                $reply->comment,
+
+                                'image' => $reply->image
+                                    ? Storage::disk('public')->url(
+                                        $reply->image
+                                    )
+                                    : null,
+
+                                'likes_count' =>
+                                $reply->likes_count,
+
+                                'is_liked' =>
+                                (bool) $reply->is_liked,
+
+                                'created_at' =>
+                                $reply->created_at,
+
+                                'time_ago' =>
+                                $reply->created_at
+                                    ? $reply->created_at->diffForHumans()
+                                    : null,
+                            ];
+                        }),
+                ];
+            })
+            ->values();
+
+
+        return response()->json([
+            'success' => true,
+
+            'message' =>
+            'Post comments fetched successfully.',
+
+            'data' => $data,
+
+            'pagination' => [
+                'current_page' =>
+                $comments->currentPage(),
+
+                'per_page' =>
+                $comments->perPage(),
+
+                'total' =>
+                $comments->total(),
+
+                'last_page' =>
+                $comments->lastPage(),
+
+                'has_more_pages' =>
+                $comments->hasMorePages(),
+            ],
+        ], 200);
+    }
+
+
+    public function replyList(Request $request, $commentId)
+    {
+        $perPage = min(
+            (int) $request->get('per_page', 10),
+            100
+        );
+
+        $comment = RecruiterPostComment::whereNull('parent_id')
+            ->find($commentId);
+
+        if (!$comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        $replies = RecruiterPostComment::with([
+            'user:id,username,first_name,last_name,title,profile_image',
+        ])
+            ->withExists([
+                'likes as is_liked' => function ($query) {
+                    $query->where(
+                        'user_id',
+                        auth()->id()
+                    );
+                },
+            ])
+            ->where(
+                'parent_id',
+                $commentId
+            )
+            ->latest()
+            ->paginate($perPage);
+
+        $data = collect($replies->items())
+            ->map(function ($reply) {
+
+                return [
+                    'id' => $reply->id,
+
+                    'post_id' =>
+                    $reply->post_id,
+
+                    'parent_id' =>
+                    $reply->parent_id,
+
+                    'user' => $reply->user ? [
+                        'id' =>
+                        $reply->user->id,
+
+                        'username' =>
+                        $reply->user->username,
+
+                        'name' => trim(
+                            ($reply->user->first_name ?? '') .
+                                ' ' .
+                                ($reply->user->last_name ?? '')
+                        ),
+
+                        'title' =>
+                        $reply->user->title,
+
+                        'profile_image' =>
+                        $reply->user->profile_image_url,
+                    ] : null,
+
+                    'comment' =>
+                    $reply->comment,
+
+                    'image' => $reply->image
+                        ? Storage::disk('public')->url(
+                            $reply->image
+                        )
+                        : null,
+
+                    'likes_count' =>
+                    $reply->likes_count,
+
+                    'is_liked' =>
+                    (bool) $reply->is_liked,
+
+                    'created_at' =>
+                    $reply->created_at,
+
+                    'time_ago' =>
+                    $reply->created_at
+                        ? $reply->created_at->diffForHumans()
+                        : null,
+                ];
+            })
+            ->values();
+
+
+        return response()->json([
+            'success' => true,
+
+            'message' =>
+            'Comment replies fetched successfully.',
+
+            'data' => $data,
+
+            'pagination' => [
+                'current_page' =>
+                $replies->currentPage(),
+
+                'per_page' =>
+                $replies->perPage(),
+
+                'total' =>
+                $replies->total(),
+
+                'last_page' =>
+                $replies->lastPage(),
+
+                'has_more_pages' =>
+                $replies->hasMorePages(),
+            ],
+        ], 200);
     }
 }

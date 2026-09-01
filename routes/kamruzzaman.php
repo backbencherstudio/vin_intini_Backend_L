@@ -99,8 +99,13 @@ Route::middleware('role:user')->group(function () {
         Route::get('post/likes/{postId}', [IndustryController::class, 'likeList']);
 
         Route::post('post/comment/{postId}', [IndustryController::class, 'storeComment']);
-        Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
+        Route::get('post/comments/{postId}', [IndustryController::class, 'commentList']);
+
         Route::post('post/comment/like/{commentId}', [IndustryController::class, 'toggleCommentLike']);
+        Route::get('post/comment/likes/{commentId}', [IndustryController::class, 'commentLikeList']);
+
+        Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
+        Route::get('post/comment/replies/{commentId}', [IndustryController::class, 'replyList']);
     });
 
 
