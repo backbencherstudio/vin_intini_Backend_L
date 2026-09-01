@@ -554,6 +554,13 @@ class SecuritySettingsController extends Controller
             //
         }
 
+        //remove 2FA and recovery codes before soft deleting the user
+        $user->update([
+            'two_factor_secret' => null,
+            'two_factor_confirmed_at' => null,
+            'two_factor_recovery_codes' => null,
+        ]);
+
         $user->delete();
         auth('api')->logout();
 
