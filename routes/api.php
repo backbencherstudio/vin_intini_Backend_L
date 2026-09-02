@@ -70,6 +70,7 @@ Route::middleware('auth:api', 'active_session')->group(function () {
         Route::get('/overview', [SecuritySettingsController::class, 'getSecurityOverview']); // security overview route
         Route::get('/active-sessions', [SecuritySettingsController::class, 'getActiveSessions']);  // active sessions route
         Route::get('/login-activities', [SecuritySettingsController::class, 'getLoginActivities']);  // user login activities
+        Route::get('/login-activity/{id}', [SecuritySettingsController::class, 'getLoginActivityDetails']); // user login activity details
         Route::post('/sessions/revoke/{id}', [SecuritySettingsController::class, 'revokeSession']);   // remove active session
         Route::post('/sessions/sign-out-all', [SecuritySettingsController::class, 'signOutAllSessions']);  // sign out all sessions
         Route::get('/suspicious-activities-list', [SecuritySettingsController::class, 'getSuspiciousActivitiesList']); // get suspicious activities list

@@ -162,7 +162,7 @@ class SecuritySettingsController extends Controller
 
             if (!in_array($currentCombo, $trustedCombinations)) {
 
-            $isMobile = ($login->browser === 'Native Mobile App');
+                $isMobile = ($login->browser === 'Native Mobile App');
 
                 $suspiciousList[] = [
                     'id' => $login->id,
@@ -258,7 +258,7 @@ class SecuritySettingsController extends Controller
                 $signinStatus = 'Logged out';
             }
 
-        $isMobile = ($activity->browser === 'Native Mobile App');
+            $isMobile = ($activity->browser === 'Native Mobile App');
 
             return [
                 'id' => $activity->id,
@@ -285,6 +285,61 @@ class SecuritySettingsController extends Controller
             'current_page' => $paginator->currentPage(),
             'total_page' => $paginator->lastPage(),
             'last_page' => $paginator->lastPage(),
+        ]);
+    }
+
+    public function getLoginActivityDetails($id): JsonResponse
+    {
+        $user = auth()->user();
+
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
+        $activity = LoginActivity::where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$activity) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Activity details not found.'
+            ], 404);
+        }
+
+        $isCurrent = $activity->token_id === $currentTokenId;
+        $isActive = (bool) $activity->is_active;
+
+        if ($activity->status === 'Failed') {
+            $signinStatus = 'Failed attempt';
+        } elseif ($isCurrent) {
+            $signinStatus = 'Current device';
+        } elseif ($isActive) {
+            $signinStatus = 'Signed in';
+        } else {
+            $signinStatus = 'Logged out';
+        }
+
+        $isMobile = ($activity->browser === 'Native Mobile App');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $activity->id,
+                'device' => $activity->device,
+                'browser' => $activity->browser,
+                'ip_address' => $activity->ip_address,
+                'location' => $activity->location,
+                'status' => $activity->status,
+                'is_active' => $isActive,
+                'is_current' => $isCurrent,
+                'is_mobile' => $isMobile,
+                // 'is_resolved' => (bool)$activity->is_resolved,
+                // 'is_trusted' => (bool)$activity->is_trusted,
+                'signin_status' => $signinStatus,
+                'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
+                'created_at' => $activity->created_at->toISOString(),
+            ],
         ]);
     }
 
