@@ -161,12 +161,16 @@ class SecuritySettingsController extends Controller
             $currentCombo = $login->device . '|' . $login->location;
 
             if (!in_array($currentCombo, $trustedCombinations)) {
+
+            $isMobile = ($login->browser === 'Native Mobile App');
+
                 $suspiciousList[] = [
                     'id' => $login->id,
                     'device' => $login->device,
                     'browser' => $login->browser,
                     'location' => $login->location,
                     'ip_address' => $login->ip_address,
+                    'is_mobile' => $isMobile,
                     'login_at' => Carbon::parse($login->login_at)->toISOString(),
                     'warning_message' => "Unrecognized login from {$login->location}",
                 ];
@@ -198,6 +202,8 @@ class SecuritySettingsController extends Controller
         $items = $sessions->map(function ($activity) use ($currentTokenId) {
             $isCurrent = $activity->token_id === $currentTokenId;
 
+            $isMobile = ($activity->browser === 'Native Mobile App');
+
             return [
                 'id' => $activity->id,
                 'device' => $activity->device,
@@ -206,6 +212,7 @@ class SecuritySettingsController extends Controller
                 'location' => $activity->location,
                 'is_active' => (bool) $activity->is_active,
                 'is_current' => $isCurrent,
+                'is_mobile' => $isMobile,
                 'status' => $isCurrent ? 'Current device' : 'Signed in',
                 'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
                 // 'last_activity' => $activity->updated_at ? Carbon::parse($activity->updated_at)->toISOString() : null,
@@ -251,6 +258,8 @@ class SecuritySettingsController extends Controller
                 $signinStatus = 'Logged out';
             }
 
+        $isMobile = ($activity->browser === 'Native Mobile App');
+
             return [
                 'id' => $activity->id,
                 'device' => $activity->device,
@@ -260,6 +269,7 @@ class SecuritySettingsController extends Controller
                 'status' => $activity->status,
                 'is_active' => $isActive,
                 'is_current' => $isCurrent,
+                'is_mobile' => $isMobile,
                 'signin_status' => $signinStatus,
                 'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
                 'created_at' => $activity->created_at->toISOString(),
