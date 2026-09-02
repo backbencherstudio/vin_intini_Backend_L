@@ -1565,19 +1565,17 @@ class IndustryController extends Controller
                         )
                         : null,
 
-                    'likes_count' =>
-                    $reply->likes_count,
-
-                    'is_liked' =>
-                    (bool) $reply->is_liked,
-
-                    'created_at' =>
-                    $reply->created_at,
-
                     'time_ago' =>
                     $reply->created_at
                         ? $reply->created_at->diffForHumans()
                         : null,
+
+                    'is_liked' =>
+                    (bool) $reply->is_liked,
+
+                    'likes_count' =>
+                    $reply->likes_count,
+
                 ];
             })
             ->values();
