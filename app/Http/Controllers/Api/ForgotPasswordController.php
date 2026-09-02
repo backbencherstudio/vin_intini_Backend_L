@@ -135,6 +135,7 @@ class ForgotPasswordController extends Controller
         }
 
         $user->password = Hash::make($request->new_password);
+        $user->has_password = true;
         $user->save();
 
         DB::table('password_otps')->where('user_id', $user->id)->delete();

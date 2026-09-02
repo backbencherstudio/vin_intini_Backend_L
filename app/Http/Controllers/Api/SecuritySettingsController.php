@@ -118,6 +118,7 @@ class SecuritySettingsController extends Controller
                     'rating' => $securityRating,
                     'last_checked' => now()->toISOString(),
                 ],
+                'has_password' => (bool) $user->has_password,
                 'password_strength' => 'Strong',
                 'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
                 // 'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . ' active devices',
@@ -553,6 +554,7 @@ class SecuritySettingsController extends Controller
         $user = User::find($request->user_id);
         $user->update([
             'password' => Hash::make($request->password),
+            'has_password' => true,
         ]);
 
         $activity->update(['is_resolved' => true, 'is_trusted' => false]);
