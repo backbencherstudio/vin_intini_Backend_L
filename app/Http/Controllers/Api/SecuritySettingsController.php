@@ -567,60 +567,118 @@ class SecuritySettingsController extends Controller
 
     public function restore(Request $request)
     {
-        $token = $request->bearerToken();
-
-        if (!$token) {
-            return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
-        }
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
 
         try {
-            $payload = JWTAuth::setToken($token)->getPayload();
-            $userId = $payload->get('sub');
+            $user = User::withTrashed()->where('email', $request->email)->first();
 
-            $user = User::withTrashed()->find($userId);
-
-            if (!$user) {
+            if (!$user || !$user->trashed()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User account not found.'
+                    'message' => 'No pending account deletion found for this email.'
                 ], 404);
             }
 
-            if ($user->trashed()) {
-                $user->restore();
-
-                DeletedAccountLog::where('user_id', $user->id)->delete();
-
-                $tokenId = $payload->get('jti');
-                request()->merge(['current_token_id' => $tokenId]);
-                event(new \Illuminate\Auth\Events\Login('api', $user, false));
-
-                $roleName = $user->getRoleNames()->first();
-                $user->makeHidden('roles');
-                $user->role = $roleName;
-
+            if (!Hash::check($request->password, $user->password)) {
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Welcome back! Your account has been successfully reactivated.',
-                    'data' => [
-                        'is_onboarding' => $user->profile()->exists(),
-                        'user' => $user,
-                        'token' => $token,
-                        'token_type' => 'bearer',
-                    ]
-                ]);
-            } else {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Your account is already active.'
-                ]);
+                    'success' => false,
+                    'message' => 'The provided password is incorrect. Restoration failed.'
+                ], 401);
             }
+
+            $user->restore();
+
+            DeletedAccountLog::where('user_id', $user->id)->delete();
+
+            $token = auth('api')->login($user);
+
+            $payload = auth('api')->setToken($token)->getPayload();
+            $tokenId = $payload->get('jti');
+            request()->merge(['current_token_id' => $tokenId]);
+            event(new \Illuminate\Auth\Events\Login('api', $user, false));
+
+            $roleName = $user->getRoleNames()->first();
+            $user->makeHidden('roles');
+            $user->role = $roleName;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Welcome back! Your account has been successfully reactivated.',
+                'data' => [
+                    'is_onboarding' => $user->profile()->exists(),
+                    'user' => $user,
+                    'token' => $token,
+                    'token_type' => 'bearer',
+                ]
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid or expired token.',
+                'message' => 'Something went wrong while restoring the account.',
                 'error' => $e->getMessage()
-            ], 401);
+            ], 500);
         }
     }
+
+    // public function restore(Request $request)
+    // {
+    //     $token = $request->bearerToken();
+
+    //     if (!$token) {
+    //         return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
+    //     }
+
+    //     try {
+    //         $payload = JWTAuth::setToken($token)->getPayload();
+    //         $userId = $payload->get('sub');
+
+    //         $user = User::withTrashed()->find($userId);
+
+    //         if (!$user) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'User account not found.'
+    //             ], 404);
+    //         }
+
+    //         if ($user->trashed()) {
+    //             $user->restore();
+
+    //             DeletedAccountLog::where('user_id', $user->id)->delete();
+
+    //             $tokenId = $payload->get('jti');
+    //             request()->merge(['current_token_id' => $tokenId]);
+    //             event(new \Illuminate\Auth\Events\Login('api', $user, false));
+
+    //             $roleName = $user->getRoleNames()->first();
+    //             $user->makeHidden('roles');
+    //             $user->role = $roleName;
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'Welcome back! Your account has been successfully reactivated.',
+    //                 'data' => [
+    //                     'is_onboarding' => $user->profile()->exists(),
+    //                     'user' => $user,
+    //                     'token' => $token,
+    //                     'token_type' => 'bearer',
+    //                 ]
+    //             ]);
+    //         } else {
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'Your account is already active.'
+    //             ]);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Invalid or expired token.',
+    //             'error' => $e->getMessage()
+    //         ], 401);
+    //     }
+    // }
 }

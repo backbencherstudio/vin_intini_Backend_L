@@ -55,8 +55,6 @@ class AuthController extends Controller
 
         // Check if the user is soft-deleted (account scheduled for deletion)
         if ($user->trashed()) {
-            $token = auth('api')->login($user);
-
             $deletionLog = DeletedAccountLog::where('user_id', $user->id)->latest()->first();
 
             $daysRemaining = 0;
@@ -71,14 +69,13 @@ class AuthController extends Controller
 
             return response()->json([
                 'status' => 'pending_deletion',
-                'is_onboarding' => $user->profile ? true : false,
                 'days_left' => (int) $daysRemaining,
                 'name' => $user->first_name . ' ' . $user->last_name,
-                'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Would you like to restore it?",
-                'token' => $token,
+                'email' => $user->email,
+                'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
             ], 200);
         }
-
+        
         // Check if 2FA is enabled and confirmed
         if ($user->two_factor_confirmed_at) {
             return response()->json([
