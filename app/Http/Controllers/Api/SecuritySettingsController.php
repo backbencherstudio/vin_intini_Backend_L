@@ -223,32 +223,152 @@ class SecuritySettingsController extends Controller
         return response()->json(['success' => true, 'data' => $items]);
     }
 
+    // public function getLoginActivities(Request $request): JsonResponse
+    // {
+    //     $perPage = $request->integer('limit', $request->integer('per_page', 10));
+    //     $perPage = max(1, min($perPage, 100));
+
+    //     $user = auth()->user();
+    //     $currentTokenId = auth('api')->check()
+    //         ? auth('api')->payload()->get('jti')
+    //         : session()->getId();
+
+    //     $trustedCombinations = LoginActivity::where('user_id', $user->id)
+    //         ->where('is_trusted', true)
+    //         ->select('device', 'location')
+    //         ->distinct()
+    //         ->get()
+    //         ->map(fn($item) => $item->device . '|' . $item->location)
+    //         ->toArray();
+
+    //     $paginator = LoginActivity::where('user_id', $user->id)
+    //         ->orderByRaw("
+    //     CASE
+    //         WHEN token_id = ? THEN 1
+    //         WHEN is_active = 1 AND status = 'Successful' THEN 2
+    //         WHEN is_active = 0 AND status = 'Successful' THEN 3
+    //         WHEN status = 'Failed' THEN 4
+    //         ELSE 5
+    //         END ASC
+    //     ", [$currentTokenId])
+    //         ->orderBy('login_at', 'desc')
+    //         ->paginate($perPage);
+
+    //     $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId, $trustedCombinations) {
+    //         $isCurrent = $activity->token_id === $currentTokenId;
+    //         $isActive = (bool) $activity->is_active;
+    //         $isTrusted = (bool) $activity->is_trusted;
+
+    //         $currentCombo = $activity->device . '|' . $activity->location;
+    //         $isSuspicious = (
+    //             $activity->status === 'Successful' &&
+    //             !$activity->is_resolved &&
+    //             !in_array($currentCombo, $trustedCombinations)
+    //         );
+
+    //         if ($activity->status === 'Failed') {
+    //             $signinStatus = 'Failed attempt';
+    //         } elseif ($isCurrent) {
+    //             $signinStatus = 'Current device';
+    //         } elseif ($isActive) {
+    //             $signinStatus = 'Signed in';
+    //         } else {
+    //             $signinStatus = 'Logged out';
+    //         }
+
+    //         $isMobile = ($activity->browser === 'Native Mobile App');
+
+    //         return [
+    //             'id' => $activity->id,
+    //             'device' => $activity->device,
+    //             'browser' => $activity->browser,
+    //             'ip_address' => $activity->ip_address,
+    //             'location' => $activity->location,
+    //             'status' => $activity->status,
+    //             'is_active' => $isActive,
+    //             'is_current' => $isCurrent,
+    //             'is_mobile' => $isMobile,
+    //             'is_trusted' => $isTrusted,
+    //             'is_suspicious' => $isSuspicious,
+    //             'signin_status' => $signinStatus,
+    //             'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
+    //             'created_at' => $activity->created_at->toISOString(),
+    //         ];
+    //     });
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'status' => 'success',
+    //         'data' => ['items' => $items],
+    //         'total' => $paginator->total(),
+    //         'limit' => $perPage,
+    //         'current_page' => $paginator->currentPage(),
+    //         'total_page' => $paginator->lastPage(),
+    //         'last_page' => $paginator->lastPage(),
+    //     ]);
+    // }
+
     public function getLoginActivities(Request $request): JsonResponse
     {
         $perPage = $request->integer('limit', $request->integer('per_page', 10));
         $perPage = max(1, min($perPage, 100));
 
+        $user = auth()->user();
         $currentTokenId = auth('api')->check()
             ? auth('api')->payload()->get('jti')
             : session()->getId();
 
-        $paginator = LoginActivity::where('user_id', auth()->id())
+        $trustedCombinations = LoginActivity::where('user_id', $user->id)
+            ->where('is_trusted', true)
+            ->select('device', 'location')
+            ->distinct()
+            ->get()
+            ->map(fn($item) => $item->device . '|' . $item->location)
+            ->toArray();
+
+        $paginator = LoginActivity::where('user_id', $user->id)
             ->orderByRaw("
-            CASE
-                WHEN token_id = ? THEN 1
-                WHEN is_active = 1 AND status = 'Successful' THEN 2
-                WHEN is_active = 0 AND status = 'Successful' THEN 3
-                WHEN status = 'Failed' THEN 4
-                ELSE 5
+        CASE
+            WHEN token_id = ? THEN 1
+            WHEN is_active = 1 AND status = 'Successful' THEN 2
+            WHEN is_active = 0 AND status = 'Successful' THEN 3
+            WHEN status = 'Failed' THEN 4
+            ELSE 5
             END ASC
         ", [$currentTokenId])
-            ->orderBy('login_at', 'desc')
-            ->paginate($perPage);
+                ->orderBy('login_at', 'desc')
+                ->paginate($perPage);
 
-        $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId) {
+        $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId, $trustedCombinations) {
             $isCurrent = $activity->token_id === $currentTokenId;
             $isActive = (bool) $activity->is_active;
+            $isTrusted = (bool) $activity->is_trusted;
+            $isResolved = (bool) $activity->is_resolved;
 
+            $currentCombo = $activity->device . '|' . $activity->location;
+
+            $isSuspicious = (
+                $activity->status === 'Successful' &&
+                !$isResolved &&
+                !in_array($currentCombo, $trustedCombinations)
+            );
+
+            $isBlocked = (
+                $activity->status === 'Blocked' ||
+                ($activity->status === 'Successful' && !$isActive && $isResolved && !$isTrusted)
+            );
+
+            if ($isTrusted) {
+                $activityStatus = 'Trusted Device';
+            } elseif ($isSuspicious) {
+                $activityStatus = 'Suspicious';
+            } elseif ($isBlocked) {
+                $activityStatus = 'Blocked';
+            } else {
+                $activityStatus = 'Regular Device';
+            }
+
+            // ৪. signin_status (Current Device/Signed in/Logged out)
             if ($activity->status === 'Failed') {
                 $signinStatus = 'Failed attempt';
             } elseif ($isCurrent) {
@@ -259,8 +379,6 @@ class SecuritySettingsController extends Controller
                 $signinStatus = 'Logged out';
             }
 
-            $isMobile = ($activity->browser === 'Native Mobile App');
-
             return [
                 'id' => $activity->id,
                 'device' => $activity->device,
@@ -270,8 +388,10 @@ class SecuritySettingsController extends Controller
                 'status' => $activity->status,
                 'is_active' => $isActive,
                 'is_current' => $isCurrent,
-                'is_mobile' => $isMobile,
+                'is_mobile' => ($activity->browser === 'Native Mobile App'),
                 'signin_status' => $signinStatus,
+                'activity_status' => $activityStatus,
+                'is_suspicious' => $isSuspicious,
                 'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
                 'created_at' => $activity->created_at->toISOString(),
             ];
@@ -288,6 +408,72 @@ class SecuritySettingsController extends Controller
             'last_page' => $paginator->lastPage(),
         ]);
     }
+
+    // public function getLoginActivities(Request $request): JsonResponse
+    // {
+    //     $perPage = $request->integer('limit', $request->integer('per_page', 10));
+    //     $perPage = max(1, min($perPage, 100));
+
+    //     $currentTokenId = auth('api')->check()
+    //         ? auth('api')->payload()->get('jti')
+    //         : session()->getId();
+
+    //     $paginator = LoginActivity::where('user_id', auth()->id())
+    //         ->orderByRaw("
+    //         CASE
+    //             WHEN token_id = ? THEN 1
+    //             WHEN is_active = 1 AND status = 'Successful' THEN 2
+    //             WHEN is_active = 0 AND status = 'Successful' THEN 3
+    //             WHEN status = 'Failed' THEN 4
+    //             ELSE 5
+    //         END ASC
+    //     ", [$currentTokenId])
+    //         ->orderBy('login_at', 'desc')
+    //         ->paginate($perPage);
+
+    //     $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId) {
+    //         $isCurrent = $activity->token_id === $currentTokenId;
+    //         $isActive = (bool) $activity->is_active;
+
+    //         if ($activity->status === 'Failed') {
+    //             $signinStatus = 'Failed attempt';
+    //         } elseif ($isCurrent) {
+    //             $signinStatus = 'Current device';
+    //         } elseif ($isActive) {
+    //             $signinStatus = 'Signed in';
+    //         } else {
+    //             $signinStatus = 'Logged out';
+    //         }
+
+    //         $isMobile = ($activity->browser === 'Native Mobile App');
+
+    //         return [
+    //             'id' => $activity->id,
+    //             'device' => $activity->device,
+    //             'browser' => $activity->browser,
+    //             'ip_address' => $activity->ip_address,
+    //             'location' => $activity->location,
+    //             'status' => $activity->status,
+    //             'is_active' => $isActive,
+    //             'is_current' => $isCurrent,
+    //             'is_mobile' => $isMobile,
+    //             'signin_status' => $signinStatus,
+    //             'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
+    //             'created_at' => $activity->created_at->toISOString(),
+    //         ];
+    //     });
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'status' => 'success',
+    //         'data' => ['items' => $items],
+    //         'total' => $paginator->total(),
+    //         'limit' => $perPage,
+    //         'current_page' => $paginator->currentPage(),
+    //         'total_page' => $paginator->lastPage(),
+    //         'last_page' => $paginator->lastPage(),
+    //     ]);
+    // }
 
     public function getLoginActivityDetails($id): JsonResponse
     {
