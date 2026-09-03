@@ -431,7 +431,6 @@ class IndustryController extends Controller
             ], 403);
         }
 
-
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
 
@@ -439,6 +438,51 @@ class IndustryController extends Controller
 
             'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:102400'],
         ]);
+
+        if ($request->hasFile('media')) {
+
+            $mediaFiles = $request->file('media');
+
+            $videoCount = collect($mediaFiles)
+                ->filter(function ($file) {
+                    return str_starts_with(
+                        $file->getMimeType() ?? '',
+                        'video/'
+                    );
+                })
+                ->count();
+
+            $imageCount = collect($mediaFiles)
+                ->filter(function ($file) {
+                    return str_starts_with(
+                        $file->getMimeType() ?? '',
+                        'image/'
+                    );
+                })
+                ->count();
+
+            if ($videoCount > 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 1 video per post.',
+                ], 422);
+            }
+
+            if ($videoCount === 1 && $imageCount > 9) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 9 images with 1 video.',
+                ], 422);
+            }
+
+            if ($videoCount === 0 && $imageCount > 10) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 10 images per post.',
+                ], 422);
+            }
+        }
+
 
         $content = trim($validated['content'] ?? '');
 

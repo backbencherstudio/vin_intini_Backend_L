@@ -7,6 +7,11 @@ use Illuminate\Support\Str;
 
 class RecruiterMediaUploadService
 {
+    public function __construct(
+        private OptimizedImageUploadService $imageUploadService
+    ) {}
+
+
     public function upload(UploadedFile $file): array
     {
         $mime = $file->getMimeType() ?? '';
@@ -18,11 +23,12 @@ class RecruiterMediaUploadService
         return $this->processImage($file);
     }
 
+
     private function processImage(UploadedFile $file): array
     {
-        $path = $file->store(
-            'recruiters/posts',
-            'public'
+        $path = $this->imageUploadService->store(
+            $file,
+            'recruiters/posts'
         );
 
         return [
@@ -30,6 +36,8 @@ class RecruiterMediaUploadService
             'type' => 'image',
         ];
     }
+
+
 
     private function processVideo(UploadedFile $file): array
     {
