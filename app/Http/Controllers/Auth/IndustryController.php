@@ -9,6 +9,7 @@ use App\Models\RecruiterPost;
 use App\Models\RecruiterPostComment;
 use App\Models\RecruiterPostLike;
 use App\Models\Subscription;
+use App\Services\OptimizedImageUploadService;
 use App\Services\RecruiterMediaUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -899,7 +900,7 @@ class IndustryController extends Controller
     }
 
 
-    public function storeComment(Request $request, $postId)
+    public function storeComment(Request $request, $postId, OptimizedImageUploadService $imageUploadService)
     {
         $validated = $request->validate([
             'comment' => ['nullable', 'string', 'max:5000'],
@@ -934,11 +935,10 @@ class IndustryController extends Controller
 
             if ($request->hasFile('image')) {
 
-                $imagePath = $request->file('image')
-                    ->store(
-                        'recruiters/comments',
-                        'public'
-                    );
+                $imagePath = $imageUploadService->store(
+                    $request->file('image'),
+                    'recruiters/comments'
+                );
             }
 
             $comment = RecruiterPostComment::create([
