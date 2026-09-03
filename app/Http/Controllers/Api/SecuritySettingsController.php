@@ -391,6 +391,7 @@ class SecuritySettingsController extends Controller
                 'is_mobile' => ($activity->browser === 'Native Mobile App'),
                 'signin_status' => $signinStatus,
                 'activity_status' => $activityStatus,
+                'is_suspicious' => $isSuspicious,
                 'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
                 'created_at' => $activity->created_at->toISOString(),
             ];
