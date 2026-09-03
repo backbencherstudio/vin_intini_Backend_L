@@ -46,7 +46,7 @@ class MessageController extends Controller
 
         $isConnected = false;
 
-        if ($otherUser) {
+        if ($otherUser && ! $otherUser->trashed()) {
             $isConnected = Connection::query()
                 ->accepted()
                 ->where(function ($query) use ($currentUser, $otherUser) {
@@ -119,8 +119,8 @@ class MessageController extends Controller
         $conversation->load(['user1' => fn($q) => $q->withTrashed(), 'user2' => fn($q) => $q->withTrashed()]);
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
-        if (! $otherUser) {
-            return response()->json(['success' => false, 'message' => 'User not found.'], 404);
+        if (! $otherUser || $otherUser->trashed()) {
+            return response()->json(['success' => false, 'message' => 'Cannot send messages to a deleted user.'], 403);
         }
 
         $isConnected = Connection::query()
