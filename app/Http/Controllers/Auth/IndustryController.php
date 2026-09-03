@@ -1006,7 +1006,7 @@ class IndustryController extends Controller
     }
 
 
-    public function replyComment(Request $request, $commentId)
+    public function replyComment(Request $request, $commentId, OptimizedImageUploadService $imageUploadService)
     {
         $validated = $request->validate([
             'comment' => ['nullable', 'string', 'max:5000'],
@@ -1043,11 +1043,10 @@ class IndustryController extends Controller
 
             if ($request->hasFile('image')) {
 
-                $imagePath = $request->file('image')
-                    ->store(
-                        'recruiters/comments',
-                        'public'
-                    );
+                $imagePath = $imageUploadService->store(
+                    $request->file('image'),
+                    'recruiters/comments'
+                );
             }
 
             $reply = RecruiterPostComment::create([
