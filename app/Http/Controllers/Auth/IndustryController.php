@@ -38,7 +38,7 @@ class IndustryController extends Controller
         if (!$subscription) {
             return response()->json([
                 'success' => false,
-                'message' => 'You need an active subscription to create an industry.',
+                'message' => 'You need an active subscription to create a company page.',
             ], 403);
         }
 
@@ -47,17 +47,17 @@ class IndustryController extends Controller
         if (!in_array('company_profile', $features, true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Your current plan does not include industry creation.',
+                'message' => 'Your current plan does not include company page creation.',
             ], 403);
         }
 
-        // Check if user already has an industry
+        // Check if user already has a company page
         $existingIndustry = Industry::where('created_by', auth()->id())->first();
 
         if ($existingIndustry) {
             return response()->json([
                 'success' => false,
-                'message' => 'You already have an industry.',
+                'message' => 'You already have a company page.',
             ], 409);
         }
 
@@ -128,7 +128,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Industry created successfully.',
+                'message' => 'Company page created successfully.',
                 'data' => [
                     'id' => $industry->id,
                     'name' => $industry->name,
@@ -177,7 +177,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create industry.',
+                'message' => 'Failed to create company page.',
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
