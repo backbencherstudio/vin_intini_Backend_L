@@ -75,7 +75,7 @@ class AuthController extends Controller
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
             ], 200);
         }
-        
+
         // Check if 2FA is enabled and confirmed
         if ($user->two_factor_confirmed_at) {
             return response()->json([
@@ -240,7 +240,6 @@ class AuthController extends Controller
         }
     }
 
-
     public function refresh()
     {
         $token = auth('api')->getToken();
@@ -299,30 +298,6 @@ class AuthController extends Controller
             return null;
         }
     }
-
-
-    // public function refresh()
-    // {
-    //     try {
-    //         $token = auth('api')->refresh();
-
-    //         $user = auth('api')->user();
-
-    //         return $this->respondWithToken($token, $user);
-    //     } catch (TokenExpiredException $e) {
-
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Refresh token expired. Please login again.',
-    //         ], 401);
-    //     } catch (JWTException $e) {
-
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Token invalid or not provided',
-    //         ], 401);
-    //     }
-    // }
 
     protected function respondWithToken($token, $user)
     {

@@ -12,6 +12,7 @@ use App\Services\OptimizedImageUploadService;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 
 class GroupController extends Controller
@@ -92,7 +93,8 @@ class GroupController extends Controller
         $request->merge($data);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:groups,name',
+            'name' => 'required|string|max:255',
+            // 'name' => 'required|string|max:255|unique:groups,name',
             'description' => 'required|string|max:2500',
             'industry' => 'required|array|max:3',
             'location' => 'nullable|string|max:255',
@@ -104,6 +106,18 @@ class GroupController extends Controller
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'cover_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
+
+        // --- unique slug generation ---
+        $baseSlug = Str::slug($validated['name']);
+        $finalSlug = $baseSlug;
+        $counter = 1;
+
+        while (Group::where('slug', $finalSlug)->exists()) {
+            $finalSlug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+        $validated['slug'] = $finalSlug;
+        // ---------------------------------------------------
 
         if ($request->hasFile('logo')) {
             $validated['logo'] = $imageUploadService->store($request->file('logo'), 'group_logos');
@@ -193,6 +207,7 @@ class GroupController extends Controller
                     'group' => [
                         'id' => $group->id,
                         'name' => $group->name,
+                        'slug' => $group->slug,
                         'type' => $group->type,
                         'members_count' => $group->members_count,
                     ],
@@ -219,108 +234,6 @@ class GroupController extends Controller
             ],
         ], 200);
     }
-
-    // public function show(Request $request, $id)
-    // {
-    //     $group = Group::with([
-    //         'creator:id,first_name,last_name,title',
-    //         // 'members' => function ($query) {
-    //         //     $query->select('users.id', 'first_name', 'last_name', 'email')->limit(10);
-    //         // },
-    //     ])
-    //         // ->withCount('members')
-    //         ->withCount(['members' => function ($query) {
-    //             $query->where('group_users.status', 'active');
-    //         }])
-    //         ->find($id);
-
-    //     if (! $group) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Group not found',
-    //         ], 404);
-    //     }
-
-    //     $user = $request->user();
-
-    //     // $isMember = $user ? $group->members()->where('user_id', $user->id)->exists() : false;
-
-    //     $isMember = false;
-    //     $notificationStatus = null;
-    //     $mutualMembers = [];
-    //     $mutualMembersCount = 0;
-
-    //     if ($user) {
-    //         $membership = GroupUser::where('group_id', $group->id)
-    //             ->where('user_id', $user->id)
-    //             ->first();
-
-    //         if ($membership) {
-    //             if ($membership->status === 'banned') {
-    //                 return response()->json([
-    //                     'status' => 'error',
-    //                     'message' => 'You are banned from this group.',
-    //                     'is_banned' => true
-    //                 ], 403);
-    //             }
-
-    //             $isMember = true;
-    //             $notificationStatus = $membership->notification_status;
-    //         }
-
-    //         $myFriendIds = $this->connectedUserIds($user->id);
-
-    //         if ($myFriendIds->isNotEmpty()) {
-    //             $mutualQuery = $group->members()
-    //                 ->wherePivot('status', 'active')
-    //                 ->whereIn('users.id', $myFriendIds)
-    //                 ->select('users.id', 'first_name', 'last_name', 'profile_image');
-
-    //             $mutualMembersCount = $mutualQuery->count();
-
-    //             $mutualMembers = $mutualQuery->limit(5)->get()->map(function ($member) {
-    //                 return [
-    //                     'id' => $member->id,
-    //                     'first_name' => $member->first_name,
-    //                     'last_name' => $member->last_name,
-    //                     'profile_image_url' => $member->profile_image_url,
-    //                 ];
-    //             });
-    //         }
-    //     }
-
-    //     $isAdmin = $user ? ($group->creator_id === $user->id) : false;
-
-    //     if ($group->type === 'private' && ! $isMember && ! $isAdmin) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'This is a private group. You must be a member to see details.',
-    //             'data' => [
-    //                 'group' => [
-    //                     'id' => $group->id,
-    //                     'name' => $group->name,
-    //                     'type' => $group->type,
-    //                     'members_count' => $group->members_count,
-    //                 ],
-    //                 'is_current_user_member' => false,
-    //                 'notification_status' => null,
-    //                 'mutual_members_count' => $mutualMembersCount,
-    //                 'mutual_members' => $mutualMembers,
-    //             ],
-    //         ], 403);
-    //     }
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => [
-    //             'group' => $group,
-    //             'is_current_user_member' => $isMember,
-    //             'notification_status' => $notificationStatus,
-    //             'mutual_members_count' => $mutualMembersCount,
-    //             'mutual_members' => $mutualMembers,
-    //         ],
-    //     ], 200);
-    // }
 
     public function inviteableUsers(Request $request, $id)
     {
@@ -373,6 +286,7 @@ class GroupController extends Controller
         $data = $users->getCollection()->map(function (User $user): array {
             return [
                 'id' => $user->id,
+                'username' => $user->username,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'title' => $user->title,
@@ -457,10 +371,12 @@ class GroupController extends Controller
                 'group' => [
                     'id' => $group->id,
                     'name' => $group->name,
+                    'slug' => $group->slug,
                 ],
                 'invited_user' => [
                     'invitation_id' => $invitation->id,
                     'id' => $invitee->id,
+                    'username' => $invitee->username,
                     'first_name' => $invitee->first_name,
                     'last_name' => $invitee->last_name,
                     'title' => $invitee->title,
@@ -970,90 +886,6 @@ class GroupController extends Controller
         ], 200);
     }
 
-    // public function invitationRequests(Request $request)
-    // {
-    //     $search = trim((string) $request->query('search', ''));
-    //     $perPage = $request->integer('limit', $request->integer('per_page', 10));
-    //     $perPage = max(1, min($perPage, 100));
-    //     // $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
-    //     $page = max(1, (int) $request->integer('page', 1));
-
-    //     $invitations = GroupInvitation::query()
-    //         ->where('invited_user_id', $request->user()->id)
-    //         ->with([
-    //             'group:id,name,type,logo,creator_id',
-    //             'inviter:id,first_name,last_name,title,profile_image',
-    //         ])
-    //         ->when($search !== '', function ($query) use ($search) {
-    //             $query->whereHas('group', function ($groupQuery) use ($search) {
-    //                 $groupQuery->where('name', 'like', '%' . $search . '%');
-    //             });
-    //         })
-    //         ->latest('id')
-    //         ->paginate($perPage, page: $page);
-
-    //     $data = $invitations->getCollection()
-    //         ->map(function (GroupInvitation $invitation): array {
-    //             $inviterName = trim(($invitation->inviter?->first_name ?? '') . ' ' . ($invitation->inviter?->last_name ?? ''));
-
-    //             return [
-    //                 'invitation_id' => $invitation->id,
-    //                 'group' => [
-    //                     'id' => $invitation->group?->id,
-    //                     'name' => $invitation->group?->name,
-    //                     'type' => $invitation->group?->type,
-    //                     'logo_url' => $invitation->group?->logo_url,
-    //                 ],
-    //                 'inviter' => [
-    //                     'id' => $invitation->inviter?->id,
-    //                     'name' => $inviterName,
-    //                     'title' => $invitation->inviter?->title,
-    //                     'profile_image_url' => $invitation->inviter?->profile_image_url,
-    //                 ],
-    //                 'requested_at' => $invitation->created_at?->toDateTimeString(),
-    //             ];
-    //         })
-    //         ->values();
-
-    //     if ($invitations->total() === 0) {
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'No pending group invitations found.',
-    //             'status' => 'success',
-    //             'data' => [],
-    //             'stats' => [
-    //                 'total_invitations' => 0,
-    //             ],
-    //             'total' => 0,
-    //             'limit' => $perPage,
-    //             'current_page' => $page,
-    //             'total_page' => 0,
-    //             'last_page' => 0,
-    //             'filters' => [
-    //                 'search' => $search !== '' ? $search : null,
-    //             ],
-    //         ], 200);
-    //     }
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Group invitations retrieved successfully.',
-    //         'status' => 'success',
-    //         'data' => $data,
-    //         'stats' => [
-    //             'total_invitations' => $invitations->total(),
-    //         ],
-    //         'total' => $invitations->total(),
-    //         'limit' => $invitations->perPage(),
-    //         'current_page' => $invitations->currentPage(),
-    //         'total_page' => $invitations->lastPage(),
-    //         'last_page' => $invitations->lastPage(),
-    //         'filters' => [
-    //             'search' => $search !== '' ? $search : null,
-    //         ],
-    //     ], 200);
-    // }
-
     private function canInviteToGroup(Group $group, int $userId): bool
     {
         if ($group->type === 'private') {
@@ -1186,7 +1018,7 @@ class GroupController extends Controller
                             ->where('group_users.status', '!=', 'banned');
                     });
             })
-            ->select('id', 'name', 'logo', 'description', 'creator_id')
+            ->select('id', 'name', 'slug', 'logo', 'description', 'creator_id')
             ->latest()
             ->get();
 
@@ -1194,5 +1026,12 @@ class GroupController extends Controller
             'status' => true,
             'data' => $groups,
         ]);
+    }
+
+    private function findGroupByIdentifier($identifier)
+    {
+        return Group::where('id', $identifier)
+            ->orWhere('slug', $identifier)
+            ->firstOrFail();
     }
 }
