@@ -12,6 +12,7 @@ use App\Services\OptimizedImageUploadService;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 
 class GroupController extends Controller
@@ -92,7 +93,8 @@ class GroupController extends Controller
         $request->merge($data);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:groups,name',
+            'name' => 'required|string|max:255',
+            // 'name' => 'required|string|max:255|unique:groups,name',
             'description' => 'required|string|max:2500',
             'industry' => 'required|array|max:3',
             'location' => 'nullable|string|max:255',
@@ -104,6 +106,18 @@ class GroupController extends Controller
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'cover_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
+
+        // --- unique slug generation ---
+        $baseSlug = Str::slug($validated['name']);
+        $finalSlug = $baseSlug;
+        $counter = 1;
+
+        while (Group::where('slug', $finalSlug)->exists()) {
+            $finalSlug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+        $validated['slug'] = $finalSlug;
+        // ---------------------------------------------------
 
         if ($request->hasFile('logo')) {
             $validated['logo'] = $imageUploadService->store($request->file('logo'), 'group_logos');
@@ -193,6 +207,7 @@ class GroupController extends Controller
                     'group' => [
                         'id' => $group->id,
                         'name' => $group->name,
+                        'slug' => $group->slug,
                         'type' => $group->type,
                         'members_count' => $group->members_count,
                     ],
@@ -271,6 +286,7 @@ class GroupController extends Controller
         $data = $users->getCollection()->map(function (User $user): array {
             return [
                 'id' => $user->id,
+                'username' => $user->username,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'title' => $user->title,
@@ -355,10 +371,12 @@ class GroupController extends Controller
                 'group' => [
                     'id' => $group->id,
                     'name' => $group->name,
+                    'slug' => $group->slug,
                 ],
                 'invited_user' => [
                     'invitation_id' => $invitation->id,
                     'id' => $invitee->id,
+                    'username' => $invitee->username,
                     'first_name' => $invitee->first_name,
                     'last_name' => $invitee->last_name,
                     'title' => $invitee->title,
@@ -1000,7 +1018,7 @@ class GroupController extends Controller
                             ->where('group_users.status', '!=', 'banned');
                     });
             })
-            ->select('id', 'name', 'logo', 'description', 'creator_id')
+            ->select('id', 'name', 'slug', 'logo', 'description', 'creator_id')
             ->latest()
             ->get();
 
@@ -1008,5 +1026,12 @@ class GroupController extends Controller
             'status' => true,
             'data' => $groups,
         ]);
+    }
+
+    private function findGroupByIdentifier($identifier)
+    {
+        return Group::where('id', $identifier)
+            ->orWhere('slug', $identifier)
+            ->firstOrFail();
     }
 }
