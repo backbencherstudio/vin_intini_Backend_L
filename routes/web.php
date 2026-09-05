@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Models\User;
+use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -160,7 +161,7 @@ Route::get('/generate-usernames', function () {
     $count = 0;
 
     foreach ($users as $user) {
-        $baseSlug = Str::slug($user->first_name.' '.$user->last_name, '-');
+        $baseSlug = Str::slug($user->first_name . ' ' . $user->last_name, '-');
 
         if (empty($baseSlug)) {
             $baseSlug = Str::slug(explode('@', $user->email)[0], '-');
@@ -170,7 +171,7 @@ Route::get('/generate-usernames', function () {
         $counter = 1;
 
         while (User::where('username', $username)->exists()) {
-            $username = $baseSlug.'-'.$counter;
+            $username = $baseSlug . '-' . $counter;
             $counter++;
         }
 
@@ -182,4 +183,23 @@ Route::get('/generate-usernames', function () {
     return response()->json(['message' => "$count users updated with usernames!"]);
 });
 
-require __DIR__.'/auth.php';
+
+Route::get('/fix-social-passwords', function () {
+    $socialUserIds = SocialAccount::pluck('user_id')->unique()->toArray();
+
+    if (empty($socialUserIds)) {
+        return response()->json(['message' => "No social accounts found!"]);
+    }
+
+    $updatedCount = User::whereIn('id', $socialUserIds)
+        ->where('has_password', true)
+        ->update(['has_password' => false]);
+
+    return response()->json([
+        'status' => true,
+        'message' => "Successfully updated $updatedCount social users!",
+        'total_social_users' => count($socialUserIds)
+    ]);
+});
+
+require __DIR__ . '/auth.php';
