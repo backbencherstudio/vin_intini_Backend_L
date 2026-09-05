@@ -2531,16 +2531,16 @@
         },
         {
             "name": "kreait/firebase-php",
-            "version": "8.4.0",
+            "version": "8.4.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/beste/firebase-php.git",
-                "reference": "459d86c5404153564f99ff532b24378c01b5a7ff"
+                "reference": "b4dd7487112c60f077bec781253c54b37f96beea"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/beste/firebase-php/zipball/459d86c5404153564f99ff532b24378c01b5a7ff",
-                "reference": "459d86c5404153564f99ff532b24378c01b5a7ff",
+                "url": "https://api.github.com/repos/beste/firebase-php/zipball/b4dd7487112c60f077bec781253c54b37f96beea",
+                "reference": "b4dd7487112c60f077bec781253c54b37f96beea",
                 "shasum": ""
             },
             "require": {
@@ -2562,7 +2562,7 @@
                 "kreait/firebase-tokens": "^5.2",
                 "lcobucci/jwt": "^5.3",
                 "mtdowling/jmespath.php": "^2.9.2",
-                "php": "~8.3.0 || ~8.4.0 || ~8.5.0",
+                "php": "~8.3.0 || ~8.4.0 || ~8.5.0 || ~8.6.0",
                 "psr/cache": "^2.0 || ^3.0",
                 "psr/clock": "^1.0",
                 "psr/http-client": "^1.0.3",
@@ -2620,7 +2620,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-05T11:32:44+00:00"
+            "time": "2026-09-04T22:24:20+00:00"
         },
         {
             "name": "kreait/firebase-tokens",
@@ -6509,16 +6509,16 @@
         },
         {
             "name": "socialiteproviders/apple",
-            "version": "5.10.0",
+            "version": "5.12.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/SocialiteProviders/Apple.git",
-                "reference": "11d871eb8193c31a2230fdf56929952eaf81fac2"
+                "reference": "bd89d1202d429770c537a01306b11a20139a7be0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/SocialiteProviders/Apple/zipball/11d871eb8193c31a2230fdf56929952eaf81fac2",
-                "reference": "11d871eb8193c31a2230fdf56929952eaf81fac2",
+                "url": "https://api.github.com/repos/SocialiteProviders/Apple/zipball/bd89d1202d429770c537a01306b11a20139a7be0",
+                "reference": "bd89d1202d429770c537a01306b11a20139a7be0",
                 "shasum": ""
             },
             "require": {
@@ -6576,7 +6576,7 @@
                 "issues": "https://github.com/socialiteproviders/providers/issues",
                 "source": "https://github.com/socialiteproviders/providers"
             },
-            "time": "2026-03-22T23:23:52+00:00"
+            "time": "2026-09-05T01:53:56+00:00"
         },
         {
             "name": "socialiteproviders/manager",
@@ -6869,16 +6869,16 @@
         },
         {
             "name": "swagger-api/swagger-ui",
-            "version": "v5.32.14",
+            "version": "v5.32.15",
             "source": {
                 "type": "git",
                 "url": "https://github.com/swagger-api/swagger-ui.git",
-                "reference": "6e8ce248db64190e4113676aba996943c56f2491"
+                "reference": "eb37d16243388857e5b7c68c93fd04635c7c96fa"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/swagger-api/swagger-ui/zipball/6e8ce248db64190e4113676aba996943c56f2491",
-                "reference": "6e8ce248db64190e4113676aba996943c56f2491",
+                "url": "https://api.github.com/repos/swagger-api/swagger-ui/zipball/eb37d16243388857e5b7c68c93fd04635c7c96fa",
+                "reference": "eb37d16243388857e5b7c68c93fd04635c7c96fa",
                 "shasum": ""
             },
             "type": "library",
@@ -6924,9 +6924,9 @@
             ],
             "support": {
                 "issues": "https://github.com/swagger-api/swagger-ui/issues",
-                "source": "https://github.com/swagger-api/swagger-ui/tree/v5.32.14"
+                "source": "https://github.com/swagger-api/swagger-ui/tree/v5.32.15"
             },
-            "time": "2026-08-18T12:12:25+00:00"
+            "time": "2026-09-04T10:12:25+00:00"
         },
         {
             "name": "symfony/cache",
