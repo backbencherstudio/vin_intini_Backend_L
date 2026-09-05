@@ -33,21 +33,30 @@ class MessageController extends Controller
         $conversation->markAsReadFor($currentUser->id);
 
         $messages = $conversation->visibleMessagesFor($currentUser->id)
-            ->with(['sender:id,first_name,last_name,title,profile_image', 'replyTo.sender:id,first_name,last_name', 'reactions.user:id,first_name,last_name'])
+            ->with([
+                'sender' => fn($q) => $q->select(['id', 'first_name', 'last_name', 'title', 'profile_image'])->withTrashed(),
+                'replyTo.sender' => fn($q) => $q->select(['id', 'first_name', 'last_name'])->withTrashed(),
+                'reactions.user' => fn($q) => $q->select(['id', 'first_name', 'last_name'])->withTrashed(),
+            ])
             ->orderBy('id', 'desc')
             ->cursorPaginate(50);
 
+        $conversation->load(['user1' => fn($q) => $q->withTrashed(), 'user2' => fn($q) => $q->withTrashed()]);
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
-        $isConnected = Connection::query()
-            ->accepted()
-            ->where(function ($query) use ($currentUser, $otherUser) {
-                $query->where('sender_id', $currentUser->id)->where('receiver_id', $otherUser->id)
-                    ->orWhere('sender_id', $otherUser->id)->where('receiver_id', $currentUser->id);
-            })
-            ->exists();
+        $isConnected = false;
 
-        $data = $messages->reverse()->values()->map(fn (Message $message) => [
+        if ($otherUser && ! $otherUser->trashed()) {
+            $isConnected = Connection::query()
+                ->accepted()
+                ->where(function ($query) use ($currentUser, $otherUser) {
+                    $query->where('sender_id', $currentUser->id)->where('receiver_id', $otherUser->id)
+                        ->orWhere('sender_id', $otherUser->id)->where('receiver_id', $currentUser->id);
+                })
+                ->exists();
+        }
+
+        $data = $messages->reverse()->values()->map(fn(Message $message) => [
             'id' => $message->id,
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
@@ -79,9 +88,9 @@ class MessageController extends Controller
 
         return response()->json([
             'success' => true,
-            'other_user' => [
+            'other_user' => $otherUser ? [
                 'id' => $otherUser->id,
-                'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
+                'name' => trim(($otherUser->first_name ?? '') . ' ' . ($otherUser->last_name ?? '')),
                 'first_name' => $otherUser->first_name,
                 'last_name' => $otherUser->last_name,
                 'title' => $otherUser->title,
@@ -89,7 +98,7 @@ class MessageController extends Controller
                 'cover_image_url' => $otherUser->cover_image_url,
                 'has_premium' => $this->userHasActiveSubscription($otherUser->id),
                 'is_connected' => $isConnected,
-            ],
+            ] : null,
             'data' => $data,
             'next_cursor' => $messages->nextCursor()?->encode(),
             'has_more' => $messages->hasMorePages(),
@@ -107,7 +116,12 @@ class MessageController extends Controller
             return $error;
         }
 
+        $conversation->load(['user1' => fn($q) => $q->withTrashed(), 'user2' => fn($q) => $q->withTrashed()]);
         $otherUser = $conversation->getOtherUser($currentUser->id);
+
+        if (! $otherUser || $otherUser->trashed()) {
+            return response()->json(['success' => false, 'message' => 'Cannot send messages to a deleted user.'], 403);
+        }
 
         $isConnected = Connection::query()
             ->accepted()
@@ -148,7 +162,7 @@ class MessageController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $imageUploadService->store($file, 'conversations/'.$conversation->id);
+            $path = $imageUploadService->store($file, 'conversations/' . $conversation->id);
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_size'] = $file->getSize();
@@ -296,7 +310,7 @@ class MessageController extends Controller
         return [
             'id' => $message->id,
             'sender_id' => $message->sender_id,
-            'sender_name' => trim(($message->sender->first_name ?? '').' '.($message->sender->last_name ?? '')),
+            'sender_name' => trim(($message->sender?->first_name ?? '') . ' ' . ($message->sender?->last_name ?? '')),
             'type' => $message->type,
             'message' => $message->message,
             'file_url' => $message->file_url,
@@ -341,7 +355,7 @@ class MessageController extends Controller
     private function isParticipant(int $userId, int $conversationId): bool
     {
         return Conversation::where('id', $conversationId)
-            ->where(fn ($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
+            ->where(fn($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
             ->exists();
     }
 
@@ -360,13 +374,13 @@ class MessageController extends Controller
     {
         return $message->reactions
             ->groupBy('reaction')
-            ->map(fn ($reactions, string $reaction) => [
+            ->map(fn($reactions, string $reaction) => [
                 'reaction' => $reaction,
                 'count' => $reactions->count(),
                 'users' => $reactions
-                    ->map(fn ($item) => [
+                    ->map(fn($item) => [
                         'id' => $item->user_id,
-                        'name' => trim(($item->user->first_name ?? '').' '.($item->user->last_name ?? '')),
+                        'name' => trim(($item->user?->first_name ?? '') . ' ' . ($item->user?->last_name ?? '')),
                     ])
                     ->values(),
             ])

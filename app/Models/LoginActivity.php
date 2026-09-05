@@ -34,7 +34,7 @@ class LoginActivity extends Model
 
     public function prunable()
     {
-        // 3 months before, we can prune the login activities
-        return static::where('created_at', '<=', now()->subMonths(3));
+        // Prune login activities that are inactive and older than 3 months
+        return static::where('is_active', false)->where('updated_at', '<=', now()->subMonths(3));
     }
 }

@@ -108,4 +108,30 @@ class IntegrationSettingTest extends TestCase
 
         $this->assertEquals('db-client-id', config('services.google.client_id'));
     }
+
+    public function test_revenuecat_settings_override_config_at_boot(): void
+    {
+        IntegrationSetting::create(['key' => 'revenuecat_app_id', 'value' => 'app_db_123', 'section' => 'RevenueCat']);
+        IntegrationSetting::create(['key' => 'revenuecat_api_key', 'value' => 'rc_live_db', 'section' => 'RevenueCat']);
+
+        Cache::forget('integration_settings');
+
+        app(IntegrationSettingsService::class)->applyOverrides();
+
+        $this->assertEquals('app_db_123', config('revenuecat.app_id'));
+        $this->assertEquals('rc_live_db', config('revenuecat.api_key'));
+    }
+
+    public function test_facebook_is_fully_removed(): void
+    {
+        $reflection = new \ReflectionClass(IntegrationSettingsService::class);
+        $map = $reflection->getConstant('CONFIG_MAP');
+
+        foreach (array_keys($map) as $key) {
+            $this->assertStringNotContainsString('facebook', $key);
+        }
+
+        $this->assertDatabaseMissing('integration_settings', ['key' => 'facebook_client_id']);
+        $this->assertDatabaseMissing('integration_settings', ['key' => 'facebook_client_secret']);
+    }
 }

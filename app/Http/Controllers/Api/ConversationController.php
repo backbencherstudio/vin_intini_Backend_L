@@ -30,7 +30,7 @@ class ConversationController extends Controller
                 fn ($q) => $q->archivedOnlyFor($currentUser->id),
                 fn ($q) => $q->notArchivedFor($currentUser->id)
             )
-            ->with(['lastMessage', 'user1', 'user2'])
+            ->with(['lastMessage', 'user1' => fn ($q) => $q->withTrashed(), 'user2' => fn ($q) => $q->withTrashed()])
             ->orderByDesc('updated_at')
             ->get();
 
@@ -42,6 +42,10 @@ class ConversationController extends Controller
                 $otherUser = $conversation->getOtherUser($currentUser->id);
                 $unreadCount = $unreadCounts[$conversation->id] ?? 0;
                 $lastMessage = $this->visibleLastMessageFor($conversation, $currentUser->id);
+
+                if (! $otherUser) {
+                    return null;
+                }
 
                 return [
                     'id' => $conversation->id,
@@ -67,6 +71,7 @@ class ConversationController extends Controller
                     'updated_at' => $conversation->updated_at->toISOString(),
                 ];
             })
+            ->filter()
             ->when($status === 'unread', fn ($items) => $items->filter(fn ($item) => $item['unread_count'] > 0))
             ->when($search !== '', fn ($items) => $items->filter(function ($item) use ($search) {
                 return str_contains(mb_strtolower($item['_search_name']), mb_strtolower($search));
@@ -204,7 +209,7 @@ class ConversationController extends Controller
 
         $conversation->restoreFor($currentUser->id);
 
-        $conversation->load(['lastMessage', 'user1', 'user2']);
+        $conversation->load(['lastMessage', 'user1' => fn ($q) => $q->withTrashed(), 'user2' => fn ($q) => $q->withTrashed()]);
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
         $unreadCount = $conversation->unreadCountFor($currentUser->id);
@@ -312,7 +317,7 @@ class ConversationController extends Controller
     private function loadPremiumUserIds($conversations, int $currentUserId): array
     {
         $userIds = $conversations
-            ->map(fn (Conversation $conversation) => $conversation->getOtherUser($currentUserId)->id)
+            ->map(fn (Conversation $conversation) => $conversation->getOtherUser($currentUserId)?->id)
             ->filter()
             ->unique()
             ->values();

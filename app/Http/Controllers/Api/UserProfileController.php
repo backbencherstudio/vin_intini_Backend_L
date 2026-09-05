@@ -296,151 +296,6 @@ class UserProfileController extends Controller
         ], 200);
     }
 
-    // niaz's code=============================================
-    // public function showUserProfile(Request $request, $id)
-    // {
-    //     $currentUser = $request->user();
-
-    //     $user = User::with([
-    //         'profile.currentPosition',
-    //         'profile.currentInstitute',
-    //         'educations.institution',
-    //         'experiences.company'
-    //     ])->find($id);
-
-    //     if (!$user) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'User profile not found',
-    //         ], 404);
-    //     }
-
-    //     $isOwnProfile = $currentUser->id === $user->id;
-
-    //     $state = 'not_connected';
-    //     $actionLabel = 'Connect';
-    //     $pendingRequestId = null;
-
-    //     if ($isOwnProfile) {
-    //         $state = 'self';
-    //         $actionLabel = 'Edit Profile';
-    //     } else {
-    //         $connection = Connection::query()
-    //             ->where(function ($query) use ($currentUser, $user) {
-    //                 $query->where('sender_id', $currentUser->id)
-    //                     ->where('receiver_id', $user->id);
-    //             })
-    //             ->orWhere(function ($query) use ($currentUser, $user) {
-    //                 $query->where('sender_id', $user->id)
-    //                     ->where('receiver_id', $currentUser->id);
-    //             })
-    //             ->first();
-
-    //         if ($connection) {
-    //             if ($connection->status === Connection::STATUS_ACCEPTED) {
-    //                 $state = 'accepted';
-    //                 $actionLabel = 'Connected';
-    //             } elseif ($connection->status === Connection::STATUS_PENDING) {
-    //                 if ($connection->sender_id === $currentUser->id) {
-    //                     $state = 'pending_sent';
-    //                     $actionLabel = 'Pending';
-    //                     $pendingRequestId = $connection->id;
-    //                 } else {
-    //                     $state = 'pending_received';
-    //                     $actionLabel = 'Accept';
-    //                     $pendingRequestId = $connection->id;
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     $totalConnections = Connection::query()
-    //         ->accepted()
-    //         ->forUser($user->id)
-    //         ->count();
-
-    //     $skills = Skill::query()
-    //         ->select(['id', 'name'])
-    //         ->whereIn('id', $user->profile?->skills_id ?? [])
-    //         ->orderBy('name')
-    //         ->get();
-
-    //     $currentPosition = $user->profile?->currentPosition;
-    //     $currentInstitute = $user->profile?->currentInstitute;
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => [
-    //             'is_own_profile' => $isOwnProfile,
-    //             'connection_status' => [
-    //                 'state' => $state,
-    //                 'action_label' => $actionLabel,
-    //                 'pending_request_id' => $pendingRequestId,
-    //                 'is_connected' => $state === 'accepted',
-    //             ],
-
-    //             'id' => $user->id,
-    //             'first_name' => $user->first_name,
-    //             'last_name' => $user->last_name,
-    //             'title' => $user->title,
-    //             'about' => $user->profile?->about,
-    //             'profile_image_url' => $user->profile_image_url,
-    //             'cover_image_url' => $user->cover_image_url,
-    //             'country' => $user->profile?->country,
-    //             'total_connections' => $totalConnections,
-    //             'current_position' => $currentPosition ? [
-    //                 'id' => $currentPosition->id,
-    //                 'company_name' => $currentPosition->name,
-    //             ] : null,
-    //             'current_institute' => $currentInstitute ? [
-    //                 'id' => $currentInstitute->id,
-    //                 'name' => $currentInstitute->name,
-    //             ] : null,
-    //             'skills' => $skills,
-    //             'experiences' => $user->experiences->map(function ($experience) {
-    //                 return [
-    //                     'id' => $experience->id,
-    //                     'company_id' => $experience->company_id,
-    //                     'company' => [
-    //                         'id' => $experience->company?->id,
-    //                         'name' => $experience->company?->name,
-    //                     ],
-    //                     'title' => $experience->title,
-    //                     'start_date' => $experience->start_date,
-    //                     'end_date' => $experience->end_date,
-    //                     'is_current' => $experience->is_current,
-    //                     'status' => $experience->formatted_end_date_attribute,
-    //                     'description' => $experience->description,
-    //                     'skills' => $experience->skills_data,
-    //                 ];
-    //             })->values(),
-    //             'educations' => $user->educations->map(function ($education) {
-    //                 return [
-    //                     'id' => $education->id,
-    //                     'institution_id' => $education->institution_id,
-    //                     'institution' => [
-    //                         'id' => $education->institution?->id,
-    //                         'name' => $education->institution?->name,
-    //                     ],
-    //                     'degree' => $education->degree,
-    //                     'field_study' => $education->field_study,
-    //                     'start_month' => $education->start_month,
-    //                     'start_year' => $education->start_year,
-    //                     'end_month' => $education->end_month,
-    //                     'end_year' => $education->end_year,
-    //                     'grade' => $education->grade,
-    //                     'description' => $education->description,
-    //                     'activities' => $education->activities,
-    //                     'is_current' => $education->is_current,
-    //                     'status' => $education->status,
-    //                     'skills' => $education->skills_data,
-    //                 ];
-    //             })->values(),
-    //         ],
-    //     ], 200);
-    // }
-    // ============================================================
-
     public function setupProfile(Request $request, ProfileImageService $profileImageService)
     {
         if ($request->has('group_ids') && is_string($request->group_ids)) {
@@ -689,118 +544,6 @@ class UserProfileController extends Controller
         ], 200);
     }
 
-    // public function update(Request $request, ProfileImageService $profileImageService)
-    // {
-    //     $validated = $request->validate([
-    //         'first_name' => 'sometimes|required|string',
-    //         'last_name' => 'sometimes|required|string',
-    //         'title' => 'sometimes|required|string|max:120',
-    //         'country' => 'sometimes|required|string',
-    //         'mobile'        => 'nullable|string|max:20',
-    //         'address'      => 'nullable|string',
-    //         'state_id'     => 'nullable|integer|exists:states,id',
-    //         'skills' => 'nullable|array|max:5',
-    //         'skills.*' => 'string',
-    //         // 'current_position_id' => 'nullable|integer|exists:experiences,id',
-    //         // 'current_position_id' => 'nullable|integer|exists:companies,id',
-    //         'current_position_id' => [
-    //             'nullable',
-    //             'integer',
-    //             Rule::exists('experiences', 'company_id')->where(function ($query) use ($request) {
-    //                 $query->where('user_id', $request->user()->id);
-    //             }),
-    //         ],
-    //         'current_institute_id' => 'nullable|integer|exists:institutions,id',
-    //         'about' => 'sometimes|required|string',
-    //     ]);
-
-    //     $user = $request->user();
-
-    //     $userData = [];
-
-    //     if (array_key_exists('first_name', $validated)) {
-    //         $userData['first_name'] = $validated['first_name'];
-    //     }
-
-    //     if (array_key_exists('last_name', $validated)) {
-    //         $userData['last_name'] = $validated['last_name'];
-    //     }
-
-    //     if (array_key_exists('title', $validated)) {
-    //         $userData['title'] = $validated['title'];
-    //     }
-
-    //     if (array_key_exists('mobile', $validated)) {
-    //         $userData['mobile'] = $validated['mobile'];
-    //     }
-
-    //     if ($userData !== []) {
-    //         $user->update($userData);
-    //     }
-
-    //     $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
-    //     $profileData = [];
-
-    //     if (array_key_exists('postal_code', $validated)) {
-    //         $profileData['postal_code'] = $validated['postal_code'];
-    //     }
-
-    //     if (array_key_exists('address', $validated)) {
-    //         $profileData['address'] = $validated['address'];
-    //     }
-
-    //     if (array_key_exists('state_id', $validated)) {
-    //         $profileData['state_id'] = $validated['state_id'];
-    //     }
-
-    //     if (array_key_exists('country', $validated)) {
-    //         $profileData['country'] = $validated['country'];
-    //     }
-
-    //     if (array_key_exists('skills', $validated)) {
-    //         $skillIds = [];
-
-    //         foreach ($validated['skills'] as $skillName) {
-    //             $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
-    //             $skillIds[] = $skill->id;
-    //         }
-
-    //         $profileData['skills_id'] = $skillIds;
-    //     }
-
-    //     if (array_key_exists('current_position_id', $validated)) {
-    //         $profileData['current_position_id'] = $validated['current_position_id'];
-    //     }
-
-    //     // if (array_key_exists('current_position_id', $validated)) {
-    //     //     $profileData['current_position_id'] = $this->resolveCurrentPositionId(
-    //     //         $request,
-    //     //         $validated['current_position_id'],
-    //     //     );
-    //     // }
-
-    //     if (array_key_exists('current_institute_id', $validated)) {
-    //         $profileData['current_institute_id'] = $this->resolveCurrentInstituteId(
-    //             $request,
-    //             $validated['current_institute_id'],
-    //         );
-    //     }
-
-    //     if (array_key_exists('about', $validated)) {
-    //         $profileData['about'] = $validated['about'];
-    //     }
-
-    //     if ($profileData !== []) {
-    //         $profile->update($profileData);
-    //     }
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Profile updated successfully!',
-    //         'data' => $user->fresh()->load('profile'),
-    //     ], 200);
-    // }
-
     public function updateImages(Request $request, ProfileImageService $profileImageService)
     {
         $request->validate([
@@ -897,15 +640,21 @@ class UserProfileController extends Controller
 
     public function changePassword(Request $request)
     {
-        // 1. Validation
-        $validator = Validator::make($request->all(), [
-            'current_password' => 'required',
+        $user = $request->user();
+
+        $rules = [
             'new_password' => [
                 'required',
                 'confirmed',
-                Password::min(8)->mixedCase()->numbers(), // Minimum 8 chars, mixed case, and numbers
+                \Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers(),
             ],
-        ]);
+        ];
+
+        if ($user->has_password) {
+            $rules['current_password'] = 'required';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json([
@@ -914,33 +663,33 @@ class UserProfileController extends Controller
             ], 422);
         }
 
-        $user = $request->user();
-
-        // 2. Check if current password matches
-        if (! Hash::check($request->current_password, $user->password)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'The current password you entered is incorrect.',
-            ], 400);
+        if ($user->has_password) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The current password you entered is incorrect.',
+                ], 400);
+            }
         }
 
-        // 3. Update the password
         $user->update([
             'password' => Hash::make($request->new_password),
+            'has_password' => true,
         ]);
 
-        // 4. Current token invalidation and logout other sessions
-        $currentTokenId = auth('api')->payload()->get('jti');
+        try {
+            $currentTokenId = auth('api')->payload()->get('jti');
 
-        LoginActivity::where('user_id', $user->id)
-            ->where('token_id', '!=', $currentTokenId)
-            ->where('is_active', true)
-            ->update(['is_active' => false]);
-        // ========================================================
+            \App\Models\LoginActivity::where('user_id', $user->id)
+                ->where('token_id', '!=', $currentTokenId)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+        } catch (\Exception $e) {
+        }
 
         return response()->json([
             'status' => true,
-            'message' => 'Password changed successfully.',
+            'message' => $user->has_password ? 'Password changed successfully.' : 'Password set successfully.',
         ], 200);
     }
 }

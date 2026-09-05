@@ -34,3 +34,9 @@ Homestead.json
 .phpactor.json
 auth.json
 /.ai
+/.agents
+AGENTS.md
+
+**/caddy
+frankenphp
+frankenphp-worker.php

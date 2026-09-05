@@ -58,7 +58,7 @@ class Conversation extends Model
         return $this->belongsTo(Message::class, 'last_message_id');
     }
 
-    public function getOtherUser(int $currentUserId): User
+    public function getOtherUser(int $currentUserId): ?User
     {
         return $currentUserId === $this->user_id_1 ? $this->user2 : $this->user1;
     }

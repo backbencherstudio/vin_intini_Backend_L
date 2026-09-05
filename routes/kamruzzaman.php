@@ -87,7 +87,27 @@ Route::middleware('role:user')->group(function () {
     // Recruiter Dashboard.....
     Route::prefix('industry')->group(function () {
         Route::post('create', [IndustryController::class, 'store']);
+        Route::get('show', [IndustryController::class, 'show']);
+        Route::post('update', [IndustryController::class, 'update']);
+
+        // Recruiter post
+        Route::post('post/create', [IndustryController::class, 'storePost']);
+        Route::get('post/view', [IndustryController::class, 'indexPost']);
+        Route::get('post/recent', [IndustryController::class, 'latestPosts']);
+
+        Route::post('post/like/{postId}', [IndustryController::class, 'togglePostLike']);
+        Route::get('post/likes/{postId}', [IndustryController::class, 'likeList']);
+
+        Route::post('post/comment/{postId}', [IndustryController::class, 'storeComment']);
+        Route::get('post/comments/{postId}', [IndustryController::class, 'commentList']);
+
+        Route::post('post/comment/like/{commentId}', [IndustryController::class, 'toggleCommentLike']);
+        Route::get('post/comment/likes/{commentId}', [IndustryController::class, 'commentLikeList']);
+
+        Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
+        Route::get('post/comment/replies/{commentId}', [IndustryController::class, 'replyList']);
     });
+
 
     Route::middleware('profile_completed')->group(function () {});
 });

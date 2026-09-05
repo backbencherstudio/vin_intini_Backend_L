@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\RevenueCatWebhookController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\SocialController;
 use App\Http\Controllers\Api\StripeWebhookController;
@@ -46,6 +47,10 @@ Route::get('/pages/{slug}', [PagesController::class, 'getPageData']);
 // Stripe webhook (must be public, no auth)
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 
+// RevenueCat webhook (must be public, no auth, signature verified)
+Route::post('/webhooks/revenuecat', [RevenueCatWebhookController::class, 'handle'])
+    ->middleware('verify_revenuecat_webhook');
+
 Route::prefix('2fa')->group(function () {
     // 2FA Verification during Login
     Route::post('/verify-login', [TwoFactorController::class, 'verifyLogin'])->middleware('throttle:5,1');
@@ -53,6 +58,7 @@ Route::prefix('2fa')->group(function () {
     Route::post('/recovery-init', [TwoFactorController::class, 'recoveryInit'])->middleware('throttle:5,1');
     Route::post('/recovery-send-otp', [TwoFactorController::class, 'recoverySendOtp'])->middleware('throttle:3,1');
     Route::post('/recovery-verify', [TwoFactorController::class, 'recoveryVerify'])->middleware('throttle:5,1');
+    Route::post('/recovery/resend-otp', [TwoFactorController::class, 'recoveryResendOtp'])->middleware('throttle:5,1');
 });
 
 Route::middleware('auth:api', 'active_session')->group(function () {
@@ -64,6 +70,7 @@ Route::middleware('auth:api', 'active_session')->group(function () {
         Route::get('/overview', [SecuritySettingsController::class, 'getSecurityOverview']); // security overview route
         Route::get('/active-sessions', [SecuritySettingsController::class, 'getActiveSessions']);  // active sessions route
         Route::get('/login-activities', [SecuritySettingsController::class, 'getLoginActivities']);  // user login activities
+        Route::get('/login-activity/{id}', [SecuritySettingsController::class, 'getLoginActivityDetails']); // user login activity details
         Route::post('/sessions/revoke/{id}', [SecuritySettingsController::class, 'revokeSession']);   // remove active session
         Route::post('/sessions/sign-out-all', [SecuritySettingsController::class, 'signOutAllSessions']);  // sign out all sessions
         Route::get('/suspicious-activities-list', [SecuritySettingsController::class, 'getSuspiciousActivitiesList']); // get suspicious activities list

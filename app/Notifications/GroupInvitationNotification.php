@@ -46,6 +46,7 @@ class GroupInvitationNotification extends Notification implements ShouldQueue
         return [
             'invitation_id' => $this->invitation->id,
             'group_id' => $this->group->id,
+            'group_slug' => $this->group->slug,
             'group_name' => $this->group->name,
             'group_logo_url' => $this->group->logo_url,
             'inviter_id' => $this->inviter->id,

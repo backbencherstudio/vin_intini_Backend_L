@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckActiveSession;
 use App\Http\Middleware\EnsureProfileCompleted;
 use App\Http\Middleware\EnsureVerifiedUser;
+use App\Http\Middleware\VerifyRevenueCatWebhook;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
 
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
         $middleware->append(HandleCors::class);
 
         $middleware->alias([
@@ -38,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'profile_completed' => EnsureProfileCompleted::class,
             'verified_user' => EnsureVerifiedUser::class,
             'active_session' => CheckActiveSession::class,
+            'verify_revenuecat_webhook' => VerifyRevenueCatWebhook::class,
         ]);
         // for admin login redirection--------
         $middleware->redirectGuestsTo('admin/login');

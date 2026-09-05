@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\Services\RevenueCatException;
+use App\Services\RevenueCatService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,7 +13,10 @@ use Stripe\Exception\ApiErrorException;
 
 class SubscriptionManagementController extends Controller
 {
-    public function __construct(private StripeService $stripe) {}
+    public function __construct(
+        private StripeService $stripe,
+        private RevenueCatService $revenueCat,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -88,31 +93,81 @@ class SubscriptionManagementController extends Controller
             ], 422);
         }
 
-        if ($subscription->platform !== 'stripe' || ! $subscription->provider_subscription_id) {
+        if ($subscription->platform === 'stripe') {
+            if (! $subscription->provider_subscription_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This subscription cannot be canceled from here.',
+                ], 422);
+            }
+
+            try {
+                $this->stripe->cancelSubscription($subscription->provider_subscription_id, true);
+            } catch (ApiErrorException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to cancel subscription: '.$e->getMessage(),
+                ], 422);
+            }
+
+            $subscription->update([
+                'cancel_at_period_end' => true,
+            ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'This subscription cannot be canceled from here.',
-            ], 422);
+                'success' => true,
+                'message' => 'Subscription will be canceled at the end of the current billing period.',
+                'data' => $subscription,
+            ], 200);
         }
 
-        try {
-            $this->stripe->cancelSubscription($subscription->provider_subscription_id, true);
-        } catch (ApiErrorException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to cancel subscription: '.$e->getMessage(),
-            ], 422);
-        }
+        if ($subscription->platform === 'revenuecat') {
+            $entitlementId = $subscription->plan?->revenuecat_entitlement_id;
 
-        $subscription->update([
-            'cancel_at_period_end' => true,
-        ]);
+            if (! $entitlementId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This subscription is not linked to a RevenueCat entitlement.',
+                ], 422);
+            }
+
+            $appUserId = $subscription->provider_customer_id
+                ?? ($subscription->user ? $this->revenueCat->appUserIdFor($subscription->user) : null);
+
+            if (! $appUserId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This subscription has no RevenueCat customer reference.',
+                ], 422);
+            }
+
+            try {
+                $this->revenueCat->revokeEntitlements($appUserId, [$entitlementId]);
+            } catch (RevenueCatException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to cancel subscription: '.$e->getMessage(),
+                ], 422);
+            }
+
+            $subscription->update([
+                'status' => 'canceled',
+                'cancel_at_period_end' => false,
+                'canceled_at' => now(),
+                'ends_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription access has been revoked immediately.',
+                'data' => $subscription,
+            ], 200);
+        }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Subscription will be canceled at the end of the current billing period.',
-            'data' => $subscription,
-        ], 200);
+            'success' => false,
+            'message' => 'This subscription platform is not supported for cancellation.',
+        ], 422);
     }
 
     private function daysLeft(Subscription $subscription): ?int

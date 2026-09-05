@@ -46,30 +46,38 @@ class LogLoginJob
         $agent->setUserAgent($this->userAgent);
 
         $platform = $agent->platform();
-        $browser = $agent->browser();
 
         if ($this->customDevice) {
-            $device = $this->customDevice.($this->customPlatform ? ' ('.$this->customPlatform.')' : '');
+            $device = $this->customDevice . ($this->customPlatform ? ' (' . $this->customPlatform . ')' : '');
             $browser = 'Native Mobile App';
         } else {
             if ($agent->isPhone() || $agent->isTablet()) {
                 $brand = $agent->device();
-                $device = ($brand && $brand != 'WebKit') ? $brand.' ('.$platform.')' : $platform;
+                $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
             } else {
                 $device = $platform ?: 'Unknown Device';
             }
             $browser = $agent->browser() ?: 'Unknown Browser';
         }
 
-        // if ($agent->isPhone() || $agent->isTablet()) {
-        //     $brand = $agent->device();
-        //     $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
-        // } else {
-        //     $device = $platform;
-        // }
-
         $loc = Location::get($this->ip);
-        $locationName = $loc ? $loc->cityName.', '.$loc->countryName : 'Unknown';
+        $locationName = $loc ? $loc->cityName . ', ' . $loc->countryName : 'Unknown';
+
+        $user = User::find($this->userId);
+        if (!$user) {
+            return;
+        }
+
+        $isNewUser = $user->created_at->gt(now()->subMinutes(5));
+
+        $isAlreadyTrusted = LoginActivity::where('user_id', $this->userId)
+            ->where('status', 'Successful')
+            ->where('device', $device)
+            ->where('location', $locationName)
+            ->where('is_trusted', true)
+            ->exists();
+
+        $shouldBeTrusted = ($isNewUser || $isAlreadyTrusted);
 
         $activity = LoginActivity::create([
             'user_id' => $this->userId,
@@ -81,25 +89,77 @@ class LogLoginJob
             'login_at' => now(),
             'status' => $this->status,
             'is_active' => ($this->status === 'Successful'),
-            'is_trusted' => User::find($this->userId)?->created_at->gt(now()->subMinutes(5)) ? true : false,
+            'is_trusted' => $shouldBeTrusted,
+            'is_resolved' => $shouldBeTrusted,
         ]);
 
-        // base on the status, send an email alert if it's a successful login
         if ($this->status === 'Successful') {
-            $user = User::find($this->userId);
-
-            if ($user && $user->created_at->lt(now()->subMinutes(5))) {
-                $seenBefore = LoginActivity::where('user_id', $user->id)
-                    ->where('status', 'Successful')
-                    ->where('location', $locationName)
-                    ->where('device', $device)
-                    ->where('is_trusted', true)
-                    ->exists();
-
-                if (! $seenBefore) {
-                    SendLoginAlertEmailJob::dispatch($activity);
-                }
+            if (!$shouldBeTrusted) {
+                SendLoginAlertEmailJob::dispatch($activity);
             }
         }
     }
+
+    // public function handle()
+    // {
+    //     $agent = new Agent;
+    //     $agent->setUserAgent($this->userAgent);
+
+    //     $platform = $agent->platform();
+    //     $browser = $agent->browser();
+
+    //     if ($this->customDevice) {
+    //         $device = $this->customDevice.($this->customPlatform ? ' ('.$this->customPlatform.')' : '');
+    //         $browser = 'Native Mobile App';
+    //     } else {
+    //         if ($agent->isPhone() || $agent->isTablet()) {
+    //             $brand = $agent->device();
+    //             $device = ($brand && $brand != 'WebKit') ? $brand.' ('.$platform.')' : $platform;
+    //         } else {
+    //             $device = $platform ?: 'Unknown Device';
+    //         }
+    //         $browser = $agent->browser() ?: 'Unknown Browser';
+    //     }
+
+    //     // if ($agent->isPhone() || $agent->isTablet()) {
+    //     //     $brand = $agent->device();
+    //     //     $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
+    //     // } else {
+    //     //     $device = $platform;
+    //     // }
+
+    //     $loc = Location::get($this->ip);
+    //     $locationName = $loc ? $loc->cityName.', '.$loc->countryName : 'Unknown';
+
+    //     $activity = LoginActivity::create([
+    //         'user_id' => $this->userId,
+    //         'token_id' => $this->tokenId,
+    //         'device' => $device ?: 'Unknown Device',
+    //         'browser' => $browser ?: 'Unknown Browser',
+    //         'ip_address' => $this->ip,
+    //         'location' => $locationName,
+    //         'login_at' => now(),
+    //         'status' => $this->status,
+    //         'is_active' => ($this->status === 'Successful'),
+    //         'is_trusted' => User::find($this->userId)?->created_at->gt(now()->subMinutes(5)) ? true : false,
+    //     ]);
+
+    //     // base on the status, send an email alert if it's a successful login
+    //     if ($this->status === 'Successful') {
+    //         $user = User::find($this->userId);
+
+    //         if ($user && $user->created_at->lt(now()->subMinutes(5))) {
+    //             $seenBefore = LoginActivity::where('user_id', $user->id)
+    //                 ->where('status', 'Successful')
+    //                 ->where('location', $locationName)
+    //                 ->where('device', $device)
+    //                 ->where('is_trusted', true)
+    //                 ->exists();
+
+    //             if (! $seenBefore) {
+    //                 SendLoginAlertEmailJob::dispatch($activity);
+    //             }
+    //         }
+    //     }
+    // }
 }

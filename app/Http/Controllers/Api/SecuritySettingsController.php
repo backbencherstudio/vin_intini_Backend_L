@@ -51,10 +51,10 @@ class SecuritySettingsController extends Controller
                 $suspiciousId = $login->id;
 
                 if ($login->token_id === $currentTokenId) {
-                    $suspiciousStatus = 'New login detected. Please verify this session via email.';
+                    $suspiciousStatus = 'New login detected';
                     $canResolveFromHere = false;
                 } else {
-                    $suspiciousStatus = 'New login from unrecognized location/device. Was this you?';
+                    $suspiciousStatus = 'Suspicious activity detected';
                     $canResolveFromHere = true;
                 }
                 break;
@@ -104,6 +104,12 @@ class SecuritySettingsController extends Controller
         }
         // ------------------------------------
 
+        $rollingMinutes = config('jwt.rolling_window', 43200);
+        $activeCount = LoginActivity::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->where('updated_at', '>=', now()->subMinutes($rollingMinutes))
+            ->count();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -112,9 +118,11 @@ class SecuritySettingsController extends Controller
                     'rating' => $securityRating,
                     'last_checked' => now()->toISOString(),
                 ],
+                'has_password' => (bool) $user->has_password,
                 'password_strength' => 'Strong',
                 'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
-                'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . ' active devices',
+                // 'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . ' active devices',
+                'active_sessions' => $activeCount . ' active devices',
                 'account_recovery' => $isRecoveryVerified ? 'Email verified' : 'Not verified',
                 'login_activity' => $suspiciousStatus,
                 // 'suspicious_id' => $suspiciousId,
@@ -140,23 +148,30 @@ class SecuritySettingsController extends Controller
             ->orderBy('login_at', 'desc')
             ->get();
 
+        $trustedCombinations = LoginActivity::where('user_id', $user->id)
+            ->where('is_trusted', true)
+            ->select('device', 'location')
+            ->distinct()
+            ->get()
+            ->map(fn($item) => $item->device . '|' . $item->location)
+            ->toArray();
+
         $suspiciousList = [];
 
         foreach ($unresolvedLogins as $login) {
-            $seenBefore = LoginActivity::where('user_id', $user->id)
-                ->where('status', 'Successful')
-                ->where('location', $login->location)
-                ->where('device', $login->device)
-                ->where('is_trusted', true)
-                ->exists();
+            $currentCombo = $login->device . '|' . $login->location;
 
-            if (! $seenBefore) {
+            if (!in_array($currentCombo, $trustedCombinations)) {
+
+                $isMobile = ($login->browser === 'Native Mobile App');
+
                 $suspiciousList[] = [
                     'id' => $login->id,
                     'device' => $login->device,
                     'browser' => $login->browser,
                     'location' => $login->location,
                     'ip_address' => $login->ip_address,
+                    'is_mobile' => $isMobile,
                     'login_at' => Carbon::parse($login->login_at)->toISOString(),
                     'warning_message' => "Unrecognized login from {$login->location}",
                 ];
@@ -171,18 +186,24 @@ class SecuritySettingsController extends Controller
 
     public function getActiveSessions(): JsonResponse
     {
+        $user = auth()->user();
+        $rollingMinutes = config('jwt.rolling_window', 43200);
+
         $currentTokenId = auth('api')->check()
             ? auth('api')->payload()->get('jti')
             : session()->getId();
 
-        $sessions = LoginActivity::where('user_id', auth()->id())
+        $sessions = LoginActivity::where('user_id', $user->id)
             ->where('is_active', true)
+            ->where('updated_at', '>=', now()->subMinutes($rollingMinutes))
             ->orderByRaw('token_id = ? DESC', [$currentTokenId])
-            ->orderBy('login_at', 'desc')
+            ->orderBy('updated_at', 'desc')
             ->get();
 
         $items = $sessions->map(function ($activity) use ($currentTokenId) {
             $isCurrent = $activity->token_id === $currentTokenId;
+
+            $isMobile = ($activity->browser === 'Native Mobile App');
 
             return [
                 'id' => $activity->id,
@@ -192,17 +213,14 @@ class SecuritySettingsController extends Controller
                 'location' => $activity->location,
                 'is_active' => (bool) $activity->is_active,
                 'is_current' => $isCurrent,
-
+                'is_mobile' => $isMobile,
                 'status' => $isCurrent ? 'Current device' : 'Signed in',
-
                 'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
+                // 'last_activity' => $activity->updated_at ? Carbon::parse($activity->updated_at)->toISOString() : null,
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => $items,
-        ]);
+        return response()->json(['success' => true, 'data' => $items]);
     }
 
     public function getLoginActivities(Request $request): JsonResponse
@@ -210,19 +228,62 @@ class SecuritySettingsController extends Controller
         $perPage = $request->integer('limit', $request->integer('per_page', 10));
         $perPage = max(1, min($perPage, 100));
 
+        $user = auth()->user();
         $currentTokenId = auth('api')->check()
             ? auth('api')->payload()->get('jti')
             : session()->getId();
 
-        $paginator = LoginActivity::where('user_id', auth()->id())
-            ->orderByRaw('CASE WHEN token_id = ? THEN 1 ELSE 0 END DESC', [$currentTokenId])
-            ->orderBy('login_at', 'desc')
-            ->paginate($perPage);
+        $trustedCombinations = LoginActivity::where('user_id', $user->id)
+            ->where('is_trusted', true)
+            ->select('device', 'location')
+            ->distinct()
+            ->get()
+            ->map(fn($item) => $item->device . '|' . $item->location)
+            ->toArray();
 
-        $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId) {
+        $paginator = LoginActivity::where('user_id', $user->id)
+            ->orderByRaw("
+        CASE
+            WHEN token_id = ? THEN 1
+            WHEN is_active = 1 AND status = 'Successful' THEN 2
+            WHEN is_active = 0 AND status = 'Successful' THEN 3
+            WHEN status = 'Failed' THEN 4
+            ELSE 5
+            END ASC
+        ", [$currentTokenId])
+                ->orderBy('login_at', 'desc')
+                ->paginate($perPage);
+
+        $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId, $trustedCombinations) {
             $isCurrent = $activity->token_id === $currentTokenId;
             $isActive = (bool) $activity->is_active;
+            $isTrusted = (bool) $activity->is_trusted;
+            $isResolved = (bool) $activity->is_resolved;
 
+            $currentCombo = $activity->device . '|' . $activity->location;
+
+            $isSuspicious = (
+                $activity->status === 'Successful' &&
+                !$isResolved &&
+                !in_array($currentCombo, $trustedCombinations)
+            );
+
+            $isBlocked = (
+                $activity->status === 'Blocked' ||
+                ($activity->status === 'Successful' && !$isActive && $isResolved && !$isTrusted)
+            );
+
+            if ($isTrusted) {
+                $activityStatus = 'Trusted Device';
+            } elseif ($isSuspicious) {
+                $activityStatus = 'Suspicious';
+            } elseif ($isBlocked) {
+                $activityStatus = 'Blocked';
+            } else {
+                $activityStatus = 'Regular Device';
+            }
+
+            // ৪. signin_status (Current Device/Signed in/Logged out)
             if ($activity->status === 'Failed') {
                 $signinStatus = 'Failed attempt';
             } elseif ($isCurrent) {
@@ -242,7 +303,10 @@ class SecuritySettingsController extends Controller
                 'status' => $activity->status,
                 'is_active' => $isActive,
                 'is_current' => $isCurrent,
+                'is_mobile' => ($activity->browser === 'Native Mobile App'),
                 'signin_status' => $signinStatus,
+                'activity_status' => $activityStatus,
+                'is_suspicious' => $isSuspicious,
                 'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
                 'created_at' => $activity->created_at->toISOString(),
             ];
@@ -257,6 +321,61 @@ class SecuritySettingsController extends Controller
             'current_page' => $paginator->currentPage(),
             'total_page' => $paginator->lastPage(),
             'last_page' => $paginator->lastPage(),
+        ]);
+    }
+
+    public function getLoginActivityDetails($id): JsonResponse
+    {
+        $user = auth()->user();
+
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
+        $activity = LoginActivity::where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$activity) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Activity details not found.'
+            ], 404);
+        }
+
+        $isCurrent = $activity->token_id === $currentTokenId;
+        $isActive = (bool) $activity->is_active;
+
+        if ($activity->status === 'Failed') {
+            $signinStatus = 'Failed attempt';
+        } elseif ($isCurrent) {
+            $signinStatus = 'Current device';
+        } elseif ($isActive) {
+            $signinStatus = 'Signed in';
+        } else {
+            $signinStatus = 'Logged out';
+        }
+
+        $isMobile = ($activity->browser === 'Native Mobile App');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $activity->id,
+                'device' => $activity->device,
+                'browser' => $activity->browser,
+                'ip_address' => $activity->ip_address,
+                'location' => $activity->location,
+                'status' => $activity->status,
+                'is_active' => $isActive,
+                'is_current' => $isCurrent,
+                'is_mobile' => $isMobile,
+                // 'is_resolved' => (bool)$activity->is_resolved,
+                // 'is_trusted' => (bool)$activity->is_trusted,
+                'signin_status' => $signinStatus,
+                'login_at' => $activity->login_at ? Carbon::parse($activity->login_at)->toISOString() : null,
+                'created_at' => $activity->created_at->toISOString(),
+            ],
         ]);
     }
 
@@ -470,6 +589,7 @@ class SecuritySettingsController extends Controller
         $user = User::find($request->user_id);
         $user->update([
             'password' => Hash::make($request->password),
+            'has_password' => true,
         ]);
 
         $activity->update(['is_resolved' => true, 'is_trusted' => false]);
@@ -525,16 +645,19 @@ class SecuritySettingsController extends Controller
         Mail::to($user->email)->queue(new AccountDeletionRequestedMail($user, $permanentDeleteAt));
 
         try {
-            $payload = auth('api')->payload();
-            if ($payload) {
-                $tokenId = $payload->get('jti');
-                LoginActivity::where('token_id', $tokenId)
-                    ->where('user_id', $user->id)
-                    ->update(['is_active' => 0]);
-            }
+            LoginActivity::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
         } catch (\Exception $e) {
             //
         }
+
+        //remove 2FA and recovery codes before soft deleting the user
+        $user->update([
+            'two_factor_secret' => null,
+            'two_factor_confirmed_at' => null,
+            'two_factor_recovery_codes' => null,
+        ]);
 
         $user->delete();
         auth('api')->logout();
@@ -546,105 +669,59 @@ class SecuritySettingsController extends Controller
 
     public function restore(Request $request)
     {
-        $token = $request->bearerToken();
-
-        if (!$token) {
-            return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
-        }
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
 
         try {
-            $payload = JWTAuth::setToken($token)->getPayload();
-            $userId = $payload->get('sub');
+            $user = User::withTrashed()->where('email', $request->email)->first();
 
-            $user = User::withTrashed()->find($userId);
-
-            if (!$user) {
+            if (!$user || !$user->trashed()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User account not found.'
+                    'message' => 'No pending account deletion found for this email.'
                 ], 404);
             }
 
-            if ($user->trashed()) {
-                $user->restore();
-
-                DeletedAccountLog::where('user_id', $user->id)->delete();
-
-                $tokenId = $payload->get('jti');
-                request()->merge(['current_token_id' => $tokenId]);
-                event(new \Illuminate\Auth\Events\Login('api', $user, false));
-
-                $roleName = $user->getRoleNames()->first();
-                $user->makeHidden('roles');
-                $user->role = $roleName;
-
+            if (!Hash::check($request->password, $user->password)) {
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Welcome back! Your account has been successfully reactivated.',
-                    'data' => [
-                        'is_onboarding' => $user->profile()->exists(),
-                        'user' => $user,
-                        'token' => $token,
-                        'token_type' => 'bearer',
-                    ]
-                ]);
-            } else {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Your account is already active.'
-                ]);
+                    'success' => false,
+                    'message' => 'The provided password is incorrect. Restoration failed.'
+                ], 401);
             }
+
+            $user->restore();
+
+            DeletedAccountLog::where('user_id', $user->id)->delete();
+
+            $token = auth('api')->login($user);
+
+            $payload = auth('api')->setToken($token)->getPayload();
+            $tokenId = $payload->get('jti');
+            request()->merge(['current_token_id' => $tokenId]);
+            event(new \Illuminate\Auth\Events\Login('api', $user, false));
+
+            $roleName = $user->getRoleNames()->first();
+            $user->makeHidden('roles');
+            $user->role = $roleName;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Welcome back! Your account has been successfully reactivated.',
+                'data' => [
+                    'is_onboarding' => $user->profile()->exists(),
+                    'user' => $user,
+                    'token' => $token,
+                    'token_type' => 'bearer',
+                ]
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid or expired token.',
+                'message' => 'Something went wrong while restoring the account.',
                 'error' => $e->getMessage()
-            ], 401);
+            ], 500);
         }
     }
-
-    // public function restore(Request $request)
-    // {
-    //     $token = $request->bearerToken();
-
-    //     if (!$token) {
-    //         return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
-    //     }
-
-    //     try {
-    //         $payload = JWTAuth::setToken($token)->getPayload();
-    //         $userId = $payload->get('sub');
-
-    //         $user = User::withTrashed()->find($userId);
-
-    //         if (!$user) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'User account not found.'
-    //             ], 404);
-    //         }
-
-    //         if ($user->trashed()) {
-    //             $user->restore();
-
-    //             DeletedAccountLog::where('user_id', $user->id)->delete();
-
-    //             return response()->json([
-    //                 'success' => true,
-    //                 'message' => 'Welcome back! Your account has been successfully reactivated.'
-    //             ]);
-    //         } else {
-    //             return response()->json([
-    //                 'success' => true,
-    //                 'message' => 'Your account is already active.'
-    //             ]);
-    //         }
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Invalid or expired token.',
-    //             'error' => $e->getMessage()
-    //         ], 401);
-    //     }
-    // }
 }
