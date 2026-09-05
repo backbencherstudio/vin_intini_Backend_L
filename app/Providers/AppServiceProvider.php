@@ -24,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(IntegrationSettingsService $settings): void
     {
+        DevCommands::artisan('serve', 'server');
         DevCommands::artisan('schedule:work', 'schedule');
         $settings->applyOverrides();
     }
