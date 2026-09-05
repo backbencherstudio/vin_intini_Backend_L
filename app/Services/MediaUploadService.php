@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Image;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MediaUploadService
@@ -41,6 +42,8 @@ class MediaUploadService
         $outputPath = storage_path(
             'app/public/'.$filename
         );
+
+        Storage::disk('public')->makeDirectory(dirname($filename));
 
         $command = sprintf(
             "ffmpeg -i %s -vf \"scale='min(1280,iw)':-2\" -c:v libx264 -preset medium -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1",

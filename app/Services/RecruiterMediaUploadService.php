@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class RecruiterMediaUploadService
@@ -33,13 +34,15 @@ class RecruiterMediaUploadService
 
     private function processVideo(UploadedFile $file): array
     {
-        $filename = 'recruiters/posts/' . Str::uuid() . '.mp4';
+        $filename = 'recruiters/posts/'.Str::uuid().'.mp4';
 
         $inputPath = $file->getRealPath();
 
         $outputPath = storage_path(
-            'app/public/' . $filename
+            'app/public/'.$filename
         );
+
+        Storage::disk('public')->makeDirectory(dirname($filename));
 
         $command = sprintf(
             '"%s" -i %s -vf "scale=\'min(1280,iw)\':-2" -c:v libx264 -preset veryfast -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1',
@@ -55,7 +58,7 @@ class RecruiterMediaUploadService
 
         if ($status !== 0) {
             throw new \Exception(
-                'Video compression failed: ' . implode("\n", $output)
+                'Video compression failed: '.implode("\n", $output)
             );
         }
 
