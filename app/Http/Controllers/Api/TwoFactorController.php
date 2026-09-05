@@ -164,54 +164,6 @@ class TwoFactorController extends Controller
         ], 401);
     }
 
-    // public function verifyLogin(Request $request)
-    // {
-    //     $request->validate(['email' => 'required|email', 'code' => 'required']);
-    //     $user = User::where('email', $request->email)->first();
-
-    //     if (! $user || ! $user->two_factor_confirmed_at) {
-    //         return response()->json(['status' => false, 'message' => 'Invalid request'], 403);
-    //     }
-
-    //     $valid = $this->google2fa->verifyKey($user->two_factor_secret, $request->code);
-
-    //     if (! $valid && $user->two_factor_recovery_codes) {
-    //         $hashedCodes = json_decode(decrypt($user->two_factor_recovery_codes), true);
-
-    //         foreach ($hashedCodes as $index => $hashedCode) {
-    //             if (Hash::check($request->code, $hashedCode)) {
-    //                 $valid = true;
-    //                 unset($hashedCodes[$index]);
-
-    //                 $user->update([
-    //                     'two_factor_recovery_codes' => encrypt(json_encode(array_values($hashedCodes))),
-    //                 ]);
-    //                 break;
-    //             }
-    //         }
-    //     }
-
-    //     if ($valid) {
-    //         $token = auth('api')->login($user);
-
-    //         // -----------------------------------------
-    //         // Trigger the Login event to log the successful login activity
-    //         $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
-    //         $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
-    //         request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
-    //         event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
-    //         // -----------------------------------------
-
-    //         return $this->respondWithToken($token, $user);
-    //     }
-
-    //     // if login fails (Suspicious Activity tracking) ---
-    //     // event(new Failed('api', $user, ['code' => $request->code]));
-    //     // --------------------------------------------------
-
-    //     return response()->json(['status' => false, 'message' => 'Invalid verification code'], 401);
-    // }
-
     public function disable(Request $request)
     {
         $request->validate(['password' => 'required']);
