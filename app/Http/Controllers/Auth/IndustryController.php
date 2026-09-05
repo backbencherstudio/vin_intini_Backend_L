@@ -677,18 +677,28 @@ class IndustryController extends Controller
 
     public function latestPosts()
     {
+        $userId = auth()->id();
+
+        $industry = Industry::where('created_by', $userId)->first();
+
+        if (!$industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company page not found.',
+            ], 404);
+        }
+
         $posts = RecruiterPost::with([
             'media' => function ($query) {
                 $query->orderBy('sort_order');
             },
             'industry',
         ])
+            ->where('industry_id', $industry->id)
+
             ->withExists([
-                'likes as is_liked' => function ($query) {
-                    $query->where(
-                        'user_id',
-                        auth()->id()
-                    );
+                'likes as is_liked' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId);
                 },
             ])
             ->latest()
@@ -698,7 +708,7 @@ class IndustryController extends Controller
         return response()->json([
             'success' => true,
 
-            'message' => 'Latest recruiter posts fetched successfully.',
+            'message' => 'Latest company posts fetched successfully.',
 
             'data' => $posts->map(function ($post) {
 
