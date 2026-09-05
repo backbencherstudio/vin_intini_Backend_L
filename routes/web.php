@@ -156,50 +156,52 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'a
 //     return redirect()->back()->with('success', 'All notifications have been removed!');
 // })->name('notifications.clearAll');
 
-Route::get('/generate-usernames', function () {
-    $users = User::whereNull('username')->get();
-    $count = 0;
 
-    foreach ($users as $user) {
-        $baseSlug = Str::slug($user->first_name . ' ' . $user->last_name, '-');
+//generate usernames for users who don't have one
+// Route::get('/generate-usernames', function () {
+//     $users = User::whereNull('username')->get();
+//     $count = 0;
 
-        if (empty($baseSlug)) {
-            $baseSlug = Str::slug(explode('@', $user->email)[0], '-');
-        }
+//     foreach ($users as $user) {
+//         $baseSlug = Str::slug($user->first_name . ' ' . $user->last_name, '-');
 
-        $username = $baseSlug;
-        $counter = 1;
+//         if (empty($baseSlug)) {
+//             $baseSlug = Str::slug(explode('@', $user->email)[0], '-');
+//         }
 
-        while (User::where('username', $username)->exists()) {
-            $username = $baseSlug . '-' . $counter;
-            $counter++;
-        }
+//         $username = $baseSlug;
+//         $counter = 1;
 
-        $user->username = $username;
-        $user->save();
-        $count++;
-    }
+//         while (User::where('username', $username)->exists()) {
+//             $username = $baseSlug . '-' . $counter;
+//             $counter++;
+//         }
 
-    return response()->json(['message' => "$count users updated with usernames!"]);
-});
+//         $user->username = $username;
+//         $user->save();
+//         $count++;
+//     }
 
+//     return response()->json(['message' => "$count users updated with usernames!"]);
+// });
 
-Route::get('/fix-social-passwords', function () {
-    $socialUserIds = SocialAccount::pluck('user_id')->unique()->toArray();
+//social users don't have passwords, so we need to set has_password to false for those users
+// Route::get('/fix-social-passwords', function () {
+//     $socialUserIds = SocialAccount::pluck('user_id')->unique()->toArray();
 
-    if (empty($socialUserIds)) {
-        return response()->json(['message' => "No social accounts found!"]);
-    }
+//     if (empty($socialUserIds)) {
+//         return response()->json(['message' => "No social accounts found!"]);
+//     }
 
-    $updatedCount = User::whereIn('id', $socialUserIds)
-        ->where('has_password', true)
-        ->update(['has_password' => false]);
+//     $updatedCount = User::whereIn('id', $socialUserIds)
+//         ->where('has_password', true)
+//         ->update(['has_password' => false]);
 
-    return response()->json([
-        'status' => true,
-        'message' => "Successfully updated $updatedCount social users!",
-        'total_social_users' => count($socialUserIds)
-    ]);
-});
+//     return response()->json([
+//         'status' => true,
+//         'message' => "Successfully updated $updatedCount social users!",
+//         'total_social_users' => count($socialUserIds)
+//     ]);
+// });
 
 require __DIR__ . '/auth.php';
