@@ -122,13 +122,13 @@ class GroupController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Group created successfully!',
-            'data' => $group->load(['creator:id,username,first_name,last_name,email']),
+            'data' => $group->load(['creator:id,username,first_name,last_name,email,profile_image']),
         ], 201);
     }
 
     public function show(Request $request, $id)
     {
-        $group = Group::with(['creator:id,first_name,last_name,title'])
+        $group = Group::with(['creator:id,first_name,last_name,title,profile_image'])
             ->withCount(['members' => function ($query) {
                 $query->where('group_users.status', 'active');
             }])
