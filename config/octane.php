@@ -42,6 +42,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | FrankenPHP Environment Variables
+    |--------------------------------------------------------------------------
+    |
+    | FrankenPHP carries its own embedded PHP interpreter that does not
+    | load the system php.ini. Point it at our ini directory so PHP upload
+    | limits and other runtime settings match the rest of the application.
+    |
+    */
+
+    'caddy' => [
+        'env' => [
+            'PHP_INI_SCAN_DIR' => __DIR__.'/../.config/frankenphp',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Force HTTPS
     |--------------------------------------------------------------------------
     |
