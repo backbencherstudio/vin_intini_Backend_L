@@ -9,6 +9,7 @@ use App\Models\RecruiterPost;
 use App\Models\RecruiterPostComment;
 use App\Models\RecruiterPostLike;
 use App\Models\Subscription;
+use App\Services\OptimizedImageUploadService;
 use App\Services\RecruiterMediaUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,7 @@ class IndustryController extends Controller
         if (!$subscription) {
             return response()->json([
                 'success' => false,
-                'message' => 'You need an active subscription to create an industry.',
+                'message' => 'You need an active subscription to create a company page.',
             ], 403);
         }
 
@@ -46,17 +47,17 @@ class IndustryController extends Controller
         if (!in_array('company_profile', $features, true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Your current plan does not include industry creation.',
+                'message' => 'Your current plan does not include company page creation.',
             ], 403);
         }
 
-        // Check if user already has an industry
+        // Check if user already has a company page
         $existingIndustry = Industry::where('created_by', auth()->id())->first();
 
         if ($existingIndustry) {
             return response()->json([
                 'success' => false,
-                'message' => 'You already have an industry.',
+                'message' => 'You already have a company page.',
             ], 409);
         }
 
@@ -127,7 +128,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Industry created successfully.',
+                'message' => 'Company page created successfully.',
                 'data' => [
                     'id' => $industry->id,
                     'name' => $industry->name,
@@ -176,7 +177,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create industry.',
+                'message' => 'Failed to create company page.',
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
@@ -431,7 +432,6 @@ class IndustryController extends Controller
             ], 403);
         }
 
-
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
 
@@ -439,6 +439,51 @@ class IndustryController extends Controller
 
             'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:102400'],
         ]);
+
+        if ($request->hasFile('media')) {
+
+            $mediaFiles = $request->file('media');
+
+            $videoCount = collect($mediaFiles)
+                ->filter(function ($file) {
+                    return str_starts_with(
+                        $file->getMimeType() ?? '',
+                        'video/'
+                    );
+                })
+                ->count();
+
+            $imageCount = collect($mediaFiles)
+                ->filter(function ($file) {
+                    return str_starts_with(
+                        $file->getMimeType() ?? '',
+                        'image/'
+                    );
+                })
+                ->count();
+
+            if ($videoCount > 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 1 video per post.',
+                ], 422);
+            }
+
+            if ($videoCount === 1 && $imageCount > 9) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 9 images with 1 video.',
+                ], 422);
+            }
+
+            if ($videoCount === 0 && $imageCount > 10) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 10 images per post.',
+                ], 422);
+            }
+        }
+
 
         $content = trim($validated['content'] ?? '');
 
@@ -632,18 +677,28 @@ class IndustryController extends Controller
 
     public function latestPosts()
     {
+        $userId = auth()->id();
+
+        $industry = Industry::where('created_by', $userId)->first();
+
+        if (!$industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company page not found.',
+            ], 404);
+        }
+
         $posts = RecruiterPost::with([
             'media' => function ($query) {
                 $query->orderBy('sort_order');
             },
             'industry',
         ])
+            ->where('industry_id', $industry->id)
+
             ->withExists([
-                'likes as is_liked' => function ($query) {
-                    $query->where(
-                        'user_id',
-                        auth()->id()
-                    );
+                'likes as is_liked' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId);
                 },
             ])
             ->latest()
@@ -653,7 +708,7 @@ class IndustryController extends Controller
         return response()->json([
             'success' => true,
 
-            'message' => 'Latest recruiter posts fetched successfully.',
+            'message' => 'Latest company posts fetched successfully.',
 
             'data' => $posts->map(function ($post) {
 
@@ -855,7 +910,7 @@ class IndustryController extends Controller
     }
 
 
-    public function storeComment(Request $request, $postId)
+    public function storeComment(Request $request, $postId, OptimizedImageUploadService $imageUploadService)
     {
         $validated = $request->validate([
             'comment' => ['nullable', 'string', 'max:5000'],
@@ -890,11 +945,10 @@ class IndustryController extends Controller
 
             if ($request->hasFile('image')) {
 
-                $imagePath = $request->file('image')
-                    ->store(
-                        'recruiters/comments',
-                        'public'
-                    );
+                $imagePath = $imageUploadService->store(
+                    $request->file('image'),
+                    'recruiters/comments'
+                );
             }
 
             $comment = RecruiterPostComment::create([
@@ -962,7 +1016,7 @@ class IndustryController extends Controller
     }
 
 
-    public function replyComment(Request $request, $commentId)
+    public function replyComment(Request $request, $commentId, OptimizedImageUploadService $imageUploadService)
     {
         $validated = $request->validate([
             'comment' => ['nullable', 'string', 'max:5000'],
@@ -999,11 +1053,10 @@ class IndustryController extends Controller
 
             if ($request->hasFile('image')) {
 
-                $imagePath = $request->file('image')
-                    ->store(
-                        'recruiters/comments',
-                        'public'
-                    );
+                $imagePath = $imageUploadService->store(
+                    $request->file('image'),
+                    'recruiters/comments'
+                );
             }
 
             $reply = RecruiterPostComment::create([
