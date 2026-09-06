@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ConnectionRequestMail;
 use App\Models\Connection;
 use App\Models\Conversation;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Notifications\ConnectionRequestAcceptedNotification;
@@ -34,8 +35,8 @@ class ConnectionController extends Controller
         $connections = Connection::query()
             ->accepted()
             ->forUser($currentUser->id)
-            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->with([
                 'sender:id,username,first_name,last_name,title,profile_image',
                 'receiver:id,username,first_name,last_name,title,profile_image',
@@ -125,10 +126,12 @@ class ConnectionController extends Controller
 
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
 
-        $connectionData = $paginator->getCollection()->map(function (array $item) use ($mutualConnections, $followingIds) {
+        $premiumUserIds = $this->loadPremiumUserIds($counterpartIds);
+
+        $connectionData = $paginator->getCollection()->map(function (array $item) use ($mutualConnections, $followingIds, $premiumUserIds) {
             $connection = $item['payload'];
 
-            if (!$connection['user']) {
+            if (! $connection['user']) {
                 return null;
             }
 
@@ -138,6 +141,7 @@ class ConnectionController extends Controller
             $connection['mutual_connections'] = $mutualConnections[$counterpartId]['preview'] ?? [];
 
             $connection['user']['is_following'] = in_array($counterpartId, $followingIds);
+            $connection['user']['has_premium'] = in_array($counterpartId, $premiumUserIds);
 
             return $connection;
         })->filter()->values();
@@ -175,8 +179,8 @@ class ConnectionController extends Controller
         $requests = Connection::query()
             ->pending()
             ->where('receiver_id', $currentUser->id)
-            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->with([
                 'sender:id,username,first_name,last_name,title,profile_image',
                 'receiver:id,username,first_name,last_name,title,profile_image',
@@ -332,13 +336,13 @@ class ConnectionController extends Controller
                     foreach ($searchTerms as $term) {
                         $q->where(function ($subQuery) use ($term) {
                             $subQuery
-                                ->where('users.first_name', 'like', $term . '%')
-                                ->orWhere('users.last_name', 'like', $term . '%')
-                                ->orWhere('users.username', 'like', '%' . $term . '%')
-                                ->orWhere('users.title', 'like', '%' . $term . '%')
+                                ->where('users.first_name', 'like', $term.'%')
+                                ->orWhere('users.last_name', 'like', $term.'%')
+                                ->orWhere('users.username', 'like', '%'.$term.'%')
+                                ->orWhere('users.title', 'like', '%'.$term.'%')
                                 ->orWhereRaw(
                                     "CONCAT_WS(' ', users.first_name, users.last_name) LIKE ?",
-                                    ['%' . $term . '%']
+                                    ['%'.$term.'%']
                                 );
                         });
                     }
@@ -563,7 +567,7 @@ class ConnectionController extends Controller
             ], 403);
         }
 
-        if (!$connectionRequest->sender) {
+        if (! $connectionRequest->sender) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'The sender of this request no longer has an active account.',
@@ -717,6 +721,19 @@ class ConnectionController extends Controller
         ]);
     }
 
+    private function loadPremiumUserIds(Collection $userIds): array
+    {
+        if ($userIds->isEmpty()) {
+            return [];
+        }
+
+        return Subscription::whereIn('user_id', $userIds)
+            ->get()
+            ->filter(fn (Subscription $subscription) => $subscription->isActive())
+            ->pluck('user_id')
+            ->all();
+    }
+
     private function buildMutualConnectionsMap(int $currentUserId, Collection $counterpartIds): array
     {
         if ($counterpartIds->isEmpty()) {
@@ -729,8 +746,8 @@ class ConnectionController extends Controller
                 $query->where('sender_id', $currentUserId)
                     ->orWhere('receiver_id', $currentUserId);
             })
-            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->get(['sender_id', 'receiver_id'])
             ->map(function (Connection $connectionRequest) use ($currentUserId) {
                 return $connectionRequest->sender_id === $currentUserId
@@ -750,8 +767,8 @@ class ConnectionController extends Controller
                 $query->whereIn('sender_id', $currentConnections->all())
                     ->orWhereIn('receiver_id', $currentConnections->all());
             })
-            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->get(['sender_id', 'receiver_id']);
 
         $adjacency = [];
@@ -774,7 +791,7 @@ class ConnectionController extends Controller
         foreach ($counterpartIds as $counterpartId) {
             $mutualIds = collect($adjacency[$counterpartId] ?? [])
                 ->intersect($currentConnections)
-                ->reject(fn(int $userId) => $userId === $currentUserId || $userId === $counterpartId)
+                ->reject(fn (int $userId) => $userId === $currentUserId || $userId === $counterpartId)
                 ->unique()
                 ->values();
 
@@ -789,12 +806,12 @@ class ConnectionController extends Controller
 
         $formatted = [];
         foreach ($map as $counterpartId => $mutualIds) {
-            $validMutualIds = $mutualIds->filter(fn($id) => $mutualUsers->has($id));
+            $validMutualIds = $mutualIds->filter(fn ($id) => $mutualUsers->has($id));
 
             $formatted[$counterpartId] = [
                 'count' => $validMutualIds->count(),
                 'preview' => $validMutualIds->take(1)
-                    ->map(fn($id) => $this->formatUser($mutualUsers->get($id)))
+                    ->map(fn ($id) => $this->formatUser($mutualUsers->get($id)))
                     ->values()
                     ->toArray(),
             ];
@@ -809,7 +826,7 @@ class ConnectionController extends Controller
             ? $connectionRequest->receiver
             : $connectionRequest->sender;
 
-        if (!$counterpart) {
+        if (! $counterpart) {
             return ['id' => $connectionRequest->id, 'user' => null, 'status' => 'deleted'];
         }
 
@@ -863,7 +880,9 @@ class ConnectionController extends Controller
 
     private function formatUser(User $user): array
     {
-        if (!$user) return [];
+        if (! $user) {
+            return [];
+        }
 
         return [
             'id' => $user->id,

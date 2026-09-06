@@ -5,6 +5,8 @@ namespace Tests\Feature\Api;
 use App\Events\ConnectionRemoved;
 use App\Models\Connection;
 use App\Models\Conversation;
+use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Models\UserProfile;
@@ -572,6 +574,54 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('data.0.user.name', 'Amy Alpha')
             ->assertJsonPath('filters.sort', 'az');
+    }
+
+    public function test_connection_list_marks_premium_connections(): void
+    {
+        $currentUser = $this->makeUser('Current', 'User');
+
+        $premiumConnection = $this->makeUser('Alice', 'Premium');
+        $freeConnection = $this->makeUser('Bob', 'Free');
+
+        Connection::create([
+            'sender_id' => $currentUser->id,
+            'receiver_id' => $premiumConnection->id,
+            'status' => Connection::STATUS_ACCEPTED,
+            'responded_at' => now(),
+        ]);
+
+        Connection::create([
+            'sender_id' => $currentUser->id,
+            'receiver_id' => $freeConnection->id,
+            'status' => Connection::STATUS_ACCEPTED,
+            'responded_at' => now(),
+        ]);
+
+        Subscription::create([
+            'user_id' => $premiumConnection->id,
+            'plan_id' => Plan::create([
+                'name' => 'Premium',
+                'billing_rate' => 29.99,
+                'billing_cycle' => 'monthly',
+                'status' => 'active',
+                'features' => ['search_profiles'],
+            ])->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_premium',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($currentUser, 'api')->getJson('/api/connections?sort=az');
+
+        $response->assertOk();
+
+        $alice = collect($response->json('data'))
+            ->first(fn (array $item) => $item['user']['id'] === $premiumConnection->id);
+        $bob = collect($response->json('data'))
+            ->first(fn (array $item) => $item['user']['id'] === $freeConnection->id);
+
+        $this->assertSame(true, $alice['user']['has_premium']);
+        $this->assertSame(false, $bob['user']['has_premium']);
     }
 
     public function test_user_can_view_connection_suggestions_with_pending_states(): void
