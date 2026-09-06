@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\RegisterOtpMail;
 use App\Models\DeletedAccountLog;
+use App\Models\FcmToken;
 use App\Models\LoginActivity;
 use App\Models\Skill;
 use App\Models\User;
@@ -16,8 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
-use Tymon\JWTAuth\Exceptions\JWTException;
-use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenBlacklistedException;
 
 class AuthController extends Controller
 {
@@ -70,7 +70,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'pending_deletion',
                 'days_left' => (int) $daysRemaining,
-                'name' => $user->first_name . ' ' . $user->last_name,
+                'name' => $user->first_name.' '.$user->last_name,
                 'email' => $user->email,
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
             ], 200);
@@ -109,11 +109,7 @@ class AuthController extends Controller
         $user = auth('api')->user();
 
         if (! empty($credentials['fcm_token'])) {
-            $user->fcmTokens()->where('fcm_token', '!=', $credentials['fcm_token'])->delete();
-            $user->fcmTokens()->updateOrCreate(
-                ['user_id' => $user->id],
-                ['fcm_token' => $credentials['fcm_token']]
-            );
+            FcmToken::assignTo($user, $credentials['fcm_token']);
         }
         // -----------------------------------------
         // Trigger the Login event to log the successful login activity
@@ -218,6 +214,10 @@ class AuthController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not found'], 401);
             }
 
+            if ($fcmToken = request('fcm_token')) {
+                $user->fcmTokens()->where('fcm_token', $fcmToken)->delete();
+            }
+
             $payload = auth('api')->payload();
             if ($payload) {
                 $tokenId = $payload->get('jti');
@@ -244,7 +244,7 @@ class AuthController extends Controller
     {
         $token = auth('api')->getToken();
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['success' => false, 'message' => 'Token not provided'], 401);
         }
 
@@ -253,7 +253,7 @@ class AuthController extends Controller
 
             $loginActivity = LoginActivity::where('token_id', $oldJti)->first();
 
-            if (!$loginActivity || !$loginActivity->is_active) {
+            if (! $loginActivity || ! $loginActivity->is_active) {
                 return response()->json(['success' => false, 'message' => 'Session is inactive. Please login again.'], 401);
             }
 
@@ -261,13 +261,14 @@ class AuthController extends Controller
 
             if ($loginActivity->updated_at->lt(now()->subMinutes($rollingMinutes))) {
                 $loginActivity->update(['is_active' => false]);
+
                 return response()->json(['success' => false, 'message' => 'Session expired. Please login again.'], 401);
             }
 
             $newToken = auth('api')->refresh();
             $user = auth('api')->setToken($newToken)->user();
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json(['success' => false, 'message' => 'User not found'], 401);
             }
 
@@ -280,7 +281,7 @@ class AuthController extends Controller
             ]);
 
             return $this->respondWithToken($newToken, $user);
-        } catch (\Tymon\JWTAuth\Exceptions\TokenBlacklistedException $e) {
+        } catch (TokenBlacklistedException $e) {
             return response()->json(['success' => false, 'message' => 'Session blacklisted. Please login again.'], 401);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Invalid token or session error'], 401);
@@ -291,8 +292,11 @@ class AuthController extends Controller
     {
         try {
             $parts = explode('.', $token);
-            if (count($parts) !== 3) return null;
+            if (count($parts) !== 3) {
+                return null;
+            }
             $payload = json_decode(base64_decode($parts[1]), true);
+
             return $payload['jti'] ?? null;
         } catch (\Exception $e) {
             return null;
