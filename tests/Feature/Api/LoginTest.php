@@ -94,6 +94,39 @@ class LoginTest extends TestCase
         $this->assertSame(1, FcmToken::where('fcm_token', 'stable-device-token')->count());
     }
 
+    public function test_logout_removes_the_fcm_token_of_the_logging_out_device(): void
+    {
+        $user = $this->makeVerifiedUser();
+
+        FcmToken::create(['user_id' => $user->id, 'fcm_token' => 'device-token-a']);
+        FcmToken::create(['user_id' => $user->id, 'fcm_token' => 'device-token-b']);
+
+        $this->actingAs($user, 'api')->postJson('/api/logout', [
+            'fcm_token' => 'device-token-a',
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('fcm_tokens', [
+            'user_id' => $user->id,
+            'fcm_token' => 'device-token-a',
+        ]);
+
+        $this->assertDatabaseHas('fcm_tokens', [
+            'user_id' => $user->id,
+            'fcm_token' => 'device-token-b',
+        ]);
+    }
+
+    public function test_logout_without_fcm_token_keeps_other_device_tokens(): void
+    {
+        $user = $this->makeVerifiedUser();
+
+        FcmToken::create(['user_id' => $user->id, 'fcm_token' => 'device-token-a']);
+
+        $this->actingAs($user, 'api')->postJson('/api/logout')->assertOk();
+
+        $this->assertSame(1, FcmToken::where('user_id', $user->id)->count());
+    }
+
     private function makeVerifiedUser(): User
     {
         $user = User::factory()->create([

@@ -214,6 +214,10 @@ class AuthController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not found'], 401);
             }
 
+            if ($fcmToken = request('fcm_token')) {
+                $user->fcmTokens()->where('fcm_token', $fcmToken)->delete();
+            }
+
             $payload = auth('api')->payload();
             if ($payload) {
                 $tokenId = $payload->get('jti');
