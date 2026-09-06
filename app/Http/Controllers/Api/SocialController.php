@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeletedAccountLog;
+use App\Models\FcmToken;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\ProfileImageService;
@@ -25,12 +26,18 @@ class SocialController extends Controller
         }
 
         $platform = request('platform', 'app');
+        $fcmToken = request('fcm_token');
+
+        $state = "platform={$platform}";
+        if ($fcmToken) {
+            $state .= '&fcm_token='.urlencode($fcmToken);
+        }
 
         return response()->json([
             'success' => true,
             'url' => Socialite::driver($provider)
                 ->stateless()
-                ->with(['state' => "platform={$platform}"])
+                ->with(['state' => $state])
                 ->redirect()
                 ->getTargetUrl(),
         ]);
@@ -48,6 +55,7 @@ class SocialController extends Controller
             $state = request('state');
             parse_str($state, $result);
             $platform = $result['platform'] ?? 'app';
+            $fcmToken = $result['fcm_token'] ?? null;
 
             $providerId = (string) $socialUser->getId();
             $avatarUrl = (string) ($socialUser->getAvatar() ?: '');
@@ -61,7 +69,9 @@ class SocialController extends Controller
 
                 if ($socialAccount) {
                     $existingUser = User::withTrashed()->find($socialAccount->user_id);
-                    if ($existingUser) return $existingUser;
+                    if ($existingUser) {
+                        return $existingUser;
+                    }
                 }
 
                 $email = $socialUser->getEmail();
@@ -111,6 +121,10 @@ class SocialController extends Controller
             }
 
             $token = JWTAuth::fromUser($user);
+
+            if ($fcmToken) {
+                FcmToken::assignTo($user, urldecode($fcmToken));
+            }
 
             // -----------------------------------------
             // Trigger the Login event to log the successful login activity
@@ -164,5 +178,4 @@ class SocialController extends Controller
             ], 500);
         }
     }
-
 }
