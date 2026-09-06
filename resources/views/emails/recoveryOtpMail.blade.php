@@ -98,8 +98,8 @@
 
         <!-- Content -->
         <div class="content">
-            <h2>Verify your recovery email</h2>
-            <p>You have requested to add this email as a recovery contact for your Mind Unite account. Please use the following verification code to confirm this change.</p>
+            <h2>Verification Code</h2>
+            <p>To ensure the security of your account, please use the following code to complete your request. This code is valid for your current action on Mind Unite.</p>
 
             <div class="otp-box">
                 {{ $otp }}
