@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class RecruiterPostLike extends Model
+class IndustryPostLike extends Model
 {
     protected $fillable = [
         'post_id',
@@ -14,7 +14,7 @@ class RecruiterPostLike extends Model
     public function post()
     {
         return $this->belongsTo(
-            RecruiterPost::class,
+            IndustryPost::class,
             'post_id'
         );
     }
