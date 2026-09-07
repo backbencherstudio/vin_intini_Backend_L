@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class RecruiterCommentLike extends Model
+class IndustryCommentLike extends Model
 {
     protected $fillable = [
         'comment_id',
@@ -14,7 +14,7 @@ class RecruiterCommentLike extends Model
     public function comment()
     {
         return $this->belongsTo(
-            RecruiterPostComment::class,
+            IndustryPostComment::class,
             'comment_id'
         );
     }
