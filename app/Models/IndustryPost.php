@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class RecruiterPost extends Model
+class IndustryPost extends Model
 {
     protected $fillable = [
         'industry_id',
@@ -28,14 +28,14 @@ class RecruiterPost extends Model
 
     public function media(): HasMany
     {
-        return $this->hasMany(RecruiterPostMedia::class)
+        return $this->hasMany(IndustryPostMedia::class)
             ->orderBy('sort_order');
     }
 
     public function likes()
     {
         return $this->hasMany(
-            RecruiterPostLike::class,
+            IndustryPostLike::class,
             'post_id'
         );
     }
@@ -43,7 +43,7 @@ class RecruiterPost extends Model
     public function comments()
     {
         return $this->hasMany(
-            RecruiterPostComment::class,
+            IndustryPostComment::class,
             'post_id'
         );
     }
