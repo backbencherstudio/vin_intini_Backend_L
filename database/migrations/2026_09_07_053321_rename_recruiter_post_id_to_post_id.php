@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('industry_post_media', function (Blueprint $table) {
             $table->renameColumn(
                 'recruiter_post_id',
-                'post_id'
+                'industry_post_id'
             );
         });
     }
@@ -20,7 +20,7 @@ return new class extends Migration
     {
         Schema::table('industry_post_media', function (Blueprint $table) {
             $table->renameColumn(
-                'post_id',
+                'industry_post_id',
                 'recruiter_post_id'
             );
         });
