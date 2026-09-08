@@ -594,7 +594,7 @@ class IndustryController extends Controller
             100
         );
 
-        $posts = RecruiterPost::with([
+        $posts = IndustryPost::with([
             'media' => function ($query) {
                 $query->orderBy('sort_order');
             },
@@ -614,7 +614,7 @@ class IndustryController extends Controller
         return response()->json([
             'success' => true,
 
-            'message' => 'Recruiter posts fetched successfully.',
+            'message' => 'Industry posts fetched successfully.',
 
             'data' => collect($posts->items())->map(function ($post) {
 
