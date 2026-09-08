@@ -27,7 +27,7 @@ class StripeService
         Stripe::setApiKey(config('services.stripe.secret'));
     }
 
-    public function createProduct(string $name, ?string $description, array $features): Product
+    public function createProduct(string $name, ?string $description, array $features, ?array $options = null): Product
     {
         return Product::create([
             'name' => $name,
@@ -35,7 +35,7 @@ class StripeService
             'metadata' => [
                 'features' => implode(',', $features),
             ],
-        ]);
+        ], $options ?? []);
     }
 
     public function createPrice(
@@ -43,13 +43,14 @@ class StripeService
         string $currency,
         string $interval,
         string $productId,
+        ?array $options = null,
     ): Price {
         return Price::create([
             'unit_amount' => $unitAmount,
             'currency' => $currency,
             'recurring' => ['interval' => $interval],
             'product' => $productId,
-        ]);
+        ], $options ?? []);
     }
 
     public function updateProduct(string $productId, array $data): Product
