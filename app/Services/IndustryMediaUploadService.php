@@ -42,12 +42,12 @@ class IndustryMediaUploadService
 
     private function processVideo(UploadedFile $file): array
     {
-        $filename = 'industries/posts/'.Str::uuid().'.mp4';
+        $filename = 'industries/posts/' . Str::uuid() . '.mp4';
 
         $inputPath = $file->getRealPath();
 
         $outputPath = storage_path(
-            'app/public/'.$filename
+            'app/public/' . $filename
         );
 
         Storage::disk('public')->makeDirectory(dirname($filename));
@@ -65,8 +65,13 @@ class IndustryMediaUploadService
         exec($command, $output, $status);
 
         if ($status !== 0) {
+
+            if (Storage::disk('public')->exists($filename)) {
+                Storage::disk('public')->delete($filename);
+            }
+
             throw new \Exception(
-                'Video compression failed: '.implode("\n", $output)
+                'Video compression failed: ' . implode("\n", $output)
             );
         }
 
