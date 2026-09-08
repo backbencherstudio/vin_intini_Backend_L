@@ -2,12 +2,13 @@
 
 namespace Tests\Feature\Api\Admin;
 
+use App\Jobs\SyncPlanToRevenueCat;
 use App\Models\Plan;
 use App\Models\User;
-use App\Services\RevenueCatPlanSyncService;
 use App\Services\RevenueCatService;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -32,16 +33,19 @@ class PlanRevenueCatTest extends TestCase
         $this->admin->assignRole($role);
     }
 
-    public function test_admin_can_create_plan_without_revenuecat_fields(): void
+    private function mockStripe(): void
     {
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('createProduct')->andReturn(Product::constructFrom(['id' => 'prod_x']));
             $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
         });
+    }
 
-        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('sync');
-        });
+    public function test_admin_can_create_plan_without_revenuecat_fields(): void
+    {
+        $this->mockStripe();
+
+        Queue::fake(SyncPlanToRevenueCat::class);
 
         $response = $this->actingAs($this->admin, 'api')->postJson('/api/admin/plans/create', [
             'name' => 'Pro',
@@ -55,56 +59,16 @@ class PlanRevenueCatTest extends TestCase
             ->assertJsonPath('data.revenuecat_product_id', null)
             ->assertJsonPath('data.revenuecat_entitlement_id', null)
             ->assertJsonPath('data.revenuecat_store_identifier', null);
+
+        $plan = Plan::first();
+        Queue::assertPushed(SyncPlanToRevenueCat::class, fn (SyncPlanToRevenueCat $job) => $job->plan->is($plan));
     }
 
-    public function test_admin_can_update_plan_store_identifier_only(): void
+    public function test_admin_plan_save_with_store_identifier_dispatches_sync_job(): void
     {
-        $this->mock(StripeService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('createProduct')->andReturn(Product::constructFrom(['id' => 'prod_x']));
-            $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
-        });
+        $this->mockStripe();
 
-        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('sync');
-        });
-
-        $plan = $this->actingAs($this->admin, 'api')
-            ->postJson('/api/admin/plans/create', [
-                'name' => 'Pro',
-                'billing_rate' => 9.99,
-                'billing_cycle' => 'monthly',
-                'status' => 'active',
-                'features' => ['company_profile'],
-            ])
-            ->assertCreated()
-            ->json('data');
-
-        $response = $this->actingAs($this->admin, 'api')
-            ->patchJson("/api/admin/plans/{$plan['id']}", [
-                'revenuecat_store_identifier_ios' => 'com.app.pro.monthly',
-            ]);
-
-        $response->assertOk()
-            ->assertJsonPath('data.revenuecat_store_identifier_ios', 'com.app.pro.monthly')
-            ->assertJsonPath('data.revenuecat_product_id', null)
-            ->assertJsonPath('data.revenuecat_entitlement_id', null);
-    }
-
-    public function test_admin_plan_save_provisions_revenuecat_when_store_identifier_present(): void
-    {
-        $this->mock(StripeService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('createProduct')->andReturn(Product::constructFrom(['id' => 'prod_x']));
-            $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
-        });
-
-        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('sync')->once()->andReturnUsing(function (Plan $plan) {
-                $plan->forceFill([
-                    'revenuecat_product_id' => 'prod_rc_123',
-                    'revenuecat_entitlement_id' => 'entl_rc_123',
-                ])->save();
-            });
-        });
+        Queue::fake(SyncPlanToRevenueCat::class);
 
         $response = $this->actingAs($this->admin, 'api')->postJson('/api/admin/plans/create', [
             'name' => 'Pro',
@@ -116,26 +80,17 @@ class PlanRevenueCatTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('data.revenuecat_store_identifier_ios', 'com.app.pro.monthly')
-            ->assertJsonPath('data.revenuecat_product_id', 'prod_rc_123')
-            ->assertJsonPath('data.revenuecat_entitlement_id', 'entl_rc_123');
+            ->assertJsonPath('data.revenuecat_store_identifier_ios', 'com.app.pro.monthly');
+
+        $plan = Plan::first();
+        Queue::assertPushed(SyncPlanToRevenueCat::class, fn (SyncPlanToRevenueCat $job) => $job->plan->is($plan));
     }
 
-    public function test_admin_plan_update_provisions_revenuecat(): void
+    public function test_admin_can_update_plan_dispatches_sync_job(): void
     {
-        $this->mock(StripeService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('createProduct')->andReturn(Product::constructFrom(['id' => 'prod_x']));
-            $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
-        });
+        $this->mockStripe();
 
-        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('sync')->twice()->andReturnUsing(function (Plan $plan) {
-                $plan->forceFill([
-                    'revenuecat_product_id' => 'prod_rc_9',
-                    'revenuecat_entitlement_id' => 'entl_rc_9',
-                ])->save();
-            });
-        });
+        Queue::fake(SyncPlanToRevenueCat::class);
 
         $plan = $this->actingAs($this->admin, 'api')
             ->postJson('/api/admin/plans/create', [
@@ -154,8 +109,9 @@ class PlanRevenueCatTest extends TestCase
             ]);
 
         $response->assertOk()
-            ->assertJsonPath('data.revenuecat_product_id', 'prod_rc_9')
-            ->assertJsonPath('data.revenuecat_entitlement_id', 'entl_rc_9');
+            ->assertJsonPath('data.revenuecat_store_identifier_ios', 'com.app.pro.monthly');
+
+        Queue::assertPushed(SyncPlanToRevenueCat::class, 2);
     }
 
     public function test_sync_creates_a_product_per_platform(): void
@@ -177,10 +133,7 @@ class PlanRevenueCatTest extends TestCase
             $mock->shouldReceive('attachProductsToPackage')->andReturn(['id' => 'pkg_x']);
         });
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('createProduct')->andReturn(Product::constructFrom(['id' => 'prod_x']));
-            $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
-        });
+        $this->mockStripe();
 
         $response = $this->actingAs($this->admin, 'api')->postJson('/api/admin/plans/create', [
             'name' => 'Pro',

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Enums\PlanFeature;
 use App\Http\Controllers\Controller;
+use App\Jobs\SyncPlanToRevenueCat;
 use App\Models\Plan;
-use App\Services\RevenueCatPlanSyncService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +16,6 @@ class PlanController extends Controller
 {
     public function __construct(
         private StripeService $stripe,
-        private RevenueCatPlanSyncService $revenueCatSync,
     ) {}
 
     public function index(): JsonResponse
@@ -88,7 +87,7 @@ class PlanController extends Controller
             'revenuecat_store_identifier_android' => $validated['revenuecat_store_identifier_android'] ?? null,
         ]));
 
-        $this->syncRevenueCat($plan);
+        SyncPlanToRevenueCat::dispatch($plan);
 
         return response()->json(['success' => true, 'data' => $plan->fresh()], 201);
     }
@@ -165,7 +164,7 @@ class PlanController extends Controller
 
         $plan->update($data);
 
-        $this->syncRevenueCat($plan);
+        SyncPlanToRevenueCat::dispatch($plan);
 
         return response()->json(['success' => true, 'data' => $plan->fresh()], 200);
     }
@@ -180,14 +179,5 @@ class PlanController extends Controller
         ]);
 
         return response()->json(['success' => true, 'data' => $plan], 200);
-    }
-
-    private function syncRevenueCat(Plan $plan): void
-    {
-        try {
-            $this->revenueCatSync->sync($plan);
-        } catch (\Throwable $e) {
-            report($e);
-        }
     }
 }

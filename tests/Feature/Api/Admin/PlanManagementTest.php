@@ -3,10 +3,12 @@
 namespace Tests\Feature\Api\Admin;
 
 use App\Enums\PlanFeature;
+use App\Jobs\SyncPlanToRevenueCat;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -76,10 +78,12 @@ class PlanManagementTest extends TestCase
             'badge_color' => '#FF5733',
             'status' => 'active',
             'features' => [
-                PlanFeature::SEARCH_PROFILES->value,
-                PlanFeature::UNLIMITED_MESSAGING->value,
+                PlanFeature::PROFILE_VIEWS_INSIGHTS->value,
+                PlanFeature::DIRECT_MESSAGING->value,
             ],
         ];
+
+        Queue::fake(SyncPlanToRevenueCat::class);
 
         $response = $this->actingAs($this->admin, 'api')
             ->postJson('/api/admin/plans/create', $payload);
@@ -99,6 +103,9 @@ class PlanManagementTest extends TestCase
             'stripe_product_id' => 'prod_mock',
             'stripe_price_id' => 'price_mock',
         ]);
+
+        $plan = Plan::where('name', 'Premium Plan')->first();
+        Queue::assertPushed(SyncPlanToRevenueCat::class, fn (SyncPlanToRevenueCat $job) => $job->plan->is($plan));
     }
 
     public function test_create_plan_validates_features_against_enum(): void
@@ -124,7 +131,7 @@ class PlanManagementTest extends TestCase
             'billing_rate' => 10,
             'billing_cycle' => 'weekly',
             'status' => 'active',
-            'features' => [PlanFeature::SEARCH_PROFILES->value],
+            'features' => [PlanFeature::PROFILE_VIEWS_INSIGHTS->value],
         ];
 
         $response = $this->actingAs($this->admin, 'api')
