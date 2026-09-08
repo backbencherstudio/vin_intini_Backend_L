@@ -688,7 +688,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $posts = RecruiterPost::with([
+        $posts = IndustryPost::with([
             'media' => function ($query) {
                 $query->orderBy('sort_order');
             },
