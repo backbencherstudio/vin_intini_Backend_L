@@ -1552,12 +1552,15 @@ class IndustryController extends Controller
 
     public function replyList(Request $request, $commentId)
     {
-        $perPage = min(
-            (int) $request->get('per_page', 10),
-            100
+        $perPage = max(
+            1,
+            min(
+                (int) $request->get('per_page', 10),
+                100
+            )
         );
 
-        $comment = RecruiterPostComment::whereNull('parent_id')
+        $comment = IndustryPostComment::whereNull('parent_id')
             ->find($commentId);
 
         if (!$comment) {
@@ -1567,7 +1570,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $replies = RecruiterPostComment::with([
+        $replies = IndustryPostComment::with([
             'user:id,username,first_name,last_name,title,profile_image',
         ])
             ->withExists([
