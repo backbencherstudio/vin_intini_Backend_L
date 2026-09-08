@@ -304,6 +304,8 @@ class RevenueCatService
     {
         $response = Http::withToken($this->apiKey)
             ->acceptJson()
+            ->connectTimeout(5)
+            ->timeout(10)
             ->baseUrl($this->baseUrl)
             ->{$method}($uri, $data);
 

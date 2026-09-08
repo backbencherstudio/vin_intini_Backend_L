@@ -5,14 +5,12 @@ namespace App\Http\Controllers\Admin\Api;
 use App\Enums\PlanFeature;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
-use App\Services\RevenueCatException;
 use App\Services\RevenueCatPlanSyncService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use RuntimeException;
 
 class PlanController extends Controller
 {
@@ -188,7 +186,7 @@ class PlanController extends Controller
     {
         try {
             $this->revenueCatSync->sync($plan);
-        } catch (RevenueCatException|RuntimeException $e) {
+        } catch (\Throwable $e) {
             report($e);
         }
     }

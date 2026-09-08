@@ -39,6 +39,10 @@ class PlanRevenueCatTest extends TestCase
             $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
         });
 
+        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('sync');
+        });
+
         $response = $this->actingAs($this->admin, 'api')->postJson('/api/admin/plans/create', [
             'name' => 'Pro',
             'billing_rate' => 9.99,
@@ -58,6 +62,10 @@ class PlanRevenueCatTest extends TestCase
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('createProduct')->andReturn(Product::constructFrom(['id' => 'prod_x']));
             $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
+        });
+
+        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('sync');
         });
 
         $plan = $this->actingAs($this->admin, 'api')
@@ -120,6 +128,15 @@ class PlanRevenueCatTest extends TestCase
             $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
         });
 
+        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('sync')->twice()->andReturnUsing(function (Plan $plan) {
+                $plan->forceFill([
+                    'revenuecat_product_id' => 'prod_rc_9',
+                    'revenuecat_entitlement_id' => 'entl_rc_9',
+                ])->save();
+            });
+        });
+
         $plan = $this->actingAs($this->admin, 'api')
             ->postJson('/api/admin/plans/create', [
                 'name' => 'Pro',
@@ -130,15 +147,6 @@ class PlanRevenueCatTest extends TestCase
             ])
             ->assertCreated()
             ->json('data');
-
-        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('sync')->once()->andReturnUsing(function (Plan $plan) {
-                $plan->forceFill([
-                    'revenuecat_product_id' => 'prod_rc_9',
-                    'revenuecat_entitlement_id' => 'entl_rc_9',
-                ])->save();
-            });
-        });
 
         $response = $this->actingAs($this->admin, 'api')
             ->patchJson("/api/admin/plans/{$plan['id']}", [
