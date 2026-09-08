@@ -846,7 +846,7 @@ class IndustryController extends Controller
             100
         );
 
-        $post = RecruiterPost::find($postId);
+        $post = IndustryPost::find($postId);
 
         if (!$post) {
             return response()->json([
@@ -855,7 +855,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $likes = RecruiterPostLike::with([
+        $likes = IndustryPostLike::with([
             'user:id,username,first_name,last_name,profile_image'
         ])
             ->where('post_id', $postId)
