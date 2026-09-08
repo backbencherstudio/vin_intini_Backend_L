@@ -1302,12 +1302,15 @@ class IndustryController extends Controller
 
     public function commentList(Request $request, $postId)
     {
-        $perPage = min(
-            (int) $request->get('per_page', 10),
-            100
+        $perPage = max(
+            1,
+            min(
+                (int) $request->get('per_page', 10),
+                100
+            )
         );
 
-        $post = RecruiterPost::find($postId);
+        $post = IndustryPost::find($postId);
 
         if (!$post) {
             return response()->json([
@@ -1316,7 +1319,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $comments = RecruiterPostComment::with([
+        $comments = IndustryPostComment::with([
             'user:id,username,first_name,last_name,title,profile_image',
         ])
             ->withExists([
@@ -1343,7 +1346,7 @@ class IndustryController extends Controller
 
             $rankedReplies = DB::query()
                 ->fromSub(
-                    RecruiterPostComment::query()
+                    IndustryPostComment::query()
                         ->select([
                             'id',
                             'post_id',
@@ -1375,7 +1378,7 @@ class IndustryController extends Controller
 
             if ($replyIds->isNotEmpty()) {
 
-                $replies = RecruiterPostComment::with([
+                $replies = IndustryPostComment::with([
                     'user:id,username,first_name,last_name,title,profile_image',
                 ])
                     ->withExists([
