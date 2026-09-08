@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
-use App\Models\RecruiterCommentLike;
-use App\Models\RecruiterPost;
-use App\Models\RecruiterPostComment;
-use App\Models\RecruiterPostLike;
+use App\Models\IndustryCommentLike;
+use App\Models\IndustryPost;
+use App\Models\IndustryPostComment;
+use App\Models\IndustryPostLike;
 use App\Models\Subscription;
 use App\Services\OptimizedImageUploadService;
 use App\Services\RecruiterMediaUploadService;
@@ -504,7 +504,7 @@ class IndustryController extends Controller
 
         try {
 
-            $post = RecruiterPost::create([
+            $post = IndustryPost::create([
                 'industry_id' => $industry->id,
                 'created_by' => $userId,
                 'content' => $content ?: null,
@@ -533,7 +533,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Recruiter post created successfully.',
+                'message' => 'Industry post created successfully.',
 
                 'data' => [
                     'id' => $post->id,
@@ -576,7 +576,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create recruiter post.',
+                'message' => 'Failed to create industry post.',
 
                 'error' => config('app.debug')
                     ? $e->getMessage()
