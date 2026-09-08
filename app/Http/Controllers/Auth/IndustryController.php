@@ -1232,7 +1232,7 @@ class IndustryController extends Controller
             100
         );
 
-        $comment = RecruiterPostComment::find($commentId);
+        $comment = IndustryPostComment::find($commentId);
 
         if (!$comment) {
             return response()->json([
@@ -1241,7 +1241,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $likes = RecruiterCommentLike::with([
+        $likes = IndustryCommentLike::with([
             'user:id,username,first_name,last_name,profile_image'
         ])
             ->where('comment_id', $commentId)
