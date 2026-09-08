@@ -95,8 +95,9 @@ class PlanManagementTest extends TestCase
             ->assertJsonPath('data.billing_rate', '29.99')
             ->assertJsonPath('data.billing_cycle', 'monthly')
             ->assertJsonPath('data.status', 'active')
-            ->assertJsonPath('data.stripe_product_id', null)
-            ->assertJsonPath('data.stripe_price_id', null);
+            ->assertJsonMissingPath('data.stripe_product_id')
+            ->assertJsonMissingPath('data.stripe_price_id')
+            ->assertJsonMissingPath('data.revenuecat_product_id');
 
         $plan = Plan::where('name', 'Premium Plan')->first();
 

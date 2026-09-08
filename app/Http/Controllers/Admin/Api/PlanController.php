@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Enums\PlanFeature;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PlanResource;
 use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
 use App\Services\StripeService;
@@ -29,12 +30,12 @@ class PlanController extends Controller
             ->latest()
             ->get();
 
-        return response()->json(['success' => true, 'data' => $plans], 200);
+        return response()->json(['success' => true, 'data' => PlanResource::collection($plans)], 200);
     }
 
     public function show(Plan $plan): JsonResponse
     {
-        return response()->json(['success' => true, 'data' => $plan], 200);
+        return response()->json(['success' => true, 'data' => new PlanResource($plan)], 200);
     }
 
     public function features(): JsonResponse
@@ -80,7 +81,7 @@ class PlanController extends Controller
 
         ProvisionPlan::dispatch($plan);
 
-        return response()->json(['success' => true, 'data' => $plan->fresh()], 201);
+        return response()->json(['success' => true, 'data' => new PlanResource($plan->fresh())], 201);
     }
 
     public function update(Request $request, Plan $plan): JsonResponse
@@ -142,7 +143,7 @@ class PlanController extends Controller
 
         ProvisionPlan::dispatch($plan, $updateProduct, $productData, $recreatePrice);
 
-        return response()->json(['success' => true, 'data' => $plan->fresh()], 200);
+        return response()->json(['success' => true, 'data' => new PlanResource($plan->fresh())], 200);
     }
 
     public function toggleStatus(Plan $plan): JsonResponse

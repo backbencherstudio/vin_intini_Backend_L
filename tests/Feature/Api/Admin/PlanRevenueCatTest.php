@@ -56,9 +56,9 @@ class PlanRevenueCatTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('data.revenuecat_product_id', null)
-            ->assertJsonPath('data.revenuecat_entitlement_id', null)
-            ->assertJsonPath('data.revenuecat_store_identifier', null);
+            ->assertJsonMissingPath('data.revenuecat_product_id')
+            ->assertJsonMissingPath('data.revenuecat_entitlement_id')
+            ->assertJsonMissingPath('data.revenuecat_store_identifier');
 
         $plan = Plan::first();
         Queue::assertPushed(ProvisionPlan::class, fn (ProvisionPlan $job) => $job->plan->is($plan));
@@ -80,9 +80,10 @@ class PlanRevenueCatTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('data.revenuecat_store_identifier_ios', 'com.app.pro.monthly');
+            ->assertJsonMissingPath('data.revenuecat_store_identifier_ios');
 
         $plan = Plan::first();
+        $this->assertSame('com.app.pro.monthly', $plan->revenuecat_store_identifier_ios);
         Queue::assertPushed(ProvisionPlan::class, fn (ProvisionPlan $job) => $job->plan->is($plan));
     }
 
@@ -109,7 +110,9 @@ class PlanRevenueCatTest extends TestCase
             ]);
 
         $response->assertOk()
-            ->assertJsonPath('data.revenuecat_store_identifier_ios', 'com.app.pro.monthly');
+            ->assertJsonMissingPath('data.revenuecat_store_identifier_ios');
+
+        $this->assertSame('com.app.pro.monthly', Plan::find($plan['id'])->revenuecat_store_identifier_ios);
 
         Queue::assertPushed(ProvisionPlan::class, 2);
     }
@@ -143,13 +146,14 @@ class PlanRevenueCatTest extends TestCase
             'features' => ['company_profile'],
         ]);
 
-        $response->assertCreated();
+        $response->assertCreated()
+            ->assertJsonMissingPath('data.revenuecat_product_id_ios');
 
-        $data = $response->json('data');
-        $this->assertSame('prod_ios', $data['revenuecat_product_id_ios']);
-        $this->assertSame('prod_android', $data['revenuecat_product_id_android']);
-        $this->assertSame('entl_x', $data['revenuecat_entitlement_id']);
-        $this->assertSame('ofr_x', $data['revenuecat_offering_id']);
-        $this->assertSame('pkg_x', $data['revenuecat_package_id']);
+        $plan = Plan::first();
+        $this->assertSame('prod_ios', $plan->revenuecat_product_id_ios);
+        $this->assertSame('prod_android', $plan->revenuecat_product_id_android);
+        $this->assertSame('entl_x', $plan->revenuecat_entitlement_id);
+        $this->assertSame('ofr_x', $plan->revenuecat_offering_id);
+        $this->assertSame('pkg_x', $plan->revenuecat_package_id);
     }
 }
