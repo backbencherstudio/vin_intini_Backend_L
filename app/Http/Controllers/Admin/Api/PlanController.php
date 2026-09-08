@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Enums\PlanFeature;
 use App\Http\Controllers\Controller;
-use App\Jobs\SyncPlanToRevenueCat;
+use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
@@ -57,20 +57,6 @@ class PlanController extends Controller
             'revenuecat_store_identifier_android' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $stripeProduct = $this->stripe->createProduct(
-            $validated['name'],
-            $validated['short_description'] ?? null,
-            $validated['features'],
-        );
-
-        $unitAmount = (int) (round((float) $validated['billing_rate'], 2) * 100);
-        $stripePrice = $this->stripe->createPrice(
-            $unitAmount,
-            'usd',
-            $validated['billing_cycle'] === 'monthly' ? 'month' : 'year',
-            $stripeProduct->id,
-        );
-
         $plan = DB::transaction(fn () => Plan::create([
             'name' => $validated['name'],
             'short_description' => $validated['short_description'] ?? null,
@@ -81,13 +67,11 @@ class PlanController extends Controller
             'badge_color' => $validated['badge_color'] ?? null,
             'status' => $validated['status'],
             'features' => $validated['features'],
-            'stripe_product_id' => $stripeProduct->id,
-            'stripe_price_id' => $stripePrice->id,
             'revenuecat_store_identifier_ios' => $validated['revenuecat_store_identifier_ios'] ?? null,
             'revenuecat_store_identifier_android' => $validated['revenuecat_store_identifier_android'] ?? null,
         ]));
 
-        SyncPlanToRevenueCat::dispatch($plan);
+        ProvisionPlan::dispatch($plan);
 
         return response()->json(['success' => true, 'data' => $plan->fresh()], 201);
     }
@@ -111,36 +95,21 @@ class PlanController extends Controller
 
         $data = [];
 
+        $updateProduct = false;
+        $productData = [];
+
         if (array_key_exists('name', $validated) || array_key_exists('short_description', $validated)) {
-            $stripeData = [];
+            $updateProduct = true;
             if (array_key_exists('name', $validated)) {
-                $stripeData['name'] = $validated['name'];
+                $productData['name'] = $validated['name'];
             }
             if (array_key_exists('short_description', $validated)) {
-                $stripeData['description'] = $validated['short_description'];
+                $productData['description'] = $validated['short_description'];
             }
-            $this->stripe->updateProduct($plan->stripe_product_id, $stripeData);
         }
 
-        if (
-            (array_key_exists('billing_rate', $validated) && $validated['billing_rate'] != $plan->billing_rate)
-            || (array_key_exists('billing_cycle', $validated) && $validated['billing_cycle'] !== $plan->billing_cycle)
-        ) {
-            $this->stripe->archivePrice($plan->stripe_price_id);
-
-            $newRate = $validated['billing_rate'] ?? $plan->billing_rate;
-            $newCycle = $validated['billing_cycle'] ?? $plan->billing_cycle;
-
-            $unitAmount = (int) (round((float) $newRate, 2) * 100);
-            $newPrice = $this->stripe->createPrice(
-                $unitAmount,
-                'usd',
-                $newCycle === 'monthly' ? 'month' : 'year',
-                $plan->stripe_product_id,
-            );
-
-            $data['stripe_price_id'] = $newPrice->id;
-        }
+        $recreatePrice = (array_key_exists('billing_rate', $validated) && $validated['billing_rate'] != $plan->billing_rate)
+            || (array_key_exists('billing_cycle', $validated) && $validated['billing_cycle'] !== $plan->billing_cycle);
 
         $fillableFields = [
             'name',
@@ -164,7 +133,7 @@ class PlanController extends Controller
 
         $plan->update($data);
 
-        SyncPlanToRevenueCat::dispatch($plan);
+        ProvisionPlan::dispatch($plan, $updateProduct, $productData, $recreatePrice);
 
         return response()->json(['success' => true, 'data' => $plan->fresh()], 200);
     }
