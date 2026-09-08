@@ -762,7 +762,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $post = RecruiterPost::find($postId);
+        $post = IndustryPost::find($postId);
 
         if (!$post) {
             return response()->json([
@@ -775,7 +775,7 @@ class IndustryController extends Controller
 
         try {
 
-            $like = RecruiterPostLike::where('post_id', $postId)
+            $like = IndustryPostLike::where('post_id', $postId)
                 ->where('user_id', $userId)
                 ->first();
 
@@ -783,14 +783,19 @@ class IndustryController extends Controller
 
                 $like->delete();
 
-                $post->decrement('likes_count');
+                $post->update([
+                    'likes_count' => max(
+                        0,
+                        $post->likes_count - 1
+                    ),
+                ]);
 
                 $liked = false;
 
                 $message = 'Post unliked successfully.';
             } else {
 
-                RecruiterPostLike::create([
+                IndustryPostLike::create([
                     'post_id' => $postId,
                     'user_id' => $userId,
                 ]);
