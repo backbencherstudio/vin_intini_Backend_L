@@ -5,20 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class RecruiterPostMedia extends Model
+class IndustryPostMedia extends Model
 {
     protected $fillable = [
-        'recruiter_post_id',
+        'industry_post_id',
         'type',
         'path',
         'sort_order',
     ];
 
-    public function recruiterPost(): BelongsTo
+    public function industryPost(): BelongsTo
     {
         return $this->belongsTo(
-            RecruiterPost::class,
-            'recruiter_post_id'
+            IndustryPost::class,
+            'industry_post_id'
         );
     }
 }

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class RecruiterPostComment extends Model
+class IndustryPostComment extends Model
 {
     protected $fillable = [
         'post_id',
@@ -18,7 +18,7 @@ class RecruiterPostComment extends Model
     public function post()
     {
         return $this->belongsTo(
-            RecruiterPost::class,
+            IndustryPost::class,
             'post_id'
         );
     }
@@ -34,7 +34,7 @@ class RecruiterPostComment extends Model
     public function parent()
     {
         return $this->belongsTo(
-            RecruiterPostComment::class,
+            IndustryPostComment::class,
             'parent_id'
         );
     }
@@ -42,7 +42,7 @@ class RecruiterPostComment extends Model
     public function replies()
     {
         return $this->hasMany(
-            RecruiterPostComment::class,
+            IndustryPostComment::class,
             'parent_id'
         )
             ->latest();
@@ -51,7 +51,7 @@ class RecruiterPostComment extends Model
     public function likes()
     {
         return $this->hasMany(
-            RecruiterCommentLike::class,
+            IndustryCommentLike::class,
             'comment_id'
         );
     }

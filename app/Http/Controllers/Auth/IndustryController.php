@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
-use App\Models\RecruiterCommentLike;
-use App\Models\RecruiterPost;
-use App\Models\RecruiterPostComment;
-use App\Models\RecruiterPostLike;
+use App\Models\IndustryCommentLike;
+use App\Models\IndustryPost;
+use App\Models\IndustryPostComment;
+use App\Models\IndustryPostLike;
 use App\Models\Subscription;
 use App\Services\OptimizedImageUploadService;
-use App\Services\RecruiterMediaUploadService;
+use App\Services\IndustryMediaUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -416,7 +416,7 @@ class IndustryController extends Controller
     }
 
 
-    public function storePost(Request $request, RecruiterMediaUploadService $mediaUploadService)
+    public function storePost(Request $request, IndustryMediaUploadService $mediaUploadService)
     {
         $userId = auth()->id();
 
@@ -504,7 +504,7 @@ class IndustryController extends Controller
 
         try {
 
-            $post = RecruiterPost::create([
+            $post = IndustryPost::create([
                 'industry_id' => $industry->id,
                 'created_by' => $userId,
                 'content' => $content ?: null,
@@ -533,7 +533,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Recruiter post created successfully.',
+                'message' => 'Industry post created successfully.',
 
                 'data' => [
                     'id' => $post->id,
@@ -576,7 +576,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create recruiter post.',
+                'message' => 'Failed to create industry post.',
 
                 'error' => config('app.debug')
                     ? $e->getMessage()
@@ -594,7 +594,7 @@ class IndustryController extends Controller
             100
         );
 
-        $posts = RecruiterPost::with([
+        $posts = IndustryPost::with([
             'media' => function ($query) {
                 $query->orderBy('sort_order');
             },
@@ -614,7 +614,7 @@ class IndustryController extends Controller
         return response()->json([
             'success' => true,
 
-            'message' => 'Recruiter posts fetched successfully.',
+            'message' => 'Industry posts fetched successfully.',
 
             'data' => collect($posts->items())->map(function ($post) {
 
@@ -688,7 +688,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $posts = RecruiterPost::with([
+        $posts = IndustryPost::with([
             'media' => function ($query) {
                 $query->orderBy('sort_order');
             },
@@ -762,7 +762,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $post = RecruiterPost::find($postId);
+        $post = IndustryPost::find($postId);
 
         if (!$post) {
             return response()->json([
@@ -775,7 +775,7 @@ class IndustryController extends Controller
 
         try {
 
-            $like = RecruiterPostLike::where('post_id', $postId)
+            $like = IndustryPostLike::where('post_id', $postId)
                 ->where('user_id', $userId)
                 ->first();
 
@@ -783,14 +783,19 @@ class IndustryController extends Controller
 
                 $like->delete();
 
-                $post->decrement('likes_count');
+                $post->update([
+                    'likes_count' => max(
+                        0,
+                        $post->likes_count - 1
+                    ),
+                ]);
 
                 $liked = false;
 
                 $message = 'Post unliked successfully.';
             } else {
 
-                RecruiterPostLike::create([
+                IndustryPostLike::create([
                     'post_id' => $postId,
                     'user_id' => $userId,
                 ]);
@@ -841,7 +846,7 @@ class IndustryController extends Controller
             100
         );
 
-        $post = RecruiterPost::find($postId);
+        $post = IndustryPost::find($postId);
 
         if (!$post) {
             return response()->json([
@@ -850,7 +855,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $likes = RecruiterPostLike::with([
+        $likes = IndustryPostLike::with([
             'user:id,username,first_name,last_name,profile_image'
         ])
             ->where('post_id', $postId)
@@ -928,7 +933,7 @@ class IndustryController extends Controller
             ], 422);
         }
 
-        $post = RecruiterPost::find($postId);
+        $post = IndustryPost::find($postId);
 
         if (!$post) {
             return response()->json([
@@ -947,11 +952,11 @@ class IndustryController extends Controller
 
                 $imagePath = $imageUploadService->store(
                     $request->file('image'),
-                    'recruiters/comments'
+                    'industries/comments'
                 );
             }
 
-            $comment = RecruiterPostComment::create([
+            $comment = IndustryPostComment::create([
                 'post_id' => $post->id,
                 'user_id' => auth()->id(),
                 'parent_id' => null,
@@ -1034,7 +1039,7 @@ class IndustryController extends Controller
             ], 422);
         }
 
-        $parentComment = RecruiterPostComment::find(
+        $parentComment = IndustryPostComment::find(
             $commentId
         );
 
@@ -1055,11 +1060,11 @@ class IndustryController extends Controller
 
                 $imagePath = $imageUploadService->store(
                     $request->file('image'),
-                    'recruiters/comments'
+                    'industries/comments'
                 );
             }
 
-            $reply = RecruiterPostComment::create([
+            $reply = IndustryPostComment::create([
                 'post_id' => $parentComment->post_id,
 
                 'user_id' => auth()->id(),
@@ -1135,7 +1140,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $comment = RecruiterPostComment::find($commentId);
+        $comment = IndustryPostComment::find($commentId);
 
         if (!$comment) {
             return response()->json([
@@ -1148,7 +1153,7 @@ class IndustryController extends Controller
 
         try {
 
-            $like = RecruiterCommentLike::where(
+            $like = IndustryCommentLike::where(
                 'comment_id',
                 $commentId
             )
@@ -1174,7 +1179,7 @@ class IndustryController extends Controller
                 $message = 'Comment unliked successfully.';
             } else {
 
-                RecruiterCommentLike::create([
+                IndustryCommentLike::create([
                     'comment_id' => $commentId,
                     'user_id' => $userId,
                 ]);
@@ -1227,7 +1232,7 @@ class IndustryController extends Controller
             100
         );
 
-        $comment = RecruiterPostComment::find($commentId);
+        $comment = IndustryPostComment::find($commentId);
 
         if (!$comment) {
             return response()->json([
@@ -1236,7 +1241,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $likes = RecruiterCommentLike::with([
+        $likes = IndustryCommentLike::with([
             'user:id,username,first_name,last_name,profile_image'
         ])
             ->where('comment_id', $commentId)
@@ -1297,12 +1302,15 @@ class IndustryController extends Controller
 
     public function commentList(Request $request, $postId)
     {
-        $perPage = min(
-            (int) $request->get('per_page', 10),
-            100
+        $perPage = max(
+            1,
+            min(
+                (int) $request->get('per_page', 10),
+                100
+            )
         );
 
-        $post = RecruiterPost::find($postId);
+        $post = IndustryPost::find($postId);
 
         if (!$post) {
             return response()->json([
@@ -1311,7 +1319,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $comments = RecruiterPostComment::with([
+        $comments = IndustryPostComment::with([
             'user:id,username,first_name,last_name,title,profile_image',
         ])
             ->withExists([
@@ -1338,7 +1346,7 @@ class IndustryController extends Controller
 
             $rankedReplies = DB::query()
                 ->fromSub(
-                    RecruiterPostComment::query()
+                    IndustryPostComment::query()
                         ->select([
                             'id',
                             'post_id',
@@ -1370,7 +1378,7 @@ class IndustryController extends Controller
 
             if ($replyIds->isNotEmpty()) {
 
-                $replies = RecruiterPostComment::with([
+                $replies = IndustryPostComment::with([
                     'user:id,username,first_name,last_name,title,profile_image',
                 ])
                     ->withExists([
@@ -1544,12 +1552,15 @@ class IndustryController extends Controller
 
     public function replyList(Request $request, $commentId)
     {
-        $perPage = min(
-            (int) $request->get('per_page', 10),
-            100
+        $perPage = max(
+            1,
+            min(
+                (int) $request->get('per_page', 10),
+                100
+            )
         );
 
-        $comment = RecruiterPostComment::whereNull('parent_id')
+        $comment = IndustryPostComment::whereNull('parent_id')
             ->find($commentId);
 
         if (!$comment) {
@@ -1559,7 +1570,7 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $replies = RecruiterPostComment::with([
+        $replies = IndustryPostComment::with([
             'user:id,username,first_name,last_name,title,profile_image',
         ])
             ->withExists([
