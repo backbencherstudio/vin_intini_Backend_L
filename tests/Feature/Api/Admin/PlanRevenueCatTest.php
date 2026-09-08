@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api\Admin;
 
-use App\Jobs\SyncPlanToRevenueCat;
+use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\RevenueCatService;
@@ -45,7 +45,7 @@ class PlanRevenueCatTest extends TestCase
     {
         $this->mockStripe();
 
-        Queue::fake(SyncPlanToRevenueCat::class);
+        Queue::fake(ProvisionPlan::class);
 
         $response = $this->actingAs($this->admin, 'api')->postJson('/api/admin/plans/create', [
             'name' => 'Pro',
@@ -61,14 +61,14 @@ class PlanRevenueCatTest extends TestCase
             ->assertJsonPath('data.revenuecat_store_identifier', null);
 
         $plan = Plan::first();
-        Queue::assertPushed(SyncPlanToRevenueCat::class, fn (SyncPlanToRevenueCat $job) => $job->plan->is($plan));
+        Queue::assertPushed(ProvisionPlan::class, fn (ProvisionPlan $job) => $job->plan->is($plan));
     }
 
     public function test_admin_plan_save_with_store_identifier_dispatches_sync_job(): void
     {
         $this->mockStripe();
 
-        Queue::fake(SyncPlanToRevenueCat::class);
+        Queue::fake(ProvisionPlan::class);
 
         $response = $this->actingAs($this->admin, 'api')->postJson('/api/admin/plans/create', [
             'name' => 'Pro',
@@ -83,14 +83,14 @@ class PlanRevenueCatTest extends TestCase
             ->assertJsonPath('data.revenuecat_store_identifier_ios', 'com.app.pro.monthly');
 
         $plan = Plan::first();
-        Queue::assertPushed(SyncPlanToRevenueCat::class, fn (SyncPlanToRevenueCat $job) => $job->plan->is($plan));
+        Queue::assertPushed(ProvisionPlan::class, fn (ProvisionPlan $job) => $job->plan->is($plan));
     }
 
     public function test_admin_can_update_plan_dispatches_sync_job(): void
     {
         $this->mockStripe();
 
-        Queue::fake(SyncPlanToRevenueCat::class);
+        Queue::fake(ProvisionPlan::class);
 
         $plan = $this->actingAs($this->admin, 'api')
             ->postJson('/api/admin/plans/create', [
@@ -111,7 +111,7 @@ class PlanRevenueCatTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.revenuecat_store_identifier_ios', 'com.app.pro.monthly');
 
-        Queue::assertPushed(SyncPlanToRevenueCat::class, 2);
+        Queue::assertPushed(ProvisionPlan::class, 2);
     }
 
     public function test_sync_creates_a_product_per_platform(): void

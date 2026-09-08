@@ -3,7 +3,7 @@
 namespace Tests\Feature\Api\Admin;
 
 use App\Enums\PlanFeature;
-use App\Jobs\SyncPlanToRevenueCat;
+use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\StripeService;
@@ -83,7 +83,7 @@ class PlanManagementTest extends TestCase
             ],
         ];
 
-        Queue::fake(SyncPlanToRevenueCat::class);
+        Queue::fake(ProvisionPlan::class);
 
         $response = $this->actingAs($this->admin, 'api')
             ->postJson('/api/admin/plans/create', $payload);
@@ -95,17 +95,13 @@ class PlanManagementTest extends TestCase
             ->assertJsonPath('data.billing_rate', '29.99')
             ->assertJsonPath('data.billing_cycle', 'monthly')
             ->assertJsonPath('data.status', 'active')
-            ->assertJsonPath('data.stripe_product_id', 'prod_mock')
-            ->assertJsonPath('data.stripe_price_id', 'price_mock');
-
-        $this->assertDatabaseHas('plans', [
-            'name' => 'Premium Plan',
-            'stripe_product_id' => 'prod_mock',
-            'stripe_price_id' => 'price_mock',
-        ]);
+            ->assertJsonPath('data.stripe_product_id', null)
+            ->assertJsonPath('data.stripe_price_id', null);
 
         $plan = Plan::where('name', 'Premium Plan')->first();
-        Queue::assertPushed(SyncPlanToRevenueCat::class, fn (SyncPlanToRevenueCat $job) => $job->plan->is($plan));
+
+        $this->assertModelExists($plan);
+        Queue::assertPushed(ProvisionPlan::class, fn (ProvisionPlan $job) => $job->plan->is($plan));
     }
 
     public function test_create_plan_validates_features_against_enum(): void
