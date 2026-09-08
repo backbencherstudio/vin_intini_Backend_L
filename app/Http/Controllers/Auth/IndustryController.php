@@ -10,7 +10,7 @@ use App\Models\IndustryPostComment;
 use App\Models\IndustryPostLike;
 use App\Models\Subscription;
 use App\Services\OptimizedImageUploadService;
-use App\Services\RecruiterMediaUploadService;
+use App\Services\IndustryMediaUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -416,7 +416,7 @@ class IndustryController extends Controller
     }
 
 
-    public function storePost(Request $request, RecruiterMediaUploadService $mediaUploadService)
+    public function storePost(Request $request, IndustryMediaUploadService $mediaUploadService)
     {
         $userId = auth()->id();
 
