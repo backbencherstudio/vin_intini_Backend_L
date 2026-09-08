@@ -933,7 +933,7 @@ class IndustryController extends Controller
             ], 422);
         }
 
-        $post = RecruiterPost::find($postId);
+        $post = IndustryPost::find($postId);
 
         if (!$post) {
             return response()->json([
@@ -952,11 +952,11 @@ class IndustryController extends Controller
 
                 $imagePath = $imageUploadService->store(
                     $request->file('image'),
-                    'recruiters/comments'
+                    'industries/comments'
                 );
             }
 
-            $comment = RecruiterPostComment::create([
+            $comment = IndustryPostComment::create([
                 'post_id' => $post->id,
                 'user_id' => auth()->id(),
                 'parent_id' => null,
