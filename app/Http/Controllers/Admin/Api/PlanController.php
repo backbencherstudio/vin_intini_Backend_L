@@ -18,9 +18,16 @@ class PlanController extends Controller
         private StripeService $stripe,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $plans = Plan::latest()->get();
+        $billingCycle = $request->input('billing_cycle');
+
+        $plans = Plan::query()
+            ->when($billingCycle, function ($query, $billingCycle) {
+                $query->where('billing_cycle', $billingCycle);
+            })
+            ->latest()
+            ->get();
 
         return response()->json(['success' => true, 'data' => $plans], 200);
     }

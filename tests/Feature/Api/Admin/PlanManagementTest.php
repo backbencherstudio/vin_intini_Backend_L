@@ -206,6 +206,21 @@ class PlanManagementTest extends TestCase
             ->assertJsonPath('data.name', 'Enterprise');
     }
 
+    public function test_admin_can_filter_plans_by_billing_cycle(): void
+    {
+        Plan::create(['name' => 'Monthly A', 'billing_rate' => 10, 'billing_cycle' => 'monthly', 'status' => 'active', 'features' => ['search_profiles']]);
+        Plan::create(['name' => 'Yearly B', 'billing_rate' => 100, 'billing_cycle' => 'yearly', 'status' => 'active', 'features' => ['search_profiles']]);
+        Plan::create(['name' => 'Monthly C', 'billing_rate' => 20, 'billing_cycle' => 'monthly', 'status' => 'active', 'features' => ['search_profiles']]);
+
+        $response = $this->actingAs($this->admin, 'api')
+            ->getJson('/api/admin/plans?billing_cycle=monthly');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(2, 'data');
+    }
+
     public function test_admin_can_list_plan_features(): void
     {
         $response = $this->actingAs($this->admin, 'api')
