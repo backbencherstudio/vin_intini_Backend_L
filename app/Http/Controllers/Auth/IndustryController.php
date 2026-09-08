@@ -1039,7 +1039,7 @@ class IndustryController extends Controller
             ], 422);
         }
 
-        $parentComment = RecruiterPostComment::find(
+        $parentComment = IndustryPostComment::find(
             $commentId
         );
 
@@ -1060,11 +1060,11 @@ class IndustryController extends Controller
 
                 $imagePath = $imageUploadService->store(
                     $request->file('image'),
-                    'recruiters/comments'
+                    'industries/comments'
                 );
             }
 
-            $reply = RecruiterPostComment::create([
+            $reply = IndustryPostComment::create([
                 'post_id' => $parentComment->post_id,
 
                 'user_id' => auth()->id(),
