@@ -1140,7 +1140,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $comment = RecruiterPostComment::find($commentId);
+        $comment = IndustryPostComment::find($commentId);
 
         if (!$comment) {
             return response()->json([
@@ -1153,7 +1153,7 @@ class IndustryController extends Controller
 
         try {
 
-            $like = RecruiterCommentLike::where(
+            $like = IndustryCommentLike::where(
                 'comment_id',
                 $commentId
             )
@@ -1179,7 +1179,7 @@ class IndustryController extends Controller
                 $message = 'Comment unliked successfully.';
             } else {
 
-                RecruiterCommentLike::create([
+                IndustryCommentLike::create([
                     'comment_id' => $commentId,
                     'user_id' => $userId,
                 ]);
