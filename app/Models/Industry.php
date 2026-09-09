@@ -47,8 +47,8 @@ class Industry extends Model
         );
     }
 
-    public function recruiterPosts()
+    public function industryPosts()
     {
-        return $this->hasMany(RecruiterPost::class);
+        return $this->hasMany(IndustryPost::class);
     }
 }
