@@ -76,6 +76,12 @@ class AuthController extends Controller
             ], 200);
         }
 
+        // Save the FCM token before the 2FA check so it persists even when
+        // authentication pauses for the two-factor code.
+        if (! empty($credentials['fcm_token'])) {
+            FcmToken::assignTo($user, $credentials['fcm_token']);
+        }
+
         // Check if 2FA is enabled and confirmed
         if ($user->two_factor_confirmed_at) {
             return response()->json([
@@ -108,9 +114,6 @@ class AuthController extends Controller
 
         $user = auth('api')->user();
 
-        if (! empty($credentials['fcm_token'])) {
-            FcmToken::assignTo($user, $credentials['fcm_token']);
-        }
         // -----------------------------------------
         // Trigger the Login event to log the successful login activity
         $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
