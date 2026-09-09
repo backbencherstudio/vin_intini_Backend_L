@@ -25,6 +25,7 @@ class PlanResource extends JsonResource
             'badge_color' => $this->badge_color,
             'status' => $this->status,
             'features' => $this->features,
+            'total_subscribers' => $this->subscriptions_count ?? 0,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

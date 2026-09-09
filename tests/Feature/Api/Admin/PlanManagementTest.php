@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\Admin;
 use App\Enums\PlanFeature;
 use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -205,6 +206,41 @@ class PlanManagementTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.id', $plan->id)
             ->assertJsonPath('data.name', 'Enterprise');
+    }
+
+    public function test_admin_can_list_plans_with_total_subscribers(): void
+    {
+        $plan = Plan::create(['name' => 'Plan A', 'billing_rate' => 10, 'billing_cycle' => 'monthly', 'status' => 'active', 'features' => ['search_profiles']]);
+
+        Subscription::create(['user_id' => User::factory()->create()->id, 'plan_id' => $plan->id, 'platform' => 'stripe', 'status' => 'active']);
+        Subscription::create(['user_id' => User::factory()->create()->id, 'plan_id' => $plan->id, 'platform' => 'stripe', 'status' => 'active']);
+
+        $response = $this->actingAs($this->admin, 'api')
+            ->getJson('/api/admin/plans');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Plan A')
+            ->assertJsonPath('data.0.total_subscribers', 2);
+    }
+
+    public function test_admin_can_show_single_plan_total_subscribers(): void
+    {
+        $plan = Plan::create(['name' => 'Enterprise', 'billing_rate' => 10, 'billing_cycle' => 'monthly', 'status' => 'active', 'features' => ['search_profiles'], 'stripe_product_id' => 'prod_mock', 'stripe_price_id' => 'price_mock']);
+        $user = User::factory()->create();
+
+        Subscription::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'platform' => 'stripe', 'status' => 'active']);
+
+        $response = $this->actingAs($this->admin, 'api')
+            ->getJson('/api/admin/plans/'.$plan->id);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.id', $plan->id)
+            ->assertJsonPath('data.total_subscribers', 1);
     }
 
     public function test_admin_can_filter_plans_by_billing_cycle(): void

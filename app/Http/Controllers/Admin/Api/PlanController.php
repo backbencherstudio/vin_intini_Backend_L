@@ -27,6 +27,7 @@ class PlanController extends Controller
             ->when($billingCycle, function ($query, $billingCycle) {
                 $query->where('billing_cycle', $billingCycle);
             })
+            ->withCount('subscriptions')
             ->latest()
             ->get();
 
@@ -35,6 +36,8 @@ class PlanController extends Controller
 
     public function show(Plan $plan): JsonResponse
     {
+        $plan->loadCount('subscriptions');
+
         return response()->json(['success' => true, 'data' => new PlanResource($plan)], 200);
     }
 
