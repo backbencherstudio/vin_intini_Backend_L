@@ -89,6 +89,7 @@ Route::middleware('role:user')->group(function () {
         Route::post('create', [IndustryController::class, 'store']);
         Route::get('show', [IndustryController::class, 'show']);
         Route::post('update', [IndustryController::class, 'update']);
+        Route::post('follow/{industryId}', [IndustryController::class, 'toggleFollow']);
 
         // Recruiter post
         Route::post('post/create', [IndustryController::class, 'storePost']);

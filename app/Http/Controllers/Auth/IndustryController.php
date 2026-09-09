@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
 use App\Models\IndustryCommentLike;
+use App\Models\IndustryFollow;
 use App\Models\IndustryPost;
 use App\Models\IndustryPostComment;
 use App\Models\IndustryPostLike;
@@ -1668,6 +1669,62 @@ class IndustryController extends Controller
 
                 'has_more_pages' =>
                 $replies->hasMorePages(),
+            ],
+        ], 200);
+    }
+
+
+    public function toggleFollow($industryId)
+    {
+        $userId = auth()->id();
+
+        $industry = Industry::find($industryId);
+
+        if (!$industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company page not found.',
+            ], 404);
+        }
+
+        if ((int) $industry->created_by === (int) $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot follow your own company page.',
+            ], 422);
+        }
+
+        $follow = IndustryFollow::where('industry_id', $industry->id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($follow) {
+            $follow->delete();
+
+            $following = false;
+            $message = 'Company page unfollowed successfully.';
+        } else {
+            IndustryFollow::create([
+                'industry_id' => $industry->id,
+                'user_id' => $userId,
+            ]);
+
+            $following = true;
+            $message = 'Company page followed successfully.';
+        }
+
+        $followersCount = IndustryFollow::where(
+            'industry_id',
+            $industry->id
+        )->count();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'industry_id' => $industry->id,
+                'is_following' => $following,
+                'followers_count' => $followersCount,
             ],
         ], 200);
     }
