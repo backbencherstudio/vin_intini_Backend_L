@@ -11,20 +11,18 @@ class TransactionSeeder extends Seeder
 {
     public function run(): void
     {
-        $plans = Plan::whereIn('name', ['Premium Plan', 'Pro User', 'Pro Industries'])
-            ->get()
-            ->keyBy('name');
+        $plans = Plan::get()->keyBy('id');
 
         $defaultPlan = Plan::orderByDesc('id')->first();
 
-        $users = User::whereIn('email', ['user1@gmail.com', 'user2@gmail.com'])->get();
+        $users = User::whereIn('email', ['selftestmy@gmail.com'])->get();
 
         foreach ($users as $index => $user) {
             $subscriptionId = $user->subscriptions()->latest('id')->value('id');
 
             $planId = match ($index) {
-                0 => ($plans['Premium Plan'] ?? $plans['Pro User'] ?? $defaultPlan)?->id,
-                1 => ($plans['Pro Industries'] ?? $plans['Pro User'] ?? $defaultPlan)?->id,
+                0 => $defaultPlan?->id,
+                1 => $defaultPlan?->id,
                 default => $defaultPlan?->id,
             };
 
@@ -34,14 +32,14 @@ class TransactionSeeder extends Seeder
                 $status = $statuses[array_rand($statuses)];
                 $isPaid = $status === 'succeeded';
                 $isRefunded = $status === 'refunded';
-                $amount = (float) ($planId ? ($plans['Pro Industries']?->id === $planId ? 59.99 : 29.99) : 19.99);
+                $amount = (float) ($planId ? 29.99 : 19.99);
 
                 Transaction::updateOrCreate(
                     [
-                        'provider_transaction_id' => 'seed_txn_'.strtolower($user->first_name).'_'.$i,
+                        'provider_transaction_id' => 'seed_txn_' . strtolower($user->first_name) . '_' . $i,
                     ],
                     [
-                        'checkout_session_id' => 'seed_session_'.strtolower($user->first_name).'_'.$i,
+                        'checkout_session_id' => 'seed_session_' . strtolower($user->first_name) . '_' . $i,
                         'user_id' => $user->id,
                         'plan_id' => $planId,
                         'subscription_id' => $subscriptionId,
