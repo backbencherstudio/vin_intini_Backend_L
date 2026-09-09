@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Industry extends Model
@@ -50,5 +52,18 @@ class Industry extends Model
     public function industryPosts()
     {
         return $this->hasMany(IndustryPost::class);
+    }
+
+    public function follows(): HasMany
+    {
+        return $this->hasMany(IndustryFollow::class);
+    }
+
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'industry_follows'
+        )->withTimestamps();
     }
 }
