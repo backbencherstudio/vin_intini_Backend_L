@@ -232,10 +232,9 @@ class IndustryController extends Controller
     {
         $subscription = Subscription::where('user_id', auth()->id())
             ->where('status', 'active')
-            ->where(function ($query) {
-                $query->whereNull('current_period_end')
-                    ->orWhere('current_period_end', '>', now());
-            })
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+
             ->whereHas('plan', function ($query) {
                 $query->where('status', 'active');
             })
@@ -246,7 +245,7 @@ class IndustryController extends Controller
         if (!$subscription) {
             return response()->json([
                 'success' => false,
-                'message' => 'You need an active subscription to update your industry.',
+                'message' => 'You need an active subscription to update your company.',
             ], 403);
         }
 
@@ -255,7 +254,7 @@ class IndustryController extends Controller
         if (!in_array('company_profile', $features, true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Your current plan does not include industry management.',
+                'message' => 'Your current plan does not include company management.',
             ], 403);
         }
 
@@ -265,7 +264,7 @@ class IndustryController extends Controller
         if (!$industry) {
             return response()->json([
                 'success' => false,
-                'message' => 'Industry not found.',
+                'message' => 'Company not found.',
             ], 404);
         }
 
