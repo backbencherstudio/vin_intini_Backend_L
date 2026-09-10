@@ -6,17 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-
     public function up(): void
     {
         Schema::table('industries', function (Blueprint $table) {
-            $table->dropForeign(['created_by']);
-
-            // Make created_by nullable and set NULL when user is permanently deleted
-            $table->foreignId('created_by')
+            // Make existing created_by nullable
+            $table->unsignedBigInteger('created_by')
                 ->nullable()
-                ->unique()
-                ->constrained('users')
+                ->change();
+
+            // Add foreign key with ON DELETE SET NULL
+            $table->foreign('created_by')
+                ->references('id')
+                ->on('users')
                 ->nullOnDelete();
         });
     }
@@ -26,11 +27,9 @@ return new class extends Migration
         Schema::table('industries', function (Blueprint $table) {
             $table->dropForeign(['created_by']);
 
-            // Restore the original behavior
-            $table->foreignId('created_by')
-                ->unique()
-                ->constrained('users')
-                ->restrictOnDelete();
+            $table->unsignedBigInteger('created_by')
+                ->nullable(false)
+                ->change();
         });
     }
 };
