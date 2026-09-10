@@ -24,10 +24,9 @@ class IndustryController extends Controller
     {
         $subscription = Subscription::where('user_id', auth()->id())
             ->where('status', 'active')
-            ->where(function ($query) {
-                $query->whereNull('current_period_end')
-                    ->orWhere('current_period_end', '>', now());
-            })
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+
             ->whereHas('plan', function ($query) {
                 $query->where('status', 'active');
             })
