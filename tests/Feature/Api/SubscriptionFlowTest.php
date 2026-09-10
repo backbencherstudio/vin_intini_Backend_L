@@ -130,6 +130,32 @@ class SubscriptionFlowTest extends TestCase
         $this->assertSame('revenuecat', $rcPlan['checkout_type']);
     }
 
+    public function test_plans_returns_features_as_boolean_map(): void
+    {
+        Plan::create([
+            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active',
+            'features' => ['company_profile', 'direct_messaging'],
+            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/plans');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.plans.0.features', [
+                ['key' => 'Company Profile', 'value' => true],
+                ['key' => 'Build Your Network', 'value' => false],
+                ['key' => 'Join Collaboration Groups', 'value' => false],
+                ['key' => 'Direct Messaging', 'value' => true],
+                ['key' => 'Posts, Articles, Photos, Videos', 'value' => false],
+                ['key' => 'Profile Views & Insights', 'value' => false],
+                ['key' => 'Job Applications (Submit CV/Résumé)', 'value' => false],
+                ['key' => 'Connect with Organizations', 'value' => false],
+                ['key' => 'Product Advertisement', 'value' => false],
+            ]);
+    }
+
     public function test_send_otp_rejects_revenuecat_plan(): void
     {
         $plan = $this->makePlan([

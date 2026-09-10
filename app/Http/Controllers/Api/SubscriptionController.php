@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PlanFeature;
 use App\Http\Controllers\Controller;
 use App\Mail\SubscriptionOtpMail;
 use App\Models\Plan;
@@ -40,6 +41,7 @@ class SubscriptionController extends Controller
 
         $plans->each(function (Plan $plan) {
             $plan->setAttribute('checkout_type', $plan->isRevenueCat() ? 'revenuecat' : 'stripe');
+            $plan->setAttribute('features', $this->featureList($plan->features ?? []));
         });
 
         return response()->json([
@@ -261,6 +263,24 @@ class SubscriptionController extends Controller
                 ],
             ],
         ], 200);
+    }
+
+    private function featureList(array $features): array
+    {
+        $labels = PlanFeature::labels();
+
+        $list = [];
+        foreach ($labels as $slug => $label) {
+            $list[] = ['key' => $label, 'value' => in_array($slug, $features, true)];
+        }
+
+        foreach ($features as $slug) {
+            if (! isset($labels[$slug])) {
+                $list[] = ['key' => str_replace('_', ' ', ucwords($slug, '_')), 'value' => true];
+            }
+        }
+
+        return $list;
     }
 
     private function sendOtpToUser(User $user): JsonResponse
