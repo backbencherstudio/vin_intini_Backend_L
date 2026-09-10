@@ -421,6 +421,25 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
+        $subscription = Subscription::where('user_id', $userId)
+            ->where('status', 'active')
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+
+            ->whereHas('plan', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->with('plan')
+            ->latest('id')
+            ->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your subscription is not active. Please renew your subscription to create a post.',
+            ], 403);
+        }
+
         $industry = Industry::where(
             'created_by',
             $userId
@@ -429,7 +448,7 @@ class IndustryController extends Controller
         if (!$industry) {
             return response()->json([
                 'success' => false,
-                'message' => 'You do not have an industry.',
+                'message' => 'You do not have a company page.',
             ], 403);
         }
 
