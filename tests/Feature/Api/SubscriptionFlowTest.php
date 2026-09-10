@@ -156,18 +156,44 @@ class SubscriptionFlowTest extends TestCase
             ]);
     }
 
-    public function test_send_otp_rejects_revenuecat_plan(): void
+    public function test_send_otp_rejects_revenuecat_checkout_type(): void
+    {
+        $plan = $this->makePlan();
+
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/subscriptions/send-otp', [
+                'plan_id' => $plan->id,
+                'checkout_type' => 'revenuecat',
+            ]);
+
+        $response->assertStatus(422)->assertJsonPath('success', false);
+    }
+
+    public function test_send_otp_rejects_stripe_plan_without_stripe_price(): void
     {
         $plan = $this->makePlan([
             'stripe_price_id' => null,
-            'revenuecat_product_id' => 'rc_prod',
-            'revenuecat_entitlement_id' => 'premium',
         ]);
+
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/subscriptions/send-otp', [
+                'plan_id' => $plan->id,
+                'checkout_type' => 'stripe',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'This plan is not configured for Stripe payments.');
+    }
+
+    public function test_send_otp_requires_checkout_type(): void
+    {
+        $plan = $this->makePlan();
 
         $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/subscriptions/send-otp', ['plan_id' => $plan->id]);
 
-        $response->assertStatus(422)->assertJsonPath('success', false);
+        $response->assertStatus(422);
     }
 
     public function test_user_can_cancel_own_stripe_subscription(): void
@@ -213,6 +239,7 @@ class SubscriptionFlowTest extends TestCase
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/send-otp', [
             'plan_id' => $plan->id,
+            'checkout_type' => 'stripe',
         ]);
 
         $response
@@ -239,6 +266,7 @@ class SubscriptionFlowTest extends TestCase
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/send-otp', [
             'plan_id' => $plan->id,
+            'checkout_type' => 'stripe',
         ]);
 
         $response->assertStatus(429)->assertJsonPath('success', false);
@@ -250,6 +278,7 @@ class SubscriptionFlowTest extends TestCase
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
             'plan_id' => $plan->id,
+            'checkout_type' => 'stripe',
         ]);
 
         $response->assertStatus(422);
@@ -268,6 +297,7 @@ class SubscriptionFlowTest extends TestCase
             'plan_id' => $plan->id,
             'otp' => '9999',
             'payment_method' => 'pm_mock',
+            'checkout_type' => 'stripe',
         ]);
 
         $response->assertStatus(400)->assertJsonPath('success', false);
@@ -286,6 +316,7 @@ class SubscriptionFlowTest extends TestCase
             'plan_id' => $plan->id,
             'otp' => '1234',
             'payment_method' => 'pm_mock',
+            'checkout_type' => 'stripe',
         ]);
 
         $response
@@ -321,6 +352,7 @@ class SubscriptionFlowTest extends TestCase
             'plan_id' => $plan->id,
             'otp' => '1234',
             'payment_method' => 'pm_mock',
+            'checkout_type' => 'stripe',
         ]);
 
         $response
@@ -388,6 +420,7 @@ class SubscriptionFlowTest extends TestCase
             'plan_id' => $plan->id,
             'otp' => '1234',
             'payment_method' => 'pm_mock',
+            'checkout_type' => 'stripe',
         ]);
 
         $response
@@ -423,6 +456,7 @@ class SubscriptionFlowTest extends TestCase
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/send-otp', [
             'plan_id' => $plan->id,
+            'checkout_type' => 'stripe',
         ]);
 
         $response->assertStatus(422)->assertJsonPath('success', false);
@@ -449,6 +483,7 @@ class SubscriptionFlowTest extends TestCase
             'plan_id' => $plan->id,
             'otp' => '1234',
             'payment_method' => 'pm_mock',
+            'checkout_type' => 'stripe',
         ]);
 
         $response
@@ -483,9 +518,77 @@ class SubscriptionFlowTest extends TestCase
             'plan_id' => $plan->id,
             'otp' => '1234',
             'payment_method' => 'pm_mock',
+            'checkout_type' => 'stripe',
         ]);
 
         $response->assertStatus(422)->assertJsonPath('success', false);
+    }
+
+    public function test_create_rejects_revenuecat_checkout_type(): void
+    {
+        $plan = $this->makePlan();
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->addMinutes(2),
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getOrCreateCustomer')->never();
+            $mock->shouldReceive('attachPaymentMethod')->never();
+            $mock->shouldReceive('createSubscription')->never();
+        });
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+            'otp' => '1234',
+            'payment_method' => 'pm_mock',
+            'checkout_type' => 'revenuecat',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'This plan is purchased in the app store via RevenueCat. Complete the purchase in the app and your subscription will activate automatically.');
+    }
+
+    public function test_create_requires_checkout_type(): void
+    {
+        $plan = $this->makePlan();
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+            'otp' => '1234',
+            'payment_method' => 'pm_mock',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_create_rejects_stripe_plan_without_stripe_price(): void
+    {
+        $plan = $this->makePlan(['stripe_price_id' => null]);
+
+        $this->user->update([
+            'otp' => '1234',
+            'otp_expires_at' => now()->addMinutes(2),
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getOrCreateCustomer')->never();
+            $mock->shouldReceive('attachPaymentMethod')->never();
+            $mock->shouldReceive('createSubscription')->never();
+        });
+
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
+            'plan_id' => $plan->id,
+            'otp' => '1234',
+            'payment_method' => 'pm_mock',
+            'checkout_type' => 'stripe',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'This plan is not configured for Stripe payments.');
     }
 
     public function test_status_returns_inactive_when_no_subscription(): void

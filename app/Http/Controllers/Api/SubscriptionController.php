@@ -79,14 +79,22 @@ class SubscriptionController extends Controller
     {
         $validated = $request->validate([
             'plan_id' => ['required', 'integer', 'exists:plans,id'],
+            'checkout_type' => ['required', 'string', 'in:stripe,revenuecat'],
         ]);
 
         $plan = Plan::findOrFail($validated['plan_id']);
 
-        if ($plan->isRevenueCat()) {
+        if ($validated['checkout_type'] === 'revenuecat') {
             return response()->json([
                 'success' => false,
                 'message' => 'This plan is purchased in the app store via RevenueCat. Complete the purchase in the app and your subscription will activate automatically.',
+            ], 422);
+        }
+
+        if (! $plan->stripe_price_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This plan is not configured for Stripe payments.',
             ], 422);
         }
 
@@ -108,13 +116,14 @@ class SubscriptionController extends Controller
             'plan_id' => ['required', 'integer', 'exists:plans,id'],
             'otp' => ['required', 'digits:4'],
             'payment_method' => ['required', 'string'],
+            'checkout_type' => ['required', 'string', 'in:stripe,revenuecat'],
         ]);
 
         $user = $request->user();
 
         $plan = Plan::findOrFail($validated['plan_id']);
 
-        if ($plan->isRevenueCat()) {
+        if ($validated['checkout_type'] === 'revenuecat') {
             return response()->json([
                 'success' => false,
                 'message' => 'This plan is purchased in the app store via RevenueCat. Complete the purchase in the app and your subscription will activate automatically.',
@@ -131,7 +140,7 @@ class SubscriptionController extends Controller
         if (! $plan->stripe_price_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'This plan is not connected to a payment provider yet.',
+                'message' => 'This plan is not configured for Stripe payments.',
             ], 422);
         }
 
