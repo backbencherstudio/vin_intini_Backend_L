@@ -65,6 +65,7 @@ Route::delete('/messages/{message}/react', [MessageController::class, 'unreact']
 
 // plans & subscription routes
 Route::get('/plans', [SubscriptionController::class, 'plans']);
+Route::get('/plans/{id}', [SubscriptionController::class, 'show']);
 Route::post('/subscriptions/send-otp', [SubscriptionController::class, 'sendOtp']);
 Route::post('/subscriptions/create', [SubscriptionController::class, 'create']);
 Route::get('/subscriptions/status', [SubscriptionController::class, 'status']);

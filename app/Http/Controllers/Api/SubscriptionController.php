@@ -27,6 +27,28 @@ class SubscriptionController extends Controller
         private RevenueCatService $revenueCat,
     ) {}
 
+    public function show(int $id): JsonResponse
+    {
+        $plan = Plan::where('status', 'active')->find($id);
+
+        if (! $plan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Plan not found.',
+            ], 404);
+        }
+
+        $plan->setAttribute('checkout_type', $plan->isRevenueCat() ? 'revenuecat' : 'stripe');
+        $plan->setAttribute('features', $this->featureList($plan->features ?? []));
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'plan' => $plan,
+            ],
+        ], 200);
+    }
+
     public function plans(): JsonResponse
     {
         $plans = Plan::where('status', 'active')
