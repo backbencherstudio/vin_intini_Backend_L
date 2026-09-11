@@ -605,19 +605,31 @@ class IndustryController extends Controller
     }
 
 
-    public function indexPost(Request $request)
+    public function indexPost(Request $request, $industryId)
     {
-        $perPage = min(
-            (int) $request->get('per_page', 10),
-            100
+        $perPage = max(
+            1,
+            min(
+                (int) $request->get('per_page', 10),
+                100
+            )
         );
 
+        $industry = Industry::find($industryId);
+
+        if (!$industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company page not found.',
+            ], 404);
+        }
+
+
         $posts = IndustryPost::with([
-            'media' => function ($query) {
-                $query->orderBy('sort_order');
-            },
+            'media' ,
             'industry',
         ])
+            ->where('industry_id', $industryId)
             ->withExists([
                 'likes as is_liked' => function ($query) {
                     $query->where(
@@ -637,8 +649,8 @@ class IndustryController extends Controller
             'data' => collect($posts->items())->map(function ($post) {
 
                 return [
-                    'id' => $post->id,
-                    'industry_name' => $post->industry?->name,
+                    'company_id' => $post->industry_id,
+                    'company_name' => $post->industry?->name,
                     'tagline' => $post->industry?->tagline,
                     'time_ago' => $post->created_at
                         ? $post->created_at->diffForHumans()
@@ -649,7 +661,7 @@ class IndustryController extends Controller
                             $post->industry->logo
                         )
                         : null,
-
+                    'post_id' => $post->id,
                     'content' => $post->content,
 
 
