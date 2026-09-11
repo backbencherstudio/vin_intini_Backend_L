@@ -743,9 +743,9 @@ class IndustryController extends Controller
             'data' => $posts->map(function ($post) {
 
                 return [
-                    'id' => $post->id,
+                    'company_id' => $post->industry_id,
 
-                    'industry_name' => $post->industry?->name,
+                    'company_name' => $post->industry?->name,
 
                     'tagline' => $post->industry?->tagline,
 
