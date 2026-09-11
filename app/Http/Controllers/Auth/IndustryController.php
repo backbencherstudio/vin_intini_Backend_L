@@ -605,6 +605,219 @@ class IndustryController extends Controller
     }
 
 
+    public function updatePost(Request $request, $postId, IndustryMediaUploadService $mediaUploadService)
+    {
+        $userId = auth()->id();
+
+        $post = IndustryPost::find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        if ((int) $post->created_by !== (int) $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to edit this post.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'content' => ['nullable', 'string', 'max:10000'],
+
+            'media' => ['nullable', 'array', 'max:10'],
+
+            'media.*' => [
+                'file',
+                'mimes:jpg,jpeg,png,webp,mp4,mov,webm',
+                'max:102400',
+            ],
+        ]);
+
+        if (
+            !array_key_exists('content', $validated) &&
+            !$request->hasFile('media')
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nothing to update.',
+            ], 422);
+        }
+
+        $content = array_key_exists('content', $validated)
+            ? trim($validated['content'] ?? '')
+            : $post->content;
+
+        if ($request->hasFile('media')) {
+
+            $mediaFiles = $request->file('media');
+
+            $videoCount = collect($mediaFiles)
+                ->filter(function ($file) {
+                    return str_starts_with(
+                        $file->getMimeType() ?? '',
+                        'video/'
+                    );
+                })
+                ->count();
+
+            $imageCount = collect($mediaFiles)
+                ->filter(function ($file) {
+                    return str_starts_with(
+                        $file->getMimeType() ?? '',
+                        'image/'
+                    );
+                })
+                ->count();
+
+            if ($videoCount > 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 1 video per post.',
+                ], 422);
+            }
+
+            if ($videoCount === 1 && $imageCount > 9) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 9 images with 1 video.',
+                ], 422);
+            }
+
+            if ($videoCount === 0 && $imageCount > 10) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 10 images per post.',
+                ], 422);
+            }
+        }
+
+        if (
+            blank($content) &&
+            !$request->hasFile('media') &&
+            $post->media()->count() === 0
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post must contain text or media.',
+            ], 422);
+        }
+
+        $uploadedFiles = [];
+        $oldMediaPaths = [];
+
+        DB::beginTransaction();
+
+        try {
+
+            $newMedia = [];
+
+            if ($request->hasFile('media')) {
+
+                foreach ($request->file('media') as $index => $file) {
+
+                    $media = $mediaUploadService->upload($file);
+
+                    $uploadedFiles[] = $media['file_path'];
+
+                    $newMedia[] = [
+                        'type' => $media['type'],
+                        'path' => $media['file_path'],
+                        'sort_order' => $index,
+                    ];
+                }
+            }
+
+            if (array_key_exists('content', $validated)) {
+                $post->content = $content ?: null;
+                $post->save();
+            }
+
+            if ($request->hasFile('media')) {
+
+                $oldMedia = $post->media()->get();
+
+                foreach ($oldMedia as $media) {
+                    if ($media->path) {
+                        $oldMediaPaths[] = $media->path;
+                    }
+
+                    $media->delete();
+                }
+
+                foreach ($newMedia as $mediaData) {
+                    $post->media()->create($mediaData);
+                }
+            }
+
+            DB::commit();
+
+            foreach ($oldMediaPaths as $path) {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            $post->load('media');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Industry post updated successfully.',
+
+                'data' => [
+                    'post_id' => $post->id,
+
+                    'company_id' => $post->industry_id,
+
+                    'created_by' => $post->created_by,
+
+                    'content' => $post->content,
+
+                    'media' => $post->media
+                        ->map(function ($media) {
+                            return [
+                                'id' => $media->id,
+
+                                'type' => $media->type,
+
+                                'url' => Storage::disk('public')
+                                    ->url($media->path),
+
+                                'sort_order' => $media->sort_order,
+                            ];
+                        })
+                        ->values(),
+
+                    'updated_at' => $post->updated_at,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            foreach ($uploadedFiles as $file) {
+
+                if (Storage::disk('public')->exists($file)) {
+                    Storage::disk('public')->delete($file);
+                }
+            }
+
+            return response()->json([
+                'success' => false,
+
+                'message' => 'Failed to update industry post.',
+
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+
     public function indexPost(Request $request, $industryId)
     {
         $perPage = max(
@@ -626,7 +839,7 @@ class IndustryController extends Controller
 
 
         $posts = IndustryPost::with([
-            'media' ,
+            'media',
             'industry',
         ])
             ->where('industry_id', $industryId)
