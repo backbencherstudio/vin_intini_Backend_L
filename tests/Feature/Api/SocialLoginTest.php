@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\DeletedAccountLog;
 use App\Models\FcmToken;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Socialite\Facades\Socialite;
@@ -78,5 +80,35 @@ class SocialLoginTest extends TestCase
         ]);
 
         $this->assertSame(1, FcmToken::where('fcm_token', 'social-device-token')->count());
+    }
+
+    public function test_callback_returns_pending_deletion_instead_of_restoring_a_deleted_account(): void
+    {
+        $user = User::factory()->create(['email' => 'jane@example.com']);
+        $user->delete();
+        DeletedAccountLog::create([
+            'user_id' => $user->id,
+            'user_name' => 'Jane Doe',
+            'user_email' => 'jane@example.com',
+            'reason' => 'testing',
+            'requested_at' => now(),
+            'permanent_delete_at' => Carbon::now()->addDays(30),
+        ]);
+
+        Socialite::fake('google', SocialiteUser::fake([
+            'id' => 'google-test-789',
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'avatar' => '',
+        ]));
+
+        $this->getJson('/api/auth/google/callback?state='.urlencode('platform=app'))
+            ->assertOk()
+            ->assertJsonPath('status', 'pending_deletion')
+            ->assertJsonPath('email', 'jane@example.com')
+            ->assertJsonMissingPath('data.token');
+
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+        $this->assertDatabaseHas('deleted_account_logs', ['user_id' => $user->id]);
     }
 }

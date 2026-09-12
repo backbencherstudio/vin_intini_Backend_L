@@ -150,10 +150,28 @@ class SocialController extends Controller
             return $user;
         });
 
-        // Restore if trashed
+        // If the account is scheduled for permanent deletion, block the login
+        // and require an explicit restore, mirroring the email/password flow.
         if ($user->trashed()) {
-            $user->restore();
-            DeletedAccountLog::where('user_id', $user->id)->delete();
+            $deletionLog = DeletedAccountLog::where('user_id', $user->id)->latest()->first();
+
+            $daysRemaining = 0;
+            if ($deletionLog) {
+                $seconds = now()->diffInSeconds($deletionLog->permanent_delete_at, false);
+                $daysRemaining = ceil($seconds / (60 * 60 * 24));
+            }
+
+            if ($daysRemaining <= 0) {
+                $daysRemaining = 1;
+            }
+
+            return response()->json([
+                'status' => 'pending_deletion',
+                'days_left' => (int) $daysRemaining,
+                'name' => $user->first_name.' '.$user->last_name,
+                'email' => $user->email,
+                'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
+            ], 200);
         }
 
         // Profile Image Handling
