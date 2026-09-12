@@ -96,6 +96,7 @@ Route::middleware('role:user')->group(function () {
         Route::get('post/view/{industryId}', [IndustryController::class, 'indexPost']);
         Route::get('post/recent', [IndustryController::class, 'latestPosts']);
         Route::post('post/update/{postId}', [IndustryController::class, 'updatePost']);
+        Route::delete('post/delete/{postId}', [IndustryController::class, 'deletePost']);
 
         Route::post('post/like/{postId}', [IndustryController::class, 'togglePostLike']);
         Route::get('post/likes/{postId}', [IndustryController::class, 'likeList']);

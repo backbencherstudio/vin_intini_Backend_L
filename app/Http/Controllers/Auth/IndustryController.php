@@ -836,6 +836,87 @@ class IndustryController extends Controller
     }
 
 
+    public function deletePost($postId)
+    {
+        $userId = auth()->id();
+
+        $post = IndustryPost::with('media')->find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        if ((int) $post->created_by !== (int) $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to delete this post.',
+            ], 403);
+        }
+
+        $subscription = Subscription::where('user_id', $userId)
+            ->where('status', 'active')
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+            ->whereHas('plan', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->latest('id')
+            ->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your subscription is not active. Please renew your subscription to delete a post.',
+            ], 403);
+        }
+
+        $mediaPaths = $post->media
+            ->pluck('path')
+            ->filter()
+            ->values()
+            ->toArray();
+
+        DB::beginTransaction();
+
+        try {
+
+            $post->media()->delete();
+
+            $post->delete();
+
+            DB::commit();
+
+            foreach ($mediaPaths as $path) {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Industry post deleted successfully.',
+                'data' => [
+                    'post_id' => $post->id,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete industry post.',
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+
     public function indexPost(Request $request, $industryId)
     {
         $perPage = max(
