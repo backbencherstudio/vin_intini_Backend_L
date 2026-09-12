@@ -67,30 +67,6 @@ class SocialController extends Controller
         }
     }
 
-    public function handleNativeLogin(Request $request, $provider, ProfileImageService $profileImageService)
-    {
-        $token = $request->input('token');
-        $customDevice = $request->input('device_name');
-        $customPlatform = $request->input('device_platform');
-
-        try {
-            $socialUser = Socialite::driver($provider)->userFromToken($token);
-
-            request()->merge([
-                'custom_device' => $customDevice,
-                'custom_platform' => $customPlatform,
-            ]);
-
-            return $this->processSocialUser($socialUser, $provider, 'app', $profileImageService);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Native login failed',
-                'error' => $e->getMessage(),
-            ], 401);
-        }
-    }
-
     public function socialLogin(Request $request, ProfileImageService $profileImageService)
     {
         $validated = $request->validate([
