@@ -95,6 +95,48 @@ class SubscriptionManagementTest extends TestCase
             ->assertJsonPath('data.0.next_billing_date', null);
     }
 
+    public function test_admin_can_filter_subscriptions_by_date_range(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+        ]);
+
+        $user = User::factory()->create();
+
+        $old = Subscription::create([
+            'user_id' => $user->id, 'plan_id' => $plan->id, 'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_old', 'status' => 'active',
+        ]);
+        $old->created_at = now()->subDays(30);
+        $old->save();
+
+        $recent = Subscription::create([
+            'user_id' => $user->id, 'plan_id' => $plan->id, 'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_recent', 'status' => 'active',
+        ]);
+
+        $this->mock(StripeService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('hydrateSubscriptionDates')->zeroOrMoreTimes();
+        });
+
+        $response = $this->actingAs($this->admin, 'api')
+            ->getJson('/api/admin/subscriptions?date_from='.now()->subDays(7)->toDateString());
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $recent->id);
+
+        $response = $this->actingAs($this->admin, 'api')
+            ->getJson('/api/admin/subscriptions?date_from='.now()->subDays(40)->toDateString().'&date_to='.now()->subDays(10)->toDateString());
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $old->id);
+    }
+
     public function test_admin_list_hydrates_missing_billing_dates_from_stripe(): void
     {
         $plan = Plan::create([

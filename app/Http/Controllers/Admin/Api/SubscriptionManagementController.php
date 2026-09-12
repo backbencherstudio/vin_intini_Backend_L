@@ -24,6 +24,8 @@ class SubscriptionManagementController extends Controller
             'status' => ['sometimes', 'nullable', 'string', 'max:50'],
             'plan_id' => ['sometimes', 'nullable', 'integer', 'exists:plans,id'],
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'date_from' => ['sometimes', 'nullable', 'date'],
+            'date_to' => ['sometimes', 'nullable', 'date'],
             'per_page' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
@@ -45,6 +47,14 @@ class SubscriptionManagementController extends Controller
                 )
                     ->orWhere('email', 'like', '%'.$validated['search'].'%');
             });
+        }
+
+        if (! empty($validated['date_from'])) {
+            $query->whereDate('created_at', '>=', $validated['date_from']);
+        }
+
+        if (! empty($validated['date_to'])) {
+            $query->whereDate('created_at', '<=', $validated['date_to']);
         }
 
         $subscriptions = $query->paginate($validated['per_page'] ?? 15)->withQueryString();
