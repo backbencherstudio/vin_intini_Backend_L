@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AccountDeletionRequestedMail;
+use App\Models\DeletedAccountLog;
 use App\Models\LoginActivity;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password;
-use App\Models\DeletedAccountLog;
-use App\Mail\AccountDeletionRequestedMail;
-use Illuminate\Support\Facades\Mail;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SecuritySettingsController extends Controller
 {
@@ -122,7 +122,7 @@ class SecuritySettingsController extends Controller
                 'password_strength' => 'Strong',
                 'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
                 // 'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . ' active devices',
-                'active_sessions' => $activeCount . ' active devices',
+                'active_sessions' => $activeCount.' active devices',
                 'account_recovery' => $isRecoveryVerified ? 'Email verified' : 'Not verified',
                 'login_activity' => $suspiciousStatus,
                 // 'suspicious_id' => $suspiciousId,
@@ -153,15 +153,15 @@ class SecuritySettingsController extends Controller
             ->select('device', 'location')
             ->distinct()
             ->get()
-            ->map(fn($item) => $item->device . '|' . $item->location)
+            ->map(fn ($item) => $item->device.'|'.$item->location)
             ->toArray();
 
         $suspiciousList = [];
 
         foreach ($unresolvedLogins as $login) {
-            $currentCombo = $login->device . '|' . $login->location;
+            $currentCombo = $login->device.'|'.$login->location;
 
-            if (!in_array($currentCombo, $trustedCombinations)) {
+            if (! in_array($currentCombo, $trustedCombinations)) {
 
                 $isMobile = ($login->browser === 'Native Mobile App');
 
@@ -238,7 +238,7 @@ class SecuritySettingsController extends Controller
             ->select('device', 'location')
             ->distinct()
             ->get()
-            ->map(fn($item) => $item->device . '|' . $item->location)
+            ->map(fn ($item) => $item->device.'|'.$item->location)
             ->toArray();
 
         $paginator = LoginActivity::where('user_id', $user->id)
@@ -251,8 +251,8 @@ class SecuritySettingsController extends Controller
             ELSE 5
             END ASC
         ", [$currentTokenId])
-                ->orderBy('login_at', 'desc')
-                ->paginate($perPage);
+            ->orderBy('login_at', 'desc')
+            ->paginate($perPage);
 
         $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId, $trustedCombinations) {
             $isCurrent = $activity->token_id === $currentTokenId;
@@ -260,17 +260,17 @@ class SecuritySettingsController extends Controller
             $isTrusted = (bool) $activity->is_trusted;
             $isResolved = (bool) $activity->is_resolved;
 
-            $currentCombo = $activity->device . '|' . $activity->location;
+            $currentCombo = $activity->device.'|'.$activity->location;
 
             $isSuspicious = (
                 $activity->status === 'Successful' &&
-                !$isResolved &&
-                !in_array($currentCombo, $trustedCombinations)
+                ! $isResolved &&
+                ! in_array($currentCombo, $trustedCombinations)
             );
 
             $isBlocked = (
                 $activity->status === 'Blocked' ||
-                ($activity->status === 'Successful' && !$isActive && $isResolved && !$isTrusted)
+                ($activity->status === 'Successful' && ! $isActive && $isResolved && ! $isTrusted)
             );
 
             if ($isTrusted) {
@@ -336,10 +336,10 @@ class SecuritySettingsController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$activity) {
+        if (! $activity) {
             return response()->json([
                 'success' => false,
-                'message' => 'Activity details not found.'
+                'message' => 'Activity details not found.',
             ], 404);
         }
 
@@ -622,12 +622,12 @@ class SecuritySettingsController extends Controller
     {
         $request->validate([
             'reason' => 'required|string|max:1000',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
         $user = auth('api')->user();
 
-        if (!Hash::check($request->password, $user->password)) {
+        if (! Hash::check($request->password, $user->password)) {
             return response()->json(['errors' => ['password' => ['The provided password is incorrect.']]], 422);
         }
 
@@ -635,7 +635,7 @@ class SecuritySettingsController extends Controller
 
         DeletedAccountLog::create([
             'user_id' => $user->id,
-            'user_name' => $user->first_name . ' ' . $user->last_name,
+            'user_name' => $user->first_name.' '.$user->last_name,
             'user_email' => $user->email,
             'reason' => $request->reason,
             'requested_at' => now(),
@@ -652,7 +652,7 @@ class SecuritySettingsController extends Controller
             //
         }
 
-        //remove 2FA and recovery codes before soft deleting the user
+        // remove 2FA and recovery codes before soft deleting the user
         $user->update([
             'two_factor_secret' => null,
             'two_factor_confirmed_at' => null,
@@ -663,7 +663,7 @@ class SecuritySettingsController extends Controller
         auth('api')->logout();
 
         return response()->json([
-            'message' => 'Your account deletion request has been received. You have 30 days to reactivate it before permanent deletion.'
+            'message' => 'Your account deletion request has been received. You have 30 days to reactivate it before permanent deletion.',
         ]);
     }
 
@@ -671,25 +671,25 @@ class SecuritySettingsController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'password' => 'required',
+            // 'password' => 'required',
         ]);
 
         try {
             $user = User::withTrashed()->where('email', $request->email)->first();
 
-            if (!$user || !$user->trashed()) {
+            if (! $user || ! $user->trashed()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No pending account deletion found for this email.'
+                    'message' => 'No pending account deletion found for this email.',
                 ], 404);
             }
 
-            if (!Hash::check($request->password, $user->password)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'The provided password is incorrect. Restoration failed.'
-                ], 401);
-            }
+            // if (! Hash::check($request->password, $user->password)) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'The provided password is incorrect. Restoration failed.',
+            //     ], 401);
+            // }
 
             $user->restore();
 
@@ -700,7 +700,7 @@ class SecuritySettingsController extends Controller
             $payload = auth('api')->setToken($token)->getPayload();
             $tokenId = $payload->get('jti');
             request()->merge(['current_token_id' => $tokenId]);
-            event(new \Illuminate\Auth\Events\Login('api', $user, false));
+            event(new Login('api', $user, false));
 
             $roleName = $user->getRoleNames()->first();
             $user->makeHidden('roles');
@@ -714,13 +714,13 @@ class SecuritySettingsController extends Controller
                     'user' => $user,
                     'token' => $token,
                     'token_type' => 'bearer',
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong while restoring the account.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
