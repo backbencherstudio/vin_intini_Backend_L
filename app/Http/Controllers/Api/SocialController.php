@@ -4,22 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeletedAccountLog;
-use App\Models\FcmToken;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\ProfileImageService;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Http\Request;
 
 class SocialController extends Controller
 {
     private const ALLOWED_PROVIDERS = ['google', 'apple'];
-
 
     public function redirect($provider)
     {
@@ -80,7 +78,7 @@ class SocialController extends Controller
 
             request()->merge([
                 'custom_device' => $customDevice,
-                'custom_platform' => $customPlatform
+                'custom_platform' => $customPlatform,
             ]);
 
             return $this->processSocialUser($socialUser, $provider, 'app', $profileImageService);
@@ -88,7 +86,41 @@ class SocialController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Native login failed',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+            ], 401);
+        }
+    }
+
+    public function socialLogin(Request $request, ProfileImageService $profileImageService)
+    {
+        $validated = $request->validate([
+            'provider' => 'required|string|in:google,apple',
+            'access_token' => 'required|string',
+            'nonce' => 'nullable|string',
+            'device_name' => 'nullable|string',
+            'device_platform' => 'nullable|string',
+        ]);
+
+        try {
+            $driver = Socialite::driver($validated['provider']);
+
+            $socialUser = $validated['provider'] === 'apple'
+                ? ($validated['nonce']
+                    ? $driver->userByIdentityToken($validated['access_token'], $validated['nonce'])
+                    : $driver->userFromToken($validated['access_token']))
+                : $driver->userFromToken($validated['access_token']);
+
+            request()->merge([
+                'custom_device' => $validated['device_name'] ?? null,
+                'custom_platform' => $validated['device_platform'] ?? null,
+            ]);
+
+            return $this->processSocialUser($socialUser, $validated['provider'], 'app', $profileImageService);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Social login failed',
+                'error' => $e->getMessage(),
             ], 401);
         }
     }
@@ -106,7 +138,9 @@ class SocialController extends Controller
 
             if ($socialAccount) {
                 $existingUser = User::withTrashed()->find($socialAccount->user_id);
-                if ($existingUser) return $existingUser;
+                if ($existingUser) {
+                    return $existingUser;
+                }
             }
 
             $email = $socialUser->getEmail();
@@ -174,6 +208,7 @@ class SocialController extends Controller
                 'is_onboarding' => $user->profile()->exists(),
             ];
             $encodedAuth = base64_encode(json_encode($payload));
+
             return redirect("{$frontendUrl}/mu/home?auth={$encodedAuth}");
         }
 
@@ -192,14 +227,6 @@ class SocialController extends Controller
             ],
         ]);
     }
-
-
-
-
-
-
-
-
 
     // public function redirect($provider)
     // {
