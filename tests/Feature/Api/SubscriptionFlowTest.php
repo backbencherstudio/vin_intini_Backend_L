@@ -130,6 +130,49 @@ class SubscriptionFlowTest extends TestCase
         $this->assertSame('revenuecat', $rcPlan['checkout_type']);
     }
 
+    public function test_plans_filter_by_billing_cycle(): void
+    {
+        Plan::create([
+            'name' => 'Pro Monthly', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
+        ]);
+        Plan::create([
+            'name' => 'Pro Yearly', 'billing_rate' => 99.99, 'billing_cycle' => 'yearly',
+            'status' => 'active', 'features' => ['search_profiles'],
+            'stripe_product_id' => 'prod_2', 'stripe_price_id' => 'price_2',
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/plans?billing_cycle=monthly');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'data.plans')
+            ->assertJsonPath('data.plans.0.name', 'Pro Monthly');
+    }
+
+    public function test_plans_return_all_cycles_when_billing_cycle_not_provided(): void
+    {
+        Plan::create([
+            'name' => 'Pro Monthly', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
+            'status' => 'active', 'features' => ['search_profiles'],
+            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
+        ]);
+        Plan::create([
+            'name' => 'Pro Yearly', 'billing_rate' => 99.99, 'billing_cycle' => 'yearly',
+            'status' => 'active', 'features' => ['search_profiles'],
+            'stripe_product_id' => 'prod_2', 'stripe_price_id' => 'price_2',
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/plans');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(2, 'data.plans')
+            ->assertJsonPath('data.plans.0.name', 'Pro Monthly')
+            ->assertJsonPath('data.plans.1.name', 'Pro Yearly');
+    }
+
     public function test_plans_returns_features_as_boolean_map(): void
     {
         Plan::create([

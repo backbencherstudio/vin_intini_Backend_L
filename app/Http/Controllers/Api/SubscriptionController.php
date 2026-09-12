@@ -49,9 +49,10 @@ class SubscriptionController extends Controller
         ], 200);
     }
 
-    public function plans(): JsonResponse
+    public function plans(Request $request): JsonResponse
     {
         $plans = Plan::where('status', 'active')
+            ->when($request->filled('billing_cycle'), fn ($query) => $query->where('billing_cycle', $request->string('billing_cycle')))
             ->where(function ($query) {
                 $query->whereNotNull('stripe_price_id')
                     ->orWhereNotNull('revenuecat_product_id')
