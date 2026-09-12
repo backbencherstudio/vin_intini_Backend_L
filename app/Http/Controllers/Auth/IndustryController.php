@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
 use App\Models\IndustryCommentLike;
+use App\Models\IndustryFollow;
 use App\Models\IndustryPost;
 use App\Models\IndustryPostComment;
 use App\Models\IndustryPostLike;
@@ -23,10 +24,9 @@ class IndustryController extends Controller
     {
         $subscription = Subscription::where('user_id', auth()->id())
             ->where('status', 'active')
-            ->where(function ($query) {
-                $query->whereNull('current_period_end')
-                    ->orWhere('current_period_end', '>', now());
-            })
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+
             ->whereHas('plan', function ($query) {
                 $query->where('status', 'active');
             })
@@ -232,10 +232,9 @@ class IndustryController extends Controller
     {
         $subscription = Subscription::where('user_id', auth()->id())
             ->where('status', 'active')
-            ->where(function ($query) {
-                $query->whereNull('current_period_end')
-                    ->orWhere('current_period_end', '>', now());
-            })
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+
             ->whereHas('plan', function ($query) {
                 $query->where('status', 'active');
             })
@@ -246,7 +245,7 @@ class IndustryController extends Controller
         if (!$subscription) {
             return response()->json([
                 'success' => false,
-                'message' => 'You need an active subscription to update your industry.',
+                'message' => 'You need an active subscription to update your company.',
             ], 403);
         }
 
@@ -255,7 +254,7 @@ class IndustryController extends Controller
         if (!in_array('company_profile', $features, true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Your current plan does not include industry management.',
+                'message' => 'Your current plan does not include company management.',
             ], 403);
         }
 
@@ -265,7 +264,7 @@ class IndustryController extends Controller
         if (!$industry) {
             return response()->json([
                 'success' => false,
-                'message' => 'Industry not found.',
+                'message' => 'Company not found.',
             ], 404);
         }
 
@@ -420,6 +419,25 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
+        $subscription = Subscription::where('user_id', $userId)
+            ->where('status', 'active')
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+
+            ->whereHas('plan', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->with('plan')
+            ->latest('id')
+            ->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your subscription is not active. Please renew your subscription to create a post.',
+            ], 403);
+        }
+
         $industry = Industry::where(
             'created_by',
             $userId
@@ -428,7 +446,7 @@ class IndustryController extends Controller
         if (!$industry) {
             return response()->json([
                 'success' => false,
-                'message' => 'You do not have an industry.',
+                'message' => 'You do not have a company page.',
             ], 403);
         }
 
@@ -587,19 +605,343 @@ class IndustryController extends Controller
     }
 
 
-    public function indexPost(Request $request)
+    public function updatePost(Request $request, $postId, IndustryMediaUploadService $mediaUploadService)
     {
-        $perPage = min(
-            (int) $request->get('per_page', 10),
-            100
+        $userId = auth()->id();
+
+        $post = IndustryPost::find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        if ((int) $post->created_by !== (int) $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to edit this post.',
+            ], 403);
+        }
+
+        $subscription = Subscription::where('user_id', $userId)
+            ->where('status', 'active')
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+            ->whereHas('plan', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->with('plan')
+            ->latest('id')
+            ->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your subscription is not active. Please renew your subscription to edit a post.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'content' => ['nullable', 'string', 'max:10000'],
+
+            'media' => ['nullable', 'array', 'max:10'],
+
+            'media.*' => [
+                'file',
+                'mimes:jpg,jpeg,png,webp,mp4,mov,webm',
+                'max:102400',
+            ],
+        ]);
+
+        if (
+            !array_key_exists('content', $validated) &&
+            !$request->hasFile('media')
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nothing to update.',
+            ], 422);
+        }
+
+        $content = array_key_exists('content', $validated)
+            ? trim($validated['content'] ?? '')
+            : $post->content;
+
+        if ($request->hasFile('media')) {
+
+            $mediaFiles = $request->file('media');
+
+            $videoCount = collect($mediaFiles)
+                ->filter(function ($file) {
+                    return str_starts_with(
+                        $file->getMimeType() ?? '',
+                        'video/'
+                    );
+                })
+                ->count();
+
+            $imageCount = collect($mediaFiles)
+                ->filter(function ($file) {
+                    return str_starts_with(
+                        $file->getMimeType() ?? '',
+                        'image/'
+                    );
+                })
+                ->count();
+
+            if ($videoCount > 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 1 video per post.',
+                ], 422);
+            }
+
+            if ($videoCount === 1 && $imageCount > 9) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 9 images with 1 video.',
+                ], 422);
+            }
+
+            if ($videoCount === 0 && $imageCount > 10) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can upload a maximum of 10 images per post.',
+                ], 422);
+            }
+        }
+
+        if (
+            blank($content) &&
+            !$request->hasFile('media') &&
+            $post->media()->count() === 0
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post must contain text or media.',
+            ], 422);
+        }
+
+        $uploadedFiles = [];
+        $oldMediaPaths = [];
+
+        DB::beginTransaction();
+
+        try {
+
+            $newMedia = [];
+
+            if ($request->hasFile('media')) {
+
+                foreach ($request->file('media') as $index => $file) {
+
+                    $media = $mediaUploadService->upload($file);
+
+                    $uploadedFiles[] = $media['file_path'];
+
+                    $newMedia[] = [
+                        'type' => $media['type'],
+                        'path' => $media['file_path'],
+                        'sort_order' => $index,
+                    ];
+                }
+            }
+
+            if (array_key_exists('content', $validated)) {
+                $post->content = $content ?: null;
+                $post->save();
+            }
+
+            if ($request->hasFile('media')) {
+
+                $oldMedia = $post->media()->get();
+
+                foreach ($oldMedia as $media) {
+                    if ($media->path) {
+                        $oldMediaPaths[] = $media->path;
+                    }
+
+                    $media->delete();
+                }
+
+                foreach ($newMedia as $mediaData) {
+                    $post->media()->create($mediaData);
+                }
+            }
+
+            DB::commit();
+
+            foreach ($oldMediaPaths as $path) {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            $post->load('media');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Industry post updated successfully.',
+
+                'data' => [
+                    'post_id' => $post->id,
+
+                    'company_id' => $post->industry_id,
+
+                    'created_by' => $post->created_by,
+
+                    'content' => $post->content,
+
+                    'media' => $post->media
+                        ->map(function ($media) {
+                            return [
+                                'id' => $media->id,
+
+                                'type' => $media->type,
+
+                                'url' => Storage::disk('public')
+                                    ->url($media->path),
+
+                                'sort_order' => $media->sort_order,
+                            ];
+                        })
+                        ->values(),
+
+                    'updated_at' => $post->updated_at,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            foreach ($uploadedFiles as $file) {
+
+                if (Storage::disk('public')->exists($file)) {
+                    Storage::disk('public')->delete($file);
+                }
+            }
+
+            return response()->json([
+                'success' => false,
+
+                'message' => 'Failed to update industry post.',
+
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+
+    public function deletePost($postId)
+    {
+        $userId = auth()->id();
+
+        $post = IndustryPost::with('media')->find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        if ((int) $post->created_by !== (int) $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to delete this post.',
+            ], 403);
+        }
+
+        $subscription = Subscription::where('user_id', $userId)
+            ->where('status', 'active')
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+            ->whereHas('plan', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->latest('id')
+            ->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your subscription is not active. Please renew your subscription to delete a post.',
+            ], 403);
+        }
+
+        $mediaPaths = $post->media
+            ->pluck('path')
+            ->filter()
+            ->values()
+            ->toArray();
+
+        DB::beginTransaction();
+
+        try {
+
+            $post->media()->delete();
+
+            $post->delete();
+
+            DB::commit();
+
+            foreach ($mediaPaths as $path) {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Industry post deleted successfully.',
+                'data' => [
+                    'post_id' => $post->id,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete industry post.',
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+
+    public function indexPost(Request $request, $industryId)
+    {
+        $perPage = max(
+            1,
+            min(
+                (int) $request->get('per_page', 10),
+                100
+            )
         );
 
+        $industry = Industry::find($industryId);
+
+        if (!$industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company page not found.',
+            ], 404);
+        }
+
+
         $posts = IndustryPost::with([
-            'media' => function ($query) {
-                $query->orderBy('sort_order');
-            },
+            'media',
             'industry',
         ])
+            ->where('industry_id', $industryId)
             ->withExists([
                 'likes as is_liked' => function ($query) {
                     $query->where(
@@ -619,8 +961,8 @@ class IndustryController extends Controller
             'data' => collect($posts->items())->map(function ($post) {
 
                 return [
-                    'id' => $post->id,
-                    'industry_name' => $post->industry?->name,
+                    'company_id' => $post->industry_id,
+                    'company_name' => $post->industry?->name,
                     'tagline' => $post->industry?->tagline,
                     'time_ago' => $post->created_at
                         ? $post->created_at->diffForHumans()
@@ -631,7 +973,7 @@ class IndustryController extends Controller
                             $post->industry->logo
                         )
                         : null,
-
+                    'post_id' => $post->id,
                     'content' => $post->content,
 
 
@@ -713,9 +1055,9 @@ class IndustryController extends Controller
             'data' => $posts->map(function ($post) {
 
                 return [
-                    'id' => $post->id,
+                    'company_id' => $post->industry_id,
 
-                    'industry_name' => $post->industry?->name,
+                    'company_name' => $post->industry?->name,
 
                     'tagline' => $post->industry?->tagline,
 
@@ -728,6 +1070,7 @@ class IndustryController extends Controller
                             $post->industry->logo
                         )
                         : null,
+                    'post_id' => $post->id,
 
                     'content' => $post->content,
 
@@ -1668,6 +2011,62 @@ class IndustryController extends Controller
 
                 'has_more_pages' =>
                 $replies->hasMorePages(),
+            ],
+        ], 200);
+    }
+
+
+    public function toggleFollow($industryId)
+    {
+        $userId = auth()->id();
+
+        $industry = Industry::find($industryId);
+
+        if (!$industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company page not found.',
+            ], 404);
+        }
+
+        if ((int) $industry->created_by === (int) $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot follow your own company page.',
+            ], 422);
+        }
+
+        $follow = IndustryFollow::where('industry_id', $industry->id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($follow) {
+            $follow->delete();
+
+            $following = false;
+            $message = 'Company page unfollowed successfully.';
+        } else {
+            IndustryFollow::create([
+                'industry_id' => $industry->id,
+                'user_id' => $userId,
+            ]);
+
+            $following = true;
+            $message = 'Company page followed successfully.';
+        }
+
+        $followersCount = IndustryFollow::where(
+            'industry_id',
+            $industry->id
+        )->count();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'industry_id' => $industry->id,
+                'is_following' => $following,
+                'followers_count' => $followersCount,
             ],
         ], 200);
     }

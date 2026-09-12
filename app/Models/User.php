@@ -168,7 +168,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/'.ltrim($value, '/'));
+        return asset('storage/' . ltrim($value, '/'));
     }
 
     public function getCoverImageUrlAttribute(): ?string
@@ -182,7 +182,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/'.ltrim($value, '/'));
+        return asset('storage/' . ltrim($value, '/'));
     }
 
     public function posts()
@@ -289,5 +289,13 @@ class User extends Authenticatable implements JWTSubject
                 $user->groups()->detach();
             }
         });
+    }
+
+    public function followedIndustries(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Industry::class,
+            'industry_follows'
+        )->withTimestamps();
     }
 }

@@ -89,11 +89,14 @@ Route::middleware('role:user')->group(function () {
         Route::post('create', [IndustryController::class, 'store']);
         Route::get('show', [IndustryController::class, 'show']);
         Route::post('update', [IndustryController::class, 'update']);
+        Route::post('follow/{industryId}', [IndustryController::class, 'toggleFollow']);
 
-        // Recruiter post
+        // Industry post
         Route::post('post/create', [IndustryController::class, 'storePost']);
-        Route::get('post/view', [IndustryController::class, 'indexPost']);
+        Route::get('post/view/{industryId}', [IndustryController::class, 'indexPost']);
         Route::get('post/recent', [IndustryController::class, 'latestPosts']);
+        Route::post('post/update/{postId}', [IndustryController::class, 'updatePost']);
+        Route::delete('post/delete/{postId}', [IndustryController::class, 'deletePost']);
 
         Route::post('post/like/{postId}', [IndustryController::class, 'togglePostLike']);
         Route::get('post/likes/{postId}', [IndustryController::class, 'likeList']);
