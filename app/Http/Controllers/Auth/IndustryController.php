@@ -971,6 +971,7 @@ class IndustryController extends Controller
                             $post->industry->logo
                         )
                         : null,
+                    'post_id' => $post->id,
 
                     'content' => $post->content,
 
