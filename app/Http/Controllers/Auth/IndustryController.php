@@ -625,6 +625,24 @@ class IndustryController extends Controller
             ], 403);
         }
 
+        $subscription = Subscription::where('user_id', $userId)
+            ->where('status', 'active')
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+            ->whereHas('plan', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->with('plan')
+            ->latest('id')
+            ->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your subscription is not active. Please renew your subscription to edit a post.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
 
