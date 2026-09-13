@@ -143,35 +143,6 @@ class UserEducationController extends Controller
         ]);
     }
 
-    // niaz's code================================
-    // public function showEducationByUserId($id)
-    // {
-    //     $isOwnEducation = auth()->check() && auth()->id() == $id;
-
-    //     $educations = Education::query()
-    //         ->where('user_id', $id)
-    //         ->with('institution:id,name')
-    //         ->orderByDesc('start_year')
-    //         ->orderByDesc('start_month')
-    //         ->get();
-
-    //     if ($educations->isEmpty()) {
-    //         return response()->json([
-    //             'status' => 'success',
-    //             'message' => 'No education found for this user',
-    //             'is_own_education' => $isOwnEducation,
-    //             'data' => [],
-    //         ]);
-    //     }
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'is_own_education' => $isOwnEducation,
-    //         'data' => $educations,
-    //     ]);
-    // }
-    // ===========================================
-
     public function store(Request $request)
     {
         $validated = $request->validate([
