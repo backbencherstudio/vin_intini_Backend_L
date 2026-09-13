@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class UserProfileController extends Controller
 {
@@ -334,10 +335,49 @@ class UserProfileController extends Controller
 
             // Education
             'start_month' => 'required_with:institution|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'start_year' => 'required_with:institution|nullable|integer|min:1900|max:' . (date('Y') + 10),
+
+            'start_year' => [
+                'required_with:institution',
+                'nullable',
+                'integer',
+                'min:1900',
+                function ($attribute, $value, $fail) use ($request) {
+                    $month = $request->input('start_month');
+                    if ($value && $month) {
+                        $startDate = Carbon::parse("1 {$month} {$value}");
+                        if ($startDate->isFuture()) {
+                            $fail('Start date cannot be greater than the current month and year.');
+                        }
+                    }
+                }
+            ],
+
             'is_current' => 'required_with:institution|nullable|boolean',
             'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
-            'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'end_year' => [
+                'required_if:is_current,false,0',
+                'nullable',
+                'integer',
+                'min:1900',
+                function ($attribute, $value, $fail) use ($request) {
+                    $startYear = $request->input('start_year');
+                    $startMonth = $request->input('start_month');
+                    $endMonth = $request->input('end_month');
+
+                    if ($value && $endMonth && $startYear && $startMonth) {
+                        $startDate = Carbon::parse("1 {$startMonth} {$startYear}");
+                        $endDate = Carbon::parse("1 {$endMonth} {$value}");
+                        if ($endDate->isBefore($startDate)) {
+                            $fail('End date cannot be before the start date.');
+                        }
+                    }
+                }
+            ],
+            // 'start_month' => 'required_with:institution|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            // 'start_year' => 'required_with:institution|nullable|integer|min:1900|max:' . (date('Y') + 10),
+            // 'is_current' => 'required_with:institution|nullable|boolean',
+            // 'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+            // 'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:' . (date('Y') + 10),
 
             'notify_jobs' => 'nullable|boolean',
             'notify_publications' => 'nullable|boolean',
