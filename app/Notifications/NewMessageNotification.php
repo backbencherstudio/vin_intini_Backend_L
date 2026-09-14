@@ -41,6 +41,8 @@ class NewMessageNotification extends Notification implements ShouldQueue
                     ->title($sender->first_name ?? '')
                     ->body($body)
             )
+            ->android(['notification' => ['sound' => 'default']])
+            ->ios(['payload' => ['aps' => ['sound' => 'default']]])
             ->data([
                 'title' => (string) $sender->first_name,
                 'body' => (string) $body,
