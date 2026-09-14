@@ -106,6 +106,12 @@ class StoreIndustryJobPostRequest extends FormRequest
                 'date',
                 'after_or_equal:announcement_start_date',
             ],
+
+            'information_confirmed' => [
+                'required',
+                'accepted',
+            ],
+
         ];
     }
 }
