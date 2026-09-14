@@ -42,7 +42,7 @@ class IndustryJobPost extends Model
         'announcement_end_date',
 
         'status',
-
+        'information_confirmed',
         'submitted_at',
         'reviewed_at',
 
@@ -59,7 +59,7 @@ class IndustryJobPost extends Model
 
         'announcement_start_date' => 'date',
         'announcement_end_date' => 'date',
-
+        'information_confirmed' => 'boolean',
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
     ];
