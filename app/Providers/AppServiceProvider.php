@@ -6,7 +6,10 @@ use App\Services\IntegrationSettingsService;
 use App\Services\RevenueCatPlanSyncService;
 use App\Services\RevenueCatService;
 use Illuminate\Foundation\DevCommands;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use SocialiteProviders\Apple\AppleExtendSocialite;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,5 +30,7 @@ class AppServiceProvider extends ServiceProvider
         DevCommands::artisan('serve', 'server');
         DevCommands::artisan('schedule:work', 'schedule');
         $settings->applyOverrides();
+
+        Event::listen(SocialiteWasCalled::class, AppleExtendSocialite::class);
     }
 }
