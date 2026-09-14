@@ -181,8 +181,6 @@ class MessageController extends Controller
 
         event(new MessageSent($message));
 
-        $currentUser->notify(new NewMessageNotification($message));
-
         if (! $conversation->isArchivedFor($otherUser->id)) {
             $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
 

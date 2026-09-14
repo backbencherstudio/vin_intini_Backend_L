@@ -780,7 +780,7 @@ class ConversationMessageFlowTest extends TestCase
         );
     }
 
-    public function test_sending_message_notifies_the_sender_account_other_devices_too(): void
+    public function test_sending_message_notifies_only_the_receiver_on_all_their_devices(): void
     {
         Notification::fake();
 
@@ -789,7 +789,8 @@ class ConversationMessageFlowTest extends TestCase
         $this->connectUsers($user, $connectedUser);
 
         FcmToken::create(['user_id' => $user->id, 'fcm_token' => 'sender-token']);
-        FcmToken::create(['user_id' => $connectedUser->id, 'fcm_token' => 'receiver-token']);
+        FcmToken::create(['user_id' => $connectedUser->id, 'fcm_token' => 'receiver-token-a']);
+        FcmToken::create(['user_id' => $connectedUser->id, 'fcm_token' => 'receiver-token-b']);
 
         $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
 
@@ -798,13 +799,13 @@ class ConversationMessageFlowTest extends TestCase
             'message' => 'Notification test',
         ]);
 
-        Notification::assertSentTo(
-            $user,
-            NewMessageNotification::class,
-            function (NewMessageNotification $notification) use ($user, $conversation) {
-                return $notification->message->conversation_id === $conversation->id
-                    && $notification->message->sender_id === $user->id;
-            }
+        $notification = new NewMessageNotification(
+            $conversation->fresh()->messages->first()
+        );
+
+        $this->assertSame(
+            ['receiver-token-a', 'receiver-token-b'],
+            $connectedUser->routeNotificationForFcm($notification)
         );
 
         Notification::assertSentTo(
@@ -815,6 +816,8 @@ class ConversationMessageFlowTest extends TestCase
                     && $notification->message->sender_id === $user->id;
             }
         );
+
+        Notification::assertNotSentTo($user, NewMessageNotification::class);
     }
 
     public function test_mark_as_unread_resets_unread_to_total(): void

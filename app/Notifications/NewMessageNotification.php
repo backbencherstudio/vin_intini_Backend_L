@@ -29,35 +29,22 @@ class NewMessageNotification extends Notification implements ShouldQueue
         $sender = $this->message->sender;
         $senderImage = $sender->notificationImageUrl();
 
-        $isOutgoing = $notifiable->id === $this->message->sender_id;
-
-        $other = $isOutgoing
-            ? $this->message->conversation?->getOtherUser($notifiable->id)
-            : null;
-
         $body = $this->message->type === 'text'
             ? $this->message->message
             : 'Sent a '.$this->message->type;
 
         $senderName = trim(($sender->first_name ?? '').' '.($sender->last_name ?? ''));
 
-        $title = $sender->first_name ?? '';
-
-        if ($other) {
-            $title = trim(($other->first_name ?? '').' '.($other->last_name ?? ''));
-            $body = 'You: '.$body;
-        }
-
         return FcmMessage::create()
             ->notification(
                 FcmNotification::create()
-                    ->title($title)
+                    ->title($sender->first_name ?? '')
                     ->body($body)
             )
             ->android(['notification' => ['sound' => 'default']])
             ->ios(['payload' => ['aps' => ['sound' => 'default']]])
             ->data([
-                'title' => (string) $title,
+                'title' => (string) $sender->first_name,
                 'body' => (string) $body,
                 'conversation_id' => (string) $this->message->conversation_id,
                 'message_id' => (string) $this->message->id,
