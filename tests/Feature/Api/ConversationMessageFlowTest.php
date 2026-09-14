@@ -780,6 +780,43 @@ class ConversationMessageFlowTest extends TestCase
         );
     }
 
+    public function test_sending_message_notifies_the_sender_account_other_devices_too(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        FcmToken::create(['user_id' => $user->id, 'fcm_token' => 'sender-token']);
+        FcmToken::create(['user_id' => $connectedUser->id, 'fcm_token' => 'receiver-token']);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+
+        $this->actingAs($user, 'api')->postJson("/api/conversations/{$conversation->id}/messages", [
+            'type' => 'text',
+            'message' => 'Notification test',
+        ]);
+
+        Notification::assertSentTo(
+            $user,
+            NewMessageNotification::class,
+            function (NewMessageNotification $notification) use ($user, $conversation) {
+                return $notification->message->conversation_id === $conversation->id
+                    && $notification->message->sender_id === $user->id;
+            }
+        );
+
+        Notification::assertSentTo(
+            $connectedUser,
+            NewMessageNotification::class,
+            function (NewMessageNotification $notification) use ($user, $conversation) {
+                return $notification->message->conversation_id === $conversation->id
+                    && $notification->message->sender_id === $user->id;
+            }
+        );
+    }
+
     public function test_mark_as_unread_resets_unread_to_total(): void
     {
         $user = $this->makeUser();

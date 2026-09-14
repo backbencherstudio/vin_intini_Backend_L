@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeletedAccountLog;
+use App\Models\FcmToken;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\ProfileImageService;
@@ -57,7 +58,7 @@ class SocialController extends Controller
             $platform = $result['platform'] ?? 'app';
             $fcmToken = $result['fcm_token'] ?? null;
 
-            return $this->processSocialUser($socialUser, $provider, $platform, $profileImageService);
+            return $this->processSocialUser($socialUser, $provider, $platform, $profileImageService, $fcmToken);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -75,6 +76,7 @@ class SocialController extends Controller
             'nonce' => 'nullable|string',
             'device_name' => 'nullable|string',
             'device_platform' => 'nullable|string',
+            'fcm_token' => 'nullable|string',
         ]);
 
         try {
@@ -91,7 +93,7 @@ class SocialController extends Controller
                 'custom_platform' => $validated['device_platform'] ?? null,
             ]);
 
-            return $this->processSocialUser($socialUser, $validated['provider'], 'app', $profileImageService);
+            return $this->processSocialUser($socialUser, $validated['provider'], 'app', $profileImageService, $validated['fcm_token'] ?? null);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -101,7 +103,7 @@ class SocialController extends Controller
         }
     }
 
-    private function processSocialUser($socialUser, $provider, $platform, $profileImageService)
+    private function processSocialUser($socialUser, $provider, $platform, $profileImageService, ?string $fcmToken = null)
     {
         $providerId = (string) $socialUser->getId();
         $avatarUrl = (string) ($socialUser->getAvatar() ?: '');
@@ -172,6 +174,11 @@ class SocialController extends Controller
                 'email' => $user->email,
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
             ], 200);
+        }
+
+        // Register the device FCM token, mirroring the email/password login flow.
+        if ($fcmToken) {
+            FcmToken::assignTo($user, $fcmToken);
         }
 
         // Profile Image Handling

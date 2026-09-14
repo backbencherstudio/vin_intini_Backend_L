@@ -34,14 +34,14 @@ class MessageController extends Controller
 
         $messages = $conversation->visibleMessagesFor($currentUser->id)
             ->with([
-                'sender' => fn($q) => $q->select(['id', 'first_name', 'last_name', 'title', 'profile_image'])->withTrashed(),
-                'replyTo.sender' => fn($q) => $q->select(['id', 'first_name', 'last_name'])->withTrashed(),
-                'reactions.user' => fn($q) => $q->select(['id', 'first_name', 'last_name'])->withTrashed(),
+                'sender' => fn ($q) => $q->select(['id', 'first_name', 'last_name', 'title', 'profile_image'])->withTrashed(),
+                'replyTo.sender' => fn ($q) => $q->select(['id', 'first_name', 'last_name'])->withTrashed(),
+                'reactions.user' => fn ($q) => $q->select(['id', 'first_name', 'last_name'])->withTrashed(),
             ])
             ->orderBy('id', 'desc')
             ->cursorPaginate(50);
 
-        $conversation->load(['user1' => fn($q) => $q->withTrashed(), 'user2' => fn($q) => $q->withTrashed()]);
+        $conversation->load(['user1' => fn ($q) => $q->withTrashed(), 'user2' => fn ($q) => $q->withTrashed()]);
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
         $isConnected = false;
@@ -56,7 +56,7 @@ class MessageController extends Controller
                 ->exists();
         }
 
-        $data = $messages->reverse()->values()->map(fn(Message $message) => [
+        $data = $messages->reverse()->values()->map(fn (Message $message) => [
             'id' => $message->id,
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
@@ -90,7 +90,7 @@ class MessageController extends Controller
             'success' => true,
             'other_user' => $otherUser ? [
                 'id' => $otherUser->id,
-                'name' => trim(($otherUser->first_name ?? '') . ' ' . ($otherUser->last_name ?? '')),
+                'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
                 'first_name' => $otherUser->first_name,
                 'last_name' => $otherUser->last_name,
                 'title' => $otherUser->title,
@@ -116,7 +116,7 @@ class MessageController extends Controller
             return $error;
         }
 
-        $conversation->load(['user1' => fn($q) => $q->withTrashed(), 'user2' => fn($q) => $q->withTrashed()]);
+        $conversation->load(['user1' => fn ($q) => $q->withTrashed(), 'user2' => fn ($q) => $q->withTrashed()]);
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
         if (! $otherUser || $otherUser->trashed()) {
@@ -162,7 +162,7 @@ class MessageController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $imageUploadService->store($file, 'conversations/' . $conversation->id);
+            $path = $imageUploadService->store($file, 'conversations/'.$conversation->id);
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_size'] = $file->getSize();
@@ -180,6 +180,8 @@ class MessageController extends Controller
         $conversation->update(['last_message_id' => $message->id]);
 
         event(new MessageSent($message));
+
+        $currentUser->notify(new NewMessageNotification($message));
 
         if (! $conversation->isArchivedFor($otherUser->id)) {
             $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
@@ -310,7 +312,7 @@ class MessageController extends Controller
         return [
             'id' => $message->id,
             'sender_id' => $message->sender_id,
-            'sender_name' => trim(($message->sender?->first_name ?? '') . ' ' . ($message->sender?->last_name ?? '')),
+            'sender_name' => trim(($message->sender?->first_name ?? '').' '.($message->sender?->last_name ?? '')),
             'type' => $message->type,
             'message' => $message->message,
             'file_url' => $message->file_url,
@@ -355,7 +357,7 @@ class MessageController extends Controller
     private function isParticipant(int $userId, int $conversationId): bool
     {
         return Conversation::where('id', $conversationId)
-            ->where(fn($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
+            ->where(fn ($query) => $query->where('user_id_1', $userId)->orWhere('user_id_2', $userId))
             ->exists();
     }
 
@@ -374,13 +376,13 @@ class MessageController extends Controller
     {
         return $message->reactions
             ->groupBy('reaction')
-            ->map(fn($reactions, string $reaction) => [
+            ->map(fn ($reactions, string $reaction) => [
                 'reaction' => $reaction,
                 'count' => $reactions->count(),
                 'users' => $reactions
-                    ->map(fn($item) => [
+                    ->map(fn ($item) => [
                         'id' => $item->user_id,
-                        'name' => trim(($item->user?->first_name ?? '') . ' ' . ($item->user?->last_name ?? '')),
+                        'name' => trim(($item->user?->first_name ?? '').' '.($item->user?->last_name ?? '')),
                     ])
                     ->values(),
             ])

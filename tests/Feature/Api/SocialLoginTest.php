@@ -7,7 +7,9 @@ use App\Models\FcmToken;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Socialite\Contracts\Provider;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Spatie\Permission\Models\Role;
@@ -80,6 +82,55 @@ class SocialLoginTest extends TestCase
         ]);
 
         $this->assertSame(1, FcmToken::where('fcm_token', 'social-device-token')->count());
+    }
+
+    public function test_social_login_registers_fcm_token_for_the_user(): void
+    {
+        $provider = new class implements Provider
+        {
+            public function redirect()
+            {
+                return new RedirectResponse('https://example.test');
+            }
+
+            public function user()
+            {
+                return SocialiteUser::fake([
+                    'id' => 'google-social-login-1',
+                    'name' => 'John Doe',
+                    'email' => 'john@example.com',
+                    'avatar' => '',
+                ]);
+            }
+
+            public function userFromToken($token)
+            {
+                return $this->user();
+            }
+
+            public function userByIdentityToken($token, $nonce = null)
+            {
+                return $this->user();
+            }
+        };
+
+        Socialite::extend('google', fn () => $provider);
+
+        $this->postJson('/api/auth/social-login', [
+            'provider' => 'google',
+            'access_token' => 'google-access-token',
+            'fcm_token' => 'social-login-device-token',
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $user = User::where('email', 'john@example.com')->first();
+
+        $this->assertNotNull($user);
+        $this->assertDatabaseHas('fcm_tokens', [
+            'user_id' => $user->id,
+            'fcm_token' => 'social-login-device-token',
+        ]);
     }
 
     public function test_callback_returns_pending_deletion_instead_of_restoring_a_deleted_account(): void
