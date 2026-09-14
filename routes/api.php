@@ -38,7 +38,7 @@ Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp']
 Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])->middleware('throttle:3,1');
 // Social Authentication Routes
 Route::get('/auth/{provider}', [SocialController::class, 'redirect']);
-Route::get('/auth/{provider}/callback', [SocialController::class, 'callback']);
+Route::match(['get', 'post'], '/auth/{provider}/callback', [SocialController::class, 'callback']);
 Route::post('/auth/social-login', [SocialController::class, 'socialLogin']);
 Route::post('/refresh', [AuthController::class, 'refresh']);
 
