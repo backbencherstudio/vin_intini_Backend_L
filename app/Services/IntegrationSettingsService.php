@@ -16,6 +16,7 @@ class IntegrationSettingsService
         'google_client_secret' => 'services.google.client_secret',
         'google_redirect_uri' => 'services.google.redirect',
         'apple_client_id' => 'services.apple.client_id',
+        'apple_client_id_ios' => 'services.apple.client_id_ios',
         'apple_team_id' => 'services.apple.team_id',
         'apple_key_id' => 'services.apple.key_id',
         'apple_private_key' => 'services.apple.private_key',
@@ -67,7 +68,7 @@ class IntegrationSettingsService
                 ->orderBy('section')
                 ->orderBy('key')
                 ->get()
-                ->mapWithKeys(fn(IntegrationSetting $setting) => [$setting->key => $setting->value])
+                ->mapWithKeys(fn (IntegrationSetting $setting) => [$setting->key => $setting->value])
                 ->all();
         });
     }
@@ -140,7 +141,7 @@ class IntegrationSettingsService
             ->orderBy('key')
             ->get()
             ->groupBy('section')
-            ->map(fn($settings) => $settings->map(fn(IntegrationSetting $setting) => [
+            ->map(fn ($settings) => $settings->map(fn (IntegrationSetting $setting) => [
                 'key' => $setting->key,
                 'value' => $this->mask($setting->key, $setting->value),
             ])->values())
@@ -168,7 +169,7 @@ class IntegrationSettingsService
         if (preg_match('/^\s*-----BEGIN ([^-]+)-----\s*(.*?)\s*-----END ([^-]+)-----\s*$/s', $pem, $m)) {
             $block = preg_replace('/\s+/', '', $m[2]) ?? $m[2];
 
-            return "-----BEGIN {$m[1]}-----\n" . chunk_split($block, 64, "\n") . "-----END {$m[1]}-----\n";
+            return "-----BEGIN {$m[1]}-----\n".chunk_split($block, 64, "\n")."-----END {$m[1]}-----\n";
         }
 
         return $value;
@@ -188,7 +189,7 @@ class IntegrationSettingsService
             return '••••••••';
         }
 
-        return substr($value, 0, 4) . '••••••••' . substr($value, -4);
+        return substr($value, 0, 4).'••••••••'.substr($value, -4);
     }
 
     private function isMigrated(): bool

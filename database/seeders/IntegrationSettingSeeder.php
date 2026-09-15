@@ -20,6 +20,7 @@ class IntegrationSettingSeeder extends Seeder
 
             // Apple OAuth
             'apple_client_id' => 'Apple OAuth',
+            'apple_client_id_ios' => 'Apple OAuth',
             'apple_team_id' => 'Apple OAuth',
             'apple_key_id' => 'Apple OAuth',
             'apple_private_key' => 'Apple OAuth',

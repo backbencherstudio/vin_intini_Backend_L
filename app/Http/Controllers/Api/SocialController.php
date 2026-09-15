@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\ProfileImageService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
@@ -34,6 +35,8 @@ class SocialController extends Controller
             $state .= '&fcm_token='.urlencode($fcmToken);
         }
 
+        $this->configureAppleClientId($platform);
+
         return response()->json([
             'success' => true,
             'url' => Socialite::driver($provider)
@@ -44,12 +47,30 @@ class SocialController extends Controller
         ]);
     }
 
+    private function configureAppleClientId(string $platform): void
+    {
+        if ($platform !== 'ios') {
+            return;
+        }
+
+        $iosClientId = config('services.apple.client_id_ios');
+        if ($iosClientId) {
+            config(['services.apple.client_id' => $iosClientId]);
+        }
+    }
+
     public function callback($provider, ProfileImageService $profileImageService)
     {
         try {
             if (! in_array($provider, self::ALLOWED_PROVIDERS, true)) {
                 return response()->json(['success' => false, 'message' => 'Unsupported provider'], 422);
             }
+
+            $state = request('state');
+            parse_str($state, $result);
+            $platform = $result['platform'] ?? 'app';
+
+            $this->configureAppleClientId($platform);
 
             $socialUser = Socialite::driver($provider)->stateless()->user();
 
@@ -58,7 +79,13 @@ class SocialController extends Controller
             $platform = $result['platform'] ?? 'app';
             $fcmToken = $result['fcm_token'] ?? null;
 
-            return $this->processSocialUser($socialUser, $provider, $platform, $profileImageService, $fcmToken);
+            $response = $this->processSocialUser($socialUser, $provider, $platform, $profileImageService, $fcmToken);
+
+            if ($platform === 'android' && $provider === 'apple') {
+                return $this->buildAndroidIntentResponse($response);
+            }
+
+            return $response;
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -66,6 +93,45 @@ class SocialController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function buildAndroidIntentResponse($response): Response
+    {
+        $data = $response->getData(true);
+
+        if (! ($data['success'] ?? false) || ! isset($data['data']['token'])) {
+            return response()->view('auth.apple-callback-error', ['message' => 'Login failed']);
+        }
+
+        $token = $data['data']['token'];
+        $user = $data['data']['user'];
+        $isOnboarding = $data['data']['is_onboarding'] ?? false;
+
+        $packageName = 'com.vinintini.mindunite';
+        $scheme = 'signinwithapple';
+        $intentUrl = "intent://callback?token={$token}&user_id={$user->id}&is_onboarding=".($isOnboarding ? 'true' : 'false')."#Intent;package={$packageName};scheme={$scheme};end";
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Apple Sign In Callback</title>
+</head>
+<body>
+    <script>
+        const intentUrl = "{$intentUrl}";
+        window.location.href = intentUrl;
+    </script>
+    <noscript>
+        <p>Redirecting to app...</p>
+        <a href="{$intentUrl}">Click here if not redirected</a>
+    </noscript>
+</body>
+</html>
+HTML;
+
+        return response($html, 200)->header('Content-Type', 'text/html');
     }
 
     public function socialLogin(Request $request, ProfileImageService $profileImageService)

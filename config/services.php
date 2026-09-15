@@ -57,6 +57,7 @@ return [
 
     'apple' => [
         'client_id' => env('APPLE_CLIENT_ID'),
+        'client_id_ios' => env('APPLE_CLIENT_ID_IOS'),
         'client_secret' => env('APPLE_CLIENT_SECRET'),
         'team_id' => env('APPLE_TEAM_ID'),
         'key_id' => env('APPLE_KEY_ID'),
