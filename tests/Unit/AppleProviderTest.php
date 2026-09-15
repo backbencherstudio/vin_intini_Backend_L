@@ -3,17 +3,27 @@
 namespace Tests\Unit;
 
 use App\Services\Socialite\AppleProvider;
+use DateTimeImmutable;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Laravel\Socialite\Two\InvalidStateException;
+use Lcobucci\JWT\Configuration;
+use Lcobucci\JWT\Signer\Key\InMemory;
+use Lcobucci\JWT\Signer\Rsa\Sha256;
 use SocialiteProviders\Manager\Config;
 use Tests\TestCase;
 
 class AppleProviderTest extends TestCase
 {
+    private ?string $privateKey = null;
+
+    private ?string $publicKeyPem = null;
+
     private const TEST_PRIVATE_KEY = <<<'PEM'
 -----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgLRq8a+YlK3hwkJGq
@@ -63,5 +73,110 @@ PEM;
         $this->assertSame('https://vini.pixelstack.cloud/api/auth/apple/callback', $fields['redirect_uri']);
         $this->assertNotEmpty($fields['client_secret']);
         $this->assertSame(2, substr_count($fields['client_secret'], '.'));
+    }
+
+    public function test_check_token_accepts_service_id_audience(): void
+    {
+        $this->seedJwksCache();
+
+        $provider = $this->createAppleProvider('com.vinintini.mindunite.service');
+        $jwt = $this->buildAppleJwt('com.vinintini.mindunite.service');
+
+        $this->assertTrue($provider->checkToken($jwt));
+    }
+
+    public function test_check_token_accepts_ios_bundle_id_audience(): void
+    {
+        $this->seedJwksCache();
+
+        $provider = $this->createAppleProvider('com.vinintini.mindunite.service');
+        $jwt = $this->buildAppleJwt('com.vinintini.mindunite');
+
+        $this->assertTrue($provider->checkToken($jwt));
+    }
+
+    public function test_check_token_rejects_unknown_audience(): void
+    {
+        $this->seedJwksCache();
+
+        $provider = $this->createAppleProvider('com.vinintini.mindunite.service');
+        $jwt = $this->buildAppleJwt('com.unknown.app');
+
+        $this->expectException(InvalidStateException::class);
+        $this->expectExceptionMessage('The token is not allowed to be used by this audience.');
+
+        $provider->checkToken($jwt);
+    }
+
+    private function createAppleProvider(string $clientId): AppleProvider
+    {
+        $provider = new AppleProvider(
+            new Request,
+            $clientId,
+            'dummy-secret',
+            'https://vini.pixelstack.cloud/api/auth/apple/callback'
+        );
+
+        $provider->setConfig(new Config(
+            $clientId,
+            'dummy-secret',
+            'https://vini.pixelstack.cloud/api/auth/apple/callback',
+        ));
+
+        config([
+            'services.apple.client_id_ios' => 'com.vinintini.mindunite',
+        ]);
+
+        return $provider;
+    }
+
+    private function seedJwksCache(): void
+    {
+        $res = openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]);
+
+        openssl_pkey_export($res, $privateKey);
+        $details = openssl_pkey_get_details($res);
+
+        $n = rtrim(strtr(base64_encode($details['rsa']['n']), '+/', '-_'), '=');
+        $e = rtrim(strtr(base64_encode($details['rsa']['e']), '+/', '-_'), '=');
+
+        Cache::put('socialite:Apple-JWKSet', [
+            'keys' => [[
+                'kty' => 'RSA',
+                'kid' => 'test-rsa-key',
+                'use' => 'sig',
+                'alg' => 'RS256',
+                'n' => $n,
+                'e' => $e,
+            ]],
+        ], 300);
+
+        $this->privateKey = $privateKey;
+        $this->publicKeyPem = $details['key'];
+    }
+
+    private function buildAppleJwt(string $audience): string
+    {
+        $config = Configuration::forAsymmetricSigner(
+            new Sha256,
+            InMemory::plainText($this->privateKey),
+            InMemory::plainText($this->publicKeyPem),
+        );
+
+        $now = new DateTimeImmutable;
+
+        $token = $config->builder()
+            ->issuedBy('https://appleid.apple.com')
+            ->permittedFor($audience)
+            ->relatedTo('user-sub-123')
+            ->issuedAt($now)
+            ->expiresAt($now->modify('+1 hour'))
+            ->withHeader('kid', 'test-rsa-key')
+            ->getToken($config->signer(), $config->signingKey());
+
+        return $token->toString();
     }
 }

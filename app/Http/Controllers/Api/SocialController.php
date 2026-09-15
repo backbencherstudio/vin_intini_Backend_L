@@ -11,6 +11,7 @@ use App\Services\ProfileImageService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
@@ -30,10 +31,14 @@ class SocialController extends Controller
         $platform = request('platform', 'app');
         $fcmToken = request('fcm_token');
 
-        $state = "platform={$platform}";
+        $stateKey = Str::random(40);
+        $stateData = ['platform' => $platform];
         if ($fcmToken) {
-            $state .= '&fcm_token='.urlencode($fcmToken);
+            $stateData['fcm_token'] = $fcmToken;
         }
+
+        // Store in cache for 10 minutes (Apple OAuth flow should complete within this time)
+        Cache::put("socialite_state:{$stateKey}", $stateData, now()->addMinutes(10));
 
         $this->configureAppleClientId($platform);
 
@@ -41,7 +46,7 @@ class SocialController extends Controller
             'success' => true,
             'url' => Socialite::driver($provider)
                 ->stateless()
-                ->with(['state' => $state])
+                ->with(['state' => $stateKey])
                 ->redirect()
                 ->getTargetUrl(),
         ]);
@@ -66,18 +71,15 @@ class SocialController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unsupported provider'], 422);
             }
 
-            $state = request('state');
-            parse_str($state, $result);
-            $platform = $result['platform'] ?? 'app';
+            $stateKey = request('state');
+            $stateData = Cache::pull("socialite_state:{$stateKey}", []);
+
+            $platform = $stateData['platform'] ?? 'app';
+            $fcmToken = $stateData['fcm_token'] ?? null;
 
             $this->configureAppleClientId($platform);
 
             $socialUser = Socialite::driver($provider)->stateless()->user();
-
-            $state = request('state');
-            parse_str($state, $result);
-            $platform = $result['platform'] ?? 'app';
-            $fcmToken = $result['fcm_token'] ?? null;
 
             $response = $this->processSocialUser($socialUser, $provider, $platform, $profileImageService, $fcmToken);
 
@@ -112,24 +114,24 @@ class SocialController extends Controller
         $intentUrl = "intent://callback?token={$token}&user_id={$user->id}&is_onboarding=".($isOnboarding ? 'true' : 'false')."#Intent;package={$packageName};scheme={$scheme};end";
 
         $html = <<<HTML
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Apple Sign In Callback</title>
-</head>
-<body>
-    <script>
-        const intentUrl = "{$intentUrl}";
-        window.location.href = intentUrl;
-    </script>
-    <noscript>
-        <p>Redirecting to app...</p>
-        <a href="{$intentUrl}">Click here if not redirected</a>
-    </noscript>
-</body>
-</html>
-HTML;
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Apple Sign In Callback</title>
+                </head>
+                <body>
+                    <script>
+                        const intentUrl = "{$intentUrl}";
+                        window.location.href = intentUrl;
+                    </script>
+                    <noscript>
+                        <p>Redirecting to app...</p>
+                        <a href="{$intentUrl}">Click here if not redirected</a>
+                    </noscript>
+                </body>
+                </html>
+                HTML;
 
         return response($html, 200)->header('Content-Type', 'text/html');
     }
@@ -159,7 +161,11 @@ HTML;
                 'custom_platform' => $validated['device_platform'] ?? null,
             ]);
 
-            return $this->processSocialUser($socialUser, $validated['provider'], 'app', $profileImageService, $validated['fcm_token'] ?? null);
+            $platform = $validated['device_platform'] ?? 'app';
+
+            $this->configureAppleClientId($platform);
+
+            return $this->processSocialUser($socialUser, $validated['provider'], $platform, $profileImageService, $validated['fcm_token'] ?? null);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
