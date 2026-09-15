@@ -47,6 +47,9 @@ return new class extends Migration
 
             $table->string('status')->default('draft');
 
+            $table->boolean('information_confirmed')
+                ->default(false);
+
             $table->timestamp('submitted_at')->nullable();
 
             $table->timestamp('reviewed_at')->nullable();

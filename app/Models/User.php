@@ -298,4 +298,12 @@ class User extends Authenticatable implements JWTSubject
             'industry_follows'
         )->withTimestamps();
     }
+
+    public function industry(): HasOne
+    {
+        return $this->hasOne(
+            Industry::class,
+            'created_by'
+        );
+    }
 }
