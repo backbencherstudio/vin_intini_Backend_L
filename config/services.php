@@ -60,7 +60,21 @@ return [
         'client_secret' => env('APPLE_CLIENT_SECRET'),
         'team_id' => env('APPLE_TEAM_ID'),
         'key_id' => env('APPLE_KEY_ID'),
-        'private_key' => env('APPLE_PRIVATE_KEY'),
+        'private_key' => env('APPLE_PRIVATE_KEY')
+            ? (static function (): string {
+                $key = str_replace(['\\r\\n', '\\r', '\\n'], "\n", (string) env('APPLE_PRIVATE_KEY'));
+                $key = preg_replace('/\\r\\n?/', "\n", $key) ?? $key;
+
+                // Rebuild a PEM whose line breaks were stripped or escaped by the platform's env var handling.
+                if (preg_match('/^\\s*-----BEGIN ([^-]+)-----\\s*(.*?)\\s*-----END ([^-]+)-----\\s*$/s', $key, $m)) {
+                    $block = preg_replace('/\\s+/', '', $m[2]) ?? $m[2];
+
+                    return "-----BEGIN {$m[1]}-----\n".chunk_split($block, 64, "\n")."-----END {$m[1]}-----\n";
+                }
+
+                return $key;
+            })()
+            : null,
         'redirect' => env('APPLE_REDIRECT_URI'),
     ],
 
