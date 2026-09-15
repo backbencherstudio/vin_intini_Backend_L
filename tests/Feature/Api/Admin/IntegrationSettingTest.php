@@ -134,4 +134,56 @@ class IntegrationSettingTest extends TestCase
         $this->assertDatabaseMissing('integration_settings', ['key' => 'facebook_client_id']);
         $this->assertDatabaseMissing('integration_settings', ['key' => 'facebook_client_secret']);
     }
+
+    public function test_collapsed_apple_private_key_is_rebuilt_when_stored(): void
+    {
+        $collapsed = '-----BEGIN PRIVATE KEY----- MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgLRq8a+YlK3hwkJGq Ycz7dqCGEyt8h+oSxG9IPrWdKfehRANCAAQ83nMExX9BL56IS7lZwhM2NkIrw4H5 j3E31i6Se0jMo1QNuzXaOiKObJjo9MEicRIerN51C4FO/X3u0h/qpzHl -----END PRIVATE KEY-----';
+
+        IntegrationSetting::create(['key' => 'apple_private_key', 'value' => 'old', 'section' => 'Apple OAuth']);
+
+        $this->actingAs($this->admin, 'api')
+            ->postJson('/api/admin/integrations', [
+                'settings' => [
+                    'apple_private_key' => $collapsed,
+                ],
+            ])
+            ->assertOk();
+
+        $stored = IntegrationSetting::where('key', 'apple_private_key')->first()->value;
+
+        $this->assertStringStartsWith("-----BEGIN PRIVATE KEY-----\n", $stored);
+        $this->assertStringEndsWith("-----END PRIVATE KEY-----\n", $stored);
+        $this->assertStringNotContainsString('-----BEGIN PRIVATE KEY----- -----END PRIVATE KEY-----', $stored);
+
+        $lines = explode("\n", $stored);
+        foreach ($lines as $i => $line) {
+            if ($line === '' || $line === '-----BEGIN PRIVATE KEY-----' || $line === '-----END PRIVATE KEY-----') {
+                continue;
+            }
+
+            $this->assertLessThanOrEqual(64, strlen($line), "Line {$i} exceeds 64 chars");
+            $this->assertMatchesRegularExpression('/^[A-Za-z0-9+\/=]+$/', $line, "Line {$i} is not base64");
+        }
+
+        $this->assertCount(5, array_filter($lines, fn($line) => $line !== ''));
+
+        $this->assertNotFalse(openssl_pkey_get_private($stored));
+    }
+
+    public function test_collapsed_apple_private_key_is_rebuilt_when_applied_at_boot(): void
+    {
+        $collapsed = '-----BEGIN PRIVATE KEY----- MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgLRq8a+YlK3hwkJGq Ycz7dqCGEyt8h+oSxG9IPrWdKfehRANCAAQ83nMExX9BL56IS7lZwhM2NkIrw4H5 j3E31i6Se0jMo1QNuzXaOiKObJjo9MEicRIerN51C4FO/X3u0h/qpzHl -----END PRIVATE KEY-----';
+
+        IntegrationSetting::create(['key' => 'apple_private_key', 'value' => $collapsed, 'section' => 'Apple OAuth']);
+
+        Cache::forget('integration_settings');
+
+        app(IntegrationSettingsService::class)->applyOverrides();
+
+        $key = config('services.apple.private_key');
+
+        $this->assertStringStartsWith("-----BEGIN PRIVATE KEY-----\n", $key);
+        $this->assertStringEndsWith("-----END PRIVATE KEY-----\n", $key);
+        $this->assertNotFalse(openssl_pkey_get_private($key));
+    }
 }

@@ -67,7 +67,7 @@ class IntegrationSettingsService
                 ->orderBy('section')
                 ->orderBy('key')
                 ->get()
-                ->mapWithKeys(fn (IntegrationSetting $setting) => [$setting->key => $setting->value])
+                ->mapWithKeys(fn(IntegrationSetting $setting) => [$setting->key => $setting->value])
                 ->all();
         });
     }
@@ -92,7 +92,7 @@ class IntegrationSettingsService
     {
         IntegrationSetting::updateOrCreate(
             ['key' => $key],
-            ['value' => $value, 'section' => $section]
+            ['value' => $this->normalizeSecretValue($key, $value), 'section' => $section]
         );
 
         Cache::forget(self::CACHE_KEY);
@@ -127,7 +127,7 @@ class IntegrationSettingsService
             // stored in integration_settings overrides the corresponding
             // env()-based default from the config files. Empty strings fall
             // back to the config file defaults (and thus .env) instead.
-            config()->set(self::CONFIG_MAP[$key], $value);
+            config()->set(self::CONFIG_MAP[$key], $this->normalizeSecretValue($key, $value));
         }
     }
 
@@ -140,7 +140,7 @@ class IntegrationSettingsService
             ->orderBy('key')
             ->get()
             ->groupBy('section')
-            ->map(fn ($settings) => $settings->map(fn (IntegrationSetting $setting) => [
+            ->map(fn($settings) => $settings->map(fn(IntegrationSetting $setting) => [
                 'key' => $setting->key,
                 'value' => $this->mask($setting->key, $setting->value),
             ])->values())
@@ -150,6 +150,28 @@ class IntegrationSettingsService
     public function isSecret(string $key): bool
     {
         return in_array($key, self::SECRET_KEYS, true);
+    }
+
+    /**
+     * Rebuild a collapsed PEM (line breaks stripped to spaces, or escaped) into
+     * a valid 64-char-per-line key so openssl_pkey_get_private() can parse it.
+     */
+    private function normalizeSecretValue(string $key, string $value): string
+    {
+        if ($key !== 'apple_private_key' || $value === '') {
+            return $value;
+        }
+
+        $pem = str_replace(['\\r\\n', '\\r', '\\n'], "\n", $value);
+        $pem = preg_replace('/\r\n?/', "\n", $pem) ?? $pem;
+
+        if (preg_match('/^\s*-----BEGIN ([^-]+)-----\s*(.*?)\s*-----END ([^-]+)-----\s*$/s', $pem, $m)) {
+            $block = preg_replace('/\s+/', '', $m[2]) ?? $m[2];
+
+            return "-----BEGIN {$m[1]}-----\n" . chunk_split($block, 64, "\n") . "-----END {$m[1]}-----\n";
+        }
+
+        return $value;
     }
 
     private function mask(string $key, ?string $value): ?string
@@ -166,7 +188,7 @@ class IntegrationSettingsService
             return '••••••••';
         }
 
-        return substr($value, 0, 4).'••••••••'.substr($value, -4);
+        return substr($value, 0, 4) . '••••••••' . substr($value, -4);
     }
 
     private function isMigrated(): bool
