@@ -79,6 +79,17 @@ class LogLoginJob
 
         $shouldBeTrusted = ($isNewUser || $isAlreadyTrusted);
 
+        // Deactivate previous successful login activities for the same device
+        if ($this->status === 'Successful') {
+            LoginActivity::where('user_id', $this->userId)
+                ->where('device', $device)
+                ->where('status', 'Successful')
+                ->where('is_active', true)
+                ->update([
+                    'is_active' => false,
+                ]);
+        }
+
         $activity = LoginActivity::create([
             'user_id' => $this->userId,
             'token_id' => $this->tokenId,
