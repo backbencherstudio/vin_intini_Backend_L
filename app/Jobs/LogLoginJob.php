@@ -83,6 +83,7 @@ class LogLoginJob
         if ($this->status === 'Successful') {
             LoginActivity::where('user_id', $this->userId)
                 ->where('device', $device)
+                ->where('browser', $browser)
                 ->where('status', 'Successful')
                 ->where('is_active', true)
                 ->update([
