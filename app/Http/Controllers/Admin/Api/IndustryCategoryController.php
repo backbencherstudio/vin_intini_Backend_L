@@ -12,6 +12,8 @@ class IndustryCategoryController extends Controller
 {
     public function psychology(Request $request)
     {
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
+
         $query = IndustrySections::where('network_type', 'psychology')
             ->where('industry_type', '!=', 'publications')
             ->with([
@@ -29,14 +31,14 @@ class IndustryCategoryController extends Controller
             $query->where('industry_type', $request->type);
         }
 
-        $sections = $query->get();
+        $sections = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'message' => 'Psychology sections fetched successfully.',
             'data' => [
                 'network' => 'psychology',
-                'sections' => $sections->map(function ($section) {
+                'sections' => $sections->getCollection()->map(function ($section) {
                     return [
                         'id' => $section->id,
                         'industry_type' => $section->industry_type,
@@ -52,6 +54,17 @@ class IndustryCategoryController extends Controller
                         })->values(),
                     ];
                 })->values(),
+                'pagination' => [
+                    'current_page' => $sections->currentPage(),
+
+                    'per_page' => $sections->perPage(),
+
+                    'total' => $sections->total(),
+
+                    'last_page' => $sections->lastPage(),
+
+                    'has_more_pages' => $sections->hasMorePages(),
+                ],
             ],
         ]);
     }
