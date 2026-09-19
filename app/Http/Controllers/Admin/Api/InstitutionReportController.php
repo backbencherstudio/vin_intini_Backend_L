@@ -86,7 +86,7 @@ class InstitutionReportController extends Controller
                     return $q->where('is_current', false);
                 }
 
-                return $q;
+                return $q->whereRaw('1=0');
             })
             ->latest()
             ->paginate($perPage);
