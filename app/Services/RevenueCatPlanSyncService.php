@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Plan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class RevenueCatPlanSyncService
@@ -15,11 +16,22 @@ class RevenueCatPlanSyncService
         $platforms = ['ios', 'android'];
 
         $hasAnyApp = collect($platforms)->contains(
-            fn (string $platform) => config("revenuecat.app_id_{$platform}") ?: config('revenuecat.app_id')
+            fn (string $platform) => config("revenuecat.app_id_{$platform}")
         );
 
         if (! $hasAnyApp) {
             return;
+        }
+
+        // Store-product creation rules differ by app type: RevenueCat only
+        // accepts subscription parameters for simulated (Test Store) apps.
+        // Real store apps (App Store / Play Store) import their products from
+        // the store itself, so the sync just reuses whatever already exists.
+        $appTypes = [];
+        foreach ($this->revenueCat->getApps() as $app) {
+            if (isset($app['id'], $app['type'])) {
+                $appTypes[$app['id']] = $app['type'];
+            }
         }
 
         $lookupKey = 'plan_'.$plan->id;
@@ -45,7 +57,7 @@ class RevenueCatPlanSyncService
         $storeIdentifiers = [];
 
         foreach ($platforms as $platform) {
-            $appId = config("revenuecat.app_id_{$platform}") ?: config('revenuecat.app_id');
+            $appId = config("revenuecat.app_id_{$platform}");
 
             if (! $appId) {
                 continue;
@@ -59,16 +71,30 @@ class RevenueCatPlanSyncService
             // Products live inside a specific app, so their display name must
             // be unique per platform too (otherwise the idempotent fallback
             // could reuse the other platform's product).
+            $isTestStore = ($appTypes[$appId] ?? null) === 'test_store';
             $productLabel = $plan->name.' #'.$plan->id.' ('.strtoupper($platform).')';
 
             $product = $plan->{"revenuecat_product_id_{$platform}"}
                 ? $this->safeUpdateProduct($plan->{"revenuecat_product_id_{$platform}"}, $productLabel, $productLabel)
-                : ($this->revenueCat->findProductByStoreIdentifier($storeIdentifier)
-                    ?? $this->createProductIdempotent($storeIdentifier, $appId, $productLabel, $duration));
+                : $this->revenueCat->findProductByStoreIdentifier($storeIdentifier);
+
+            if (! $product && $isTestStore) {
+                $product = $this->createProductIdempotent($storeIdentifier, $appId, $productLabel, $duration);
+            }
 
             $productId = $product['id'] ?? $plan->{"revenuecat_product_id_{$platform}"};
 
             if (! $productId) {
+                if (! $isTestStore) {
+                    Log::warning('RevenueCat: store product not yet imported, skipping platform', [
+                        'plan_id' => $plan->id,
+                        'platform' => $platform,
+                        'store_identifier' => $storeIdentifier,
+                    ]);
+
+                    continue;
+                }
+
                 throw new RuntimeException("RevenueCat product id missing after sync for {$platform}.");
             }
 
