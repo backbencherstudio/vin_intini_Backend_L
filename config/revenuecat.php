@@ -9,7 +9,6 @@ return [
 
     'api_key' => env('REVENUECAT_API_KEY'),
     'project_id' => env('REVENUECAT_PROJECT_ID'),
-    'app_id' => env('REVENUECAT_APP_ID'),
     'app_id_ios' => env('REVENUECAT_APP_ID_IOS'),
     'app_id_android' => env('REVENUECAT_APP_ID_ANDROID'),
     'base_url' => env('REVENUECAT_API_BASE_URL', 'https://api.revenuecat.com'),
