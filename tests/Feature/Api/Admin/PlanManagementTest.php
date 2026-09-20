@@ -7,6 +7,7 @@ use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\RevenueCatPlanSyncService;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -38,6 +39,10 @@ class PlanManagementTest extends TestCase
             $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_mock']));
             $mock->shouldReceive('updateProduct')->andReturn(Product::constructFrom(['id' => 'prod_mock']));
             $mock->shouldReceive('archivePrice')->andReturn(Price::constructFrom(['id' => 'price_mock']));
+        });
+
+        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('sync')->andReturnNull();
         });
     }
 

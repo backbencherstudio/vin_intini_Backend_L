@@ -117,11 +117,15 @@ class PlanRevenueCatTest extends TestCase
         Queue::assertPushed(ProvisionPlan::class, 2);
     }
 
-    public function test_sync_creates_a_product_per_platform(): void
+    public function test_sync_creates_a_product_per_platform_for_test_store_apps(): void
     {
         config(['revenuecat.app_id_ios' => 'app_ios', 'revenuecat.app_id_android' => 'app_android']);
 
         $this->mock(RevenueCatService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getApps')->andReturn([
+                ['id' => 'app_ios', 'type' => 'test_store'],
+                ['id' => 'app_android', 'type' => 'test_store'],
+            ]);
             $mock->shouldReceive('findEntitlementByLookupKey')->andReturn(null);
             $mock->shouldReceive('createEntitlement')->andReturn(['id' => 'entl_x']);
             $mock->shouldReceive('findProductByStoreIdentifier')->andReturn(null);
@@ -155,5 +159,83 @@ class PlanRevenueCatTest extends TestCase
         $this->assertSame('entl_x', $plan->revenuecat_entitlement_id);
         $this->assertSame('ofr_x', $plan->revenuecat_offering_id);
         $this->assertSame('pkg_x', $plan->revenuecat_package_id);
+    }
+
+    public function test_sync_skips_product_creation_for_real_store_apps(): void
+    {
+        config(['revenuecat.app_id_ios' => 'app_ios', 'revenuecat.app_id_android' => 'app_android']);
+
+        $this->mock(RevenueCatService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getApps')->andReturn([
+                ['id' => 'app_ios', 'type' => 'app_store'],
+                ['id' => 'app_android', 'type' => 'play_store'],
+            ]);
+            $mock->shouldReceive('findEntitlementByLookupKey')->andReturn(null);
+            $mock->shouldReceive('createEntitlement')->andReturn(['id' => 'entl_x']);
+            $mock->shouldReceive('findProductByStoreIdentifier')->andReturn(null);
+            $mock->shouldReceive('createProduct')->never();
+            $mock->shouldReceive('attachProductToEntitlement')->andReturn(['id' => 'entl_x']);
+            $mock->shouldReceive('findOfferingByLookupKey')->andReturn(null);
+            $mock->shouldReceive('createOffering')->andReturn(['id' => 'ofr_x']);
+            $mock->shouldReceive('findPackageByLookupKey')->andReturn(null);
+            $mock->shouldReceive('createPackage')->andReturn(['id' => 'pkg_x']);
+            $mock->shouldReceive('attachProductsToPackage')->andReturn(['id' => 'pkg_x']);
+        });
+
+        $this->mockStripe();
+
+        $this->actingAs($this->admin, 'api')->postJson('/api/admin/plans/create', [
+            'name' => 'Pro',
+            'billing_rate' => 9.99,
+            'billing_cycle' => 'monthly',
+            'status' => 'active',
+            'features' => ['company_profile'],
+        ])->assertCreated();
+
+        $plan = Plan::first();
+        $this->assertNull($plan->revenuecat_product_id_ios);
+        $this->assertNull($plan->revenuecat_product_id_android);
+        $this->assertSame('entl_x', $plan->revenuecat_entitlement_id);
+        $this->assertSame('ofr_x', $plan->revenuecat_offering_id);
+        $this->assertSame('pkg_x', $plan->revenuecat_package_id);
+    }
+
+    public function test_sync_reuses_imported_store_product_for_real_store_apps(): void
+    {
+        config(['revenuecat.app_id_ios' => 'app_ios', 'revenuecat.app_id_android' => 'app_android']);
+
+        $this->mock(RevenueCatService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getApps')->andReturn([
+                ['id' => 'app_ios', 'type' => 'app_store'],
+                ['id' => 'app_android', 'type' => 'play_store'],
+            ]);
+            $mock->shouldReceive('findEntitlementByLookupKey')->andReturn(null);
+            $mock->shouldReceive('createEntitlement')->andReturn(['id' => 'entl_x']);
+            $mock->shouldReceive('findProductByStoreIdentifier')->andReturnUsing(
+                fn (string $store) => $store === 'com.app.pro.monthly' ? ['id' => 'prod_imported'] : null
+            );
+            $mock->shouldReceive('createProduct')->never();
+            $mock->shouldReceive('attachProductToEntitlement')->andReturn(['id' => 'entl_x']);
+            $mock->shouldReceive('findOfferingByLookupKey')->andReturn(null);
+            $mock->shouldReceive('createOffering')->andReturn(['id' => 'ofr_x']);
+            $mock->shouldReceive('findPackageByLookupKey')->andReturn(null);
+            $mock->shouldReceive('createPackage')->andReturn(['id' => 'pkg_x']);
+            $mock->shouldReceive('attachProductsToPackage')->andReturn(['id' => 'pkg_x']);
+        });
+
+        $this->mockStripe();
+
+        $this->actingAs($this->admin, 'api')->postJson('/api/admin/plans/create', [
+            'name' => 'Pro',
+            'billing_rate' => 9.99,
+            'billing_cycle' => 'monthly',
+            'status' => 'active',
+            'features' => ['company_profile'],
+            'revenuecat_store_identifier_ios' => 'com.app.pro.monthly',
+        ])->assertCreated();
+
+        $plan = Plan::first();
+        $this->assertSame('prod_imported', $plan->revenuecat_product_id_ios);
+        $this->assertNull($plan->revenuecat_product_id_android);
     }
 }
