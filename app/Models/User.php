@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\PlanType;
 use App\Jobs\CleanupUserFiles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Prunable;
@@ -168,7 +169,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/' . ltrim($value, '/'));
+        return asset('storage/'.ltrim($value, '/'));
     }
 
     public function getCoverImageUrlAttribute(): ?string
@@ -182,7 +183,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/' . ltrim($value, '/'));
+        return asset('storage/'.ltrim($value, '/'));
     }
 
     public function posts()
@@ -203,6 +204,14 @@ class User extends Authenticatable implements JWTSubject
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    public function hasActiveSubscription(?PlanType $type = null): bool
+    {
+        return $this->subscriptions()
+            ->whereIn('status', ['active', 'trialing'])
+            ->when($type, fn ($query) => $query->whereHas('plan', fn ($query) => $query->where('plan_type', $type->value)))
+            ->exists();
     }
 
     public function transactions(): HasMany
