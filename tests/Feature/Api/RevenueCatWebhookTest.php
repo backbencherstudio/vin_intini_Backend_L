@@ -29,8 +29,7 @@ class RevenueCatWebhookTest extends TestCase
             'billing_cycle' => 'monthly',
             'status' => 'active',
             'features' => ['search_profiles'],
-            'revenuecat_product_id' => 'rc_prod_pro',
-            'revenuecat_entitlement_id' => 'premium',
+            'revenuecat_store_identifier_ios' => 'rc_prod_pro',
         ], $overrides));
     }
 
@@ -89,6 +88,38 @@ class RevenueCatWebhookTest extends TestCase
             'user_id' => $user->id,
             'status' => 'succeeded',
             'amount' => 9.99,
+        ]);
+    }
+
+    public function test_webhook_resolves_plan_by_android_store_identifier(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->makePlan(['revenuecat_store_identifier_android' => 'rc_prod_android']);
+
+        $this->postWebhook([
+            'event' => [
+                'id' => 'evt_android',
+                'type' => 'INITIAL_PURCHASE',
+                'app_user_id' => (string) $user->id,
+                'product_id' => 'rc_prod_android',
+                'entitlement_id' => 'premium',
+                'store' => 'PLAY_STORE',
+                'transaction_id' => 'txn_android',
+                'original_transaction_id' => 'orig_android',
+                'price' => 9.99,
+                'price_in_purchased_currency' => 9.99,
+                'currency' => 'USD',
+                'expiration_at_ms' => now()->addMonth()->timestamp * 1000,
+                'event_timestamp_ms' => now()->timestamp * 1000,
+            ],
+            'subscriber' => ['app_user_id' => (string) $user->id],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('subscriptions', [
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'revenuecat',
+            'status' => 'active',
         ]);
     }
 

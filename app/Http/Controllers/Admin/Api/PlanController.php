@@ -68,6 +68,7 @@ class PlanController extends Controller
             'features.*' => ['required', Rule::in(PlanFeature::values())],
             'revenuecat_store_identifier_ios' => ['nullable', 'string', 'max:255'],
             'revenuecat_store_identifier_android' => ['nullable', 'string', 'max:255'],
+            'revenuecat_entitlement_identifier' => ['nullable', 'string', 'max:255'],
         ]);
 
         $plan = DB::transaction(fn () => Plan::create([
@@ -83,6 +84,7 @@ class PlanController extends Controller
             'features' => $validated['features'],
             'revenuecat_store_identifier_ios' => $validated['revenuecat_store_identifier_ios'] ?? null,
             'revenuecat_store_identifier_android' => $validated['revenuecat_store_identifier_android'] ?? null,
+            'revenuecat_entitlement_identifier' => $validated['revenuecat_entitlement_identifier'] ?? null,
         ]));
 
         ProvisionPlan::dispatch($plan);
@@ -106,6 +108,7 @@ class PlanController extends Controller
             'features.*' => ['required_with:features', Rule::in(PlanFeature::values())],
             'revenuecat_store_identifier_ios' => ['sometimes', 'nullable', 'string', 'max:255'],
             'revenuecat_store_identifier_android' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'revenuecat_entitlement_identifier' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         $data = [];
@@ -139,6 +142,7 @@ class PlanController extends Controller
             'features',
             'revenuecat_store_identifier_ios',
             'revenuecat_store_identifier_android',
+            'revenuecat_entitlement_identifier',
         ];
 
         foreach ($fillableFields as $field) {

@@ -116,7 +116,7 @@ class SubscriptionFlowTest extends TestCase
         Plan::create([
             'name' => 'RC Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
             'status' => 'active', 'features' => ['search_profiles'],
-            'revenuecat_product_id' => 'rc_prod', 'revenuecat_entitlement_id' => 'premium',
+            'revenuecat_store_identifier_ios' => 'rc_prod', 'revenuecat_entitlement_identifier' => 'premium',
         ]);
 
         $response = $this->actingAs($this->user, 'api')->getJson('/api/plans');

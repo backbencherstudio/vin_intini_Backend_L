@@ -304,9 +304,9 @@ class RevenueCatWebhookService
             return null;
         }
 
-        return Plan::where('revenuecat_product_id', $productId)
-            ->orWhere('revenuecat_product_id_ios', $productId)
-            ->orWhere('revenuecat_product_id_android', $productId)
+        return Plan::where('revenuecat_store_identifier', $productId)
+            ->orWhere('revenuecat_store_identifier_ios', $productId)
+            ->orWhere('revenuecat_store_identifier_android', $productId)
             ->first();
     }
 
