@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\IndustryApiController;
 use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\ConnectionController;
 use App\Http\Controllers\Api\FollowController;
+use App\Http\Controllers\Api\IndustryJobPostController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\UserEducationController;
@@ -118,3 +119,9 @@ Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'upda
 
 //account deletion request route
 Route::post('/account/delete-request', [SecuritySettingsController::class, 'requestDelete']);
+
+
+// Industry job post
+Route::prefix('industry')->group(function () {
+    Route::post('job-post/create', [IndustryJobPostController::class, 'store']);
+});

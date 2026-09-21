@@ -14,6 +14,7 @@ class IndustryJobPost extends Model
     protected $table = 'industry_job_posts';
 
     protected $fillable = [
+        'job_id',
         'industry_id',
         'created_by',
 
@@ -36,6 +37,9 @@ class IndustryJobPost extends Model
 
         'employment_offering',
 
+        'network_type',
+
+        'website',
         'tags',
 
         'announcement_start_date',
