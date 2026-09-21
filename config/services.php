@@ -79,4 +79,9 @@ return [
         'redirect' => env('APPLE_REDIRECT_URI'),
     ],
 
+    'webhooks' => [
+        'log_payloads' => env('LOG_WEBHOOK_PAYLOADS', true),
+        'retention_days' => env('WEBHOOK_RETENTION_DAYS', 30),
+    ],
+
 ];

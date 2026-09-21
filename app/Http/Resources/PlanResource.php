@@ -26,7 +26,11 @@ class PlanResource extends JsonResource
             'status' => $this->status,
             'plan_type' => $this->plan_type,
             'features' => $this->features,
+            'revenuecat_store_identifier_ios' => $this->revenuecat_store_identifier_ios,
+            'revenuecat_store_identifier_android' => $this->revenuecat_store_identifier_android,
+            'revenuecat_entitlement_identifier' => $this->revenuecat_entitlement_identifier,
             'total_subscribers' => $this->subscriptions_count ?? 0,
+            'subscribers' => $this->subscriptions_count ?? 0,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

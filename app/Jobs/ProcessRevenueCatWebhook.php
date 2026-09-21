@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\WebhookLog;
 use App\Services\RevenueCatWebhookService;
+use App\Services\WebhookLoggerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,11 +26,23 @@ class ProcessRevenueCatWebhook implements ShouldQueue
     /**
      * @param  array<string, mixed>  $payload
      */
-    public function __construct(public array $payload) {}
+    public function __construct(
+        public array $payload,
+        public ?int $webhookLogId = null,
+    ) {}
 
-    public function handle(RevenueCatWebhookService $webhook): void
+    public function handle(RevenueCatWebhookService $webhook, WebhookLoggerService $logger): void
     {
-        $webhook->handle($this->payload);
+        $log = $this->webhookLogId ? WebhookLog::find($this->webhookLogId) : null;
+
+        try {
+            $webhook->handle($this->payload);
+            $logger->markProcessed($log);
+        } catch (Throwable $exception) {
+            $logger->markFailed($log, $exception);
+
+            throw $exception;
+        }
     }
 
     public function failed(?Throwable $exception): void

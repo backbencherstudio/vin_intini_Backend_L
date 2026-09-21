@@ -55,12 +55,11 @@ class SubscriptionController extends Controller
             ->when($request->filled('billing_cycle'), fn ($query) => $query->where('billing_cycle', $request->string('billing_cycle')))
             ->where(function ($query) {
                 $query->whereNotNull('stripe_price_id')
-                    ->orWhereNotNull('revenuecat_product_id')
-                    ->orWhereNotNull('revenuecat_product_id_ios')
-                    ->orWhereNotNull('revenuecat_product_id_android');
+                    ->orWhereNotNull('revenuecat_store_identifier_ios')
+                    ->orWhereNotNull('revenuecat_store_identifier_android');
             })
             ->orderBy('billing_rate')
-            ->get(['id', 'name', 'short_description', 'billing_cycle', 'plan_type', 'billing_rate', 'badge_color', 'features', 'stripe_price_id', 'revenuecat_product_id', 'revenuecat_entitlement_id', 'revenuecat_offering_id', 'revenuecat_package_id', 'revenuecat_store_identifier', 'revenuecat_product_id_ios', 'revenuecat_product_id_android', 'revenuecat_store_identifier_ios', 'revenuecat_store_identifier_android']);
+            ->get(['id', 'name', 'short_description', 'billing_cycle', 'plan_type', 'billing_rate', 'badge_color', 'features', 'stripe_price_id', 'revenuecat_store_identifier_ios', 'revenuecat_store_identifier_android']);
 
         $plans->each(function (Plan $plan) {
             $plan->setAttribute('checkout_type', $plan->isRevenueCat() ? 'revenuecat' : 'stripe');
@@ -258,7 +257,7 @@ class SubscriptionController extends Controller
             ], 422);
         }
 
-        $entitlementId = $subscription->plan?->revenuecat_entitlement_id;
+        $entitlementId = $subscription->plan?->revenuecat_entitlement_identifier;
 
         if (! $entitlementId) {
             return response()->json([
