@@ -682,6 +682,7 @@ class SubscriptionFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('subscription.is_subscribed', false)
             ->assertJsonPath('subscription.plan_name', null)
+            ->assertJsonPath('subscription.plan_type', null)
             ->assertJsonPath('subscription.expires_at', null)
             ->assertJsonPath('subscription.will_renew', null);
     }
@@ -709,6 +710,7 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('subscription.is_subscribed', true)
             ->assertJsonPath('subscription.plan_id', $plan->id)
             ->assertJsonPath('subscription.plan_name', 'Premium')
+            ->assertJsonPath('subscription.plan_type', 'premium')
             ->assertJsonPath('subscription.status', 'active')
             ->assertJsonPath('subscription.will_renew', true);
     }
