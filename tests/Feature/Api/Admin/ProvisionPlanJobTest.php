@@ -4,7 +4,6 @@ namespace Tests\Feature\Api\Admin;
 
 use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
-use App\Services\RevenueCatPlanSyncService;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -17,15 +16,11 @@ class ProvisionPlanJobTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_job_provisions_stripe_product_and_price_then_syncs_revenuecat(): void
+    public function test_job_provisions_stripe_product_and_price(): void
     {
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('createProduct')->once()->andReturn(Product::constructFrom(['id' => 'prod_job']));
             $mock->shouldReceive('createPrice')->once()->andReturn(Price::constructFrom(['id' => 'price_job']));
-        });
-
-        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('sync')->once()->with(Mockery::type(Plan::class));
         });
 
         $plan = Plan::create([
@@ -52,10 +47,6 @@ class ProvisionPlanJobTest extends TestCase
                 ->andReturn(Product::constructFrom(['id' => 'prod_x']));
         });
 
-        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('sync')->once();
-        });
-
         $plan = Plan::create([
             'name' => 'Old Name',
             'billing_rate' => 10.00,
@@ -74,10 +65,6 @@ class ProvisionPlanJobTest extends TestCase
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('archivePrice')->once()->with('price_x')->andReturn(Price::constructFrom(['id' => 'price_x']));
             $mock->shouldReceive('createPrice')->once()->with(2000, 'usd', 'month', 'prod_x', Mockery::type('array'))->andReturn(Price::constructFrom(['id' => 'price_new']));
-        });
-
-        $this->mock(RevenueCatPlanSyncService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('sync')->once();
         });
 
         $plan = Plan::create([

@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Plan;
-use App\Services\RevenueCatPlanSyncService;
 use App\Services\StripeService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,7 +26,7 @@ class ProvisionPlan implements ShouldQueue
         public bool $recreatePrice = false,
     ) {}
 
-    public function handle(StripeService $stripe, RevenueCatPlanSyncService $sync): void
+    public function handle(StripeService $stripe): void
     {
         $this->ensureStripeProduct($stripe);
         $this->ensureStripePrice($stripe);
@@ -49,8 +48,6 @@ class ProvisionPlan implements ShouldQueue
 
             $this->plan->update(['stripe_price_id' => $newPrice->id]);
         }
-
-        $sync->sync($this->plan);
     }
 
     public function failed(?Throwable $exception): void
