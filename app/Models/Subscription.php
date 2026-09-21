@@ -50,6 +50,6 @@ class Subscription extends Model
 
     public function isActive(): bool
     {
-        return in_array($this->status, ['active', 'trialing', 'paused']);
+        return in_array($this->status, ['active', 'trialing']);
     }
 }

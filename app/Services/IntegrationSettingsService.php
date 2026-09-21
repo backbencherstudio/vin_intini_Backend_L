@@ -26,7 +26,6 @@ class IntegrationSettingsService
         'stripe_webhook_secret' => 'services.stripe.webhook_secret',
         'revenuecat_api_key' => 'revenuecat.api_key',
         'revenuecat_project_id' => 'revenuecat.project_id',
-        'revenuecat_app_id' => 'revenuecat.app_id',
         'revenuecat_app_id_ios' => 'revenuecat.app_id_ios',
         'revenuecat_app_id_android' => 'revenuecat.app_id_android',
         'revenuecat_webhook_secret' => 'revenuecat.webhook_secret',

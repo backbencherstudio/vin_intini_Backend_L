@@ -147,6 +147,7 @@ class AuthController extends Controller
                 'is_subscribed' => $isSubscribed,
                 'plan_id' => $isSubscribed ? $subscription->plan_id : null,
                 'plan_name' => $isSubscribed ? $subscription->plan?->name : null,
+                'plan_type' => $isSubscribed ? $subscription->plan?->plan_type : null,
                 'status' => $isSubscribed ? $subscription->status : null,
                 'features' => $isSubscribed ? ($subscription->plan?->features ?? []) : [],
                 'expires_at' => $isSubscribed ? $subscription->current_period_end?->toIso8601String() : null,

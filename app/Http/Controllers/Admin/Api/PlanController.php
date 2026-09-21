@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Api;
 
 use App\Enums\PlanFeature;
+use App\Enums\PlanType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PlanResource;
 use App\Jobs\ProvisionPlan;
@@ -62,6 +63,7 @@ class PlanController extends Controller
             'discount_duration' => ['nullable', 'date'],
             'badge_color' => ['nullable', 'string', 'max:50'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'plan_type' => ['required', Rule::in(PlanType::values())],
             'features' => ['required', 'array'],
             'features.*' => ['required', Rule::in(PlanFeature::values())],
             'revenuecat_store_identifier_ios' => ['nullable', 'string', 'max:255'],
@@ -77,6 +79,7 @@ class PlanController extends Controller
             'discount_duration' => $validated['discount_duration'] ?? null,
             'badge_color' => $validated['badge_color'] ?? null,
             'status' => $validated['status'],
+            'plan_type' => $validated['plan_type'],
             'features' => $validated['features'],
             'revenuecat_store_identifier_ios' => $validated['revenuecat_store_identifier_ios'] ?? null,
             'revenuecat_store_identifier_android' => $validated['revenuecat_store_identifier_android'] ?? null,
@@ -98,6 +101,7 @@ class PlanController extends Controller
             'discount_duration' => ['nullable', 'date'],
             'badge_color' => ['nullable', 'string', 'max:50'],
             'status' => ['sometimes', 'required', Rule::in(['active', 'inactive'])],
+            'plan_type' => ['sometimes', 'required', Rule::in(PlanType::values())],
             'features' => ['sometimes', 'required', 'array'],
             'features.*' => ['required_with:features', Rule::in(PlanFeature::values())],
             'revenuecat_store_identifier_ios' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -131,6 +135,7 @@ class PlanController extends Controller
             'discount_duration',
             'badge_color',
             'status',
+            'plan_type',
             'features',
             'revenuecat_store_identifier_ios',
             'revenuecat_store_identifier_android',

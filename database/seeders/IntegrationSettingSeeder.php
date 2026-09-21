@@ -34,7 +34,6 @@ class IntegrationSettingSeeder extends Seeder
             // RevenueCat
             'revenuecat_api_key' => 'RevenueCat',
             'revenuecat_project_id' => 'RevenueCat',
-            'revenuecat_app_id' => 'RevenueCat',
             'revenuecat_app_id_ios' => 'RevenueCat',
             'revenuecat_app_id_android' => 'RevenueCat',
             'revenuecat_webhook_secret' => 'RevenueCat',

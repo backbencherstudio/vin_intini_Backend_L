@@ -64,6 +64,18 @@ class RevenueCatService
         return $this->get("/v2/projects/{$this->projectId}/products");
     }
 
+    /**
+     * List the apps in the project. Each item exposes its `id` and `type`
+     * (e.g. `test_store`, `app_store`, `play_store`), which drives how
+     * store products may be created for it.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getApps(): array
+    {
+        return $this->listAll("/v2/projects/{$this->projectId}/apps");
+    }
+
     public function getProduct(string $productId): array
     {
         return $this->get("/v2/projects/{$this->projectId}/products/{$productId}");

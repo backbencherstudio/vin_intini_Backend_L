@@ -111,8 +111,6 @@ Route::middleware('role:user')->group(function () {
         Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
         Route::get('post/comment/replies/{commentId}', [IndustryController::class, 'replyList']);
 
-        // Industry job post
-        Route::post('job-post/create', [IndustryJobPostController::class, 'store']);
     });
 
 

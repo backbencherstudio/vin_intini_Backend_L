@@ -111,14 +111,12 @@ class IntegrationSettingTest extends TestCase
 
     public function test_revenuecat_settings_override_config_at_boot(): void
     {
-        IntegrationSetting::create(['key' => 'revenuecat_app_id', 'value' => 'app_db_123', 'section' => 'RevenueCat']);
         IntegrationSetting::create(['key' => 'revenuecat_api_key', 'value' => 'rc_live_db', 'section' => 'RevenueCat']);
 
         Cache::forget('integration_settings');
 
         app(IntegrationSettingsService::class)->applyOverrides();
 
-        $this->assertEquals('app_db_123', config('revenuecat.app_id'));
         $this->assertEquals('rc_live_db', config('revenuecat.api_key'));
     }
 
@@ -165,7 +163,7 @@ class IntegrationSettingTest extends TestCase
             $this->assertMatchesRegularExpression('/^[A-Za-z0-9+\/=]+$/', $line, "Line {$i} is not base64");
         }
 
-        $this->assertCount(5, array_filter($lines, fn($line) => $line !== ''));
+        $this->assertCount(5, array_filter($lines, fn ($line) => $line !== ''));
 
         $this->assertNotFalse(openssl_pkey_get_private($stored));
     }

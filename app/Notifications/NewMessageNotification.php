@@ -51,7 +51,7 @@ class NewMessageNotification extends Notification implements ShouldQueue
                 'sender_id' => (string) $sender->id,
                 'sender_name' => $senderName,
                 'sender_image' => (string) $senderImage,
-                'has_premium' => $sender->subscriptions()->whereIn('status', ['active', 'trialing', 'paused'])->exists() ? '1' : '0',
+                'has_premium' => $sender->subscriptions()->whereIn('status', ['active', 'trialing'])->exists() ? '1' : '0',
                 'type' => (string) $this->message->type,
             ]);
     }
