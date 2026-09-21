@@ -19,6 +19,37 @@ enum PlanFeature: string
         return array_column(self::cases(), 'value');
     }
 
+    public function planTypes(): array
+    {
+        return match ($this) {
+            self::COMPANY_PROFILE =>  [
+                PlanType::INDUSTRY->value,
+            ],
+            self::COLLABORATION_GROUPS => [
+                PlanType::PREMIUM->value,
+                PlanType::INDUSTRY->value,
+            ],
+            self::POSTS_ARTICLES_PHOTOS_VIDEOS => [
+                PlanType::PREMIUM->value,
+                PlanType::INDUSTRY->value,
+            ],
+            self::BUILD_NETWORK => [
+                PlanType::PREMIUM->value,
+                PlanType::INDUSTRY->value,
+            ],
+            self::DIRECT_MESSAGING => [PlanType::PREMIUM->value],
+            self::CONNECT_ORGANIZATIONS => [
+                PlanType::PREMIUM->value,
+                PlanType::INDUSTRY->value,
+            ],
+            self::PRODUCT_ADVERTISEMENT => [
+                PlanType::PREMIUM->value,
+                PlanType::INDUSTRY->value,
+            ],
+            self::JOB_APPLICATIONS => [PlanType::PREMIUM->value],
+        };
+    }
+
     public static function labels(): array
     {
         return [

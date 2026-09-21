@@ -47,6 +47,7 @@ class PlanController extends Controller
         $features = collect(PlanFeature::cases())->map(fn (PlanFeature $f) => [
             'value' => $f->value,
             'label' => PlanFeature::labels()[$f->value],
+            'plan_types' => $f->planTypes(),
         ]);
 
         return response()->json(['success' => true, 'data' => $features], 200);
