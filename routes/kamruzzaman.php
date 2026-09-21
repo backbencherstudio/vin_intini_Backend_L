@@ -79,7 +79,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
     // Pages.....
     Route::get('/pages/{slug}', [PageController::class, 'getPageData']);
-    Route::post('/pages/{slug}', [PageController::class, 'update']);
+    Route::put('/pages/{slug}', [PageController::class, 'update']);
 });
 
 
