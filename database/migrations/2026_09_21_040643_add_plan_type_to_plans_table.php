@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('plans', function (Blueprint $table) {
-            $table->string('plan_type')->default('user');
+            $table->string('plan_type')->default('premium');
         });
     }
 

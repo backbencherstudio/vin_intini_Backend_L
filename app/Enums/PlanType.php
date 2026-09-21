@@ -6,7 +6,7 @@ enum PlanType: string
 {
     case INDUSTRY = 'industry';
 
-    case USER = 'user';
+    case PREMIUM = 'premium';
 
     public static function values(): array
     {

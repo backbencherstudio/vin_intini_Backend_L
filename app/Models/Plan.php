@@ -34,7 +34,7 @@ class Plan extends Model
 
     protected $attributes = [
         'status' => 'active',
-        'plan_type' => 'user',
+        'plan_type' => 'premium',
     ];
 
     protected function casts(): array
