@@ -22,7 +22,7 @@ enum PlanFeature: string
     public function planTypes(): array
     {
         return match ($this) {
-            self::COMPANY_PROFILE =>  [
+            self::COMPANY_PROFILE => [
                 PlanType::INDUSTRY->value,
             ],
             self::COLLABORATION_GROUPS => [
@@ -47,6 +47,10 @@ enum PlanFeature: string
                 PlanType::INDUSTRY->value,
             ],
             self::JOB_APPLICATIONS => [PlanType::PREMIUM->value],
+            self::PROFILE_VIEWS_INSIGHTS => [
+                PlanType::PREMIUM->value,
+                PlanType::INDUSTRY->value,
+            ],
         };
     }
 
