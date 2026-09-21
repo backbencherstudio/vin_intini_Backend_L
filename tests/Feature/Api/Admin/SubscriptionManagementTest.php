@@ -292,8 +292,8 @@ class SubscriptionManagementTest extends TestCase
         $plan = Plan::create([
             'name' => 'Pro', 'billing_rate' => 9.99, 'billing_cycle' => 'monthly',
             'status' => 'active', 'features' => ['search_profiles'],
-            'revenuecat_product_id' => 'rc_prod_pro',
-            'revenuecat_entitlement_id' => 'premium',
+            'revenuecat_store_identifier_ios' => 'rc_prod_pro',
+            'revenuecat_entitlement_identifier' => 'premium',
         ]);
 
         $user = User::factory()->create();

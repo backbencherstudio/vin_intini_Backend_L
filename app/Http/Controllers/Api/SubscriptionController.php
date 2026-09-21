@@ -258,7 +258,7 @@ class SubscriptionController extends Controller
             ], 422);
         }
 
-        $entitlementId = $subscription->plan?->revenuecat_entitlement_id;
+        $entitlementId = $subscription->plan?->revenuecat_entitlement_identifier;
 
         if (! $entitlementId) {
             return response()->json([

@@ -132,7 +132,7 @@ class SubscriptionManagementController extends Controller
         }
 
         if ($subscription->platform === 'revenuecat') {
-            $entitlementId = $subscription->plan?->revenuecat_entitlement_id;
+            $entitlementId = $subscription->plan?->revenuecat_entitlement_identifier;
 
             if (! $entitlementId) {
                 return response()->json([
