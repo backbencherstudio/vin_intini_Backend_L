@@ -123,5 +123,9 @@ Route::post('/account/delete-request', [SecuritySettingsController::class, 'requ
 
 // Industry job post
 Route::prefix('industry')->group(function () {
+    Route::get('job-posts', [IndustryJobPostController::class, 'index']);
+    Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']);
     Route::post('job-post/create', [IndustryJobPostController::class, 'store']);
+    Route::put('job-post/{id}/update', [IndustryJobPostController::class, 'update']);
+    Route::delete('job-post/{id}/delete', [IndustryJobPostController::class, 'destroy']);
 });

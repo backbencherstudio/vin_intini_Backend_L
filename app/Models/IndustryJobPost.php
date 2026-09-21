@@ -19,6 +19,7 @@ class IndustryJobPost extends Model
         'created_by',
 
         'job_title',
+        'slug',
         'job_description',
 
         'work_mode',
@@ -76,5 +77,15 @@ class IndustryJobPost extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function state(): BelongsTo
+    {
+        return $this->belongsTo(State::class);
+    }
+
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
     }
 }

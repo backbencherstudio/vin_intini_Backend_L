@@ -11,6 +11,8 @@ return new class extends Migration
         Schema::table('industry_job_posts', function (Blueprint $table) {
             $table->string('job_id', 20)->unique()->nullable()->after('id');
 
+            $table->string('slug')->unique()->nullable()->after('job_title');
+
             $table->dropColumn(['state', 'city']);
 
             $table->foreignId('state_id')
@@ -58,6 +60,7 @@ return new class extends Migration
             $table->dropColumn([
                 'job_id',
                 'network_type',
+                'slug',
                 'website',
             ]);
         });
