@@ -88,6 +88,7 @@ Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
 // academia routes
 Route::get('/states', [AcademiaController::class, 'getStates']);
 Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
+Route::get('/states/{code}/cities', [AcademiaController::class, 'getCities']);
 Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
 Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
 Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); // medical facilities
@@ -114,12 +115,11 @@ Route::prefix('neuroscience-network/industry')->group(function () {
     Route::get('/pub-partners', [IndustryApiController::class, 'getNeurosciencePubPartners']);
 });
 
-//account privacy settings route
+// account privacy settings route
 Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'updatePrivacySettings']);
 
-//account deletion request route
+// account deletion request route
 Route::post('/account/delete-request', [SecuritySettingsController::class, 'requestDelete']);
-
 
 // Industry job post
 Route::prefix('industry')->group(function () {

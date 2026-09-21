@@ -284,4 +284,32 @@ class AcademiaController extends Controller
             ],
         ], 200);
     }
+
+    public function getCities(string $code): JsonResponse
+    {
+        $state = State::where('code', $code)->first();
+
+        if (! $state) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'State not found',
+            ], 404);
+        }
+
+        $cities = $state->cities()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cities retrieved successfully.',
+            'data' => $cities,
+            'total' => $cities->count(),
+            'state' => [
+                'id' => $state->id,
+                'name' => $state->name,
+                'code' => $state->code,
+            ],
+        ], 200);
+    }
 }

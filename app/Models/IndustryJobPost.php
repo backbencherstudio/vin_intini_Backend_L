@@ -24,8 +24,8 @@ class IndustryJobPost extends Model
         'work_mode',
         'employment_type',
 
-        'state',
-        'city',
+        'state_id',
+        'city_id',
 
         'email',
         'phone_number',
@@ -67,7 +67,6 @@ class IndustryJobPost extends Model
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
     ];
-
 
     public function industry(): BelongsTo
     {
