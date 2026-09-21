@@ -37,7 +37,7 @@ enum PlanFeature: string
                 PlanType::PREMIUM->value,
                 PlanType::INDUSTRY->value,
             ],
-            self::DIRECT_MESSAGING => [PlanType::PREMIUM->value],
+            self::DIRECT_MESSAGING => [PlanType::INDUSTRY->value],
             self::CONNECT_ORGANIZATIONS => [
                 PlanType::PREMIUM->value,
                 PlanType::INDUSTRY->value,
