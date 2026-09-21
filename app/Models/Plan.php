@@ -21,7 +21,6 @@ class Plan extends Model
         'features',
         'stripe_product_id',
         'stripe_price_id',
-        'revenuecat_store_identifier',
         'revenuecat_store_identifier_ios',
         'revenuecat_store_identifier_android',
         'revenuecat_entitlement_identifier',
@@ -50,8 +49,7 @@ class Plan extends Model
 
     public function isRevenueCat(): bool
     {
-        return ! is_null($this->revenuecat_store_identifier)
-            || ! is_null($this->revenuecat_store_identifier_ios)
+        return ! is_null($this->revenuecat_store_identifier_ios)
             || ! is_null($this->revenuecat_store_identifier_android);
     }
 }
