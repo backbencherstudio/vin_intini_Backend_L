@@ -52,6 +52,7 @@ class PlanRevenueCatTest extends TestCase
             'billing_rate' => 9.99,
             'billing_cycle' => 'monthly',
             'status' => 'active',
+            'plan_type' => 'premium',
             'features' => ['company_profile'],
         ]);
 
@@ -75,6 +76,7 @@ class PlanRevenueCatTest extends TestCase
             'billing_rate' => 9.99,
             'billing_cycle' => 'monthly',
             'status' => 'active',
+            'plan_type' => 'premium',
             'features' => ['company_profile'],
             'revenuecat_store_identifier_ios' => 'com.app.pro.monthly',
         ]);
@@ -99,6 +101,7 @@ class PlanRevenueCatTest extends TestCase
                 'billing_rate' => 9.99,
                 'billing_cycle' => 'monthly',
                 'status' => 'active',
+                'plan_type' => 'premium',
                 'features' => ['company_profile'],
             ])
             ->assertCreated()
@@ -147,6 +150,7 @@ class PlanRevenueCatTest extends TestCase
             'billing_rate' => 9.99,
             'billing_cycle' => 'monthly',
             'status' => 'active',
+            'plan_type' => 'premium',
             'features' => ['company_profile'],
         ]);
 
@@ -189,6 +193,7 @@ class PlanRevenueCatTest extends TestCase
             'billing_rate' => 9.99,
             'billing_cycle' => 'monthly',
             'status' => 'active',
+            'plan_type' => 'premium',
             'features' => ['company_profile'],
         ])->assertCreated();
 
@@ -230,6 +235,7 @@ class PlanRevenueCatTest extends TestCase
             'billing_rate' => 9.99,
             'billing_cycle' => 'monthly',
             'status' => 'active',
+            'plan_type' => 'premium',
             'features' => ['company_profile'],
             'revenuecat_store_identifier_ios' => 'com.app.pro.monthly',
         ])->assertCreated();

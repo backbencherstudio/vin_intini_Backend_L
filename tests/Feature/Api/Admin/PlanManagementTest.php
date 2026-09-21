@@ -83,6 +83,7 @@ class PlanManagementTest extends TestCase
             'discount_duration' => '2026-12-31',
             'badge_color' => '#FF5733',
             'status' => 'active',
+            'plan_type' => 'premium',
             'features' => [
                 PlanFeature::PROFILE_VIEWS_INSIGHTS->value,
                 PlanFeature::DIRECT_MESSAGING->value,
@@ -101,6 +102,7 @@ class PlanManagementTest extends TestCase
             ->assertJsonPath('data.billing_rate', '29.99')
             ->assertJsonPath('data.billing_cycle', 'monthly')
             ->assertJsonPath('data.status', 'active')
+            ->assertJsonPath('data.plan_type', 'premium')
             ->assertJsonMissingPath('data.stripe_product_id')
             ->assertJsonMissingPath('data.stripe_price_id')
             ->assertJsonMissingPath('data.revenuecat_product_id');
