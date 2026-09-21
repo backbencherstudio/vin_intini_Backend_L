@@ -354,7 +354,7 @@ class SubscriptionController extends Controller
     private function hasActiveSubscription(User $user): bool
     {
         return Subscription::where('user_id', $user->id)
-            ->whereIn('status', ['active', 'trialing', 'paused'])
+            ->whereIn('status', ['active', 'trialing'])
             ->exists();
     }
 

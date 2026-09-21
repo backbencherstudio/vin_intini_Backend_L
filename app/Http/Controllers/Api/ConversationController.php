@@ -327,7 +327,7 @@ class ConversationController extends Controller
         }
 
         return Subscription::whereIn('user_id', $userIds)
-            ->whereIn('status', ['active', 'trialing', 'paused'])
+            ->whereIn('status', ['active', 'trialing'])
             ->pluck('user_id')
             ->all();
     }
@@ -338,7 +338,7 @@ class ConversationController extends Controller
     private function userHasActiveSubscription(int $userId): bool
     {
         return Subscription::where('user_id', $userId)
-            ->whereIn('status', ['active', 'trialing', 'paused'])
+            ->whereIn('status', ['active', 'trialing'])
             ->exists();
     }
 

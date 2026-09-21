@@ -46,7 +46,7 @@ class MessageSent implements ShouldBroadcastNow
                 'file_category' => $this->message->replyTo->file_category,
             ] : null,
             'created_at' => $this->message->created_at->toISOString(),
-            'has_premium' => $this->message->sender->subscriptions()->whereIn('status', ['active', 'trialing', 'paused'])->exists(),
+            'has_premium' => $this->message->sender->subscriptions()->whereIn('status', ['active', 'trialing'])->exists(),
         ];
     }
 

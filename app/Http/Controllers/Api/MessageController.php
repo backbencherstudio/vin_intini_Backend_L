@@ -394,7 +394,7 @@ class MessageController extends Controller
     private function userHasActiveSubscription(int $userId): bool
     {
         return Subscription::where('user_id', $userId)
-            ->whereIn('status', ['active', 'trialing', 'paused'])
+            ->whereIn('status', ['active', 'trialing'])
             ->exists();
     }
 
