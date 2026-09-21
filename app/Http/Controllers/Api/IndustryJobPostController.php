@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\IndustryJobPost;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule; 
 
 class IndustryJobPostController extends Controller
 {
@@ -32,8 +33,15 @@ class IndustryJobPostController extends Controller
             'work_mode'               => ['required', 'string'],
             'employment_type'         => ['required', 'string'],
 
-            'state'                   => [$isDraft ? 'nullable' : 'required', 'string'],
-            'city'                    => [$isDraft ? 'nullable' : 'required', 'string'],
+            'state_id'                => [$isDraft ? 'nullable' : 'required', 'integer', 'exists:states,id'],
+            'city_id'                 => [
+                $isDraft ? 'nullable' : 'required',
+                'integer',
+                Rule::exists('cities', 'id')->where(function ($query) use ($request) {
+                    return $query->where('state_id', $request->input('state_id'));
+                }),
+            ],
+
             'email'                   => ['required', 'email'],
             'phone_number'            => [$isDraft ? 'nullable' : 'required', 'string'],
             'website'                 => [$isDraft ? 'nullable' : 'required', 'url'],
@@ -70,8 +78,8 @@ class IndustryJobPostController extends Controller
             'work_mode'               => $validated['work_mode'],
             'employment_type'         => $validated['employment_type'],
 
-            'state'                   => $validated['state'] ?? null,
-            'city'                    => $validated['city'] ?? null,
+            'state_id'                => $validated['state_id'] ?? null,
+            'city_id'                 => $validated['city_id'] ?? null,
 
             'email'                   => $validated['email'],
             'phone_number'            => $validated['phone_number'] ?? null,
