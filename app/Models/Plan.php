@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PlanType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -12,6 +13,7 @@ class Plan extends Model
         'short_description',
         'billing_rate',
         'billing_cycle',
+        'plan_type',
         'discount_percent',
         'discount_duration',
         'badge_color',
@@ -32,6 +34,7 @@ class Plan extends Model
 
     protected $attributes = [
         'status' => 'active',
+        'plan_type' => 'user',
     ];
 
     protected function casts(): array
@@ -41,6 +44,7 @@ class Plan extends Model
             'billing_rate' => 'decimal:2',
             'discount_percent' => 'decimal:2',
             'discount_duration' => 'date',
+            'plan_type' => PlanType::class,
         ];
     }
 
