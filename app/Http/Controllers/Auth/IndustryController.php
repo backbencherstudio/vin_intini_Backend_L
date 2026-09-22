@@ -351,7 +351,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Industry updated successfully.',
+                'message' => 'Company page updated successfully.',
                 'data' => [
                     'id' => $industry->id,
                     'name' => $industry->name,
@@ -394,7 +394,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update industry.',
+                'message' => 'Failed to update company page.',
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
