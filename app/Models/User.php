@@ -169,7 +169,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/'.ltrim($value, '/'));
+        return asset('storage/' . ltrim($value, '/'));
     }
 
     public function getCoverImageUrlAttribute(): ?string
@@ -183,7 +183,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/'.ltrim($value, '/'));
+        return asset('storage/' . ltrim($value, '/'));
     }
 
     public function posts()
@@ -210,7 +210,7 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->subscriptions()
             ->whereIn('status', ['active', 'trialing'])
-            ->when($type, fn ($query) => $query->whereHas('plan', fn ($query) => $query->where('plan_type', $type->value)))
+            ->when($type, fn($query) => $query->whereHas('plan', fn($query) => $query->where('plan_type', $type->value)))
             ->exists();
     }
 
@@ -296,6 +296,10 @@ class User extends Authenticatable implements JWTSubject
                 $user->following()->detach();
                 $user->likedPosts()->detach();
                 $user->groups()->detach();
+
+                $user->followedIndustries()->detach();
+                $user->savedIndustryJobs()->detach();
+                $user->likedIndustryJobs()->detach();
             }
         });
     }
@@ -314,5 +318,17 @@ class User extends Authenticatable implements JWTSubject
             Industry::class,
             'created_by'
         );
+    }
+
+    public function savedIndustryJobs(): BelongsToMany
+    {
+        return $this->belongsToMany(IndustryJobPost::class, 'industry_job_post_saves', 'user_id', 'industry_job_post_id')
+            ->withTimestamps();
+    }
+
+    public function likedIndustryJobs(): BelongsToMany
+    {
+        return $this->belongsToMany(IndustryJobPost::class, 'industry_job_post_likes', 'user_id', 'industry_job_post_id')
+            ->withTimestamps();
     }
 }

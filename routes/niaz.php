@@ -124,8 +124,14 @@ Route::post('/account/delete-request', [SecuritySettingsController::class, 'requ
 // Industry job post
 Route::prefix('industry')->group(function () {
     Route::get('job-posts', [IndustryJobPostController::class, 'index']);
+    Route::get('my-job-posts', [IndustryJobPostController::class, 'myJobs']);
     Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']);
     Route::post('job-post/create', [IndustryJobPostController::class, 'store']);
     Route::put('job-post/{id}/update', [IndustryJobPostController::class, 'update']);
     Route::delete('job-post/{id}/delete', [IndustryJobPostController::class, 'destroy']);
+    Route::patch('job-post/{id}/status', [IndustryJobPostController::class, 'updateStatus']);
+
+    Route::post('job-post/{id}/like', [IndustryJobPostController::class, 'toggleLike']); // like job post
+    Route::post('job-post/{id}/save', [IndustryJobPostController::class, 'toggleSave']); // save/unsave job post
+    Route::get('saved-jobs', [IndustryJobPostController::class, 'savedJobs']); // get saved jobs for current user
 });
