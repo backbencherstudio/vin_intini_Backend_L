@@ -766,7 +766,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Industry post updated successfully.',
+                'message' => 'Company post updated successfully.',
 
                 'data' => [
                     'post_id' => $post->id,
@@ -809,7 +809,7 @@ class IndustryController extends Controller
             return response()->json([
                 'success' => false,
 
-                'message' => 'Failed to update industry post.',
+                'message' => 'Failed to update company post.',
 
                 'error' => config('app.debug')
                     ? $e->getMessage()
