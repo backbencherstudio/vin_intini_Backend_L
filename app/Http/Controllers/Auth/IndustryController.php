@@ -879,7 +879,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Industry post deleted successfully.',
+                'message' => 'Company post deleted successfully.',
                 'data' => [
                     'post_id' => $post->id,
                 ],
@@ -890,7 +890,7 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete industry post.',
+                'message' => 'Failed to delete company post.',
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
