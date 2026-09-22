@@ -26,9 +26,9 @@ class CommentController extends Controller
 
         $user = auth('api')->user();
 
-        $post = Post::with(['user' => fn($q) => $q->withTrashed()])->findOrFail($postId);
+        $post = Post::with(['user' => fn ($q) => $q->withTrashed()])->findOrFail($postId);
 
-        if (!$post->user || $post->user->trashed()) {
+        if (! $post->user || $post->user->trashed()) {
             return response()->json([
                 'success' => false,
                 'message' => 'This post is no longer available.',
@@ -51,7 +51,7 @@ class CommentController extends Controller
                     });
                 })->exists();
 
-            if (!$isConnected && $user->id !== $post->user_id) {
+            if (! $isConnected && $user->id !== $post->user_id) {
                 return response()->json(['success' => false, 'message' => 'Only connections can comment on this post'], 403);
             }
         }
@@ -63,7 +63,7 @@ class CommentController extends Controller
                 $imagePath = $imageUploadService->store($request->file('image'), 'comments');
             }
 
-            if (!$request->parent_id) {
+            if (! $request->parent_id) {
                 $comment = Comment::create([
                     'post_id' => $post->id,
                     'user_id' => $user->id,
@@ -74,11 +74,12 @@ class CommentController extends Controller
                 $post->increment('total_comment');
                 $post->refresh();
 
-                if ($post->user_id !== $user->id && $post->user && !$post->user->trashed()) {
+                if ($post->user_id !== $user->id && $post->user && ! $post->user->trashed()) {
                     $post->user->notify(new PostCommentedNotification($user, $post, $comment));
                 }
 
                 DB::commit();
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Comment added',
@@ -87,12 +88,12 @@ class CommentController extends Controller
                 ]);
             }
 
-            $parentComment = Comment::with(['user' => fn($q) => $q->withTrashed()])
+            $parentComment = Comment::with(['user' => fn ($q) => $q->withTrashed()])
                 ->where('id', $request->parent_id)
                 ->where('post_id', $post->id)
                 ->firstOrFail();
 
-            if (!$parentComment->user || $parentComment->user->trashed()) {
+            if (! $parentComment->user || $parentComment->user->trashed()) {
                 return response()->json(['success' => false, 'message' => 'Cannot reply to a deleted user\'s comment.'], 404);
             }
 
@@ -107,11 +108,12 @@ class CommentController extends Controller
             $parentComment->increment('reply_count');
             $parentComment->refresh();
 
-            if ($parentComment->user_id !== $user->id && $parentComment->user && !$parentComment->user->trashed()) {
+            if ($parentComment->user_id !== $user->id && $parentComment->user && ! $parentComment->user->trashed()) {
                 $parentComment->user->notify(new CommentRepliedNotification($user, $post, $reply));
             }
 
             DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Reply added',
@@ -120,6 +122,7 @@ class CommentController extends Controller
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => 'Something went wrong'], 500);
         }
     }
@@ -130,14 +133,16 @@ class CommentController extends Controller
         $user = auth('api')->user();
 
         $comments = Comment::with(['user:id,username,title,first_name,last_name,profile_image', 'post'])
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
-            ->withExists(['likes as liked_by_me' => fn($q) => $q->where('user_id', $user->id)])
+            ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
+            ->withExists(['likes as liked_by_me' => fn ($q) => $q->where('user_id', $user->id)])
             ->where('post_id', $postId)
             ->latest()
             ->paginate($perPage);
 
         $data = collect($comments->items())->map(function ($comment) use ($user) {
-            if (!$comment->user) return null;
+            if (! $comment->user) {
+                return null;
+            }
 
             $canDelete = ($comment->user_id === $user->id || $comment->post->user_id === $user->id);
 
@@ -147,7 +152,7 @@ class CommentController extends Controller
                 'image_url' => $comment->image_url ?? null,
                 'user' => [
                     'id' => $comment->user->id,
-                    'name' => trim($comment->user->first_name . ' ' . $comment->user->last_name),
+                    'name' => trim($comment->user->first_name.' '.$comment->user->last_name),
                     'title' => $comment->user->title,
                     'profile_image' => $comment->user->profile_image_url,
                 ],
@@ -178,14 +183,16 @@ class CommentController extends Controller
         $user = auth('api')->user();
 
         $replies = Reply::with(['user:id,username,title,first_name,last_name,profile_image', 'comment.post'])
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
-            ->withExists(['likes as liked_by_me' => fn($q) => $q->where('user_id', $user->id)])
+            ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
+            ->withExists(['likes as liked_by_me' => fn ($q) => $q->where('user_id', $user->id)])
             ->where('comment_id', $commentId)
             ->latest()
             ->paginate($perPage);
 
         $data = collect($replies->items())->map(function ($reply) use ($user) {
-            if (!$reply->user) return null;
+            if (! $reply->user) {
+                return null;
+            }
 
             $canDelete = ($reply->user_id === $user->id || $reply->comment->user_id === $user->id || $reply->comment->post->user_id === $user->id);
 
@@ -195,7 +202,7 @@ class CommentController extends Controller
                 'image_url' => $reply->image_url ?? null,
                 'user' => [
                     'id' => $reply->user->id,
-                    'name' => trim($reply->user->first_name . ' ' . $reply->user->last_name),
+                    'name' => trim($reply->user->first_name.' '.$reply->user->last_name),
                     'title' => $reply->user->title,
                     'profile_image' => $reply->user->profile_image_url,
                 ],
@@ -231,20 +238,26 @@ class CommentController extends Controller
         DB::beginTransaction();
         try {
             foreach ($comment->replies as $reply) {
-                if ($reply->image) Storage::disk('public')->delete($reply->image);
+                if ($reply->image) {
+                    Storage::disk('public')->delete($reply->image);
+                }
                 $reply->delete();
             }
 
-            if ($comment->image) Storage::disk('public')->delete($comment->image);
+            if ($comment->image) {
+                Storage::disk('public')->delete($comment->image);
+            }
 
             $totalDecrease = 1 + $comment->replies()->count();
             $comment->post->decrement('total_comment', $totalDecrease);
             $comment->delete();
 
             DB::commit();
+
             return response()->json(['success' => true, 'message' => 'Comment deleted successfully']);
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => 'Something went wrong'], 500);
         }
     }
@@ -261,7 +274,9 @@ class CommentController extends Controller
 
         DB::beginTransaction();
         try {
-            if ($reply->image) Storage::disk('public')->delete($reply->image);
+            if ($reply->image) {
+                Storage::disk('public')->delete($reply->image);
+            }
             $reply->delete();
 
             if ($comment->reply_count > 0) {
@@ -270,13 +285,15 @@ class CommentController extends Controller
             }
 
             DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Reply deleted successfully',
-                'total_reply' => (int) $comment->reply_count
+                'total_reply' => (int) $comment->reply_count,
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => 'Something went wrong'], 500);
         }
     }
@@ -287,15 +304,17 @@ class CommentController extends Controller
 
         $comments = Comment::with([
             'post:id,user_id,description',
-            'post.user' => fn($q) => $q->withTrashed()->select('id', 'first_name', 'last_name')
+            'post.user' => fn ($q) => $q->withTrashed()->select('id', 'first_name', 'last_name'),
         ])
             ->where('user_id', $user->id)
-            ->whereHas('post.user', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('post.user', fn ($q) => $q->whereNull('deleted_at'))
             ->latest()
             ->paginate($request->get('per_page', 10));
 
         $data = collect($comments->items())->map(function ($comment) {
-            if (!$comment->post || !$comment->post->user) return null;
+            if (! $comment->post || ! $comment->post->user) {
+                return null;
+            }
 
             return [
                 'id' => $comment->id,
@@ -305,7 +324,7 @@ class CommentController extends Controller
                     'description' => $comment->post->description,
                     'posted_by' => [
                         'id' => $comment->post->user->id,
-                        'name' => trim($comment->post->user->first_name . ' ' . $comment->post->user->last_name),
+                        'name' => trim($comment->post->user->first_name.' '.$comment->post->user->last_name),
                     ],
                 ],
                 'comment_time' => $comment->created_at,
@@ -324,7 +343,6 @@ class CommentController extends Controller
             ],
         ]);
     }
-
 
     // public function comment(Request $request, $postId)
     // {

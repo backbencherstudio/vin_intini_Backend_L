@@ -14,6 +14,7 @@ class AccountDeletionRequestedMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $user;
+
     public $permanentDeleteAt;
 
     public function __construct($user, $permanentDeleteAt)

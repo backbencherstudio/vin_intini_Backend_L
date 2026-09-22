@@ -9,7 +9,7 @@ class IndustryFollow extends Model
 {
     protected $fillable = [
         'industry_id',
-        'user_id'
+        'user_id',
     ];
 
     public function industry(): BelongsTo

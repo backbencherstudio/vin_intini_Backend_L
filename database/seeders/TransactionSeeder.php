@@ -36,10 +36,10 @@ class TransactionSeeder extends Seeder
 
                 Transaction::updateOrCreate(
                     [
-                        'provider_transaction_id' => 'seed_txn_' . strtolower($user->first_name) . '_' . $i,
+                        'provider_transaction_id' => 'seed_txn_'.strtolower($user->first_name).'_'.$i,
                     ],
                     [
-                        'checkout_session_id' => 'seed_session_' . strtolower($user->first_name) . '_' . $i,
+                        'checkout_session_id' => 'seed_session_'.strtolower($user->first_name).'_'.$i,
                         'user_id' => $user->id,
                         'plan_id' => $planId,
                         'subscription_id' => $subscriptionId,

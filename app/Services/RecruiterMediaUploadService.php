@@ -12,7 +12,6 @@ class RecruiterMediaUploadService
         private OptimizedImageUploadService $imageUploadService
     ) {}
 
-
     public function upload(UploadedFile $file): array
     {
         $mime = $file->getMimeType() ?? '';
@@ -23,7 +22,6 @@ class RecruiterMediaUploadService
 
         return $this->processImage($file);
     }
-
 
     private function processImage(UploadedFile $file): array
     {
@@ -37,8 +35,6 @@ class RecruiterMediaUploadService
             'type' => 'image',
         ];
     }
-
-
 
     private function processVideo(UploadedFile $file): array
     {

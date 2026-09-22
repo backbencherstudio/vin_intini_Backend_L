@@ -12,7 +12,6 @@ class IndustryMediaUploadService
         private OptimizedImageUploadService $imageUploadService
     ) {}
 
-
     public function upload(UploadedFile $file): array
     {
         $mime = $file->getMimeType() ?? '';
@@ -23,7 +22,6 @@ class IndustryMediaUploadService
 
         return $this->processImage($file);
     }
-
 
     private function processImage(UploadedFile $file): array
     {
@@ -38,16 +36,14 @@ class IndustryMediaUploadService
         ];
     }
 
-
-
     private function processVideo(UploadedFile $file): array
     {
-        $filename = 'industries/posts/' . Str::uuid() . '.mp4';
+        $filename = 'industries/posts/'.Str::uuid().'.mp4';
 
         $inputPath = $file->getRealPath();
 
         $outputPath = storage_path(
-            'app/public/' . $filename
+            'app/public/'.$filename
         );
 
         Storage::disk('public')->makeDirectory(dirname($filename));
@@ -71,7 +67,7 @@ class IndustryMediaUploadService
             }
 
             throw new \Exception(
-                'Video compression failed: ' . implode("\n", $output)
+                'Video compression failed: '.implode("\n", $output)
             );
         }
 

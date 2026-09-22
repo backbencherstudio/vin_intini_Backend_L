@@ -24,8 +24,8 @@ class NewsfeedController extends Controller
             $q->where('sender_id', $user->id)
                 ->orWhere('receiver_id', $user->id);
         })
-            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->get();
 
         $relationshipMap = [];
@@ -41,13 +41,13 @@ class NewsfeedController extends Controller
             ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)
-            ->whereHas('following', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('following', fn ($q) => $q->whereNull('deleted_at'))
             ->pluck('following_id');
 
         $unfollowedConnectionIds = $connectionIds->diff($followingIds);
 
         $posts = Post::query()
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->with([
                 'user:id,username,first_name,last_name,profile_image,title',
                 'user.profile:user_id,privacy_profile_activity',
@@ -102,7 +102,9 @@ class NewsfeedController extends Controller
             'success' => true,
             'message' => 'Feed fetched successfully',
             'data' => collect($posts->items())->map(function ($post) use ($user, $relationshipMap, $adminGroupIds) {
-                if (!$post->user) return null;
+                if (! $post->user) {
+                    return null;
+                }
                 $canEdit = ($post->user_id === $user->id);
                 $canDelete = ($post->user_id === $user->id);
 
@@ -303,8 +305,8 @@ class NewsfeedController extends Controller
             $q->where('sender_id', $user->id)
                 ->orWhere('receiver_id', $user->id);
         })
-            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->get();
 
         $relationshipMap = [];
@@ -323,7 +325,7 @@ class NewsfeedController extends Controller
             ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)
-            ->whereHas('following', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('following', fn ($q) => $q->whereNull('deleted_at'))
             ->pluck('following_id');
 
         $allowedConnectionIds = $connectionIds->intersect($followingIds);
@@ -337,7 +339,7 @@ class NewsfeedController extends Controller
             },
         ])
             ->where('id', $id)
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->where(function ($query) use (
                 $user,
                 $groupIds,

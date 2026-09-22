@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\PasswordOtpMail;
+use App\Models\DeletedAccountLog;
 use App\Models\LoginActivity;
 use App\Models\User;
-use App\Models\DeletedAccountLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

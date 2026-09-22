@@ -7,7 +7,6 @@ use App\Http\Controllers\Admin\Api\InstitutionReportController;
 use App\Http\Controllers\Admin\Api\PageController;
 use App\Http\Controllers\Admin\Api\UserManagementController;
 use App\Http\Controllers\Auth\IndustryController;
-use App\Http\Controllers\Auth\IndustryJobPostController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('role:admin')->prefix('admin')->group(function () {
@@ -82,7 +81,6 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::put('/pages/{slug}', [PageController::class, 'update']);
 });
 
-
 Route::middleware('role:user')->group(function () {
 
     // Recruiter Dashboard.....
@@ -112,7 +110,6 @@ Route::middleware('role:user')->group(function () {
         Route::get('post/comment/replies/{commentId}', [IndustryController::class, 'replyList']);
 
     });
-
 
     Route::middleware('profile_completed')->group(function () {});
 });

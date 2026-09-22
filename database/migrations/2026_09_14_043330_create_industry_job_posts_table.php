@@ -63,7 +63,7 @@ return new class extends Migration
             $table->index('status');
             $table->index([
                 'industry_id',
-                'status'
+                'status',
             ]);
         });
     }

@@ -10,8 +10,8 @@ use App\Http\Controllers\Admin\InstitutionReportController;
 use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Api\SecuritySettingsController;
-use App\Models\User;
 use App\Models\SocialAccount;
+use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -156,8 +156,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'a
 //     return redirect()->back()->with('success', 'All notifications have been removed!');
 // })->name('notifications.clearAll');
 
-
-//generate usernames for users who don't have one
+// generate usernames for users who don't have one
 // Route::get('/generate-usernames', function () {
 //     $users = User::whereNull('username')->get();
 //     $count = 0;
@@ -185,7 +184,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'a
 //     return response()->json(['message' => "$count users updated with usernames!"]);
 // });
 
-//social users don't have passwords, so we need to set has_password to false for those users
+// social users don't have passwords, so we need to set has_password to false for those users
 // Route::get('/fix-social-passwords', function () {
 //     $socialUserIds = SocialAccount::pluck('user_id')->unique()->toArray();
 
@@ -204,4 +203,4 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'a
 //     ]);
 // });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

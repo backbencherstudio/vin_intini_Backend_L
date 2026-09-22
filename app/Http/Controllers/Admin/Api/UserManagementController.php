@@ -7,7 +7,6 @@ use App\Models\DeletedAccountLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
-
 class UserManagementController extends Controller
 {
     public function getDeletedAccountLogs(Request $request)
@@ -38,7 +37,7 @@ class UserManagementController extends Controller
                     ? max(0, Carbon::now()->startOfDay()->diffInDays(
                         Carbon::parse($account->permanent_delete_at)->startOfDay(),
                         false
-                    )) . ' Days'
+                    )).' Days'
                     : null,
             ];
         });

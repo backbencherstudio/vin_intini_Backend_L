@@ -217,4 +217,63 @@ class RevenueCatWebhookTest extends TestCase
             'event' => ['type' => 'INITIAL_PURCHASE'],
         ])->assertStatus(403);
     }
+
+    public function test_new_purchase_cancels_previous_active_subscription(): void
+    {
+        $user = User::factory()->create();
+        $monthlyPlan = $this->makePlan(['name' => 'Monthly', 'revenuecat_store_identifier_android' => 'monthly_pkg']);
+        $yearlyPlan = $this->makePlan(['name' => 'Yearly', 'revenuecat_store_identifier_android' => 'yearly_pkg']);
+
+        // Existing active monthly subscription
+        $oldSub = Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $monthlyPlan->id,
+            'platform' => 'revenuecat',
+            'provider_subscription_id' => 'GPA.OLD-MONTHLY-1111',
+            'provider_customer_id' => (string) $user->id,
+            'product_id' => 'monthly_pkg',
+            'status' => 'active',
+            'store' => 'PLAY_STORE',
+            'current_period_start' => now()->subDays(5),
+            'current_period_end' => now()->addDays(25),
+        ]);
+
+        // New yearly purchase webhook
+        $this->postWebhook([
+            'event' => [
+                'id' => 'evt_yearly',
+                'type' => 'INITIAL_PURCHASE',
+                'app_user_id' => (string) $user->id,
+                'product_id' => 'yearly_pkg',
+                'entitlement_id' => 'premium',
+                'store' => 'PLAY_STORE',
+                'transaction_id' => 'txn_yearly',
+                'original_transaction_id' => 'GPA.NEW-YEARLY-2222',
+                'price' => 99.99,
+                'price_in_purchased_currency' => 99.99,
+                'currency' => 'USD',
+                'expiration_at_ms' => now()->addYear()->timestamp * 1000,
+                'event_timestamp_ms' => now()->timestamp * 1000,
+            ],
+            'subscriber' => ['app_user_id' => (string) $user->id],
+        ])->assertOk();
+
+        // Old subscription should be marked canceled
+        $this->assertDatabaseHas('subscriptions', [
+            'id' => $oldSub->id,
+            'provider_subscription_id' => 'GPA.OLD-MONTHLY-1111',
+            'status' => 'canceled',
+        ]);
+
+        // New subscription should be active
+        $this->assertDatabaseHas('subscriptions', [
+            'user_id' => $user->id,
+            'plan_id' => $yearlyPlan->id,
+            'provider_subscription_id' => 'GPA.NEW-YEARLY-2222',
+            'status' => 'active',
+        ]);
+
+        // User should have exactly 1 active subscription
+        $this->assertEquals(1, $user->subscriptions()->where('status', 'active')->count());
+    }
 }

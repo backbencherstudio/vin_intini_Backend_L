@@ -19,7 +19,7 @@ class IndustryJobPostController extends Controller
 
         $industry = $user->industry;
 
-        if (!$industry) {
+        if (! $industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your account is not associated with an industry.',
@@ -53,22 +53,17 @@ class IndustryJobPostController extends Controller
 
             'location_url' => $data['location_url'] ?? null,
 
-            'employment_offering' =>
-            $data['employment_offering'] ?? null,
+            'employment_offering' => $data['employment_offering'] ?? null,
 
             'tags' => $data['tags'] ?? null,
 
-            'announcement_start_date' =>
-            $data['announcement_start_date'] ?? null,
+            'announcement_start_date' => $data['announcement_start_date'] ?? null,
 
-            'announcement_end_date' =>
-            $data['announcement_end_date'] ?? null,
+            'announcement_end_date' => $data['announcement_end_date'] ?? null,
 
-            'information_confirmed' =>
-            $data['information_confirmed'],
+            'information_confirmed' => $data['information_confirmed'],
 
-            'status' =>
-            IndustryJobPostStatus::PENDING_REVIEW,
+            'status' => IndustryJobPostStatus::PENDING_REVIEW,
 
             'submitted_at' => now(),
         ]);
@@ -76,8 +71,7 @@ class IndustryJobPostController extends Controller
         return response()->json([
             'success' => true,
 
-            'message' =>
-            'Post successfully submitted and is under review.',
+            'message' => 'Post successfully submitted and is under review.',
 
             'data' => $jobPost,
         ], 201);

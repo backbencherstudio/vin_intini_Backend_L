@@ -96,16 +96,16 @@ class InstitutionReportController extends Controller
             $user = $education->user;
 
             $studentName = $user
-                ? trim($user->first_name . ' ' . $user->last_name)
+                ? trim($user->first_name.' '.$user->last_name)
                 : null;
 
             $status = $education->is_current ? 'Present' : 'Completed';
 
             $academicPeriod = $education->is_current
-                ? $education->start_month . ' ' . $education->start_year . ' — Present'
-                : $education->start_month . ' ' . $education->start_year
-                . ' — ' .
-                $education->end_month . ' ' . $education->end_year;
+                ? $education->start_month.' '.$education->start_year.' — Present'
+                : $education->start_month.' '.$education->start_year
+                .' — '.
+                $education->end_month.' '.$education->end_year;
 
             return [
                 'sl_no' => (($educations->currentPage() - 1) * $educations->perPage()) + $index + 1,

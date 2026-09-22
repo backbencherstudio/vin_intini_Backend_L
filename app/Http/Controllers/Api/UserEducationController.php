@@ -33,7 +33,7 @@ class UserEducationController extends Controller
                     WHEN name LIKE ? THEN 2
                     ELSE 3
                 END
-            ', [$search, $search . '%']);
+            ', [$search, $search.'%']);
         }
 
         $institutions = $query->orderBy('name', 'asc')
@@ -101,8 +101,8 @@ class UserEducationController extends Controller
                             $q2->where('sender_id', $actualUserId)->where('receiver_id', $viewer->id);
                         });
                     })
-                    ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-                    ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+                    ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+                    ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
                     ->exists();
 
                 if ($isConnected) {
@@ -166,7 +166,7 @@ class UserEducationController extends Controller
                             $fail('Start date cannot be greater than the current month and year.');
                         }
                     }
-                }
+                },
             ],
 
             'is_current' => 'required|boolean',
@@ -191,7 +191,7 @@ class UserEducationController extends Controller
                             $fail('End date cannot be before the start date.');
                         }
                     }
-                }
+                },
             ],
 
             // 'start_month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
@@ -200,8 +200,6 @@ class UserEducationController extends Controller
             // 'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
             // 'end_year' => 'required_if:is_current,false,0|nullable|integer|min:1900|max:'.(date('Y') + 10),
 
-
-
             'grade' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'activities' => 'nullable|string',
@@ -209,9 +207,9 @@ class UserEducationController extends Controller
             'skills.*' => 'string|distinct',
         ]);
 
-        $startDate = Carbon::parse($validated['start_month'] . ' ' . $validated['start_year'])->startOfMonth();
+        $startDate = Carbon::parse($validated['start_month'].' '.$validated['start_year'])->startOfMonth();
         if (! $validated['is_current']) {
-            $endDate = Carbon::parse($validated['end_month'] . ' ' . $validated['end_year'])->startOfMonth();
+            $endDate = Carbon::parse($validated['end_month'].' '.$validated['end_year'])->startOfMonth();
 
             if ($endDate->lt($startDate)) {
                 return response()->json([
@@ -302,7 +300,7 @@ class UserEducationController extends Controller
                             $fail('Start date cannot be greater than the current month and year.');
                         }
                     }
-                }
+                },
             ],
 
             'is_current' => 'required|boolean',
@@ -327,14 +325,14 @@ class UserEducationController extends Controller
                             $fail('End date cannot be before the start date.');
                         }
                     }
-                }
+                },
             ],
             // 'start_month' => 'sometimes|required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
             // 'start_year' => 'sometimes|required|digits:4',
             // 'is_current' => 'sometimes|required|boolean',
             // 'end_month' => 'required_if:is_current,false,0|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
             // 'end_year' => 'required_if:is_current,false,0|nullable|digits:4',
-            
+
             'grade' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'activities' => 'nullable|string',

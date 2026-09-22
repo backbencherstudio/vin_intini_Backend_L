@@ -1,10 +1,10 @@
 <?php
 
+use App\Models\Group;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use App\Models\Group;
 
 return new class extends Migration
 {
@@ -19,14 +19,14 @@ return new class extends Migration
                 $baseSlug = Str::slug($group->name);
 
                 if (empty($baseSlug)) {
-                    $baseSlug = 'group-' . $group->id;
+                    $baseSlug = 'group-'.$group->id;
                 }
 
                 $finalSlug = $baseSlug;
                 $counter = 1;
 
                 while (Group::where('slug', $finalSlug)->exists()) {
-                    $finalSlug = $baseSlug . '-' . $counter;
+                    $finalSlug = $baseSlug.'-'.$counter;
                     $counter++;
                 }
 

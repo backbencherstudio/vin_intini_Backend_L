@@ -11,6 +11,7 @@ use App\Models\LoginActivity;
 use App\Models\Skill;
 use App\Models\User;
 use App\Services\ProfileImageService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -18,7 +19,6 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
-use Carbon\Carbon;
 
 class UserProfileController extends Controller
 {
@@ -36,8 +36,8 @@ class UserProfileController extends Controller
         $totalConnections = Connection::query()
             ->accepted()
             ->forUser($user->id)
-            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->count();
 
         $skills = Skill::query()
@@ -207,8 +207,8 @@ class UserProfileController extends Controller
         $totalConnections = Connection::query()
             ->accepted()
             ->forUser($user->id)
-            ->whereHas('sender', fn($q) => $q->whereNull('deleted_at'))
-            ->whereHas('receiver', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->count();
 
         $skills = ($canSeeDetails) ? Skill::query()
@@ -349,7 +349,7 @@ class UserProfileController extends Controller
                             $fail('Start date cannot be greater than the current month and year.');
                         }
                     }
-                }
+                },
             ],
 
             'is_current' => 'required_with:institution|nullable|boolean',
@@ -371,7 +371,7 @@ class UserProfileController extends Controller
                             $fail('End date cannot be before the start date.');
                         }
                     }
-                }
+                },
             ],
             // 'start_month' => 'required_with:institution|nullable|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
             // 'start_year' => 'required_with:institution|nullable|integer|min:1900|max:' . (date('Y') + 10),
@@ -390,12 +390,12 @@ class UserProfileController extends Controller
         $user = $request->user();
 
         if (! $user->username) {
-            $baseSlug = Str::slug($request->first_name . ' ' . $request->last_name, '-');
+            $baseSlug = Str::slug($request->first_name.' '.$request->last_name, '-');
             $finalUsername = $baseSlug;
             $counter = 1;
 
             while (User::where('username', $finalUsername)->exists()) {
-                $finalUsername = $baseSlug . '-' . $counter;
+                $finalUsername = $baseSlug.'-'.$counter;
                 $counter++;
             }
             $user->username = $finalUsername;
@@ -508,41 +508,41 @@ class UserProfileController extends Controller
             'skills',
             'current_position_id',
             'current_institute_id',
-            'about'
+            'about',
         ];
 
         $requestedFields = array_keys($request->all());
 
         $extraFields = array_diff($requestedFields, $allowedFields);
 
-        if (!empty($extraFields)) {
+        if (! empty($extraFields)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Validation failed: Unexpected fields detected.',
-                'errors' => collect($extraFields)->mapWithKeys(fn($field) => [
-                    $field => ["The $field field is not allowed."]
-                ])
+                'errors' => collect($extraFields)->mapWithKeys(fn ($field) => [
+                    $field => ["The $field field is not allowed."],
+                ]),
             ], 422);
         }
 
         $validated = $request->validate([
             'first_name' => 'sometimes|required|string',
-            'last_name'  => 'sometimes|required|string',
-            'title'      => 'sometimes|required|string|max:120',
-            'mobile'     => 'nullable|string|max:20',
-            'country'    => 'sometimes|required|string',
-            'address'    => 'nullable|string',
-            'state_id'   => 'nullable|integer|exists:states,id',
+            'last_name' => 'sometimes|required|string',
+            'title' => 'sometimes|required|string|max:120',
+            'mobile' => 'nullable|string|max:20',
+            'country' => 'sometimes|required|string',
+            'address' => 'nullable|string',
+            'state_id' => 'nullable|integer|exists:states,id',
             'postal_code' => 'nullable|string',
-            'skills'     => 'nullable|array|max:5',
-            'skills.*'   => 'string',
+            'skills' => 'nullable|array|max:5',
+            'skills.*' => 'string',
             'current_position_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('experiences', 'company_id')->where(fn($q) => $q->where('user_id', $request->user()->id)),
+                Rule::exists('experiences', 'company_id')->where(fn ($q) => $q->where('user_id', $request->user()->id)),
             ],
             'current_institute_id' => 'nullable|integer|exists:institutions,id',
-            'about'      => 'sometimes|required|string',
+            'about' => 'sometimes|required|string',
         ]);
 
         $user = $request->user();
@@ -557,7 +557,7 @@ class UserProfileController extends Controller
             'state_id',
             'postal_code',
             'about',
-            'current_position_id'
+            'current_position_id',
         ])->toArray();
 
         if ($request->has('skills')) {
@@ -573,7 +573,7 @@ class UserProfileController extends Controller
             );
         }
 
-        if (!empty($profileData)) {
+        if (! empty($profileData)) {
             $profile->update($profileData);
         }
 
@@ -686,7 +686,7 @@ class UserProfileController extends Controller
             'new_password' => [
                 'required',
                 'confirmed',
-                \Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers(),
+                Password::min(8)->mixedCase()->numbers(),
             ],
         ];
 
@@ -704,7 +704,7 @@ class UserProfileController extends Controller
         }
 
         if ($user->has_password) {
-            if (!Hash::check($request->current_password, $user->password)) {
+            if (! Hash::check($request->current_password, $user->password)) {
                 return response()->json([
                     'status' => false,
                     'message' => 'The current password you entered is incorrect.',
@@ -720,7 +720,7 @@ class UserProfileController extends Controller
         try {
             $currentTokenId = auth('api')->payload()->get('jti');
 
-            \App\Models\LoginActivity::where('user_id', $user->id)
+            LoginActivity::where('user_id', $user->id)
                 ->where('token_id', '!=', $currentTokenId)
                 ->where('is_active', true)
                 ->update(['is_active' => false]);

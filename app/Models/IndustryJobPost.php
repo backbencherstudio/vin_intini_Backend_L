@@ -64,7 +64,6 @@ class IndustryJobPost extends Model
         'reviewed_at' => 'datetime',
     ];
 
-
     public function industry(): BelongsTo
     {
         return $this->belongsTo(Industry::class);

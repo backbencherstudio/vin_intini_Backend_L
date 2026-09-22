@@ -2,16 +2,17 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
+use App\Mail\AccountDeletionReminderMail;
 use App\Models\DeletedAccountLog;
 use App\Models\User;
-use App\Mail\AccountDeletionReminderMail;
-use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Mail;
 
 class SendAccountDeletionReminders extends Command
 {
     protected $signature = 'account:send-deletion-reminders';
+
     protected $description = 'Send a reminder email 3 days before permanent account deletion';
 
     public function handle()

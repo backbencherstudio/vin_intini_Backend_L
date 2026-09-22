@@ -552,7 +552,6 @@ class PostController extends Controller
         }
     }
 
-
     public function destroyGroupPost($groupId, $postId)
     {
         $user = auth('api')->user();

@@ -48,12 +48,12 @@ class LogLoginJob
         $platform = $agent->platform();
 
         if ($this->customDevice) {
-            $device = $this->customDevice . ($this->customPlatform ? ' (' . $this->customPlatform . ')' : '');
+            $device = $this->customDevice.($this->customPlatform ? ' ('.$this->customPlatform.')' : '');
             $browser = 'Native Mobile App';
         } else {
             if ($agent->isPhone() || $agent->isTablet()) {
                 $brand = $agent->device();
-                $device = ($brand && $brand != 'WebKit') ? $brand . ' (' . $platform . ')' : $platform;
+                $device = ($brand && $brand != 'WebKit') ? $brand.' ('.$platform.')' : $platform;
             } else {
                 $device = $platform ?: 'Unknown Device';
             }
@@ -61,10 +61,10 @@ class LogLoginJob
         }
 
         $loc = Location::get($this->ip);
-        $locationName = $loc ? $loc->cityName . ', ' . $loc->countryName : 'Unknown';
+        $locationName = $loc ? $loc->cityName.', '.$loc->countryName : 'Unknown';
 
         $user = User::find($this->userId);
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -106,7 +106,7 @@ class LogLoginJob
         ]);
 
         if ($this->status === 'Successful') {
-            if (!$shouldBeTrusted) {
+            if (! $shouldBeTrusted) {
                 SendLoginAlertEmailJob::dispatch($activity);
             }
         }

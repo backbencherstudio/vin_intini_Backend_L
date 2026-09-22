@@ -34,7 +34,7 @@ class NotificationController extends Controller
         $notifications = $query->orderByDesc('created_at')->paginate($perPage, page: $page);
 
         $formattedNotifications = collect($notifications->items())
-            ->map(fn($n) => $this->formatNotification($n))
+            ->map(fn ($n) => $this->formatNotification($n))
             ->filter()
             ->values();
 
@@ -138,7 +138,7 @@ class NotificationController extends Controller
         if ($userId) {
             $user = User::find($userId);
 
-            if (!$user) {
+            if (! $user) {
                 return null;
             }
 
@@ -146,7 +146,7 @@ class NotificationController extends Controller
             $data['username'] = $user->username;
             $data['acceptor_username'] = $user->username;
             $data['inviter_username'] = $user->username;
-            $data['sender_name'] = $user->first_name . ' ' . $user->last_name;
+            $data['sender_name'] = $user->first_name.' '.$user->last_name;
             $data['profile_image_url'] = $user->profile_image_url;
         }
 
@@ -159,8 +159,6 @@ class NotificationController extends Controller
             'created_at' => $notification->created_at?->toIso8601String(),
         ];
     }
-
-
 
     // public function index(Request $request): JsonResponse
     // {

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->string('user_name');
             $table->string('user_email');
-            $table->text('reason'); 
+            $table->text('reason');
             $table->timestamp('requested_at');
             $table->timestamp('permanent_delete_at');
             $table->timestamps();

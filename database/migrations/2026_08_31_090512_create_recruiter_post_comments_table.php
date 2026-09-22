@@ -38,7 +38,7 @@ return new class extends Migration
 
             $table->index([
                 'post_id',
-                'parent_id'
+                'parent_id',
             ]);
         });
     }

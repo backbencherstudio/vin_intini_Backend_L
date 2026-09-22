@@ -10,8 +10,8 @@ use App\Models\IndustryPost;
 use App\Models\IndustryPostComment;
 use App\Models\IndustryPostLike;
 use App\Models\Subscription;
-use App\Services\OptimizedImageUploadService;
 use App\Services\IndustryMediaUploadService;
+use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -34,8 +34,7 @@ class IndustryController extends Controller
             ->latest('id')
             ->first();
 
-
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'success' => false,
                 'message' => 'You need an active subscription to create a company page.',
@@ -44,7 +43,7 @@ class IndustryController extends Controller
 
         $features = $subscription->plan->features ?? [];
 
-        if (!in_array('company_profile', $features, true)) {
+        if (! in_array('company_profile', $features, true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your current plan does not include company page creation.',
@@ -60,7 +59,6 @@ class IndustryController extends Controller
                 'message' => 'You already have a company page.',
             ], 409);
         }
-
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -79,7 +77,6 @@ class IndustryController extends Controller
         $logoPath = null;
         $coverImagePath = null;
 
-
         try {
             DB::beginTransaction();
 
@@ -88,9 +85,8 @@ class IndustryController extends Controller
             $originalSlug = $slug;
             $counter = 1;
 
-
             while (Industry::where('slug', $slug)->exists()) {
-                $slug = $originalSlug . '-' . $counter++;
+                $slug = $originalSlug.'-'.$counter++;
             }
 
             if ($request->hasFile('logo')) {
@@ -102,7 +98,6 @@ class IndustryController extends Controller
                 $validated['logo'] = $logoPath;
             }
 
-
             if ($request->hasFile('cover_image')) {
                 $coverImagePath = $request->file('cover_image')->store(
                     'industries/covers',
@@ -111,7 +106,6 @@ class IndustryController extends Controller
 
                 $validated['cover_image'] = $coverImagePath;
             }
-
 
             $validated['slug'] = $slug;
 
@@ -151,11 +145,9 @@ class IndustryController extends Controller
                     'tagline' => $industry->tagline,
                     'description' => $industry->description,
 
-                    'authorization_confirmed' =>
-                    $industry->authorization_confirmed,
+                    'authorization_confirmed' => $industry->authorization_confirmed,
 
-                    'authorization_confirmed_at' =>
-                    $industry->authorization_confirmed_at,
+                    'authorization_confirmed_at' => $industry->authorization_confirmed_at,
 
                     'created_by' => $industry->created_by,
 
@@ -185,14 +177,13 @@ class IndustryController extends Controller
         }
     }
 
-
     public function show(Request $request)
     {
         $industry = Industry::where('created_by', auth()->id())
             ->with('category')
             ->first();
 
-        if (!$industry) {
+        if (! $industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Industry not found.',
@@ -227,7 +218,6 @@ class IndustryController extends Controller
         ], 200);
     }
 
-
     public function update(Request $request)
     {
         $subscription = Subscription::where('user_id', auth()->id())
@@ -242,7 +232,7 @@ class IndustryController extends Controller
             ->latest('id')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'success' => false,
                 'message' => 'You need an active subscription to update your company.',
@@ -251,17 +241,16 @@ class IndustryController extends Controller
 
         $features = $subscription->plan->features ?? [];
 
-        if (!in_array('company_profile', $features, true)) {
+        if (! in_array('company_profile', $features, true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your current plan does not include company management.',
             ], 403);
         }
 
-
         $industry = Industry::where('created_by', auth()->id())->first();
 
-        if (!$industry) {
+        if (! $industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Company not found.',
@@ -288,7 +277,6 @@ class IndustryController extends Controller
             'tagline' => ['sometimes', 'nullable', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
         ]);
-
 
         $oldLogoPath = $industry->logo;
         $oldCoverImagePath = $industry->cover_image;
@@ -318,10 +306,10 @@ class IndustryController extends Controller
 
                 while (
                     Industry::where('slug', $slug)
-                    ->where('id', '!=', $industry->id)
-                    ->exists()
+                        ->where('id', '!=', $industry->id)
+                        ->exists()
                 ) {
-                    $slug = $originalSlug . '-' . $counter++;
+                    $slug = $originalSlug.'-'.$counter++;
                 }
 
                 $validated['slug'] = $slug;
@@ -395,7 +383,6 @@ class IndustryController extends Controller
 
             DB::rollBack();
 
-
             if ($newLogoPath) {
                 Storage::disk('public')->delete($newLogoPath);
             }
@@ -414,7 +401,6 @@ class IndustryController extends Controller
         }
     }
 
-
     public function storePost(Request $request, IndustryMediaUploadService $mediaUploadService)
     {
         $userId = auth()->id();
@@ -431,7 +417,7 @@ class IndustryController extends Controller
             ->latest('id')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to create a post.',
@@ -443,7 +429,7 @@ class IndustryController extends Controller
             $userId
         )->first();
 
-        if (!$industry) {
+        if (! $industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'You do not have a company page.',
@@ -502,19 +488,17 @@ class IndustryController extends Controller
             }
         }
 
-
         $content = trim($validated['content'] ?? '');
 
         if (
             blank($content) &&
-            !$request->hasFile('media')
+            ! $request->hasFile('media')
         ) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post must contain text or media.',
             ], 422);
         }
-
 
         $uploadedFiles = [];
 
@@ -543,7 +527,6 @@ class IndustryController extends Controller
                     ]);
                 }
             }
-
 
             DB::commit();
 
@@ -604,14 +587,13 @@ class IndustryController extends Controller
         }
     }
 
-
     public function updatePost(Request $request, $postId, IndustryMediaUploadService $mediaUploadService)
     {
         $userId = auth()->id();
 
         $post = IndustryPost::find($postId);
 
-        if (!$post) {
+        if (! $post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -636,7 +618,7 @@ class IndustryController extends Controller
             ->latest('id')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to edit a post.',
@@ -656,8 +638,8 @@ class IndustryController extends Controller
         ]);
 
         if (
-            !array_key_exists('content', $validated) &&
-            !$request->hasFile('media')
+            ! array_key_exists('content', $validated) &&
+            ! $request->hasFile('media')
         ) {
             return response()->json([
                 'success' => false,
@@ -715,7 +697,7 @@ class IndustryController extends Controller
 
         if (
             blank($content) &&
-            !$request->hasFile('media') &&
+            ! $request->hasFile('media') &&
             $post->media()->count() === 0
         ) {
             return response()->json([
@@ -835,14 +817,13 @@ class IndustryController extends Controller
         }
     }
 
-
     public function deletePost($postId)
     {
         $userId = auth()->id();
 
         $post = IndustryPost::with('media')->find($postId);
 
-        if (!$post) {
+        if (! $post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -866,7 +847,7 @@ class IndustryController extends Controller
             ->latest('id')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to delete a post.',
@@ -916,7 +897,6 @@ class IndustryController extends Controller
         }
     }
 
-
     public function indexPost(Request $request, $industryId)
     {
         $perPage = max(
@@ -929,13 +909,12 @@ class IndustryController extends Controller
 
         $industry = Industry::find($industryId);
 
-        if (!$industry) {
+        if (! $industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Company page not found.',
             ], 404);
         }
-
 
         $posts = IndustryPost::with([
             'media',
@@ -976,8 +955,6 @@ class IndustryController extends Controller
                     'post_id' => $post->id,
                     'content' => $post->content,
 
-
-
                     'media' => $post->media
                         ->map(function ($media) {
 
@@ -1016,14 +993,13 @@ class IndustryController extends Controller
         ], 200);
     }
 
-
     public function latestPosts()
     {
         $userId = auth()->id();
 
         $industry = Industry::where('created_by', $userId)->first();
 
-        if (!$industry) {
+        if (! $industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Company page not found.',
@@ -1100,14 +1076,13 @@ class IndustryController extends Controller
         ], 200);
     }
 
-
     public function togglePostLike($postId)
     {
         $userId = auth()->id();
 
         $post = IndustryPost::find($postId);
 
-        if (!$post) {
+        if (! $post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -1181,7 +1156,6 @@ class IndustryController extends Controller
         }
     }
 
-
     public function likeList(Request $request, $postId)
     {
         $perPage = min(
@@ -1191,7 +1165,7 @@ class IndustryController extends Controller
 
         $post = IndustryPost::find($postId);
 
-        if (!$post) {
+        if (! $post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -1199,7 +1173,7 @@ class IndustryController extends Controller
         }
 
         $likes = IndustryPostLike::with([
-            'user:id,username,first_name,last_name,profile_image'
+            'user:id,username,first_name,last_name,profile_image',
         ])
             ->where('post_id', $postId)
 
@@ -1214,7 +1188,7 @@ class IndustryController extends Controller
         $users = collect($likes->items())
             ->map(function ($like) {
 
-                if (!$like->user) {
+                if (! $like->user) {
                     return null;
                 }
 
@@ -1224,13 +1198,12 @@ class IndustryController extends Controller
                     'username' => $like->user->username,
 
                     'name' => trim(
-                        ($like->user->first_name ?? '') .
-                            ' ' .
+                        ($like->user->first_name ?? '').
+                            ' '.
                             ($like->user->last_name ?? '')
                     ),
 
-                    'profile_image' =>
-                    $like->user->profile_image_url,
+                    'profile_image' => $like->user->profile_image_url,
                 ];
             })
             ->filter()
@@ -1257,7 +1230,6 @@ class IndustryController extends Controller
         ], 200);
     }
 
-
     public function storeComment(Request $request, $postId, OptimizedImageUploadService $imageUploadService)
     {
         $validated = $request->validate([
@@ -1268,7 +1240,7 @@ class IndustryController extends Controller
 
         if (
             blank($validated['comment'] ?? null)
-            && !$request->hasFile('image')
+            && ! $request->hasFile('image')
         ) {
             return response()->json([
                 'success' => false,
@@ -1278,7 +1250,7 @@ class IndustryController extends Controller
 
         $post = IndustryPost::find($postId);
 
-        if (!$post) {
+        if (! $post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -1329,7 +1301,7 @@ class IndustryController extends Controller
 
                     'image' => $comment->image
                         ? Storage::disk('public')
-                        ->url($comment->image)
+                            ->url($comment->image)
                         : null,
 
                     'likes_count' => $comment->likes_count,
@@ -1363,7 +1335,6 @@ class IndustryController extends Controller
         }
     }
 
-
     public function replyComment(Request $request, $commentId, OptimizedImageUploadService $imageUploadService)
     {
         $validated = $request->validate([
@@ -1374,7 +1345,7 @@ class IndustryController extends Controller
 
         if (
             blank($validated['comment'] ?? null)
-            && !$request->hasFile('image')
+            && ! $request->hasFile('image')
         ) {
             return response()->json([
                 'success' => false,
@@ -1386,7 +1357,7 @@ class IndustryController extends Controller
             $commentId
         );
 
-        if (!$parentComment) {
+        if (! $parentComment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1444,7 +1415,7 @@ class IndustryController extends Controller
 
                     'image' => $reply->image
                         ? Storage::disk('public')
-                        ->url($reply->image)
+                            ->url($reply->image)
                         : null,
 
                     'likes_count' => $reply->likes_count,
@@ -1478,14 +1449,13 @@ class IndustryController extends Controller
         }
     }
 
-
     public function toggleCommentLike($commentId)
     {
         $userId = auth()->id();
 
         $comment = IndustryPostComment::find($commentId);
 
-        if (!$comment) {
+        if (! $comment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1567,7 +1537,6 @@ class IndustryController extends Controller
         }
     }
 
-
     public function commentLikeList(Request $request, $commentId)
     {
         $perPage = min(
@@ -1577,7 +1546,7 @@ class IndustryController extends Controller
 
         $comment = IndustryPostComment::find($commentId);
 
-        if (!$comment) {
+        if (! $comment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1585,7 +1554,7 @@ class IndustryController extends Controller
         }
 
         $likes = IndustryCommentLike::with([
-            'user:id,username,first_name,last_name,profile_image'
+            'user:id,username,first_name,last_name,profile_image',
         ])
             ->where('comment_id', $commentId)
 
@@ -1600,7 +1569,7 @@ class IndustryController extends Controller
         $users = collect($likes->items())
             ->map(function ($like) {
 
-                if (!$like->user) {
+                if (! $like->user) {
                     return null;
                 }
 
@@ -1610,8 +1579,8 @@ class IndustryController extends Controller
                     'username' => $like->user->username,
 
                     'name' => trim(
-                        ($like->user->first_name ?? '') .
-                            ' ' .
+                        ($like->user->first_name ?? '').
+                            ' '.
                             ($like->user->last_name ?? '')
                     ),
 
@@ -1642,7 +1611,6 @@ class IndustryController extends Controller
         ], 200);
     }
 
-
     public function commentList(Request $request, $postId)
     {
         $perPage = max(
@@ -1655,7 +1623,7 @@ class IndustryController extends Controller
 
         $post = IndustryPost::find($postId);
 
-        if (!$post) {
+        if (! $post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -1738,41 +1706,33 @@ class IndustryController extends Controller
             }
         }
 
-
         $data = collect($comments->items())
             ->map(function ($comment) use ($replies) {
 
                 return [
                     'id' => $comment->id,
 
-                    'post_id' =>
-                    $comment->post_id,
+                    'post_id' => $comment->post_id,
 
-                    'parent_id' =>
-                    $comment->parent_id,
+                    'parent_id' => $comment->parent_id,
 
                     'user' => $comment->user ? [
-                        'id' =>
-                        $comment->user->id,
+                        'id' => $comment->user->id,
 
-                        'username' =>
-                        $comment->user->username,
+                        'username' => $comment->user->username,
 
                         'name' => trim(
-                            ($comment->user->first_name ?? '') .
-                                ' ' .
+                            ($comment->user->first_name ?? '').
+                                ' '.
                                 ($comment->user->last_name ?? '')
                         ),
 
-                        'title' =>
-                        $comment->user->title,
+                        'title' => $comment->user->title,
 
-                        'profile_image' =>
-                        $comment->user->profile_image_url,
+                        'profile_image' => $comment->user->profile_image_url,
                     ] : null,
 
-                    'comment' =>
-                    $comment->comment,
+                    'comment' => $comment->comment,
 
                     'image' => $comment->image
                         ? Storage::disk('public')->url(
@@ -1780,25 +1740,19 @@ class IndustryController extends Controller
                         )
                         : null,
 
-                    'likes_count' =>
-                    $comment->likes_count,
+                    'likes_count' => $comment->likes_count,
 
-                    'is_liked' =>
-                    (bool) $comment->is_liked,
+                    'is_liked' => (bool) $comment->is_liked,
 
-                    'replies_count' =>
-                    $comment->replies_count,
+                    'replies_count' => $comment->replies_count,
 
-                    'created_at' =>
-                    $comment->created_at,
+                    'created_at' => $comment->created_at,
 
-                    'time_ago' =>
-                    $comment->created_at
+                    'time_ago' => $comment->created_at
                         ? $comment->created_at->diffForHumans()
                         : null,
 
-                    'replies' =>
-                    $replies
+                    'replies' => $replies
                         ->get($comment->id, collect())
                         ->sortByDesc(function ($reply) {
                             return $reply->created_at;
@@ -1807,37 +1761,29 @@ class IndustryController extends Controller
                         ->map(function ($reply) {
 
                             return [
-                                'id' =>
-                                $reply->id,
+                                'id' => $reply->id,
 
-                                'post_id' =>
-                                $reply->post_id,
+                                'post_id' => $reply->post_id,
 
-                                'parent_id' =>
-                                $reply->parent_id,
+                                'parent_id' => $reply->parent_id,
 
                                 'user' => $reply->user ? [
-                                    'id' =>
-                                    $reply->user->id,
+                                    'id' => $reply->user->id,
 
-                                    'username' =>
-                                    $reply->user->username,
+                                    'username' => $reply->user->username,
 
                                     'name' => trim(
-                                        ($reply->user->first_name ?? '') .
-                                            ' ' .
+                                        ($reply->user->first_name ?? '').
+                                            ' '.
                                             ($reply->user->last_name ?? '')
                                     ),
 
-                                    'title' =>
-                                    $reply->user->title,
+                                    'title' => $reply->user->title,
 
-                                    'profile_image' =>
-                                    $reply->user->profile_image_url,
+                                    'profile_image' => $reply->user->profile_image_url,
                                 ] : null,
 
-                                'comment' =>
-                                $reply->comment,
+                                'comment' => $reply->comment,
 
                                 'image' => $reply->image
                                     ? Storage::disk('public')->url(
@@ -1845,17 +1791,13 @@ class IndustryController extends Controller
                                     )
                                     : null,
 
-                                'likes_count' =>
-                                $reply->likes_count,
+                                'likes_count' => $reply->likes_count,
 
-                                'is_liked' =>
-                                (bool) $reply->is_liked,
+                                'is_liked' => (bool) $reply->is_liked,
 
-                                'created_at' =>
-                                $reply->created_at,
+                                'created_at' => $reply->created_at,
 
-                                'time_ago' =>
-                                $reply->created_at
+                                'time_ago' => $reply->created_at
                                     ? $reply->created_at->diffForHumans()
                                     : null,
                             ];
@@ -1864,34 +1806,26 @@ class IndustryController extends Controller
             })
             ->values();
 
-
         return response()->json([
             'success' => true,
 
-            'message' =>
-            'Post comments fetched successfully.',
+            'message' => 'Post comments fetched successfully.',
 
             'data' => $data,
 
             'pagination' => [
-                'current_page' =>
-                $comments->currentPage(),
+                'current_page' => $comments->currentPage(),
 
-                'per_page' =>
-                $comments->perPage(),
+                'per_page' => $comments->perPage(),
 
-                'total' =>
-                $comments->total(),
+                'total' => $comments->total(),
 
-                'last_page' =>
-                $comments->lastPage(),
+                'last_page' => $comments->lastPage(),
 
-                'has_more_pages' =>
-                $comments->hasMorePages(),
+                'has_more_pages' => $comments->hasMorePages(),
             ],
         ], 200);
     }
-
 
     public function replyList(Request $request, $commentId)
     {
@@ -1906,7 +1840,7 @@ class IndustryController extends Controller
         $comment = IndustryPostComment::whereNull('parent_id')
             ->find($commentId);
 
-        if (!$comment) {
+        if (! $comment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1937,34 +1871,27 @@ class IndustryController extends Controller
                 return [
                     'id' => $reply->id,
 
-                    'post_id' =>
-                    $reply->post_id,
+                    'post_id' => $reply->post_id,
 
-                    'parent_id' =>
-                    $reply->parent_id,
+                    'parent_id' => $reply->parent_id,
 
                     'user' => $reply->user ? [
-                        'id' =>
-                        $reply->user->id,
+                        'id' => $reply->user->id,
 
-                        'username' =>
-                        $reply->user->username,
+                        'username' => $reply->user->username,
 
                         'name' => trim(
-                            ($reply->user->first_name ?? '') .
-                                ' ' .
+                            ($reply->user->first_name ?? '').
+                                ' '.
                                 ($reply->user->last_name ?? '')
                         ),
 
-                        'title' =>
-                        $reply->user->title,
+                        'title' => $reply->user->title,
 
-                        'profile_image' =>
-                        $reply->user->profile_image_url,
+                        'profile_image' => $reply->user->profile_image_url,
                     ] : null,
 
-                    'comment' =>
-                    $reply->comment,
+                    'comment' => $reply->comment,
 
                     'image' => $reply->image
                         ? Storage::disk('public')->url(
@@ -1972,49 +1899,38 @@ class IndustryController extends Controller
                         )
                         : null,
 
-                    'time_ago' =>
-                    $reply->created_at
+                    'time_ago' => $reply->created_at
                         ? $reply->created_at->diffForHumans()
                         : null,
 
-                    'is_liked' =>
-                    (bool) $reply->is_liked,
+                    'is_liked' => (bool) $reply->is_liked,
 
-                    'likes_count' =>
-                    $reply->likes_count,
+                    'likes_count' => $reply->likes_count,
 
                 ];
             })
             ->values();
 
-
         return response()->json([
             'success' => true,
 
-            'message' =>
-            'Comment replies fetched successfully.',
+            'message' => 'Comment replies fetched successfully.',
 
             'data' => $data,
 
             'pagination' => [
-                'current_page' =>
-                $replies->currentPage(),
+                'current_page' => $replies->currentPage(),
 
-                'per_page' =>
-                $replies->perPage(),
+                'per_page' => $replies->perPage(),
 
-                'total' =>
-                $replies->total(),
+                'total' => $replies->total(),
 
-                'last_page' =>
-                $replies->lastPage(),
+                'last_page' => $replies->lastPage(),
 
-                'has_more_pages' =>
-                $replies->hasMorePages(),
+                'has_more_pages' => $replies->hasMorePages(),
             ],
         ], 200);
     }
-
 
     public function toggleFollow($industryId)
     {
@@ -2022,7 +1938,7 @@ class IndustryController extends Controller
 
         $industry = Industry::find($industryId);
 
-        if (!$industry) {
+        if (! $industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Company page not found.',

@@ -206,6 +206,19 @@ class RevenueCatWebhookService
         $plan = $this->resolvePlan($event);
         $appUserId = $event['app_user_id'] ?? null;
 
+        if (in_array($status, ['active', 'trialing'], true)) {
+            Subscription::where('user_id', $user->id)
+                ->whereIn('status', ['active', 'trialing'])
+                ->where(function ($query) use ($providerId) {
+                    $query->where('provider_subscription_id', '!=', $providerId)
+                        ->orWhereNull('provider_subscription_id');
+                })
+                ->update([
+                    'status' => 'canceled',
+                    'ends_at' => now(),
+                ]);
+        }
+
         return Subscription::updateOrCreate(
             [
                 'provider_subscription_id' => $providerId,

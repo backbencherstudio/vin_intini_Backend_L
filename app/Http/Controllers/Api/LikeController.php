@@ -24,9 +24,9 @@ class LikeController extends Controller
     {
         $user = auth('api')->user();
 
-        $post = Post::with(['user' => fn($q) => $q->withTrashed(), 'groups'])->findOrFail($postId);
+        $post = Post::with(['user' => fn ($q) => $q->withTrashed(), 'groups'])->findOrFail($postId);
 
-        if (!$post->user || $post->user->trashed()) {
+        if (! $post->user || $post->user->trashed()) {
             return response()->json([
                 'success' => false,
                 'message' => 'This post is no longer available.',
@@ -46,7 +46,7 @@ class LikeController extends Controller
                 })
                 ->exists();
 
-            if (!$isConnected) {
+            if (! $isConnected) {
                 return response()->json([
                     'success' => false,
                     'message' => 'You are not connected to like this post',
@@ -56,7 +56,7 @@ class LikeController extends Controller
 
         if ($post->visibility === 'groups') {
             $group = $post->groups->first();
-            if (!$group) {
+            if (! $group) {
                 return response()->json(['success' => false, 'message' => 'Invalid group post'], 400);
             }
 
@@ -65,7 +65,7 @@ class LikeController extends Controller
                     ->where('group_id', $group->id)
                     ->exists();
 
-                if (!$isMember) {
+                if (! $isMember) {
                     return response()->json(['success' => false, 'message' => 'You are not a member of this group'], 403);
                 }
             }
@@ -96,7 +96,7 @@ class LikeController extends Controller
             $post->increment('total_like');
             $post->refresh();
 
-            if ($post->user_id !== $user->id && $post->user && !$post->user->trashed()) {
+            if ($post->user_id !== $user->id && $post->user && ! $post->user->trashed()) {
                 $post->user->notify(new PostLikedNotification($user, $post));
             }
 
@@ -111,6 +111,7 @@ class LikeController extends Controller
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => 'Something went wrong'], 500);
         }
     }
@@ -121,16 +122,19 @@ class LikeController extends Controller
 
         $likes = PostLike::with(['user:id,username,first_name,last_name,profile_image'])
             ->where('post_id', $postId)
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->latest()
             ->paginate($perPage);
 
         $users = collect($likes->items())->map(function ($like) {
-            if (!$like->user) return null;
+            if (! $like->user) {
+                return null;
+            }
+
             return [
                 'id' => $like->user->id,
                 'username' => $like->user->username,
-                'name' => trim(($like->user->first_name ?? '') . ' ' . ($like->user->last_name ?? '')),
+                'name' => trim(($like->user->first_name ?? '').' '.($like->user->last_name ?? '')),
                 'profile_image' => $like->user->profile_image_url,
             ];
         })->filter()->values();
@@ -165,7 +169,7 @@ class LikeController extends Controller
 
                 if ($comment->user_id != $user->id) {
                     $commentOwner = User::find($comment->user_id);
-                    if ($commentOwner && !$commentOwner->trashed()) {
+                    if ($commentOwner && ! $commentOwner->trashed()) {
                         $commentOwner->notify(new CommentLikedNotification($user, $comment));
                     }
                 }
@@ -212,7 +216,7 @@ class LikeController extends Controller
 
                 if ($reply->user_id != $user->id) {
                     $replyOwner = User::find($reply->user_id);
-                    if ($replyOwner && !$replyOwner->trashed()) {
+                    if ($replyOwner && ! $replyOwner->trashed()) {
                         $replyOwner->notify(new ReplyLikedNotification($user, $reply));
                     }
                 }
@@ -248,16 +252,19 @@ class LikeController extends Controller
 
         $likes = CommentLike::with(['user:id,username,first_name,last_name,profile_image'])
             ->where('comment_id', $commentId)
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->latest()
             ->paginate($perPage);
 
         $users = collect($likes->items())->map(function ($like) {
-            if (!$like->user) return null;
+            if (! $like->user) {
+                return null;
+            }
+
             return [
                 'id' => $like->user->id,
                 'username' => $like->user->username,
-                'name' => trim(($like->user->first_name ?? '') . ' ' . ($like->user->last_name ?? '')),
+                'name' => trim(($like->user->first_name ?? '').' '.($like->user->last_name ?? '')),
                 'profile_image' => $like->user->profile_image_url,
             ];
         })->filter()->values();
@@ -281,16 +288,19 @@ class LikeController extends Controller
 
         $likes = ReplyLike::with(['user:id,username,first_name,last_name,profile_image'])
             ->where('reply_id', $replyId)
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->latest()
             ->paginate($perPage);
 
         $users = collect($likes->items())->map(function ($like) {
-            if (!$like->user) return null;
+            if (! $like->user) {
+                return null;
+            }
+
             return [
                 'id' => $like->user->id,
                 'username' => $like->user->username,
-                'name' => trim(($like->user->first_name ?? '') . ' ' . ($like->user->last_name ?? '')),
+                'name' => trim(($like->user->first_name ?? '').' '.($like->user->last_name ?? '')),
                 'profile_image' => $like->user->profile_image_url,
             ];
         })->filter()->values();
@@ -307,11 +317,6 @@ class LikeController extends Controller
             ],
         ]);
     }
-
-
-
-
-
 
     // public function toggleLike(Request $request, $postId)
     // {

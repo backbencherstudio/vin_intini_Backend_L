@@ -8,12 +8,11 @@ use App\Models\User;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
-use Illuminate\Support\Facades\DB;
-use Symfony\Component\String\TruncateMode;
 
 class TwoFactorController extends Controller
 {
@@ -78,9 +77,9 @@ class TwoFactorController extends Controller
 
         if ($this->google2fa->verifyKey($user->two_factor_secret, $request->code)) {
             return DB::transaction(function () use ($user) {
-                $plainRecoveryCodes = collect(range(1, 10))->map(fn() => Str::random(10))->toArray();
+                $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
 
-                $hashedCodes = array_map(fn($code) => bcrypt($code), $plainRecoveryCodes);
+                $hashedCodes = array_map(fn ($code) => bcrypt($code), $plainRecoveryCodes);
 
                 $user->update([
                     'two_factor_confirmed_at' => now(),
@@ -102,7 +101,7 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'code' => 'required'
+            'code' => 'required',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -115,11 +114,11 @@ class TwoFactorController extends Controller
         $isValid = false;
         $isBackupCode = (strlen($inputCode) !== 6);
 
-        if (!$isBackupCode) {
+        if (! $isBackupCode) {
             $isValid = $this->google2fa->verifyKey($user->two_factor_secret, $inputCode);
         }
 
-        if (!$isValid && $user->two_factor_recovery_codes) {
+        if (! $isValid && $user->two_factor_recovery_codes) {
             $hashedCodes = json_decode(decrypt($user->two_factor_recovery_codes), true);
 
             foreach ($hashedCodes as $index => $hashedCode) {
@@ -134,11 +133,11 @@ class TwoFactorController extends Controller
                 }
             }
 
-            if ($isBackupCode && !$isValid) {
+            if ($isBackupCode && ! $isValid) {
                 return response()->json([
                     'status' => false,
                     'invalid_backup_code' => true,
-                    'message' => 'The backup code is invalid or has already been used.'
+                    'message' => 'The backup code is invalid or has already been used.',
                 ], 401);
             }
         }
@@ -160,7 +159,7 @@ class TwoFactorController extends Controller
         return response()->json([
             'status' => false,
             'invalid_verification_code' => true,
-            'message' => 'The verification code you entered is incorrect.'
+            'message' => 'The verification code you entered is incorrect.',
         ], 401);
     }
 
@@ -195,8 +194,8 @@ class TwoFactorController extends Controller
         }
 
         if (Hash::check($request->password, $user->password)) {
-            $plainRecoveryCodes = collect(range(1, 10))->map(fn() => Str::random(10))->toArray();
-            $hashedCodes = array_map(fn($code) => bcrypt($code), $plainRecoveryCodes);
+            $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
+            $hashedCodes = array_map(fn ($code) => bcrypt($code), $plainRecoveryCodes);
 
             $user->update([
                 'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
@@ -277,7 +276,7 @@ class TwoFactorController extends Controller
         }
 
         $parts = explode('@', $user->recovery_email);
-        $maskedEmail = substr($parts[0], 0, 3) . '****' . substr($parts[0], -2) . '@' . $parts[1];
+        $maskedEmail = substr($parts[0], 0, 3).'****'.substr($parts[0], -2).'@'.$parts[1];
 
         return response()->json([
             'status' => true,
@@ -381,7 +380,7 @@ class TwoFactorController extends Controller
         $request->validate(['email' => 'required|email']);
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !$user->recovery_email_verified_at) {
+        if (! $user || ! $user->recovery_email_verified_at) {
             return response()->json(['status' => false, 'message' => 'No verified recovery email found.'], 422);
         }
 
