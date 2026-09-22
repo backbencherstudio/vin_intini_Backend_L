@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Industry extends Model
 {
@@ -32,6 +33,24 @@ class Industry extends Model
         'authorization_confirmed' => 'boolean',
         'authorization_confirmed_at' => 'datetime',
     ];
+
+    protected function logo(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value
+                ? (str_starts_with($value, 'http') ? $value : asset('storage/' . ltrim($value, '/')))
+                : null
+        );
+    }
+
+    protected function coverImage(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value
+                ? (str_starts_with($value, 'http') ? $value : asset('storage/' . ltrim($value, '/')))
+                : null
+        );
+    }
 
     public function category()
     {
