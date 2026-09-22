@@ -15,7 +15,7 @@ class Industry extends Model
     protected $fillable = [
         'name',
         'slug',
-        'industry_category_id',
+        'industry',
         'website',
         'address',
         'company_size',
