@@ -183,7 +183,7 @@ class IndustryController extends Controller
         if (! $industry) {
             return response()->json([
                 'success' => false,
-                'message' => 'Industry not found.',
+                'message' => 'Company not found.',
             ], 404);
         }
 
@@ -194,7 +194,7 @@ class IndustryController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Industry retrieved successfully.',
+            'message' => 'Company retrieved successfully.',
             'data' => [
                 'id' => $industry->id,
                 'name' => $industry->name,
