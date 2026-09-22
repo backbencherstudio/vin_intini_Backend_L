@@ -65,7 +65,7 @@ class IndustryController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'alpha_dash', 'unique:industries,slug'],
-            'industry_category_id' => ['required', 'integer', 'exists:industry_categories,id'],
+            'industry' => ['required', 'string', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
             'address' => ['nullable', 'string', 'max:2000'],
             'company_size' => ['nullable', 'string', 'max:100'],
@@ -124,8 +124,6 @@ class IndustryController extends Controller
 
             DB::commit();
 
-            $industry->load('category');
-
             return response()->json([
                 'success' => true,
                 'message' => 'Company page created successfully.',
@@ -134,7 +132,7 @@ class IndustryController extends Controller
                     'name' => $industry->name,
                     'slug' => $industry->slug,
 
-                    'industry_category_id' => $industry->industry_category_id,
+                    'industry' => $industry->industry,
 
                     'website' => $industry->website,
                     'address' => $industry->address,
