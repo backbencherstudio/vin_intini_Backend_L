@@ -86,7 +86,7 @@ class IndustryController extends Controller
             $counter = 1;
 
             while (Industry::where('slug', $slug)->exists()) {
-                $slug = $originalSlug.'-'.$counter++;
+                $slug = $originalSlug . '-' . $counter++;
             }
 
             if ($request->hasFile('logo')) {
@@ -187,6 +187,11 @@ class IndustryController extends Controller
             ], 404);
         }
 
+        $followersCount = IndustryFollow::where(
+            'industry_id',
+            $industry->id
+        )->count();
+
         return response()->json([
             'success' => true,
             'message' => 'Industry retrieved successfully.',
@@ -209,6 +214,7 @@ class IndustryController extends Controller
 
                 'tagline' => $industry->tagline,
                 'description' => $industry->description,
+                'followers_count' => $followersCount,
 
             ],
         ], 200);
@@ -302,10 +308,10 @@ class IndustryController extends Controller
 
                 while (
                     Industry::where('slug', $slug)
-                        ->where('id', '!=', $industry->id)
-                        ->exists()
+                    ->where('id', '!=', $industry->id)
+                    ->exists()
                 ) {
-                    $slug = $originalSlug.'-'.$counter++;
+                    $slug = $originalSlug . '-' . $counter++;
                 }
 
                 $validated['slug'] = $slug;
@@ -1193,8 +1199,8 @@ class IndustryController extends Controller
                     'username' => $like->user->username,
 
                     'name' => trim(
-                        ($like->user->first_name ?? '').
-                            ' '.
+                        ($like->user->first_name ?? '') .
+                            ' ' .
                             ($like->user->last_name ?? '')
                     ),
 
@@ -1296,7 +1302,7 @@ class IndustryController extends Controller
 
                     'image' => $comment->image
                         ? Storage::disk('public')
-                            ->url($comment->image)
+                        ->url($comment->image)
                         : null,
 
                     'likes_count' => $comment->likes_count,
@@ -1410,7 +1416,7 @@ class IndustryController extends Controller
 
                     'image' => $reply->image
                         ? Storage::disk('public')
-                            ->url($reply->image)
+                        ->url($reply->image)
                         : null,
 
                     'likes_count' => $reply->likes_count,
@@ -1574,8 +1580,8 @@ class IndustryController extends Controller
                     'username' => $like->user->username,
 
                     'name' => trim(
-                        ($like->user->first_name ?? '').
-                            ' '.
+                        ($like->user->first_name ?? '') .
+                            ' ' .
                             ($like->user->last_name ?? '')
                     ),
 
@@ -1717,8 +1723,8 @@ class IndustryController extends Controller
                         'username' => $comment->user->username,
 
                         'name' => trim(
-                            ($comment->user->first_name ?? '').
-                                ' '.
+                            ($comment->user->first_name ?? '') .
+                                ' ' .
                                 ($comment->user->last_name ?? '')
                         ),
 
@@ -1768,8 +1774,8 @@ class IndustryController extends Controller
                                     'username' => $reply->user->username,
 
                                     'name' => trim(
-                                        ($reply->user->first_name ?? '').
-                                            ' '.
+                                        ($reply->user->first_name ?? '') .
+                                            ' ' .
                                             ($reply->user->last_name ?? '')
                                     ),
 
@@ -1876,8 +1882,8 @@ class IndustryController extends Controller
                         'username' => $reply->user->username,
 
                         'name' => trim(
-                            ($reply->user->first_name ?? '').
-                                ' '.
+                            ($reply->user->first_name ?? '') .
+                                ' ' .
                                 ($reply->user->last_name ?? '')
                         ),
 
