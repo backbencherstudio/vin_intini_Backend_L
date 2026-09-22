@@ -63,7 +63,7 @@ class IndustryController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'alpha_dash', 'unique:industries,slug'],
-            'industry_category_id' => ['required', 'integer', 'exists:industry_categories,id'],
+            'industry' => ['required', 'string', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
             'address' => ['nullable', 'string', 'max:2000'],
             'company_size' => ['nullable', 'string', 'max:100'],
@@ -118,8 +118,6 @@ class IndustryController extends Controller
 
             DB::commit();
 
-            $industry->load('category');
-
             return response()->json([
                 'success' => true,
                 'message' => 'Company page created successfully.',
@@ -128,7 +126,7 @@ class IndustryController extends Controller
                     'name' => $industry->name,
                     'slug' => $industry->slug,
 
-                    'industry_category_id' => $industry->industry_category_id,
+                    'industry' => $industry->industry,
 
                     'website' => $industry->website,
                     'address' => $industry->address,
@@ -180,7 +178,6 @@ class IndustryController extends Controller
     public function show(Request $request)
     {
         $industry = Industry::where('created_by', auth()->id())
-            ->with('category')
             ->first();
 
         if (! $industry) {
@@ -197,8 +194,7 @@ class IndustryController extends Controller
                 'id' => $industry->id,
                 'name' => $industry->name,
                 'slug' => $industry->slug,
-                'industry_category_id' => $industry->industry_category_id,
-                'category' => $industry->category->category_name,
+                'industry' => $industry->industry,
                 'address' => $industry->address,
                 'website' => $industry->website,
                 'company_size' => $industry->company_size,
@@ -267,7 +263,7 @@ class IndustryController extends Controller
                 Rule::unique('industries', 'slug')->ignore($industry->id),
             ],
 
-            'industry_category_id' => ['sometimes', 'integer', 'exists:industry_categories,id'],
+            'industry' => ['sometimes', 'string', 'max:255'],
 
             'website' => ['sometimes', 'nullable', 'url', 'max:255'],
             'address' => ['sometimes', 'nullable', 'string', 'max:2000'],
@@ -346,7 +342,6 @@ class IndustryController extends Controller
             }
 
             $industry->refresh();
-            $industry->load('category');
 
             return response()->json([
                 'success' => true,
@@ -356,7 +351,7 @@ class IndustryController extends Controller
                     'name' => $industry->name,
                     'slug' => $industry->slug,
 
-                    'industry_category_id' => $industry->industry_category_id,
+                    'industry' => $industry->industry,
 
                     'website' => $industry->website,
                     'address' => $industry->address,
