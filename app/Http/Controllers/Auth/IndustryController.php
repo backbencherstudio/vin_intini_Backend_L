@@ -2095,6 +2095,125 @@ class IndustryController extends Controller
         ], 200);
     }
 
+    public function deleteComment($commentId)
+    {
+        $userId = auth()->id();
+
+        $comment = IndustryPostComment::with('post')
+            ->find($commentId);
+
+        if (! $comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        $post = $comment->post;
+
+        if (! $post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        if (
+            (int) $comment->user_id !== (int) $userId &&
+            (int) $post->created_by !== (int) $userId
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to delete this comment.',
+            ], 403);
+        }
+
+        $isReply = ! is_null($comment->parent_id);
+
+        $imagePaths = [];
+        $deletedCount = 0;
+
+        DB::beginTransaction();
+
+        try {
+
+            if (! $isReply) {
+
+                $replies = IndustryPostComment::where(
+                    'parent_id',
+                    $comment->id
+                )->get();
+
+                foreach ($replies as $reply) {
+
+                    if ($reply->image) {
+                        $imagePaths[] = $reply->image;
+                    }
+
+                    $reply->delete();
+
+                    $deletedCount++;
+                }
+
+                if ($comment->image) {
+                    $imagePaths[] = $comment->image;
+                }
+
+                $comment->delete();
+
+                $deletedCount++;
+            } else {
+
+                if ($comment->image) {
+                    $imagePaths[] = $comment->image;
+                }
+
+                $comment->delete();
+
+                $deletedCount++;
+            }
+
+            $post->update([
+                'comments_count' => max(
+                    0,
+                    (int) $post->comments_count - $deletedCount
+                ),
+            ]);
+
+            DB::commit();
+
+            foreach ($imagePaths as $path) {
+
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $isReply
+                    ? 'Reply deleted successfully.'
+                    : 'Comment and replies deleted successfully.',
+                'data' => [
+                    'comment_id' => $commentId,
+                    'deleted_count' => $deletedCount,
+                    'comments_count' => (int) $post->comments_count,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete comment.',
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
     public function toggleFollow($industryId)
     {
         $userId = auth()->id();

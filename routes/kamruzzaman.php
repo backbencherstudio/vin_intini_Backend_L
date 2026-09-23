@@ -109,6 +109,8 @@ Route::middleware('role:user')->group(function () {
         Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
         Route::get('post/comment/replies/{commentId}', [IndustryController::class, 'replyList']);
 
+        Route::delete('post/comment/{commentId}', [IndustryController::class, 'deleteComment']);
+
     });
 
     Route::middleware('profile_completed')->group(function () {});
