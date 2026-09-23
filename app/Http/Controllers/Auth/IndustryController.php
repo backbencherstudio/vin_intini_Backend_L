@@ -2055,4 +2055,24 @@ class IndustryController extends Controller
             ],
         ], 200);
     }
+
+
+    private function canViewPost(IndustryPost $post, int $userId): bool
+    {
+        if ($post->visibility === 'public') {
+            return true;
+        }
+
+        if ($post->visibility === 'private') {
+            return (int) $post->created_by === $userId;
+        }
+
+        if ($post->visibility === 'followers') {
+            return IndustryFollow::where('industry_id', $post->industry_id)
+                ->where('user_id', $userId)
+                ->exists();
+        }
+
+        return false;
+    }
 }
