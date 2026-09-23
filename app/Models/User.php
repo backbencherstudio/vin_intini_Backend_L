@@ -206,6 +206,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Subscription::class);
     }
 
+    public function subscriptionOtp(): HasOne
+    {
+        return $this->hasOne(SubscriptionOtp::class);
+    }
+
     public function hasActiveSubscription(?PlanType $type = null): bool
     {
         return $this->subscriptions()

@@ -5,10 +5,12 @@ namespace Tests\Feature\Api;
 use App\Mail\SubscriptionOtpMail;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\SubscriptionOtp;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
@@ -53,6 +55,15 @@ class SubscriptionFlowTest extends TestCase
             'stripe_product_id' => 'prod_1',
             'stripe_price_id' => 'price_1',
         ], $overrides));
+    }
+
+    private function seedSubscriptionOtp(string $otp = '1234', ?Carbon $expiresAt = null): SubscriptionOtp
+    {
+        return SubscriptionOtp::create([
+            'user_id' => $this->user->id,
+            'otp' => $otp,
+            'expires_at' => $expiresAt ?? now()->addMinutes(2),
+        ]);
     }
 
     private function fakeStripeSubscription(array $overrides = []): StripeSubscription
@@ -293,8 +304,13 @@ class SubscriptionFlowTest extends TestCase
 
         Mail::assertQueued(SubscriptionOtpMail::class);
 
-        $this->assertNotNull($this->user->fresh()->otp);
-        $this->assertTrue($this->user->fresh()->otp_expires_at->greaterThan(now()));
+        $this->assertDatabaseHas('subscription_otps', [
+            'user_id' => $this->user->id,
+        ]);
+        $otpRecord = SubscriptionOtp::where('user_id', $this->user->id)->first();
+        $this->assertNotNull($otpRecord);
+        $this->assertTrue($otpRecord->expires_at->greaterThan(now()));
+        $this->assertNull($this->user->fresh()->otp);
         $this->assertDatabaseMissing('subscriptions', ['user_id' => $this->user->id]);
     }
 
@@ -302,10 +318,7 @@ class SubscriptionFlowTest extends TestCase
     {
         $plan = $this->makePlan();
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->addMinutes(2),
-        ]);
+        $this->seedSubscriptionOtp();
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/send-otp', [
             'plan_id' => $plan->id,
@@ -331,10 +344,7 @@ class SubscriptionFlowTest extends TestCase
     {
         $plan = $this->makePlan();
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->addMinutes(2),
-        ]);
+        $this->seedSubscriptionOtp();
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
             'plan_id' => $plan->id,
@@ -350,10 +360,7 @@ class SubscriptionFlowTest extends TestCase
     {
         $plan = $this->makePlan();
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->subMinute(),
-        ]);
+        $this->seedSubscriptionOtp(expiresAt: now()->subMinute());
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
             'plan_id' => $plan->id,
@@ -372,10 +379,7 @@ class SubscriptionFlowTest extends TestCase
     {
         $plan = $this->makePlan();
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->addMinutes(2),
-        ]);
+        $this->seedSubscriptionOtp();
 
         $this->mock(StripeService::class, function (MockInterface $mock) use ($plan) {
             $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
@@ -421,17 +425,14 @@ class SubscriptionFlowTest extends TestCase
             'card_last4' => '4242',
         ]);
 
-        $this->assertNull($this->user->fresh()->otp);
+        $this->assertDatabaseMissing('subscription_otps', ['user_id' => $this->user->id]);
     }
 
     public function test_create_returns_client_secret_when_payment_requires_action(): void
     {
         $plan = $this->makePlan();
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->addMinutes(2),
-        ]);
+        $this->seedSubscriptionOtp();
 
         $this->mock(StripeService::class, function (MockInterface $mock) use ($plan) {
             $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
@@ -509,10 +510,7 @@ class SubscriptionFlowTest extends TestCase
     {
         $plan = $this->makePlan();
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->addMinutes(2),
-        ]);
+        $this->seedSubscriptionOtp();
 
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('getOrCreateCustomer')->once()->andThrow(
@@ -552,10 +550,7 @@ class SubscriptionFlowTest extends TestCase
             $mock->shouldReceive('createSubscription')->never();
         });
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->addMinutes(2),
-        ]);
+        $this->seedSubscriptionOtp();
 
         $response = $this->actingAs($this->user, 'api')->postJson('/api/subscriptions/create', [
             'plan_id' => $plan->id,
@@ -571,10 +566,7 @@ class SubscriptionFlowTest extends TestCase
     {
         $plan = $this->makePlan();
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->addMinutes(2),
-        ]);
+        $this->seedSubscriptionOtp();
 
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('getOrCreateCustomer')->never();
@@ -611,10 +603,7 @@ class SubscriptionFlowTest extends TestCase
     {
         $plan = $this->makePlan(['stripe_price_id' => null]);
 
-        $this->user->update([
-            'otp' => '1234',
-            'otp_expires_at' => now()->addMinutes(2),
-        ]);
+        $this->seedSubscriptionOtp();
 
         $this->mock(StripeService::class, function (MockInterface $mock) {
             $mock->shouldReceive('getOrCreateCustomer')->never();
