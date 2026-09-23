@@ -12,6 +12,7 @@ class IndustryPost extends Model
         'industry_id',
         'created_by',
         'content',
+        'visibility',
         'likes_count',
         'comments_count',
     ];
