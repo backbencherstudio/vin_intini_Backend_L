@@ -643,6 +643,11 @@ class IndustryController extends Controller
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
 
+            'visibility' => [
+                'sometimes',
+                Rule::in(['public', 'followers', 'private',]),
+            ],
+
             'media' => ['nullable', 'array', 'max:10'],
 
             'media.*' => [
@@ -654,6 +659,7 @@ class IndustryController extends Controller
 
         if (
             ! array_key_exists('content', $validated) &&
+            ! array_key_exists('visibility', $validated) &&
             ! $request->hasFile('media')
         ) {
             return response()->json([
@@ -661,6 +667,7 @@ class IndustryController extends Controller
                 'message' => 'Nothing to update.',
             ], 422);
         }
+
 
         $content = array_key_exists('content', $validated)
             ? trim($validated['content'] ?? '')
@@ -748,8 +755,19 @@ class IndustryController extends Controller
 
             if (array_key_exists('content', $validated)) {
                 $post->content = $content ?: null;
+            }
+
+            if (array_key_exists('visibility', $validated)) {
+                $post->visibility = $validated['visibility'];
+            }
+
+            if (
+                array_key_exists('content', $validated) ||
+                array_key_exists('visibility', $validated)
+            ) {
                 $post->save();
             }
+
 
             if ($request->hasFile('media')) {
 
@@ -790,6 +808,8 @@ class IndustryController extends Controller
                     'created_by' => $post->created_by,
 
                     'content' => $post->content,
+
+                    'visibility' => $post->visibility,
 
                     'media' => $post->media
                         ->map(function ($media) {
