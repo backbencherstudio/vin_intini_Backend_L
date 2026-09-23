@@ -951,11 +951,42 @@ class IndustryController extends Controller
             ], 404);
         }
 
+        $userId = auth()->id();
+
         $posts = IndustryPost::with([
             'media',
             'industry',
         ])
             ->where('industry_id', $industryId)
+            ->where(function ($query) use ($userId) {
+
+                $query->where('visibility', 'public')
+
+                    ->orWhere(function ($query) use ($userId) {
+                        $query->where('visibility', 'followers')
+                            ->whereExists(function ($subQuery) use ($userId) {
+                                $subQuery->select(DB::raw(1))
+                                    ->from('industry_follows')
+                                    ->whereColumn(
+                                        'industry_follows.industry_id',
+                                        'industry_posts.industry_id'
+                                    )
+                                    ->where(
+                                        'industry_follows.user_id',
+                                        $userId
+                                    );
+                            });
+                    })
+
+                    ->orWhere(function ($query) use ($userId) {
+                        $query->where('visibility', 'private')
+                            ->where(
+                                'industry_posts.created_by',
+                                $userId
+                            );
+                    });
+            })
+
             ->withExists([
                 'likes as is_liked' => function ($query) {
                     $query->where(
@@ -970,7 +1001,7 @@ class IndustryController extends Controller
         return response()->json([
             'success' => true,
 
-            'message' => 'Industry posts fetched successfully.',
+            'message' => 'Company posts fetched successfully.',
 
             'data' => collect($posts->items())->map(function ($post) {
 
@@ -989,6 +1020,7 @@ class IndustryController extends Controller
                         : null,
                     'post_id' => $post->id,
                     'content' => $post->content,
+                    'visibility' => $post->visibility,
 
                     'media' => $post->media
                         ->map(function ($media) {
