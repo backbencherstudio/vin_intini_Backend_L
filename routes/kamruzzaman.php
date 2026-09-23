@@ -86,7 +86,7 @@ Route::middleware('role:user')->group(function () {
     // Recruiter Dashboard.....
     Route::prefix('industry')->group(function () {
         Route::post('create', [IndustryController::class, 'store']);
-        Route::get('show', [IndustryController::class, 'show']);
+        Route::get('show/{industryId}', [IndustryController::class, 'show']);
         Route::post('update', [IndustryController::class, 'update']);
         Route::post('follow/{industryId}', [IndustryController::class, 'toggleFollow']);
 

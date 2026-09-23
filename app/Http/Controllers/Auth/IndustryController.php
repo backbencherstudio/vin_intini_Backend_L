@@ -175,10 +175,9 @@ class IndustryController extends Controller
         }
     }
 
-    public function show(Request $request)
+    public function show(Request $request, $industryId)
     {
-        $industry = Industry::where('created_by', auth()->id())
-            ->first();
+        $industry = Industry::find($industryId);
 
         if (! $industry) {
             return response()->json([
@@ -186,11 +185,17 @@ class IndustryController extends Controller
                 'message' => 'Company not found.',
             ], 404);
         }
+        
+        $isOwner = (int) $industry->created_by === (int) auth()->id();
 
         $followersCount = IndustryFollow::where(
             'industry_id',
             $industry->id
         )->count();
+
+        $isFollowing = IndustryFollow::where('industry_id', $industry->id)
+            ->where('user_id', auth()->id())
+            ->exists();
 
         return response()->json([
             'success' => true,
@@ -215,6 +220,8 @@ class IndustryController extends Controller
                 'tagline' => $industry->tagline,
                 'description' => $industry->description,
                 'followers_count' => $followersCount,
+                'is_owner' => $isOwner,
+                'is_following' => $isFollowing,
 
             ],
         ], 200);
