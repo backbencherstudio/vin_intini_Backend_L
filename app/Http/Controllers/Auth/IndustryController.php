@@ -1657,6 +1657,22 @@ class IndustryController extends Controller
             ], 404);
         }
 
+        $post = $comment->post;
+
+        if (! $post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        if (! $this->canViewPost($post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to view comment likes.',
+            ], 403);
+        }
+
         $likes = IndustryCommentLike::with([
             'user:id,username,first_name,last_name,profile_image',
         ])
