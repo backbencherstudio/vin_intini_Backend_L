@@ -1566,6 +1566,22 @@ class IndustryController extends Controller
             ], 404);
         }
 
+        $post = $comment->post;
+
+        if (! $post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        if (! $this->canViewPost($post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to like this comment.',
+            ], 403);
+        }
+
         DB::beginTransaction();
 
         try {
@@ -1643,9 +1659,12 @@ class IndustryController extends Controller
 
     public function commentLikeList(Request $request, $commentId)
     {
-        $perPage = min(
-            (int) $request->get('per_page', 10),
-            100
+        $perPage = max(
+            1,
+            min(
+                (int) $request->get('per_page', 10),
+                100
+            )
         );
 
         $comment = IndustryPostComment::find($commentId);
