@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RecoveryOtpMail;
+use App\Models\RecoveryEmailOtp;
+use App\Models\RecoveryOtp;
 use App\Models\User;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -236,10 +238,13 @@ class TwoFactorController extends Controller
 
         $otp = rand(1000, 9999);
 
+        RecoveryEmailOtp::updateOrCreate(
+            ['user_id' => $user->id],
+            ['otp' => $otp, 'expires_at' => now()->addMinutes(3)],
+        );
+
         $user->update([
             'recovery_email' => $request->email,
-            'otp' => $otp,
-            'otp_expires_at' => now()->addMinutes(3),
             'recovery_email_verified_at' => null,
         ]);
 
@@ -253,12 +258,14 @@ class TwoFactorController extends Controller
         $request->validate(['otp' => 'required|digits:4']);
         $user = auth('api')->user();
 
-        if ((string) $user->otp === (string) $request->otp && now()->lt($user->otp_expires_at)) {
+        $otpRecord = RecoveryEmailOtp::where('user_id', $user->id)->first();
+
+        if ($otpRecord && (string) $otpRecord->otp === (string) $request->otp && now()->lt($otpRecord->expires_at)) {
             $user->update([
                 'recovery_email_verified_at' => now(),
-                'otp' => null,
-                'otp_expires_at' => null,
             ]);
+
+            $otpRecord->delete();
 
             return response()->json(['status' => true, 'message' => 'Recovery email verified successfully.']);
         }
@@ -307,10 +314,10 @@ class TwoFactorController extends Controller
         }
 
         $otp = rand(1000, 9999);
-        $user->update([
-            'otp' => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
-        ]);
+        RecoveryOtp::updateOrCreate(
+            ['user_id' => $user->id],
+            ['otp' => $otp, 'expires_at' => now()->addMinutes(10)],
+        );
 
         Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
 
@@ -328,16 +335,11 @@ class TwoFactorController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
+        $otpRecord = $user ? RecoveryOtp::where('user_id', $user->id)->first() : null;
 
-        if ($user && (string) $user->otp === (string) $request->otp && now()->lt($user->otp_expires_at)) {
+        if ($otpRecord && (string) $otpRecord->otp === (string) $request->otp && now()->lt($otpRecord->expires_at)) {
 
-            $user->update([
-                // 'two_factor_confirmed_at' => null,
-                // 'two_factor_secret' => null,
-                // 'two_factor_recovery_codes' => null,
-                'otp' => null,
-                'otp_expires_at' => null,
-            ]);
+            $otpRecord->delete();
 
             $token = auth('api')->login($user);
 
@@ -384,9 +386,11 @@ class TwoFactorController extends Controller
             return response()->json(['status' => false, 'message' => 'No verified recovery email found.'], 422);
         }
 
-        if ($user->otp_expires_at) {
+        $otpRecord = RecoveryOtp::where('user_id', $user->id)->first();
+
+        if ($otpRecord?->expires_at) {
             $totalExpirySeconds = 600;
-            $currentRemainingSeconds = now()->diffInSeconds($user->otp_expires_at, false);
+            $currentRemainingSeconds = now()->diffInSeconds($otpRecord->expires_at, false);
 
             $waitAttempt = $currentRemainingSeconds - 540;
 
@@ -399,10 +403,10 @@ class TwoFactorController extends Controller
         }
 
         $otp = rand(1000, 9999);
-        $user->update([
-            'otp' => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
-        ]);
+        RecoveryOtp::updateOrCreate(
+            ['user_id' => $user->id],
+            ['otp' => $otp, 'expires_at' => now()->addMinutes(10)],
+        );
 
         Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
 
