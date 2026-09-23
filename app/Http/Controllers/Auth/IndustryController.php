@@ -1701,6 +1701,14 @@ class IndustryController extends Controller
             ], 404);
         }
 
+        if (! $this->canViewPost($post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to view comments on this post.',
+            ], 403);
+        }
+
+
         $comments = IndustryPostComment::with([
             'user:id,username,first_name,last_name,title,profile_image',
         ])
@@ -2057,7 +2065,6 @@ class IndustryController extends Controller
             ],
         ], 200);
     }
-
 
     private function canViewPost(IndustryPost $post, int $userId): bool
     {
