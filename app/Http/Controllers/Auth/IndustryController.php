@@ -1152,6 +1152,13 @@ class IndustryController extends Controller
             ], 404);
         }
 
+        if (! $this->canViewPost($post, $userId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to like this post.',
+            ], 403);
+        }
+
         DB::beginTransaction();
 
         try {
