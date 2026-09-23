@@ -1117,6 +1117,8 @@ class IndustryController extends Controller
 
                     'content' => $post->content,
 
+                    'visibility' => $post->visibility,
+
                     'media' => $post->media
                         ->map(function ($media) {
 
