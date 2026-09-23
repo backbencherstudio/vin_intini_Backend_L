@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\SubscriptionOtpMail;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\SubscriptionOtp;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\RevenueCatException;
@@ -316,8 +317,10 @@ class SubscriptionController extends Controller
 
     private function sendOtpToUser(User $user): JsonResponse
     {
-        if ($user->otp_expires_at && $user->otp_expires_at->greaterThan(now())) {
-            $remainingSeconds = (int) ceil(now()->diffInSeconds($user->otp_expires_at, false));
+        $otpRecord = SubscriptionOtp::where('user_id', $user->id)->first();
+
+        if ($otpRecord && $otpRecord->expires_at->greaterThan(now())) {
+            $remainingSeconds = (int) ceil(now()->diffInSeconds($otpRecord->expires_at, false));
 
             return response()->json([
                 'success' => false,
@@ -327,10 +330,10 @@ class SubscriptionController extends Controller
 
         $otp = random_int(1000, 9999);
 
-        $user->update([
-            'otp' => $otp,
-            'otp_expires_at' => now()->addMinutes(3),
-        ]);
+        SubscriptionOtp::updateOrCreate(
+            ['user_id' => $user->id],
+            ['otp' => $otp, 'expires_at' => now()->addMinutes(3)],
+        );
 
         Mail::to($user->email)->queue(new SubscriptionOtpMail($otp));
 
@@ -359,11 +362,13 @@ class SubscriptionController extends Controller
 
     private function verifyOtp(User $user, string $otp): bool
     {
-        if (! $user->otp || (string) $user->otp !== $otp) {
+        $otpRecord = SubscriptionOtp::where('user_id', $user->id)->first();
+
+        if (! $otpRecord || (string) $otpRecord->otp !== $otp) {
             return false;
         }
 
-        if (! $user->otp_expires_at || now()->greaterThan($user->otp_expires_at)) {
+        if (! $otpRecord->expires_at || now()->greaterThan($otpRecord->expires_at)) {
             return false;
         }
 
@@ -372,7 +377,8 @@ class SubscriptionController extends Controller
 
     private function invalidOtpResponse(User $user): JsonResponse
     {
-        $expired = $user->otp_expires_at && now()->greaterThan($user->otp_expires_at);
+        $otpRecord = SubscriptionOtp::where('user_id', $user->id)->first();
+        $expired = $otpRecord && $otpRecord->expires_at && now()->greaterThan($otpRecord->expires_at);
 
         return response()->json([
             'success' => false,
@@ -402,7 +408,7 @@ class SubscriptionController extends Controller
                 $this->storeSubscriptionRecord($stripeSubscription, $plan, $user, $customer->id);
 
                 DB::commit();
-                $user->update(['otp' => null, 'otp_expires_at' => null]);
+                SubscriptionOtp::where('user_id', $user->id)->delete();
 
                 return response()->json([
                     'success' => true,
@@ -421,7 +427,7 @@ class SubscriptionController extends Controller
             $subscription = $this->storeSubscriptionRecord($stripeSubscription, $plan, $user, $customer->id);
 
             DB::commit();
-            $user->update(['otp' => null, 'otp_expires_at' => null]);
+            SubscriptionOtp::where('user_id', $user->id)->delete();
 
             return response()->json([
                 'success' => true,
