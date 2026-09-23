@@ -310,7 +310,6 @@ class SubscriptionFlowTest extends TestCase
         $otpRecord = SubscriptionOtp::where('user_id', $this->user->id)->first();
         $this->assertNotNull($otpRecord);
         $this->assertTrue($otpRecord->expires_at->greaterThan(now()));
-        $this->assertNull($this->user->fresh()->otp);
         $this->assertDatabaseMissing('subscriptions', ['user_id' => $this->user->id]);
     }
 

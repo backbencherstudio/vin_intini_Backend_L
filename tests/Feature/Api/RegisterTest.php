@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Mail\RegisterOtpMail;
+use App\Models\RegistrationOtp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -30,6 +31,7 @@ class RegisterTest extends TestCase
         $response = $this->postJson('/api/register', [
             'email' => 'john@example.com',
             'password' => 'secret123',
+            'terms' => true,
             'first_name' => 'John',
             'last_name' => 'Doe',
             'title' => 'Software Engineer',
@@ -49,7 +51,11 @@ class RegisterTest extends TestCase
 
         $user = User::where('email', 'john@example.com')->first();
         $this->assertTrue($user->hasRole('user'));
-        $this->assertNotNull($user->otp);
+
+        $otpRecord = RegistrationOtp::where('user_id', $user->id)->first();
+        $this->assertNotNull($otpRecord);
+        $this->assertTrue($otpRecord->expires_at->greaterThan(now()));
+
         $this->assertNull($user->first_name);
         $this->assertNull($user->mobile);
     }
@@ -68,6 +74,7 @@ class RegisterTest extends TestCase
         $response = $this->postJson('/api/register', [
             'email' => 'john@example.com',
             'password' => 'newpass123',
+            'terms' => true,
             'first_name' => 'John',
             'last_name' => 'Doe',
         ]);
@@ -80,6 +87,9 @@ class RegisterTest extends TestCase
 
         $this->assertNotEquals('oldpass123', $user->password);
         $this->assertFalse($user->is_verified);
-        $this->assertNotNull($user->otp);
+
+        $otpRecord = RegistrationOtp::where('user_id', $user->id)->first();
+        $this->assertNotNull($otpRecord);
+        $this->assertTrue($otpRecord->expires_at->greaterThan(now()));
     }
 }
