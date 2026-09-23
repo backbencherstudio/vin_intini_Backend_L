@@ -1228,9 +1228,12 @@ class IndustryController extends Controller
 
     public function likeList(Request $request, $postId)
     {
-        $perPage = min(
-            (int) $request->get('per_page', 10),
-            100
+        $perPage = max(
+            1,
+            min(
+                (int) $request->get('per_page', 10),
+                100
+            )
         );
 
         $post = IndustryPost::find($postId);
@@ -1240,6 +1243,13 @@ class IndustryController extends Controller
                 'success' => false,
                 'message' => 'Post not found.',
             ], 404);
+        }
+
+        if (! $this->canViewPost($post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to view likes on this post.',
+            ], 403);
         }
 
         $likes = IndustryPostLike::with([
