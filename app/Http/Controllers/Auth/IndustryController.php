@@ -960,7 +960,9 @@ class IndustryController extends Controller
             ->where('industry_id', $industryId)
             ->where(function ($query) use ($userId) {
 
-                $query->where('visibility', 'public')
+                $query->where('industry_posts.created_by', $userId)
+
+                    ->orWhere('visibility', 'public')
 
                     ->orWhere(function ($query) use ($userId) {
                         $query->where('visibility', 'followers')
@@ -976,14 +978,6 @@ class IndustryController extends Controller
                                         $userId
                                     );
                             });
-                    })
-
-                    ->orWhere(function ($query) use ($userId) {
-                        $query->where('visibility', 'private')
-                            ->where(
-                                'industry_posts.created_by',
-                                $userId
-                            );
                     });
             })
 
