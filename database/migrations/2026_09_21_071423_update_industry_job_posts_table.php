@@ -32,6 +32,8 @@ return new class extends Migration
 
             $table->string('network_type')->nullable()->after('employment_offering');
             $table->string('website')->nullable()->after('salary_max');
+            $table->string('level')->nullable()->after('employment_type');
+            $table->string('experience')->nullable()->after('level');
 
             $table->unsignedBigInteger('views_count')->default(0)->after('status');
             $table->unsignedBigInteger('likes_count')->default(0)->after('views_count');
@@ -90,6 +92,8 @@ return new class extends Migration
                 'network_type',
                 'slug',
                 'position',
+                'level',
+                'experience',
                 'website',
                 'views_count',
                 'likes_count',

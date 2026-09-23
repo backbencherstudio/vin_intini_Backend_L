@@ -24,6 +24,8 @@ class IndustryJobPost extends Model
         'job_description',
         'work_mode',
         'employment_type',
+        'level',
+        'experience',
         'state_id',
         'city_id',
         'email',
