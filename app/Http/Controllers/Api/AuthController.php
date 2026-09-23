@@ -8,6 +8,7 @@ use App\Models\DeletedAccountLog;
 use App\Models\FcmToken;
 use App\Models\Industry;
 use App\Models\LoginActivity;
+use App\Models\RegistrationOtp;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Auth\Events\Failed;
@@ -71,7 +72,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'pending_deletion',
                 'days_left' => (int) $daysRemaining,
-                'name' => $user->first_name . ' ' . $user->last_name,
+                'name' => $user->first_name.' '.$user->last_name,
                 'email' => $user->email,
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
             ], 200);
@@ -363,11 +364,14 @@ class AuthController extends Controller
 
                 $user->update([
                     'password' => Hash::make($request->password),
-                    'otp' => $otp,
-                    'otp_expires_at' => now()->addMinutes(3),
                     'is_verified' => false,
                     'terms_accepted_at' => now(),
                 ]);
+
+                RegistrationOtp::updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['otp' => $otp, 'expires_at' => now()->addMinutes(3)],
+                );
 
                 if ($role && ! $user->hasRole('user')) {
                     $user->assignRole($role);
@@ -387,10 +391,14 @@ class AuthController extends Controller
             $user = User::create([
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'otp' => $otp,
-                'otp_expires_at' => now()->addMinutes(3), // consistent
                 'is_verified' => false,
                 'terms_accepted_at' => now(),
+            ]);
+
+            RegistrationOtp::create([
+                'user_id' => $user->id,
+                'otp' => $otp,
+                'expires_at' => now()->addMinutes(3),
             ]);
 
             if ($role) {
@@ -447,14 +455,16 @@ class AuthController extends Controller
             ]);
         }
 
-        if (! $user->otp || (string) $user->otp !== (string) $request->otp) {
+        $otpRecord = RegistrationOtp::where('user_id', $user->id)->first();
+
+        if (! $otpRecord || (string) $otpRecord->otp !== (string) $request->otp) {
             return response()->json([
                 'status' => false,
                 'message' => 'Invalid OTP',
             ], 400);
         }
 
-        if (! $user->otp_expires_at || now()->gt($user->otp_expires_at)) {
+        if (! $otpRecord->expires_at || now()->gt($otpRecord->expires_at)) {
             return response()->json([
                 'status' => false,
                 'message' => 'OTP expired',
@@ -464,9 +474,9 @@ class AuthController extends Controller
 
         $user->forceFill([
             'is_verified' => true,
-            'otp' => null,
-            'otp_expires_at' => null,
         ])->save();
+
+        $otpRecord->delete();
 
         $token = auth('api')->login($user);
 
@@ -518,9 +528,11 @@ class AuthController extends Controller
             ], 200);
         }
 
-        if ($user->otp_expires_at && now()->lt($user->otp_expires_at)) {
+        $otpRecord = RegistrationOtp::where('user_id', $user->id)->first();
 
-            $remainingSeconds = (int) ceil(now()->diffInSeconds($user->otp_expires_at, false));
+        if ($otpRecord?->expires_at && now()->lt($otpRecord->expires_at)) {
+
+            $remainingSeconds = (int) ceil(now()->diffInSeconds($otpRecord->expires_at, false));
 
             return response()->json([
                 'status' => false,
@@ -531,11 +543,10 @@ class AuthController extends Controller
         try {
             $otp = rand(1000, 9999);
 
-            $user->forceFill([
-                'otp' => $otp,
-                'otp_expires_at' => now()->addMinutes(3),
-                'is_verified' => false,
-            ])->save();
+            RegistrationOtp::updateOrCreate(
+                ['user_id' => $user->id],
+                ['otp' => $otp, 'expires_at' => now()->addMinutes(3)],
+            );
 
             Mail::to($user->email)->queue(new RegisterOtpMail($otp));
 
