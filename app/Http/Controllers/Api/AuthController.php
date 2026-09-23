@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\RegisterOtpMail;
 use App\Models\DeletedAccountLog;
 use App\Models\FcmToken;
+use App\Models\Industry;
 use App\Models\LoginActivity;
 use App\Models\Skill;
 use App\Models\User;
@@ -70,7 +71,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'pending_deletion',
                 'days_left' => (int) $daysRemaining,
-                'name' => $user->first_name.' '.$user->last_name,
+                'name' => $user->first_name . ' ' . $user->last_name,
                 'email' => $user->email,
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
             ], 200);
@@ -133,6 +134,8 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
 
+        $industry = Industry::where('created_by', $user->id)->first();
+
         $user->load(['roles', 'profile.currentPosition', 'educations.institution']);
 
         $latestEducation = $user->educations->sortByDesc('id')->first();
@@ -170,6 +173,8 @@ class AuthController extends Controller
                 'recovery_email' => $user->recovery_email,
                 'recovery_email_verified' => $user->recovery_email_verified_at ? true : false,
                 // 'recovery_email_pending' => !$user->recovery_email_verified_at && $user->recovery_email ? true : false,
+
+                'company_id' => $industry?->id,
 
                 'profile' => $user->profile ? [
                     'privacy_profile_activity' => $user->profile->privacy_profile_activity,
