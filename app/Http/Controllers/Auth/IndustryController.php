@@ -2061,12 +2061,16 @@ class IndustryController extends Controller
 
     private function canViewPost(IndustryPost $post, int $userId): bool
     {
+        if ((int) $post->created_by === $userId) {
+            return true;
+        }
+
         if ($post->visibility === 'public') {
             return true;
         }
 
         if ($post->visibility === 'private') {
-            return (int) $post->created_by === $userId;
+            return false;
         }
 
         if ($post->visibility === 'followers') {
