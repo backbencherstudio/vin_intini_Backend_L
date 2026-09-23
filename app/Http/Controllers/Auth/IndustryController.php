@@ -1326,6 +1326,14 @@ class IndustryController extends Controller
             ], 404);
         }
 
+        if (! $this->canViewPost($post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to comment on this post.',
+            ], 403);
+        }
+
+
         DB::beginTransaction();
 
         try {
