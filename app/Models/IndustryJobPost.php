@@ -122,4 +122,9 @@ class IndustryJobPost extends Model
 
         return $this->likes()->where('user_id', $user->id)->exists();
     }
+
+    public function applications(): HasMany
+    {
+        return $this->hasMany(IndustryJobApplication::class, 'job_id');
+    }
 }

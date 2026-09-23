@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\Api\IndustryJobApplicationController;
 use Illuminate\Support\Facades\Route;
 
 // group routes
@@ -121,7 +122,7 @@ Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'upda
 // account deletion request route
 Route::post('/account/delete-request', [SecuritySettingsController::class, 'requestDelete']);
 
-// Industry job post
+// pro Industry job post
 Route::prefix('industry')->group(function () {
     Route::get('job-posts', [IndustryJobPostController::class, 'index']);
     Route::get('my-job-posts', [IndustryJobPostController::class, 'myJobs']);
@@ -134,4 +135,15 @@ Route::prefix('industry')->group(function () {
     Route::post('job-post/{id}/like', [IndustryJobPostController::class, 'toggleLike']); // like job post
     Route::post('job-post/{id}/save', [IndustryJobPostController::class, 'toggleSave']); // save/unsave job post
     Route::get('saved-jobs', [IndustryJobPostController::class, 'savedJobs']); // get saved jobs for current user
+
+
+    Route::get('job-post/{job_id}/applicants', [IndustryJobApplicationController::class, 'jobApplicants']); // get all applicants for a job post
+    Route::get('job-applications/{id}', [IndustryJobApplicationController::class, 'showApplication']); // show single application details
+    Route::patch('job-application/{id}/status', [IndustryJobApplicationController::class, 'updateApplicationStatus']); // update application status (shortlist, reject, hire)
+});
+
+// Industry job application submit form premium user
+Route::prefix('user')->group(function () {
+    Route::get('my-applications', [IndustryJobApplicationController::class, 'myApplications']);
+    Route::post('job-post/{id}/apply', [IndustryJobApplicationController::class, 'applyJob']);
 });

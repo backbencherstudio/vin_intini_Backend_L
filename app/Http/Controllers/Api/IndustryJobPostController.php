@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\IndustryJobPostStatus;
 use App\Enums\PlanType;
 use App\Http\Controllers\Controller;
+use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
 use App\Models\IndustryJobPostLike;
 use App\Models\IndustryJobPostSave;
@@ -65,6 +66,7 @@ class IndustryJobPostController extends Controller
         }
 
         $paginated = $baseQuery->with(['industry', 'state', 'city', 'creator'])
+            ->withCount('applications')
             ->latest('id')
             ->paginate($limit);
 
@@ -86,8 +88,15 @@ class IndustryJobPostController extends Controller
             ->all()
             : [];
 
-        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $currentUser) {
-            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $currentUser);
+        $appliedJobs = ($currentUser && !empty($jobIds))
+            ? IndustryJobApplication::where('applicant_id', $currentUser->id)
+            ->whereIn('job_id', $jobIds)
+            ->pluck('status', 'job_id')
+            ->all()
+            : [];
+
+        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $currentUser) {
+            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $currentUser);
         })->values();
 
         $filters = [
@@ -169,6 +178,7 @@ class IndustryJobPostController extends Controller
         }
 
         $paginated = $baseQuery->with(['state', 'city', 'industry', 'creator'])
+            ->withCount('applications')
             ->latest('id')
             ->paginate($limit);
 
@@ -191,7 +201,7 @@ class IndustryJobPostController extends Controller
             : [];
 
         $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $currentUser) {
-            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $currentUser);
+            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, null, $currentUser);
         })->values();
 
         $filters = [
@@ -245,7 +255,7 @@ class IndustryJobPostController extends Controller
             'state',
             'city',
             'creator:id,first_name,last_name,username,profile_image'
-        ]);
+        ])->withCount('applications');
 
         if (is_numeric($identifier)) {
             $jobPost = $query->where(function ($q) use ($identifier) {
@@ -268,26 +278,17 @@ class IndustryJobPostController extends Controller
         $isCreator = $currentUser && ((int) $jobPost->created_by === (int) $currentUser->id);
 
         if (!$isCreator) {
-            if ($currentUser) {
-                $view = IndustryJobPostView::firstOrCreate(
-                    [
-                        'industry_job_post_id' => $jobPost->id,
-                        'user_id'              => $currentUser->id,
-                    ],
-                    [
-                        'ip_address'           => request()->ip(),
-                    ]
-                );
-            } else {
-                $ip = request()->ip();
-                $view = IndustryJobPostView::firstOrCreate(
-                    [
-                        'industry_job_post_id' => $jobPost->id,
-                        'user_id'              => null,
-                        'ip_address'           => $ip,
-                    ]
-                );
-            }
+            $ip = request()->ip();
+
+            $view = IndustryJobPostView::firstOrCreate(
+                [
+                    'industry_job_post_id' => $jobPost->id,
+                    'user_id'              => $currentUser?->id,
+                ],
+                [
+                    'ip_address'           => $ip,
+                ]
+            );
 
             if ($view->wasRecentlyCreated) {
                 $jobPost->increment('views_count');
@@ -296,7 +297,7 @@ class IndustryJobPostController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $this->formatJobPost($jobPost, null, null, $currentUser),
+            'data'    => $this->formatJobPost($jobPost, null, null, null, $currentUser),
         ]);
     }
 
@@ -369,7 +370,7 @@ class IndustryJobPostController extends Controller
         return response()->json([
             'success' => true,
             'message' => $isDraft ? 'Job post saved as draft successfully.' : 'Job post has been published successfully.',
-            'data'    => $this->formatJobPost($jobPost, null, null, $user),
+            'data'    => $this->formatJobPost($jobPost, null, null, null, $user),
         ], 201);
     }
 
@@ -446,7 +447,7 @@ class IndustryJobPostController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Job post updated successfully.',
-            'data'    => $this->formatJobPost($jobPost, null, null, $user),
+            'data'    => $this->formatJobPost($jobPost, null, null, null, $user),
         ]);
     }
 
@@ -509,7 +510,6 @@ class IndustryJobPostController extends Controller
 
         $validated = $request->validate([
             'status'           => ['required', 'string', "in:{$allowedStatuses}"],
-            // If status is 'rejected', rejection_reason is mandatory
             'rejection_reason' => [
                 'required_if:status,rejected',
                 'nullable',
@@ -525,7 +525,6 @@ class IndustryJobPostController extends Controller
             'status' => $newStatus,
         ];
 
-        // If rejected by admin
         if ($newStatus === 'rejected') {
             $updateData['rejection_reason'] = $validated['rejection_reason'];
             $updateData['reviewed_at'] = now();
@@ -630,6 +629,7 @@ class IndustryJobPostController extends Controller
         $paginated = IndustryJobPost::query()
             ->whereHas('saves', fn($q) => $q->where('user_id', $currentUser->id))
             ->with(['industry', 'state', 'city', 'creator'])
+            ->withCount('applications')
             ->latest('id')
             ->paginate($limit);
 
@@ -645,8 +645,15 @@ class IndustryJobPostController extends Controller
             ->all()
             : [];
 
-        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $currentUser) {
-            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $currentUser);
+        $appliedJobs = !empty($jobIds)
+            ? IndustryJobApplication::where('applicant_id', $currentUser->id)
+            ->whereIn('job_id', $jobIds)
+            ->pluck('status', 'job_id')
+            ->all()
+            : [];
+
+        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $currentUser) {
+            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $currentUser);
         })->values();
 
         return response()->json([
@@ -672,10 +679,8 @@ class IndustryJobPostController extends Controller
             'employment_type'         => ['required', 'string'],
             'level'                   => ['nullable', 'string'],
             'experience'              => ['nullable', 'string'],
-
             'network_type'            => [$isDraft ? 'nullable' : 'required', 'string', 'in:psychology,neuroscience'],
-            'employment_offering'     => [$isDraft ? 'nullable' : 'required', 'string', 'in:state,private,'],
-
+            'employment_offering'     => [$isDraft ? 'nullable' : 'required', 'string', 'in:state,private'],
             'state_id'                => [$isDraft ? 'nullable' : 'required', 'integer', 'exists:states,id'],
             'city_id'                 => [
                 $isDraft ? 'nullable' : 'required',
@@ -684,22 +689,17 @@ class IndustryJobPostController extends Controller
                     return $rule->where('state_id', $request->input('state_id'));
                 }),
             ],
-
             'email'                   => ['required', 'email'],
             'phone_number'            => [$isDraft ? 'nullable' : 'required', 'string'],
             'website'                 => ['nullable', 'url'],
-
             'salary_min'              => [$isDraft ? 'nullable' : 'required', 'numeric', 'min:0'],
             'salary_max'              => [$isDraft ? 'nullable' : 'required', 'numeric', 'gte:salary_min'],
-
             'location_url'            => ['nullable', 'string', 'max:1000'],
             'tags'                    => ['nullable'],
-
             'start_date'              => ['nullable', 'date'],
             'end_date'                => ['nullable', 'date', 'after_or_equal:start_date'],
             'announcement_start_date' => ['nullable', 'date'],
             'announcement_end_date'   => ['nullable', 'date', 'after_or_equal:announcement_start_date'],
-
             'information_confirmed'   => [$isDraft ? 'nullable' : 'accepted'],
         ]);
     }
@@ -722,8 +722,13 @@ class IndustryJobPostController extends Controller
         return $jobId;
     }
 
-    private function formatJobPost(IndustryJobPost $job, ?array $likedJobIds = null, ?array $savedJobIds = null, $currentUser = null): array
-    {
+    private function formatJobPost(
+        IndustryJobPost $job,
+        ?array $likedJobIds = null,
+        ?array $savedJobIds = null,
+        ?array $appliedJobs = null,
+        $currentUser = null
+    ): array {
         $currentUser = $currentUser ?? auth('api')->user();
 
         $isLiked = ($likedJobIds !== null)
@@ -734,6 +739,28 @@ class IndustryJobPostController extends Controller
             ? isset($savedJobIds[$job->id])
             : $job->isSavedBy($currentUser);
 
+        $isApplied = false;
+        $applicationStatus = null;
+
+        if ($currentUser) {
+            if ($appliedJobs !== null) {
+                if (isset($appliedJobs[$job->id])) {
+                    $isApplied = true;
+                    $rawStatus = $appliedJobs[$job->id];
+                    $applicationStatus = $rawStatus instanceof \BackedEnum ? $rawStatus->value : $rawStatus;
+                }
+            } else {
+                $application = IndustryJobApplication::where('job_id', $job->id)
+                    ->where('applicant_id', $currentUser->id)
+                    ->first(['status']);
+
+                if ($application) {
+                    $isApplied = true;
+                    $applicationStatus = $application->status instanceof \BackedEnum ? $application->status->value : $application->status;
+                }
+            }
+        }
+
         $logo = null;
         if ($job->industry) {
             $rawLogo = $job->industry->logo_url ?? $job->industry->logo ?? null;
@@ -743,59 +770,62 @@ class IndustryJobPostController extends Controller
         }
 
         return [
-            'id'                      => $job->id,
-            'job_id'                  => $job->job_id,
-            'slug'                    => $job->slug,
-            'job_title'               => $job->job_title,
-            'position'                => $job->position,
-            'job_description'         => $job->job_description,
-            'work_mode'               => $job->work_mode,
-            'employment_type'         => $job->employment_type,
-            'network_type'            => $job->network_type,
-            'level'                   => $job->level,
-            'experience'              => $job->experience,
-            'employment_offering'     => $job->employment_offering,
-            'email'                   => $job->email,
-            'phone_number'            => $job->phone_number,
-            'website'                 => $job->website,
-            'salary_min'              => $job->salary_min,
-            'salary_max'              => $job->salary_max,
-            'location_url'            => $job->location_url,
-            'tags'                    => $job->tags ?? [],
-            'status'                  => $job->status instanceof \BackedEnum ? $job->status->value : $job->status,
-            'information_confirmed'   => (bool) $job->information_confirmed,
+            'id'                     => $job->id,
+            'job_id'                 => $job->job_id,
+            'slug'                   => $job->slug,
+            'job_title'              => $job->job_title,
+            'position'               => $job->position,
+            'job_description'        => $job->job_description,
+            'work_mode'              => $job->work_mode,
+            'employment_type'        => $job->employment_type,
+            'network_type'           => $job->network_type,
+            'level'                  => $job->level,
+            'experience'             => $job->experience,
+            'employment_offering'    => $job->employment_offering,
+            'email'                  => $job->email,
+            'phone_number'           => $job->phone_number,
+            'website'                => $job->website,
+            'salary_min'             => $job->salary_min,
+            'salary_max'             => $job->salary_max,
+            'location_url'           => $job->location_url,
+            'tags'                   => $job->tags ?? [],
+            'status'                 => $job->status instanceof \BackedEnum ? $job->status->value : $job->status,
+            'information_confirmed'  => (bool) $job->information_confirmed,
 
-            'views_count'             => (int) ($job->views_count ?? 0),
-            'likes_count'             => (int) ($job->likes_count ?? 0),
-            'is_liked'                => (bool) $isLiked,
-            'is_saved'                => (bool) $isSaved,
+            'views_count'            => (int) ($job->views_count ?? 0),
+            'likes_count'            => (int) ($job->likes_count ?? 0),
+            'applications_count'     => (int) ($job->applications_count ?? 0),
+            'is_liked'               => (bool) $isLiked,
+            'is_saved'               => (bool) $isSaved,
+            'is_applied'             => (bool) $isApplied,
+            'application_status'     => $applicationStatus,
 
-            'state'                   => $job->state ? [
+            'state'                  => $job->state ? [
                 'id'   => $job->state->id,
                 'name' => $job->state->name,
             ] : null,
-            'city'     => $job->city ? [
+            'city'                   => $job->city ? [
                 'id'   => $job->city->id,
                 'name' => $job->city->name,
             ] : null,
-            'industry' => $job->industry ? [
+            'industry'               => $job->industry ? [
                 'id'   => $job->industry->id,
                 'name' => $job->industry->name ?? null,
                 'slug' => $job->industry->slug ?? null,
                 'logo' => $logo,
             ] : null,
-            'creator'           => $job->creator ? [
+            'creator'                => $job->creator ? [
                 'id'            => $job->creator->id,
                 'name'          => trim(($job->creator->first_name ?? '') . ' ' . ($job->creator->last_name ?? '')),
                 'username'      => $job->creator->username,
                 'profile_image' => $job->creator->profile_image_url ?? $job->creator->profile_image,
             ] : null,
             'announcement_start_date' => optional($job->announcement_start_date)?->toDateString(),
-            'announcement_end_date'   => optional($job->announcement_end_date)?->toDateString(),
-            'submitted_at'            => optional($job->submitted_at)?->toDateTimeString(),
-            'reviewed_at'             => optional($job->reviewed_at)?->toDateTimeString(),
-            'rejection_reason'        => $job->rejection_reason,
-            'created_at'              => optional($job->created_at)?->toDateTimeString(),
+            'announcement_end_date'  => optional($job->announcement_end_date)?->toDateString(),
+            'submitted_at'           => optional($job->submitted_at)?->toDateTimeString(),
+            'reviewed_at'            => optional($job->reviewed_at)?->toDateTimeString(),
+            'rejection_reason'       => $job->rejection_reason,
+            'created_at'             => optional($job->created_at)?->toDateTimeString(),
         ];
     }
 }
