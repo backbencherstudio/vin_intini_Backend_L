@@ -36,8 +36,6 @@ class User extends Authenticatable implements JWTSubject
         'has_password',
         'profile_image',
         'cover_image',
-        'otp',
-        'otp_expires_at',
         'is_verified',
         'stripe_customer_id',
         'terms_accepted_at',
@@ -52,8 +50,6 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'remember_token',
         'mobile',
-        'otp',
-        'otp_expires_at',
         'is_verified',
         'stripe_customer_id',
         'profile_image',
@@ -70,7 +66,6 @@ class User extends Authenticatable implements JWTSubject
         return [
             'email_verified_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
-            'otp_expires_at' => 'datetime',
             'is_verified' => 'boolean',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
@@ -209,6 +204,21 @@ class User extends Authenticatable implements JWTSubject
     public function subscriptionOtp(): HasOne
     {
         return $this->hasOne(SubscriptionOtp::class);
+    }
+
+    public function registrationOtp(): HasOne
+    {
+        return $this->hasOne(RegistrationOtp::class);
+    }
+
+    public function recoveryOtp(): HasOne
+    {
+        return $this->hasOne(RecoveryOtp::class);
+    }
+
+    public function recoveryEmailOtp(): HasOne
+    {
+        return $this->hasOne(RecoveryEmailOtp::class);
     }
 
     public function hasActiveSubscription(?PlanType $type = null): bool
