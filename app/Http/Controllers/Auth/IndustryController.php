@@ -1435,6 +1435,22 @@ class IndustryController extends Controller
             ], 404);
         }
 
+        $post = $parentComment->post;
+
+        if (! $post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found.',
+            ], 404);
+        }
+
+        if (! $this->canViewPost($post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to reply to this comment.',
+            ], 403);
+        }
+
         DB::beginTransaction();
 
         try {
