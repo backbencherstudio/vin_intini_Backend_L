@@ -185,7 +185,7 @@ class IndustryController extends Controller
                 'message' => 'Company not found.',
             ], 404);
         }
-        
+
         $isOwner = (int) $industry->created_by === (int) auth()->id();
 
         $followersCount = IndustryFollow::where(
@@ -446,6 +446,10 @@ class IndustryController extends Controller
 
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
+            'visibility' => [
+                'required',
+                Rule::in(['public', 'followers', 'private',]),
+            ],
 
             'media' => ['nullable', 'array', 'max:10'],
 
@@ -518,6 +522,7 @@ class IndustryController extends Controller
                 'industry_id' => $industry->id,
                 'created_by' => $userId,
                 'content' => $content ?: null,
+                'visibility' => $validated['visibility'],
             ]);
 
             if ($request->hasFile('media')) {
@@ -552,6 +557,8 @@ class IndustryController extends Controller
                     'created_by' => $post->created_by,
 
                     'content' => $post->content,
+
+                    'visibility' => $post->visibility,
 
                     'media' => $post->media->map(function ($media) {
 
