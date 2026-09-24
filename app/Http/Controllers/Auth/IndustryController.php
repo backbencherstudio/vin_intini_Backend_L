@@ -175,7 +175,7 @@ class IndustryController extends Controller
         }
     }
 
-    public function show(Request $request, $industryId)
+    public function show($industryId)
     {
         $industry = Industry::find($industryId);
 
