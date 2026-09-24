@@ -10,20 +10,44 @@ use Illuminate\Http\Request;
 
 class AcademiaController extends Controller
 {
-    public function getStates(): JsonResponse
+    public function getStates(Request $request): JsonResponse
     {
         $states = State::withCount([
             'universities',
             'residencies',
             'facilities',
             'jobs',
-        ])->get();
+        ])
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'LIKE', "%{$search}%")
+                        ->orWhere('code', 'LIKE', "%{$search}%");
+                });
+            })
+            ->orderBy('name')
+            ->get();
 
         return response()->json([
             'success' => true,
             'data' => StateResource::collection($states),
         ]);
     }
+
+    // public function getStates(): JsonResponse
+    // {
+    //     $states = State::withCount([
+    //         'universities',
+    //         'residencies',
+    //         'facilities',
+    //         'jobs',
+    //     ])->get();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => StateResource::collection($states),
+    //     ]);
+    // }
 
     public function getStateDetails($code): JsonResponse
     {
@@ -56,7 +80,7 @@ class AcademiaController extends Controller
         $query = $state->universities();
 
         if ($search !== '') {
-            $query->where('academia_universities.name', 'like', '%'.$search.'%');
+            $query->where('academia_universities.name', 'like', '%' . $search . '%');
         }
 
         if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
@@ -120,7 +144,7 @@ class AcademiaController extends Controller
         $query = $state->residencies();
 
         if ($search !== '') {
-            $query->where('academia_medical_residencies.program_name', 'like', '%'.$search.'%');
+            $query->where('academia_medical_residencies.program_name', 'like', '%' . $search . '%');
         }
 
         if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
@@ -185,7 +209,7 @@ class AcademiaController extends Controller
         });
 
         $query->when($search !== '', function ($q) use ($search) {
-            return $q->where('academia_facilities.name', 'like', '%'.$search.'%');
+            return $q->where('academia_facilities.name', 'like', '%' . $search . '%');
         });
 
         // alphabetical order
@@ -285,7 +309,7 @@ class AcademiaController extends Controller
         ], 200);
     }
 
-    public function getCities(string $code): JsonResponse
+    public function getCities(Request $request, string $code): JsonResponse
     {
         $state = State::where('code', $code)->first();
 
@@ -297,6 +321,9 @@ class AcademiaController extends Controller
         }
 
         $cities = $state->cities()
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $query->where('name', 'LIKE', '%' . $request->input('search') . '%');
+            })
             ->orderBy('name')
             ->get(['id', 'name']);
 
