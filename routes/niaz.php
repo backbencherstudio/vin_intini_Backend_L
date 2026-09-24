@@ -124,26 +124,30 @@ Route::post('/account/delete-request', [SecuritySettingsController::class, 'requ
 
 // pro Industry job post
 Route::prefix('industry')->group(function () {
-    Route::get('job-posts', [IndustryJobPostController::class, 'index']);
-    Route::get('my-job-posts', [IndustryJobPostController::class, 'myJobs']);
-    Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']);
-    Route::post('job-post/create', [IndustryJobPostController::class, 'store']);
-    Route::put('job-post/{id}/update', [IndustryJobPostController::class, 'update']);
-    Route::delete('job-post/{id}/delete', [IndustryJobPostController::class, 'destroy']);
-    Route::patch('job-post/{id}/status', [IndustryJobPostController::class, 'updateStatus']);
+    Route::get('job-posts', [IndustryJobPostController::class, 'index']); //global route
+    Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']);//global show route
 
+    //industry job post routes for the authenticated user (creator)
+    Route::get('my-job-posts', [IndustryJobPostController::class, 'myJobs']); //my created job list
+    Route::get('my-archived-job-posts', [IndustryJobPostController::class, 'myArchivedJobs']); //created my archive job
+    Route::post('job-post/create', [IndustryJobPostController::class, 'store']); // create a new job post
+    Route::put('job-post/{id}/update', [IndustryJobPostController::class, 'update']); // update a job post
+    Route::delete('job-post/{id}/delete', [IndustryJobPostController::class, 'destroy']); // delete a job post
+    Route::patch('job-post/{id}/status', [IndustryJobPostController::class, 'updateStatus']);  // update job post status 
+
+    // user interaction routes for job posts (like, save, apply)
     Route::post('job-post/{id}/like', [IndustryJobPostController::class, 'toggleLike']); // like job post
     Route::post('job-post/{id}/save', [IndustryJobPostController::class, 'toggleSave']); // save/unsave job post
     Route::get('saved-jobs', [IndustryJobPostController::class, 'savedJobs']); // get saved jobs for current user
+    
+    // user application routes for job posts
+    Route::get('my-job-applications', [IndustryJobApplicationController::class, 'myApplications']); // get all applications of the current user
+    Route::post('job-post/{id}/apply', [IndustryJobApplicationController::class, 'applyJob']); // apply for a job post
 
-
+    // routes for job applicants (for the creator or industry of the job post)
     Route::get('job-post/{job_id}/applicants', [IndustryJobApplicationController::class, 'jobApplicants']); // get all applicants for a job post
     Route::get('job-applications/{id}', [IndustryJobApplicationController::class, 'showApplication']); // show single application details
     Route::patch('job-application/{id}/status', [IndustryJobApplicationController::class, 'updateApplicationStatus']); // update application status (shortlist, reject, hire)
 });
 
-// Industry job application submit form premium user
-Route::prefix('user')->group(function () {
-    Route::get('my-applications', [IndustryJobApplicationController::class, 'myApplications']);
-    Route::post('job-post/{id}/apply', [IndustryJobApplicationController::class, 'applyJob']);
-});
+

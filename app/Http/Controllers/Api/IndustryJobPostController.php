@@ -148,6 +148,7 @@ class IndustryJobPostController extends Controller
         ], 200);
     }
 
+    //industry job post list for the authenticated user (creator)
     public function myJobs(Request $request): JsonResponse
     {
         $currentUser = auth('api')->user();
@@ -156,82 +157,97 @@ class IndustryJobPostController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        $search = trim((string) $request->query('search', ''));
-        $status = $request->query('status');
+        $jobId              = trim((string) $request->query('job_id', ''));
+        $search             = trim((string) $request->query('search', ''));
+        $rawStatus          = $request->query('status');
+        $networkType        = $request->query('network_type');
+        $workMode           = $request->query('work_mode');
+        $employmentOffering = $request->query('employment_offering');
+        $employmentType     = $request->query('employment_type');
+        $stateId            = $request->filled('state_id') ? $request->integer('state_id') : null;
+        $cityId             = $request->filled('city_id') ? $request->integer('city_id') : null;
 
-        $limit = min($request->integer('limit', 10), 100);
+        $page  = max($request->integer('current_page', 1), 1);
+        $limit = min(max($request->integer('limit', 10), 1), 100);
 
-        $baseQuery = IndustryJobPost::query()->where('created_by', $currentUser->id);
+        $baseQuery = IndustryJobPost::query()->where('created_by', $currentUser->id)->where('status', '!=', 'archive');
         $totalJobsCount = (clone $baseQuery)->count();
 
+        // 1. Specific Job ID Filter
+        if ($jobId !== '') {
+            $baseQuery->where('job_id', $jobId);
+        }
+
+        // 2. Global Text Search
         if ($search !== '') {
             $baseQuery->where(function ($q) use ($search) {
                 $q->where('job_title', 'LIKE', "%{$search}%")
                     ->orWhere('job_id', 'LIKE', "%{$search}%")
-                    ->orWhere('position', 'LIKE', "%{$search}%")
-                    ->orWhere('job_description', 'LIKE', "%{$search}%");
+                    ->orWhere('position', 'LIKE', "%{$search}%");
             });
         }
 
-        if (!empty($status)) {
-            $baseQuery->where('status', $status);
+        $statuses = [];
+        if (!empty($rawStatus)) {
+            $statuses = is_array($rawStatus)
+                ? array_filter(array_map('trim', $rawStatus))
+                : array_filter(array_map('trim', explode(',', (string) $rawStatus)));
+
+            if (!empty($statuses)) {
+                $baseQuery->whereIn('status', $statuses);
+            }
         }
 
-        $paginated = $baseQuery->with(['state', 'city', 'industry', 'creator'])
+        // 4. Dropdown / Attribute Filters
+        if (!empty($networkType)) {
+            $baseQuery->where('network_type', $networkType);
+        }
+        if (!empty($workMode)) {
+            $baseQuery->where('work_mode', $workMode);
+        }
+        if (!empty($employmentOffering)) {
+            $baseQuery->where('employment_offering', $employmentOffering);
+        }
+        if (!empty($employmentType)) {
+            $baseQuery->where('employment_type', $employmentType);
+        }
+
+        // 5. Location Filters
+        if (!empty($stateId)) {
+            $baseQuery->where('state_id', $stateId);
+        }
+        if (!empty($cityId)) {
+            $baseQuery->where('city_id', $cityId);
+        }
+
+        $paginated = $baseQuery->with([
+            'industry:id,name,logo',
+            'state:id,name',
+            'city:id,name',
+        ])
             ->withCount('applications')
             ->latest('id')
-            ->paginate($limit);
+            ->paginate($limit, ['*'], 'page', $page);
 
-        $jobIds = $paginated->pluck('id')->all();
-
-        $likedJobIds = !empty($jobIds)
-            ? IndustryJobPostLike::where('user_id', $currentUser->id)
-            ->whereIn('industry_job_post_id', $jobIds)
-            ->pluck('industry_job_post_id')
-            ->flip()
-            ->all()
-            : [];
-
-        $savedJobIds = !empty($jobIds)
-            ? IndustryJobPostSave::where('user_id', $currentUser->id)
-            ->whereIn('industry_job_post_id', $jobIds)
-            ->pluck('industry_job_post_id')
-            ->flip()
-            ->all()
-            : [];
-
-        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $currentUser) {
-            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, null, $currentUser);
+        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) {
+            return $this->formatJobCard($job);
         })->values();
 
         $filters = [
-            'search' => $search !== '' ? $search : null,
-            'status' => $status ?: null,
+            'job_id'              => $jobId !== '' ? $jobId : null,
+            'search'              => $search !== '' ? $search : null,
+            'status'              => !empty($statuses) ? (count($statuses) === 1 ? reset($statuses) : $statuses) : null,
+            'network_type'        => $networkType ?: null,
+            'work_mode'           => $workMode ?: null,
+            'employment_offering' => $employmentOffering ?: null,
+            'employment_type'     => $employmentType ?: null,
+            'state_id'            => $stateId,
+            'city_id'             => $cityId,
         ];
-
-        if ($paginated->isEmpty()) {
-            return response()->json([
-                'success'      => true,
-                'message'      => $search !== '' ? 'No jobs found for this search.' : 'You have not created any job posts yet.',
-                'status'       => 'success',
-                'total_jobs'   => $totalJobsCount,
-                'data'         => [],
-                'stats'        => [
-                    'total_jobs'    => $totalJobsCount,
-                    'filtered_jobs' => 0,
-                ],
-                'total'        => 0,
-                'limit'        => $limit,
-                'current_page' => $paginated->currentPage(),
-                'total_page'   => 0,
-                'last_page'    => 0,
-                'filters'      => $filters,
-            ], 200);
-        }
 
         return response()->json([
             'success'      => true,
-            'message'      => 'Your job posts retrieved successfully.',
+            'message'      => $paginated->isEmpty() ? 'No jobs found matching your criteria.' : 'Your job posts retrieved successfully.',
             'status'       => 'success',
             'total_jobs'   => $totalJobsCount,
             'data'         => $formattedData,
@@ -247,6 +263,245 @@ class IndustryJobPostController extends Controller
             'filters'      => $filters,
         ], 200);
     }
+
+    public function myArchivedJobs(Request $request): JsonResponse
+    {
+        $currentUser = auth('api')->user();
+
+        if (!$currentUser) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+        }
+
+        $jobId              = trim((string) $request->query('job_id', ''));
+        $search             = trim((string) $request->query('search', ''));
+        $networkType        = $request->query('network_type');
+        $workMode           = $request->query('work_mode');
+        $employmentOffering = $request->query('employment_offering');
+        $employmentType     = $request->query('employment_type');
+        $stateId            = $request->filled('state_id') ? $request->integer('state_id') : null;
+        $cityId             = $request->filled('city_id') ? $request->integer('city_id') : null;
+
+        $page  = max($request->integer('current_page', 1), 1);
+        $limit = min(max($request->integer('limit', 10), 1), 100);
+
+        $baseQuery = IndustryJobPost::query()
+            ->where('created_by', $currentUser->id)
+            ->where('status', 'archive');
+
+        $totalJobsCount = (clone $baseQuery)->count();
+
+        // 1. Job ID Filter
+        if ($jobId !== '') {
+            $baseQuery->where('job_id', $jobId);
+        }
+
+        // 2. Global Text Search
+        if ($search !== '') {
+            $baseQuery->where(function ($q) use ($search) {
+                $q->where('job_title', 'LIKE', "%{$search}%")
+                    ->orWhere('job_id', 'LIKE', "%{$search}%")
+                    ->orWhere('position', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // 3. Dropdown / Attribute Filters
+        if (!empty($networkType)) {
+            $baseQuery->where('network_type', $networkType);
+        }
+        if (!empty($workMode)) {
+            $baseQuery->where('work_mode', $workMode);
+        }
+        if (!empty($employmentOffering)) {
+            $baseQuery->where('employment_offering', $employmentOffering);
+        }
+        if (!empty($employmentType)) {
+            $baseQuery->where('employment_type', $employmentType);
+        }
+
+        // 4. Location Filters
+        if (!empty($stateId)) {
+            $baseQuery->where('state_id', $stateId);
+        }
+        if (!empty($cityId)) {
+            $baseQuery->where('city_id', $cityId);
+        }
+
+        $paginated = $baseQuery->with([
+            'industry:id,name,logo',
+            'state:id,name',
+            'city:id,name',
+        ])
+            ->withCount('applications')
+            ->latest('id')
+            ->paginate($limit, ['*'], 'page', $page);
+
+        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) {
+            return $this->formatJobCard($job);
+        })->values();
+
+        $filters = [
+            'job_id'              => $jobId !== '' ? $jobId : null,
+            'search'              => $search !== '' ? $search : null,
+            'network_type'        => $networkType ?: null,
+            'work_mode'           => $workMode ?: null,
+            'employment_offering' => $employmentOffering ?: null,
+            'employment_type'     => $employmentType ?: null,
+            'state_id'            => $stateId,
+            'city_id'             => $cityId,
+        ];
+
+        return response()->json([
+            'success'      => true,
+            'message'      => $paginated->isEmpty() ? 'No archived jobs found.' : 'Archived job posts retrieved successfully.',
+            'status'       => 'success',
+            'total_jobs'   => $totalJobsCount,
+            'data'         => $formattedData,
+            'stats'        => [
+                'total_jobs'    => $totalJobsCount,
+                'filtered_jobs' => $paginated->total(),
+            ],
+            'total'        => $paginated->total(),
+            'limit'        => $paginated->perPage(),
+            'current_page' => $paginated->currentPage(),
+            'total_page'   => $paginated->lastPage(),
+            'last_page'    => $paginated->lastPage(),
+            'filters'      => $filters,
+        ], 200);
+    }
+
+    private function formatJobCard(IndustryJobPost $job): array
+    {
+        $logo = null;
+        if ($job->industry) {
+            $rawLogo = $job->industry->logo ?? null;
+            if ($rawLogo) {
+                $logo = str_starts_with($rawLogo, 'http') ? $rawLogo : asset('storage/' . ltrim($rawLogo, '/'));
+            }
+        }
+
+        // Location formatting (e.g., "Dhaka, Gulshan 1")
+        $location = array_filter([$job->state?->name, $job->city?->name]);
+        $locationString = !empty($location) ? implode(', ', $location) : 'N/A';
+
+        return [
+            'id'                 => $job->id,
+            'job_id'             => $job->job_id,
+            'slug'               => $job->slug,
+            'job_title'          => $job->job_title,
+            'industry_name'      => $job->industry?->name,
+            'industry_logo'      => $logo,
+            'status'             => $job->status instanceof \BackedEnum ? $job->status->value : $job->status,
+            'badges'             => array_values(array_filter([
+                $job->employment_type,
+                $job->work_mode,
+                $job->network_type,
+            ])),
+            'short_description'  => Str::limit(strip_tags($job->job_description), 110),
+            'location'           => $locationString,
+            'views_count'        => (int) ($job->views_count ?? 0),
+            'applications_count' => (int) ($job->applications_count ?? 0),
+        ];
+    }
+
+    // public function myJobs(Request $request): JsonResponse
+    // {
+    //     $currentUser = auth('api')->user();
+
+    //     if (!$currentUser) {
+    //         return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+    //     }
+
+    //     $search = trim((string) $request->query('search', ''));
+    //     $status = $request->query('status');
+
+    //     $limit = min($request->integer('limit', 10), 100);
+
+    //     $baseQuery = IndustryJobPost::query()->where('created_by', $currentUser->id);
+    //     $totalJobsCount = (clone $baseQuery)->count();
+
+    //     if ($search !== '') {
+    //         $baseQuery->where(function ($q) use ($search) {
+    //             $q->where('job_title', 'LIKE', "%{$search}%")
+    //                 ->orWhere('job_id', 'LIKE', "%{$search}%")
+    //                 ->orWhere('position', 'LIKE', "%{$search}%")
+    //                 ->orWhere('job_description', 'LIKE', "%{$search}%");
+    //         });
+    //     }
+
+    //     if (!empty($status)) {
+    //         $baseQuery->where('status', $status);
+    //     }
+
+    //     $paginated = $baseQuery->with(['state', 'city', 'industry', 'creator'])
+    //         ->withCount('applications')
+    //         ->latest('id')
+    //         ->paginate($limit);
+
+    //     $jobIds = $paginated->pluck('id')->all();
+
+    //     $likedJobIds = !empty($jobIds)
+    //         ? IndustryJobPostLike::where('user_id', $currentUser->id)
+    //         ->whereIn('industry_job_post_id', $jobIds)
+    //         ->pluck('industry_job_post_id')
+    //         ->flip()
+    //         ->all()
+    //         : [];
+
+    //     $savedJobIds = !empty($jobIds)
+    //         ? IndustryJobPostSave::where('user_id', $currentUser->id)
+    //         ->whereIn('industry_job_post_id', $jobIds)
+    //         ->pluck('industry_job_post_id')
+    //         ->flip()
+    //         ->all()
+    //         : [];
+
+    //     $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $currentUser) {
+    //         return $this->formatJobPost($job, $likedJobIds, $savedJobIds, null, $currentUser);
+    //     })->values();
+
+    //     $filters = [
+    //         'search' => $search !== '' ? $search : null,
+    //         'status' => $status ?: null,
+    //     ];
+
+    //     if ($paginated->isEmpty()) {
+    //         return response()->json([
+    //             'success'      => true,
+    //             'message'      => $search !== '' ? 'No jobs found for this search.' : 'You have not created any job posts yet.',
+    //             'status'       => 'success',
+    //             'total_jobs'   => $totalJobsCount,
+    //             'data'         => [],
+    //             'stats'        => [
+    //                 'total_jobs'    => $totalJobsCount,
+    //                 'filtered_jobs' => 0,
+    //             ],
+    //             'total'        => 0,
+    //             'limit'        => $limit,
+    //             'current_page' => $paginated->currentPage(),
+    //             'total_page'   => 0,
+    //             'last_page'    => 0,
+    //             'filters'      => $filters,
+    //         ], 200);
+    //     }
+
+    //     return response()->json([
+    //         'success'      => true,
+    //         'message'      => 'Your job posts retrieved successfully.',
+    //         'status'       => 'success',
+    //         'total_jobs'   => $totalJobsCount,
+    //         'data'         => $formattedData,
+    //         'stats'        => [
+    //             'total_jobs'    => $totalJobsCount,
+    //             'filtered_jobs' => $paginated->total(),
+    //         ],
+    //         'total'        => $paginated->total(),
+    //         'limit'        => $paginated->perPage(),
+    //         'current_page' => $paginated->currentPage(),
+    //         'total_page'   => $paginated->lastPage(),
+    //         'last_page'    => $paginated->lastPage(),
+    //         'filters'      => $filters,
+    //     ], 200);
+    // }
 
     public function show($identifier): JsonResponse
     {

@@ -247,8 +247,14 @@ class IndustryJobApplicationController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        // Job ebong tar shathe related industry load kora
-        $jobPost = IndustryJobPost::with('industry')->find($jobId);
+        // Header data sajate dorkari relation load
+        $jobPost = IndustryJobPost::with([
+            'industry:id,name,logo,created_by',
+            'state:id,name',
+            'city:id,name'
+        ])
+            ->withCount('applications')
+            ->find($jobId);
 
         if (! $jobPost) {
             return response()->json(['success' => false, 'message' => 'Job post not found.'], 404);
@@ -266,15 +272,39 @@ class IndustryJobApplicationController extends Controller
             ], 403);
         }
 
-        $status = $request->query('status');
+        // ----------------------------------------------------
+        // Status Counts (Backend Enum Values Matching)
+        // ----------------------------------------------------
+        $rawCounts = IndustryJobApplication::where('job_id', $jobPost->id)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->toArray();
+
+        $statusCounts = [
+            'all'         => (int) $jobPost->applications_count,
+            'pending'     => (int) ($rawCounts['pending'] ?? 0),
+            'reviewing'   => (int) ($rawCounts['reviewing'] ?? 0),
+            'shortlisted' => (int) ($rawCounts['shortlisted'] ?? 0),
+            'interviewed' => (int) ($rawCounts['interviewed'] ?? 0),
+            'offered'     => (int) ($rawCounts['offered'] ?? 0),
+            'hired'       => (int) ($rawCounts['hired'] ?? 0),
+            'rejected'    => (int) ($rawCounts['rejected'] ?? 0),
+        ];
+
+        // ----------------------------------------------------
+        // Filter & Search Logic (Default Status: all)
+        // ----------------------------------------------------
+        $status = strtolower(trim((string) $request->query('status', 'all')));
         $search = trim((string) $request->query('search', ''));
-        $limit = min($request->integer('limit', 10), 100);
+        $page   = max($request->integer('current_page', 1), 1);
+        $limit  = min(max($request->integer('limit', 10), 1), 100);
 
         $query = IndustryJobApplication::where('job_id', $jobPost->id)
             ->with(['applicant:id,first_name,last_name,username,email,profile_image'])
             ->latest('id');
 
-        if (! empty($status)) {
+        if ($status !== 'all' && $status !== '') {
             $query->where('status', $status);
         }
 
@@ -286,50 +316,165 @@ class IndustryJobApplicationController extends Controller
             });
         }
 
-        $paginated = $query->paginate($limit);
+        $paginated = $query->paginate($limit, ['*'], 'page', $page);
 
-        $formattedData = $paginated->getCollection()->map(function (IndustryJobApplication $app) {
+        // Table Data Format
+        $formattedApplicants = $paginated->getCollection()->map(function (IndustryJobApplication $app) use ($jobPost) {
+            $avatar = null;
+            if ($app->applicant) {
+                $rawImg = $app->applicant->profile_image_url ?? $app->applicant->profile_image;
+                if ($rawImg) {
+                    $avatar = str_starts_with($rawImg, 'http') ? $rawImg : asset('storage/' . ltrim($rawImg, '/'));
+                }
+            }
+
             return [
-                'id'               => $app->id,
-                'application_id'   => $app->application_id,
-                'application_type' => $app->application_type,
-                'full_name'        => $app->full_name,
-                'email'            => $app->email,
-                'phone_number'     => $app->phone_number,
-                'experiences'      => $app->experiences,
-                'current_position' => $app->current_position,
-                'expected_salary'  => $app->expected_salary,
-                'location'         => $app->location,
-                'linkedin_url'     => $app->linkedin_url,
-                'portfolio_url'    => $app->portfolio_url,
-                'cover_letter'     => $app->cover_letter,
-                'about_yourself'   => $app->about_yourself,
-                'skills'           => $app->skills ?? [],
-                'resume_url'       => $app->resume_url,
-                'status'           => $app->status instanceof \BackedEnum ? $app->status->value : $app->status,
-                'applied_at'       => $app->created_at->toDateTimeString(),
-                'applicant'        => $app->applicant ? [
-                    'id'            => $app->applicant->id,
-                    'name'          => trim(($app->applicant->first_name ?? '') . ' ' . ($app->applicant->last_name ?? '')),
-                    'username'      => $app->applicant->username,
-                    'profile_image' => $app->applicant->profile_image_url ?? $app->applicant->profile_image,
-                ] : null,
+                'id'             => $app->id,
+                'job_id'         => '#' . ($jobPost->job_id ?? $jobPost->id),
+                'application_id' => $app->application_id,
+                'applicant_name' => $app->full_name ?: trim(($app->applicant->first_name ?? '') . ' ' . ($app->applicant->last_name ?? '')),
+                'email'          => $app->email ?: $app->applicant?->email,
+                'avatar'         => $avatar,
+                'position'       => $app->current_position ?: ($app->experiences ?? 'N/A'),
+                'applied_on'     => $app->created_at ? $app->created_at->format('M d, Y') : 'N/A',
+                'network'        => $jobPost->network_type ? ucfirst($jobPost->network_type) : 'N/A',
+                'status'         => $app->status instanceof \BackedEnum ? $app->status->value : $app->status,
             ];
         });
 
+        // Header Summary Data
+        $industryLogo = null;
+        if ($jobPost->industry) {
+            $rawLogo = $jobPost->industry->logo ?? null;
+            if ($rawLogo) {
+                $industryLogo = str_starts_with($rawLogo, 'http') ? $rawLogo : asset('storage/' . ltrim($rawLogo, '/'));
+            }
+        }
+
+        $locationParts = array_filter([$jobPost->state?->name, $jobPost->city?->name]);
+        $locationStr = !empty($locationParts) ? implode(', ', $locationParts) : 'Remote';
+
+        $jobSummary = [
+            'id'            => $jobPost->id,
+            'job_id'        => $jobPost->job_id,
+            'slug'          => $jobPost->slug,
+            'title_header'  => "{$jobPost->job_title}- " . ($jobPost->industry->name ?? 'Company') . "- Job ID:{$jobPost->job_id}",
+            'website'       => $jobPost->website ?? ($jobPost->industry->website ?? null),
+            'meta_subtitle' => "{$locationStr} (" . ucfirst($jobPost->work_mode ?? 'On-site') . ") • " . ($jobPost->created_at ? $jobPost->created_at->diffForHumans() : '') . " • {$jobPost->applications_count}+ Applicants",
+            'industry_name' => $jobPost->industry->name ?? null,
+            'industry_logo' => $industryLogo,
+            'badges'        => array_values(array_filter([
+                $jobPost->work_mode ? ucfirst($jobPost->work_mode) : null,
+                $jobPost->employment_type ? ucwords(str_replace(['-', '_'], ' ', $jobPost->employment_type)) : null,
+            ])),
+        ];
+
         return response()->json([
-            'success'      => true,
-            'message'      => 'Applicants retrieved successfully.',
-            'total'        => $paginated->total(),
-            'current_page' => $paginated->currentPage(),
-            'last_page'    => $paginated->lastPage(),
-            'limit'        => $paginated->perPage(),
-            'data'         => $formattedData,
+            'success'        => true,
+            'message'        => 'Job applicants retrieved successfully.',
+            'job'            => $jobSummary,
+            'status_counts'  => $statusCounts,
+            'current_status' => $status,
+            'data'           => $formattedApplicants,
+            'total'          => $paginated->total(),
+            'current_page'   => $paginated->currentPage(),
+            'last_page'      => $paginated->lastPage(),
+            'limit'          => $paginated->perPage(),
         ], 200);
     }
 
 
-    public function showApplication($id): JsonResponse
+    // public function jobApplicants(Request $request, $jobId): JsonResponse
+    // {
+    //     $user = auth('api')->user();
+
+    //     if (! $user) {
+    //         return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+    //     }
+
+    //     // Job ebong tar shathe related industry load kora
+    //     $jobPost = IndustryJobPost::with('industry')->find($jobId);
+
+    //     if (! $jobPost) {
+    //         return response()->json(['success' => false, 'message' => 'Job post not found.'], 404);
+    //     }
+
+    //     // Permission check
+    //     $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+    //     $isJobCreator = $jobPost->created_by && ((int) $jobPost->created_by === (int) $user->id);
+    //     $isIndustryOwner = $jobPost->industry && ((int) $jobPost->industry->created_by === (int) $user->id);
+
+    //     if (! $isAdmin && ! $isJobCreator && ! $isIndustryOwner) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'You are not authorized to view applicants for this job post.',
+    //         ], 403);
+    //     }
+
+    //     $status = $request->query('status');
+    //     $search = trim((string) $request->query('search', ''));
+    //     $limit = min($request->integer('limit', 10), 100);
+
+    //     $query = IndustryJobApplication::where('job_id', $jobPost->id)
+    //         ->with(['applicant:id,first_name,last_name,username,email,profile_image'])
+    //         ->latest('id');
+
+    //     if (! empty($status)) {
+    //         $query->where('status', $status);
+    //     }
+
+    //     if ($search !== '') {
+    //         $query->where(function ($q) use ($search) {
+    //             $q->where('full_name', 'LIKE', "%{$search}%")
+    //                 ->orWhere('email', 'LIKE', "%{$search}%")
+    //                 ->orWhere('application_id', 'LIKE', "%{$search}%");
+    //         });
+    //     }
+
+    //     $paginated = $query->paginate($limit);
+
+    //     $formattedData = $paginated->getCollection()->map(function (IndustryJobApplication $app) {
+    //         return [
+    //             'id'               => $app->id,
+    //             'application_id'   => $app->application_id,
+    //             'application_type' => $app->application_type,
+    //             'full_name'        => $app->full_name,
+    //             'email'            => $app->email,
+    //             'phone_number'     => $app->phone_number,
+    //             'experiences'      => $app->experiences,
+    //             'current_position' => $app->current_position,
+    //             'expected_salary'  => $app->expected_salary,
+    //             'location'         => $app->location,
+    //             'linkedin_url'     => $app->linkedin_url,
+    //             'portfolio_url'    => $app->portfolio_url,
+    //             'cover_letter'     => $app->cover_letter,
+    //             'about_yourself'   => $app->about_yourself,
+    //             'skills'           => $app->skills ?? [],
+    //             'resume_url'       => $app->resume_url,
+    //             'status'           => $app->status instanceof \BackedEnum ? $app->status->value : $app->status,
+    //             'applied_at'       => $app->created_at->toDateTimeString(),
+    //             'applicant'        => $app->applicant ? [
+    //                 'id'            => $app->applicant->id,
+    //                 'name'          => trim(($app->applicant->first_name ?? '') . ' ' . ($app->applicant->last_name ?? '')),
+    //                 'username'      => $app->applicant->username,
+    //                 'profile_image' => $app->applicant->profile_image_url ?? $app->applicant->profile_image,
+    //             ] : null,
+    //         ];
+    //     });
+
+    //     return response()->json([
+    //         'success'      => true,
+    //         'message'      => 'Applicants retrieved successfully.',
+    //         'total'        => $paginated->total(),
+    //         'current_page' => $paginated->currentPage(),
+    //         'last_page'    => $paginated->lastPage(),
+    //         'limit'        => $paginated->perPage(),
+    //         'data'         => $formattedData,
+    //     ], 200);
+    // }
+
+
+    public function showApplication(Request $request, $id): JsonResponse
     {
         $user = auth('api')->user();
 
@@ -362,12 +507,56 @@ class IndustryJobApplicationController extends Controller
             ], 403);
         }
 
+        // ----------------------------------------------------
+        // Current Application-er Status onujayi Auto-Navigation
+        // ----------------------------------------------------
+        // Current application-er je status, shetai navigation filter hishebe set hobe
+        $currentStatus = $application->status instanceof \BackedEnum
+            ? $application->status->value
+            : $application->status;
+
+        // Shudhu eki job ebong eki status-er application gulo khujbe
+        $baseSiblingQuery = function () use ($application, $currentStatus) {
+            return IndustryJobApplication::where('job_id', $application->job_id)
+                ->where('status', $currentStatus);
+        };
+
+        // 1. Previous ID (Eki status-er aager application)
+        $prevId = $baseSiblingQuery()
+            ->where('id', '>', $application->id)
+            ->orderBy('id', 'asc')
+            ->value('id');
+
+        // 2. Next ID (Eki status-er porer application)
+        $nextId = $baseSiblingQuery()
+            ->where('id', '<', $application->id)
+            ->orderBy('id', 'desc')
+            ->value('id');
+
+        // 3. Position count & total count
+        $totalCount = $baseSiblingQuery()->count();
+        $newerCount = $baseSiblingQuery()->where('id', '>', $application->id)->count();
+        $currentPos = $newerCount + 1;
+
+        $positionText = "Applicant {$currentPos} of {$totalCount}"; // e.g. "Applicant 3 of 3"
+
+        // ----------------------------------------------------
+        // Response Data
+        // ----------------------------------------------------
+        $applicantAvatar = null;
+        if ($application->applicant) {
+            $rawImg = $application->applicant->profile_image_url ?? $application->applicant->profile_image;
+            if ($rawImg) {
+                $applicantAvatar = str_starts_with($rawImg, 'http') ? $rawImg : asset('storage/' . ltrim($rawImg, '/'));
+            }
+        }
+
         $data = [
             'id'               => $application->id,
             'application_id'   => $application->application_id,
             'application_type' => $application->application_type,
-            'full_name'        => $application->full_name,
-            'email'            => $application->email,
+            'full_name'        => $application->full_name ?: trim(($application->applicant->first_name ?? '') . ' ' . ($application->applicant->last_name ?? '')),
+            'email'            => $application->email ?: $application->applicant?->email,
             'phone_number'     => $application->phone_number,
             'experiences'      => $application->experiences,
             'current_position' => $application->current_position,
@@ -379,23 +568,35 @@ class IndustryJobApplicationController extends Controller
             'about_yourself'   => $application->about_yourself,
             'skills'           => $application->skills ?? [],
             'resume_url'       => $application->resume_url,
-            'status'           => $application->status instanceof \BackedEnum ? $application->status->value : $application->status,
-            'applied_at'       => $application->created_at?->toDateTimeString(),
+            'status'           => $currentStatus,
+            'applied_at'       => $application->created_at?->format('M d, Y'),
             'updated_at'       => $application->updated_at?->toDateTimeString(),
-            'applicant'        => $application->applicant ? [
+
+            // Navigation details
+            'navigation' => [
+                'status'         => $currentStatus,
+                'prev_id'        => $prevId,
+                'next_id'        => $nextId,
+                'position_label' => $positionText,
+                'has_previous'   => !is_null($prevId),
+                'has_next'       => !is_null($nextId),
+            ],
+
+            'applicant' => $application->applicant ? [
                 'id'            => $application->applicant->id,
                 'name'          => trim(($application->applicant->first_name ?? '') . ' ' . ($application->applicant->last_name ?? '')),
                 'username'      => $application->applicant->username,
                 'email'         => $application->applicant->email,
-                'profile_image' => $application->applicant->profile_image_url ?? $application->applicant->profile_image,
+                'profile_image' => $applicantAvatar,
             ] : null,
-            'job'              => $job ? [
-                'id'         => $job->id,
-                'job_id'     => $job->job_id,
-                'job_title'  => $job->job_title,
-                'position'   => $job->position,
-                'work_mode'  => $job->work_mode,
-                'industry'   => $industry ? [
+
+            'job' => $job ? [
+                'id'        => $job->id,
+                'job_id'    => $job->job_id,
+                'job_title' => $job->job_title,
+                'position'  => $job->position,
+                'work_mode' => $job->work_mode,
+                'industry'  => $industry ? [
                     'id'   => $industry->id,
                     'name' => $industry->name ?? null,
                     'slug' => $industry->slug ?? null,
@@ -409,6 +610,87 @@ class IndustryJobApplicationController extends Controller
             'data'    => $data,
         ], 200);
     }
+
+    // public function showApplication($id): JsonResponse
+    // {
+    //     $user = auth('api')->user();
+
+    //     if (! $user) {
+    //         return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+    //     }
+
+    //     $application = IndustryJobApplication::with([
+    //         'job.industry',
+    //         'applicant:id,first_name,last_name,username,email,profile_image'
+    //     ])->find($id);
+
+    //     if (! $application) {
+    //         return response()->json(['success' => false, 'message' => 'Job application not found.'], 404);
+    //     }
+
+    //     $job = $application->job;
+    //     $industry = $job?->industry;
+
+    //     // Permission check
+    //     $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+    //     $isApplicant = (int) $application->applicant_id === (int) $user->id;
+    //     $isJobCreator = $job && $job->created_by && ((int) $job->created_by === (int) $user->id);
+    //     $isIndustryOwner = $industry && ((int) $industry->created_by === (int) $user->id);
+
+    //     if (! $isAdmin && ! $isApplicant && ! $isJobCreator && ! $isIndustryOwner) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'You are not authorized to view this application.',
+    //         ], 403);
+    //     }
+
+    //     $data = [
+    //         'id'               => $application->id,
+    //         'application_id'   => $application->application_id,
+    //         'application_type' => $application->application_type,
+    //         'full_name'        => $application->full_name,
+    //         'email'            => $application->email,
+    //         'phone_number'     => $application->phone_number,
+    //         'experiences'      => $application->experiences,
+    //         'current_position' => $application->current_position,
+    //         'expected_salary'  => $application->expected_salary,
+    //         'location'         => $application->location,
+    //         'linkedin_url'     => $application->linkedin_url,
+    //         'portfolio_url'    => $application->portfolio_url,
+    //         'cover_letter'     => $application->cover_letter,
+    //         'about_yourself'   => $application->about_yourself,
+    //         'skills'           => $application->skills ?? [],
+    //         'resume_url'       => $application->resume_url,
+    //         'status'           => $application->status instanceof \BackedEnum ? $application->status->value : $application->status,
+    //         'applied_at'       => $application->created_at?->toDateTimeString(),
+    //         'updated_at'       => $application->updated_at?->toDateTimeString(),
+    //         'applicant'        => $application->applicant ? [
+    //             'id'            => $application->applicant->id,
+    //             'name'          => trim(($application->applicant->first_name ?? '') . ' ' . ($application->applicant->last_name ?? '')),
+    //             'username'      => $application->applicant->username,
+    //             'email'         => $application->applicant->email,
+    //             'profile_image' => $application->applicant->profile_image_url ?? $application->applicant->profile_image,
+    //         ] : null,
+    //         'job'              => $job ? [
+    //             'id'         => $job->id,
+    //             'job_id'     => $job->job_id,
+    //             'job_title'  => $job->job_title,
+    //             'position'   => $job->position,
+    //             'work_mode'  => $job->work_mode,
+    //             'industry'   => $industry ? [
+    //                 'id'   => $industry->id,
+    //                 'name' => $industry->name ?? null,
+    //                 'slug' => $industry->slug ?? null,
+    //             ] : null,
+    //         ] : null,
+    //     ];
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Job application retrieved successfully.',
+    //         'data'    => $data,
+    //     ], 200);
+    // }
 
     /**
      * Nirdisto application-er status update kora.
