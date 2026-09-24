@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
         $this->call(PlanSeeder::class);
         $this->call(IntegrationSettingSeeder::class);
         $this->call(TransactionSeeder::class);
+        $this->call(CitySeeder::class);
 
         $adminApi = User::updateOrCreate(
             ['email' => 'admin@gmail.com'],
