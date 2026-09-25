@@ -4,13 +4,10 @@ namespace App\Enums;
 
 enum IndustryJobPostStatus: string
 {
-    case DRAFT = 'draft';
-
-    case PENDING_REVIEW = 'pending_review';
-
-    case APPROVED = 'approved';
-
-    case REJECTED = 'rejected';
-
-    case EXPIRED = 'expired';
+    case DRAFT     = 'draft';
+    case PENDING   = 'pending';
+    case PUBLISHED = 'published';
+    case REJECTED  = 'rejected';
+    case ARCHIVE   = 'archive';
+    case EXPIRED   = 'expired';
 }

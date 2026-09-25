@@ -4,12 +4,14 @@ use App\Http\Controllers\Admin\IndustryApiController;
 use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\ConnectionController;
 use App\Http\Controllers\Api\FollowController;
+use App\Http\Controllers\Api\IndustryJobPostController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\Api\IndustryJobApplicationController;
 use Illuminate\Support\Facades\Route;
 
 // group routes
@@ -87,6 +89,7 @@ Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
 // academia routes
 Route::get('/states', [AcademiaController::class, 'getStates']);
 Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
+Route::get('/states/{code}/cities', [AcademiaController::class, 'getCities']);
 Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
 Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
 Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); // medical facilities
@@ -118,3 +121,33 @@ Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'upda
 
 // account deletion request route
 Route::post('/account/delete-request', [SecuritySettingsController::class, 'requestDelete']);
+
+// pro Industry job post
+Route::prefix('industry')->group(function () {
+    Route::get('job-posts', [IndustryJobPostController::class, 'index']); //global route
+    Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']);//global show route
+
+    //industry job post routes for the authenticated user (creator)
+    Route::get('my-job-posts', [IndustryJobPostController::class, 'myJobs']); //my created job list
+    Route::get('my-archived-job-posts', [IndustryJobPostController::class, 'myArchivedJobs']); //created my archive job
+    Route::post('job-post/create', [IndustryJobPostController::class, 'store']); // create a new job post
+    Route::put('job-post/{id}/update', [IndustryJobPostController::class, 'update']); // update a job post
+    Route::delete('job-post/{id}/delete', [IndustryJobPostController::class, 'destroy']); // delete a job post
+    Route::patch('job-post/{id}/status', [IndustryJobPostController::class, 'updateStatus']);  // update job post status 
+
+    // user interaction routes for job posts (like, save, apply)
+    Route::post('job-post/{id}/like', [IndustryJobPostController::class, 'toggleLike']); // like job post
+    Route::post('job-post/{id}/save', [IndustryJobPostController::class, 'toggleSave']); // save/unsave job post
+    Route::get('saved-jobs', [IndustryJobPostController::class, 'savedJobs']); // get saved jobs for current user
+    
+    // user application routes for job posts
+    Route::get('my-job-applications', [IndustryJobApplicationController::class, 'myApplications']); // get all applications of the current user
+    Route::post('job-post/{id}/apply', [IndustryJobApplicationController::class, 'applyJob']); // apply for a job post
+
+    // routes for job applicants (for the creator or industry of the job post)
+    Route::get('job-post/{job_id}/applicants', [IndustryJobApplicationController::class, 'jobApplicants']); // get all applicants for a job post
+    Route::get('job-applications/{id}', [IndustryJobApplicationController::class, 'showApplication']); // show single application details
+    Route::patch('job-application/{id}/status', [IndustryJobApplicationController::class, 'updateApplicationStatus']); // update application status (shortlist, reject, hire)
+});
+
+
