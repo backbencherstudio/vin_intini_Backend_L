@@ -1011,11 +1011,12 @@ class IndustryController extends Controller
                         ? $post->created_at->diffForHumans()
                         : null,
 
-                    'logo' => $post->industry?->logo
+                    'logo' => $post->industry?->getRawOriginal('logo')
                         ? Storage::disk('public')->url(
-                            $post->industry->logo
+                            $post->industry->getRawOriginal('logo')
                         )
                         : null,
+
                     'post_id' => $post->id,
                     'content' => $post->content,
                     'visibility' => $post->visibility,
