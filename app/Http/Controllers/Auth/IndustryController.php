@@ -457,7 +457,7 @@ class IndustryController extends Controller
 
         if ($postIds->isNotEmpty()) {
             $postMediaPaths = DB::table('industry_post_media')
-                ->whereIn('post_id', $postIds)
+                ->whereIn('id', $postIds)
                 ->whereNotNull('path')
                 ->pluck('path')
                 ->filter()
@@ -467,7 +467,7 @@ class IndustryController extends Controller
 
         if ($postIds->isNotEmpty()) {
             $commentImagePaths = IndustryPostComment::whereIn(
-                'post_id',
+                'id',
                 $postIds
             )
                 ->whereNotNull('image')
@@ -484,7 +484,7 @@ class IndustryController extends Controller
             if ($postIds->isNotEmpty()) {
 
                 $commentIds = IndustryPostComment::whereIn(
-                    'post_id',
+                    'id',
                     $postIds
                 )->pluck('id');
 
@@ -498,21 +498,21 @@ class IndustryController extends Controller
 
             if ($postIds->isNotEmpty()) {
                 IndustryPostLike::whereIn(
-                    'post_id',
+                    'id',
                     $postIds
                 )->delete();
             }
 
             if ($postIds->isNotEmpty()) {
                 IndustryPostComment::whereIn(
-                    'post_id',
+                    'id',
                     $postIds
                 )->delete();
             }
 
             if ($postIds->isNotEmpty()) {
                 DB::table('industry_post_media')
-                    ->whereIn('post_id', $postIds)
+                    ->whereIn('id', $postIds)
                     ->delete();
             }
 
