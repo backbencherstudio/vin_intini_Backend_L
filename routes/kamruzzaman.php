@@ -88,6 +88,8 @@ Route::middleware('role:user')->group(function () {
         Route::post('create', [IndustryController::class, 'store']);
         Route::get('show/{industryId}', [IndustryController::class, 'show']);
         Route::post('update', [IndustryController::class, 'update']);
+        Route::delete('delete', [IndustryController::class, 'deleteCompany']);
+        
         Route::post('follow/{industryId}', [IndustryController::class, 'toggleFollow']);
 
         // Industry post
