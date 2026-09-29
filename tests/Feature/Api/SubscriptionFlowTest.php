@@ -2,10 +2,11 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\OtpType;
 use App\Mail\SubscriptionOtpMail;
+use App\Models\Otp;
 use App\Models\Plan;
 use App\Models\Subscription;
-use App\Models\SubscriptionOtp;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\StripeService;
@@ -57,10 +58,11 @@ class SubscriptionFlowTest extends TestCase
         ], $overrides));
     }
 
-    private function seedSubscriptionOtp(string $otp = '1234', ?Carbon $expiresAt = null): SubscriptionOtp
+    private function seedSubscriptionOtp(string $otp = '1234', ?Carbon $expiresAt = null): Otp
     {
-        return SubscriptionOtp::create([
+        return Otp::create([
             'user_id' => $this->user->id,
+            'type' => OtpType::SUBSCRIPTION->value,
             'otp' => $otp,
             'expires_at' => $expiresAt ?? now()->addMinutes(2),
         ]);
@@ -304,10 +306,13 @@ class SubscriptionFlowTest extends TestCase
 
         Mail::assertQueued(SubscriptionOtpMail::class);
 
-        $this->assertDatabaseHas('subscription_otps', [
+        $this->assertDatabaseHas('otps', [
             'user_id' => $this->user->id,
+            'type' => OtpType::SUBSCRIPTION->value,
         ]);
-        $otpRecord = SubscriptionOtp::where('user_id', $this->user->id)->first();
+        $otpRecord = Otp::where('user_id', $this->user->id)
+            ->where('type', OtpType::SUBSCRIPTION->value)
+            ->first();
         $this->assertNotNull($otpRecord);
         $this->assertTrue($otpRecord->expires_at->greaterThan(now()));
         $this->assertDatabaseMissing('subscriptions', ['user_id' => $this->user->id]);
@@ -424,7 +429,10 @@ class SubscriptionFlowTest extends TestCase
             'card_last4' => '4242',
         ]);
 
-        $this->assertDatabaseMissing('subscription_otps', ['user_id' => $this->user->id]);
+        $this->assertDatabaseMissing('otps', [
+            'user_id' => $this->user->id,
+            'type' => OtpType::SUBSCRIPTION->value,
+        ]);
     }
 
     public function test_create_returns_client_secret_when_payment_requires_action(): void
