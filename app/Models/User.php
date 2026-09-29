@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\OtpType;
 use App\Enums\PlanType;
 use App\Jobs\CleanupUserFiles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -201,24 +202,29 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Subscription::class);
     }
 
+    public function otps(): HasMany
+    {
+        return $this->hasMany(Otp::class);
+    }
+
     public function subscriptionOtp(): HasOne
     {
-        return $this->hasOne(SubscriptionOtp::class);
+        return $this->hasOne(Otp::class)->where('type', OtpType::SUBSCRIPTION->value);
     }
 
     public function registrationOtp(): HasOne
     {
-        return $this->hasOne(RegistrationOtp::class);
+        return $this->hasOne(Otp::class)->where('type', OtpType::REGISTRATION->value);
     }
 
     public function recoveryOtp(): HasOne
     {
-        return $this->hasOne(RecoveryOtp::class);
+        return $this->hasOne(Otp::class)->where('type', OtpType::RECOVERY->value);
     }
 
     public function recoveryEmailOtp(): HasOne
     {
-        return $this->hasOne(RecoveryEmailOtp::class);
+        return $this->hasOne(Otp::class)->where('type', OtpType::RECOVERY_EMAIL->value);
     }
 
     public function hasActiveSubscription(?PlanType $type = null): bool
