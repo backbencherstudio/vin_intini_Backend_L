@@ -413,6 +413,179 @@ class IndustryController extends Controller
         }
     }
 
+    public function deleteCompany()
+    {
+        $userId = auth()->id();
+
+        $subscription = Subscription::where('user_id', $userId)
+            ->where('status', 'active')
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+            ->whereHas('plan', function ($query) {
+                $query->where('status', 'active');
+            })
+            ->latest('id')
+            ->first();
+
+        if (! $subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your subscription is not active. Please renew your subscription to delete your company page.',
+            ], 403);
+        }
+
+        $industry = Industry::where('created_by', $userId)
+            ->first();
+
+        if (! $industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company page not found.',
+            ], 404);
+        }
+
+        $logoPath = $industry->getRawOriginal('logo');
+        $coverImagePath = $industry->getRawOriginal('cover_image');
+
+        $postMediaPaths = [];
+        $commentImagePaths = [];
+
+        $posts = IndustryPost::where('industry_id', $industry->id)
+            ->get();
+
+        $postIds = $posts->pluck('id');
+
+        if ($postIds->isNotEmpty()) {
+            $postMediaPaths = DB::table('industry_post_media')
+                ->whereIn('post_id', $postIds)
+                ->whereNotNull('path')
+                ->pluck('path')
+                ->filter()
+                ->values()
+                ->toArray();
+        }
+
+        if ($postIds->isNotEmpty()) {
+            $commentImagePaths = IndustryPostComment::whereIn(
+                'post_id',
+                $postIds
+            )
+                ->whereNotNull('image')
+                ->pluck('image')
+                ->filter()
+                ->values()
+                ->toArray();
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            if ($postIds->isNotEmpty()) {
+
+                $commentIds = IndustryPostComment::whereIn(
+                    'post_id',
+                    $postIds
+                )->pluck('id');
+
+                if ($commentIds->isNotEmpty()) {
+                    IndustryCommentLike::whereIn(
+                        'comment_id',
+                        $commentIds
+                    )->delete();
+                }
+            }
+
+            if ($postIds->isNotEmpty()) {
+                IndustryPostLike::whereIn(
+                    'post_id',
+                    $postIds
+                )->delete();
+            }
+
+            if ($postIds->isNotEmpty()) {
+                IndustryPostComment::whereIn(
+                    'post_id',
+                    $postIds
+                )->delete();
+            }
+
+            if ($postIds->isNotEmpty()) {
+                DB::table('industry_post_media')
+                    ->whereIn('post_id', $postIds)
+                    ->delete();
+            }
+
+            if ($postIds->isNotEmpty()) {
+                IndustryPost::whereIn('id', $postIds)
+                    ->delete();
+            }
+
+            IndustryFollow::where(
+                'industry_id',
+                $industry->id
+            )->delete();
+
+            $industry->delete();
+
+            DB::commit();
+
+            if (
+                $logoPath &&
+                Storage::disk('public')->exists($logoPath)
+            ) {
+                Storage::disk('public')->delete($logoPath);
+            }
+
+            if (
+                $coverImagePath &&
+                Storage::disk('public')->exists($coverImagePath)
+            ) {
+                Storage::disk('public')->delete($coverImagePath);
+            }
+
+            foreach ($postMediaPaths as $path) {
+                if (
+                    $path &&
+                    Storage::disk('public')->exists($path)
+                ) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            foreach ($commentImagePaths as $path) {
+                if (
+                    $path &&
+                    Storage::disk('public')->exists($path)
+                ) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company page and all related data deleted successfully.',
+                'data' => [
+                    'company_id' => $industry->id,
+                    'deleted_posts' => $postIds->count(),
+                    'deleted_post_media' => count($postMediaPaths),
+                    'deleted_comment_images' => count($commentImagePaths),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete company page.',
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
     public function storePost(Request $request, IndustryMediaUploadService $mediaUploadService)
     {
         $userId = auth()->id();
