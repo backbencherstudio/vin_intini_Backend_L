@@ -175,7 +175,7 @@ class IndustryController extends Controller
         }
     }
 
-    public function show(Request $request, $industryId)
+    public function show($industryId)
     {
         $industry = Industry::find($industryId);
 
@@ -209,12 +209,16 @@ class IndustryController extends Controller
                 'website' => $industry->website,
                 'company_size' => $industry->company_size,
 
-                'logo' => $industry->logo
-                    ? Storage::disk('public')->url($industry->logo)
+                'logo' => $industry->getRawOriginal('logo')
+                    ? Storage::disk('public')->url(
+                        $industry->getRawOriginal('logo')
+                    )
                     : null,
 
-                'cover_image' => $industry->cover_image
-                    ? Storage::disk('public')->url($industry->cover_image)
+                'cover_image' => $industry->getRawOriginal('cover_image')
+                    ? Storage::disk('public')->url(
+                        $industry->getRawOriginal('cover_image')
+                    )
                     : null,
 
                 'tagline' => $industry->tagline,
@@ -1007,11 +1011,12 @@ class IndustryController extends Controller
                         ? $post->created_at->diffForHumans()
                         : null,
 
-                    'logo' => $post->industry?->logo
+                    'logo' => $post->industry?->getRawOriginal('logo')
                         ? Storage::disk('public')->url(
-                            $post->industry->logo
+                            $post->industry->getRawOriginal('logo')
                         )
                         : null,
+
                     'post_id' => $post->id,
                     'content' => $post->content,
                     'visibility' => $post->visibility,
@@ -1102,11 +1107,12 @@ class IndustryController extends Controller
                         ? $post->created_at->diffForHumans()
                         : null,
 
-                    'logo' => $post->industry?->logo
+                    'logo' => $post->industry?->getRawOriginal('logo')
                         ? Storage::disk('public')->url(
-                            $post->industry->logo
+                            $post->industry->getRawOriginal('logo')
                         )
                         : null,
+
                     'post_id' => $post->id,
 
                     'content' => $post->content,
