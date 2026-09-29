@@ -29,6 +29,9 @@ class IndustryJobPostController extends Controller
         $employmentOffering = $request->query('employment_offering');
         $stateId = $request->filled('state_id') ? $request->integer('state_id') : null;
         $cityId = $request->filled('city_id') ? $request->integer('city_id') : null;
+        $category = $request->query('category');
+        $subCategory = $request->query('sub_category');
+        $salaryType = $request->query('salary_type');
 
         $limit = min($request->integer('limit', 10), 100);
 
@@ -41,8 +44,7 @@ class IndustryJobPostController extends Controller
             $baseQuery->where(function ($q) use ($search) {
                 $q->where('job_title', 'LIKE', "%{$search}%")
                     ->orWhere('job_id', 'LIKE', "%{$search}%")
-                    ->orWhere('position', 'LIKE', "%{$search}%")
-                    ->orWhere('job_description', 'LIKE', "%{$search}%");
+                    ->orWhere('position', 'LIKE', "%{$search}%");
             });
         }
 
@@ -63,6 +65,17 @@ class IndustryJobPostController extends Controller
         }
         if (!empty($cityId)) {
             $baseQuery->where('city_id', $cityId);
+        }
+        if (!empty($category)) {
+            is_array($category) ? $baseQuery->whereIn('category', $category) : $baseQuery->where('category', $category);
+        }
+
+        if (!empty($subCategory)) {
+            is_array($subCategory) ? $baseQuery->whereIn('sub_category', $subCategory) : $baseQuery->where('sub_category', $subCategory);
+        }
+
+        if (!empty($salaryType)) {
+            $baseQuery->where('salary_type', $salaryType);
         }
 
         $paginated = $baseQuery->with(['industry', 'state', 'city', 'creator'])
@@ -105,6 +118,9 @@ class IndustryJobPostController extends Controller
             'employment_offering' => $employmentOffering ?: null,
             'work_mode'           => $workMode ?: null,
             'employment_type'     => $employmentType ?: null,
+            'category'            => $category ?: null,
+            'sub_category'        => $subCategory ?: null,
+            'salary_type'         => $salaryType ?: null,
             'state_id'            => $stateId,
             'city_id'             => $cityId,
         ];
@@ -164,6 +180,8 @@ class IndustryJobPostController extends Controller
         $workMode           = $request->query('work_mode');
         $employmentOffering = $request->query('employment_offering');
         $employmentType     = $request->query('employment_type');
+        $category           = $request->query('category');
+        $subCategory        = $request->query('sub_category');
         $stateId            = $request->filled('state_id') ? $request->integer('state_id') : null;
         $cityId             = $request->filled('city_id') ? $request->integer('city_id') : null;
 
@@ -211,7 +229,12 @@ class IndustryJobPostController extends Controller
         if (!empty($employmentType)) {
             $baseQuery->where('employment_type', $employmentType);
         }
-
+        if (!empty($category)) {
+            is_array($category) ? $baseQuery->whereIn('category', $category) : $baseQuery->where('category', $category);
+        }
+        if (!empty($subCategory)) {
+            is_array($subCategory) ? $baseQuery->whereIn('sub_category', $subCategory) : $baseQuery->where('sub_category', $subCategory);
+        }
         // 5. Location Filters
         if (!empty($stateId)) {
             $baseQuery->where('state_id', $stateId);
@@ -241,6 +264,8 @@ class IndustryJobPostController extends Controller
             'work_mode'           => $workMode ?: null,
             'employment_offering' => $employmentOffering ?: null,
             'employment_type'     => $employmentType ?: null,
+            'sub_category'        => $subCategory ?: null,
+            'category'            => $category ?: null,
             'state_id'            => $stateId,
             'city_id'             => $cityId,
         ];
@@ -278,6 +303,8 @@ class IndustryJobPostController extends Controller
         $workMode           = $request->query('work_mode');
         $employmentOffering = $request->query('employment_offering');
         $employmentType     = $request->query('employment_type');
+        $category           = $request->query('category');
+        $subCategory        = $request->query('sub_category');
         $stateId            = $request->filled('state_id') ? $request->integer('state_id') : null;
         $cityId             = $request->filled('city_id') ? $request->integer('city_id') : null;
 
@@ -325,6 +352,12 @@ class IndustryJobPostController extends Controller
         if (!empty($cityId)) {
             $baseQuery->where('city_id', $cityId);
         }
+        if (!empty($category)) {
+            is_array($category) ? $baseQuery->whereIn('category', $category) : $baseQuery->where('category', $category);
+        }
+        if (!empty($subCategory)) {
+            is_array($subCategory) ? $baseQuery->whereIn('sub_category', $subCategory) : $baseQuery->where('sub_category', $subCategory);
+        }
 
         $paginated = $baseQuery->with([
             'industry:id,name,logo',
@@ -346,6 +379,8 @@ class IndustryJobPostController extends Controller
             'work_mode'           => $workMode ?: null,
             'employment_offering' => $employmentOffering ?: null,
             'employment_type'     => $employmentType ?: null,
+            'category'            => $category ?: null,
+            'sub_category'        => $subCategory ?: null,
             'state_id'            => $stateId,
             'city_id'             => $cityId,
         ];
@@ -402,106 +437,6 @@ class IndustryJobPostController extends Controller
             'applications_count' => (int) ($job->applications_count ?? 0),
         ];
     }
-
-    // public function myJobs(Request $request): JsonResponse
-    // {
-    //     $currentUser = auth('api')->user();
-
-    //     if (!$currentUser) {
-    //         return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
-    //     }
-
-    //     $search = trim((string) $request->query('search', ''));
-    //     $status = $request->query('status');
-
-    //     $limit = min($request->integer('limit', 10), 100);
-
-    //     $baseQuery = IndustryJobPost::query()->where('created_by', $currentUser->id);
-    //     $totalJobsCount = (clone $baseQuery)->count();
-
-    //     if ($search !== '') {
-    //         $baseQuery->where(function ($q) use ($search) {
-    //             $q->where('job_title', 'LIKE', "%{$search}%")
-    //                 ->orWhere('job_id', 'LIKE', "%{$search}%")
-    //                 ->orWhere('position', 'LIKE', "%{$search}%")
-    //                 ->orWhere('job_description', 'LIKE', "%{$search}%");
-    //         });
-    //     }
-
-    //     if (!empty($status)) {
-    //         $baseQuery->where('status', $status);
-    //     }
-
-    //     $paginated = $baseQuery->with(['state', 'city', 'industry', 'creator'])
-    //         ->withCount('applications')
-    //         ->latest('id')
-    //         ->paginate($limit);
-
-    //     $jobIds = $paginated->pluck('id')->all();
-
-    //     $likedJobIds = !empty($jobIds)
-    //         ? IndustryJobPostLike::where('user_id', $currentUser->id)
-    //         ->whereIn('industry_job_post_id', $jobIds)
-    //         ->pluck('industry_job_post_id')
-    //         ->flip()
-    //         ->all()
-    //         : [];
-
-    //     $savedJobIds = !empty($jobIds)
-    //         ? IndustryJobPostSave::where('user_id', $currentUser->id)
-    //         ->whereIn('industry_job_post_id', $jobIds)
-    //         ->pluck('industry_job_post_id')
-    //         ->flip()
-    //         ->all()
-    //         : [];
-
-    //     $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $currentUser) {
-    //         return $this->formatJobPost($job, $likedJobIds, $savedJobIds, null, $currentUser);
-    //     })->values();
-
-    //     $filters = [
-    //         'search' => $search !== '' ? $search : null,
-    //         'status' => $status ?: null,
-    //     ];
-
-    //     if ($paginated->isEmpty()) {
-    //         return response()->json([
-    //             'success'      => true,
-    //             'message'      => $search !== '' ? 'No jobs found for this search.' : 'You have not created any job posts yet.',
-    //             'status'       => 'success',
-    //             'total_jobs'   => $totalJobsCount,
-    //             'data'         => [],
-    //             'stats'        => [
-    //                 'total_jobs'    => $totalJobsCount,
-    //                 'filtered_jobs' => 0,
-    //             ],
-    //             'total'        => 0,
-    //             'limit'        => $limit,
-    //             'current_page' => $paginated->currentPage(),
-    //             'total_page'   => 0,
-    //             'last_page'    => 0,
-    //             'filters'      => $filters,
-    //         ], 200);
-    //     }
-
-    //     return response()->json([
-    //         'success'      => true,
-    //         'message'      => 'Your job posts retrieved successfully.',
-    //         'status'       => 'success',
-    //         'total_jobs'   => $totalJobsCount,
-    //         'data'         => $formattedData,
-    //         'stats'        => [
-    //             'total_jobs'    => $totalJobsCount,
-    //             'filtered_jobs' => $paginated->total(),
-    //         ],
-    //         'total'        => $paginated->total(),
-    //         'limit'        => $paginated->perPage(),
-    //         'current_page' => $paginated->currentPage(),
-    //         'total_page'   => $paginated->lastPage(),
-    //         'last_page'    => $paginated->lastPage(),
-    //         'filters'      => $filters,
-    //     ], 200);
-    // }
 
     public function show($identifier): JsonResponse
     {
@@ -597,6 +532,8 @@ class IndustryJobPostController extends Controller
             'job_title'               => $validated['job_title'],
             'slug'                    => $slug,
             'position'                => $validated['position'] ?? null,
+            'category'                => $validated['category'] ?? null,
+            'sub_category'            => $validated['sub_category'] ?? null,
             'job_description'         => $validated['job_description'],
             'network_type'            => $validated['network_type'] ?? null,
             'employment_offering'     => $validated['employment_offering'] ?? null,
@@ -611,6 +548,7 @@ class IndustryJobPostController extends Controller
             'website'                 => $validated['website'] ?? null,
             'salary_min'              => $validated['salary_min'] ?? null,
             'salary_max'              => $validated['salary_max'] ?? null,
+            'salary_type'             => $validated['salary_type'] ?? null,
             'location_url'            => $validated['location_url'] ?? null,
             'announcement_start_date' => $startDate,
             'announcement_end_date'   => $endDate,
@@ -674,6 +612,8 @@ class IndustryJobPostController extends Controller
             'slug'                    => $slug,
             'job_title'               => $validated['job_title'],
             'position'                => $validated['position'] ?? null,
+            'category'                => $validated['category'] ?? null,
+            'sub_category'            => $validated['sub_category'] ?? null,
             'job_description'         => $validated['job_description'],
             'work_mode'               => $validated['work_mode'],
             'employment_type'         => $validated['employment_type'],
@@ -686,6 +626,7 @@ class IndustryJobPostController extends Controller
             'website'                 => $validated['website'] ?? null,
             'salary_min'              => $validated['salary_min'] ?? null,
             'salary_max'              => $validated['salary_max'] ?? null,
+            'salary_type'             => $validated['salary_type'] ?? null,
             'location_url'            => $validated['location_url'] ?? null,
             'employment_offering'     => $validated['employment_offering'] ?? null,
             'network_type'            => $validated['network_type'] ?? null,
@@ -929,6 +870,8 @@ class IndustryJobPostController extends Controller
             'status'                  => ['nullable', 'in:draft,published,rejected,archive,expired'],
             'job_title'               => ['required', 'string', 'max:255'],
             'position'                => [$isDraft ? 'nullable' : 'required', 'string', 'max:255'],
+            'category'                => [$isDraft ? 'nullable' : 'required', 'string', 'max:100'],
+            'sub_category'            => ['nullable', 'string', 'max:100'],
             'job_description'         => ['required', 'string', 'max:5000'],
             'work_mode'               => ['required', 'string'],
             'employment_type'         => ['required', 'string'],
@@ -949,6 +892,7 @@ class IndustryJobPostController extends Controller
             'website'                 => ['nullable', 'url'],
             'salary_min'              => [$isDraft ? 'nullable' : 'required', 'numeric', 'min:0'],
             'salary_max'              => [$isDraft ? 'nullable' : 'required', 'numeric', 'gte:salary_min'],
+            'salary_type'             => [$isDraft ? 'nullable' : 'required', 'string', 'in:Monthly,Yearly,Hourly'],
             'location_url'            => ['nullable', 'string', 'max:1000'],
             'tags'                    => ['nullable'],
             'start_date'              => ['nullable', 'date'],
@@ -1030,6 +974,8 @@ class IndustryJobPostController extends Controller
             'slug'                   => $job->slug,
             'job_title'              => $job->job_title,
             'position'               => $job->position,
+            'category'               => $job->category,
+            'sub_category'           => $job->sub_category,
             'job_description'        => $job->job_description,
             'work_mode'              => $job->work_mode,
             'employment_type'        => $job->employment_type,
@@ -1042,6 +988,7 @@ class IndustryJobPostController extends Controller
             'website'                => $job->website,
             'salary_min'             => $job->salary_min,
             'salary_max'             => $job->salary_max,
+            'salary_type'            => $job->salary_type,
             'location_url'           => $job->location_url,
             'tags'                   => $job->tags ?? [],
             'status'                 => $job->status instanceof \BackedEnum ? $job->status->value : $job->status,
