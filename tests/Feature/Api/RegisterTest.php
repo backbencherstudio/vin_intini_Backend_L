@@ -2,8 +2,9 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\OtpType;
 use App\Mail\RegisterOtpMail;
-use App\Models\RegistrationOtp;
+use App\Models\Otp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -52,7 +53,9 @@ class RegisterTest extends TestCase
         $user = User::where('email', 'john@example.com')->first();
         $this->assertTrue($user->hasRole('user'));
 
-        $otpRecord = RegistrationOtp::where('user_id', $user->id)->first();
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::REGISTRATION->value)
+            ->first();
         $this->assertNotNull($otpRecord);
         $this->assertTrue($otpRecord->expires_at->greaterThan(now()));
 
@@ -88,7 +91,9 @@ class RegisterTest extends TestCase
         $this->assertNotEquals('oldpass123', $user->password);
         $this->assertFalse($user->is_verified);
 
-        $otpRecord = RegistrationOtp::where('user_id', $user->id)->first();
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::REGISTRATION->value)
+            ->first();
         $this->assertNotNull($otpRecord);
         $this->assertTrue($otpRecord->expires_at->greaterThan(now()));
     }

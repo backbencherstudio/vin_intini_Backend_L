@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\OtpType;
 use App\Http\Controllers\Controller;
 use App\Mail\RegisterOtpMail;
 use App\Models\DeletedAccountLog;
 use App\Models\FcmToken;
 use App\Models\Industry;
 use App\Models\LoginActivity;
-use App\Models\RegistrationOtp;
+use App\Models\Otp;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Auth\Events\Failed;
@@ -368,9 +369,9 @@ class AuthController extends Controller
                     'terms_accepted_at' => now(),
                 ]);
 
-                RegistrationOtp::updateOrCreate(
-                    ['user_id' => $user->id],
-                    ['otp' => $otp, 'expires_at' => now()->addMinutes(3)],
+                Otp::updateOrCreate(
+                    ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
+                    ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
                 );
 
                 if ($role && ! $user->hasRole('user')) {
@@ -395,11 +396,10 @@ class AuthController extends Controller
                 'terms_accepted_at' => now(),
             ]);
 
-            RegistrationOtp::create([
-                'user_id' => $user->id,
-                'otp' => $otp,
-                'expires_at' => now()->addMinutes(3),
-            ]);
+            Otp::updateOrCreate(
+                ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
+                ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
+            );
 
             if ($role) {
                 $user->assignRole($role);
@@ -455,7 +455,9 @@ class AuthController extends Controller
             ]);
         }
 
-        $otpRecord = RegistrationOtp::where('user_id', $user->id)->first();
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::REGISTRATION->value)
+            ->first();
 
         if (! $otpRecord || (string) $otpRecord->otp !== (string) $request->otp) {
             return response()->json([
@@ -528,7 +530,9 @@ class AuthController extends Controller
             ], 200);
         }
 
-        $otpRecord = RegistrationOtp::where('user_id', $user->id)->first();
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::REGISTRATION->value)
+            ->first();
 
         if ($otpRecord?->expires_at && now()->lt($otpRecord->expires_at)) {
 
@@ -543,9 +547,9 @@ class AuthController extends Controller
         try {
             $otp = rand(1000, 9999);
 
-            RegistrationOtp::updateOrCreate(
-                ['user_id' => $user->id],
-                ['otp' => $otp, 'expires_at' => now()->addMinutes(3)],
+            Otp::updateOrCreate(
+                ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
+                ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
             );
 
             Mail::to($user->email)->queue(new RegisterOtpMail($otp));
