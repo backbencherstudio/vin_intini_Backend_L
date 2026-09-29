@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\OtpType;
 use App\Http\Controllers\Controller;
 use App\Mail\PasswordOtpMail;
 use App\Models\DeletedAccountLog;
 use App\Models\LoginActivity;
+use App\Models\Otp;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -34,13 +35,12 @@ class ForgotPasswordController extends Controller
 
         $otp = rand(1000, 9999);
 
-        DB::table('password_otps')->updateOrInsert(
-            ['user_id' => $user->id],
+        Otp::updateOrCreate(
+            ['user_id' => $user->id, 'type' => OtpType::PASSWORD_RESET->value],
             [
                 'otp' => $otp,
                 'expires_at' => Carbon::now()->addMinutes(3),
                 'verified_at' => null,
-                'updated_at' => Carbon::now(),
             ]
         );
 
@@ -70,11 +70,11 @@ class ForgotPasswordController extends Controller
 
         $user = User::withTrashed()->where('email', $request->email)->first();
 
-        $otpRecord = DB::table('password_otps')
-            ->where('user_id', $user->id)
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::PASSWORD_RESET->value)
             ->first();
 
-        if (! $otpRecord || $otpRecord->otp != $request->otp) {
+        if (! $otpRecord || (string) $otpRecord->otp !== (string) $request->otp) {
             return response()->json([
                 'status' => false,
                 'message' => 'Invalid OTP',
@@ -88,12 +88,9 @@ class ForgotPasswordController extends Controller
             ], 400);
         }
 
-        DB::table('password_otps')
-            ->where('user_id', $user->id)
-            ->update([
-                'verified_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-            ]);
+        $otpRecord->update([
+            'verified_at' => Carbon::now(),
+        ]);
 
         return response()->json([
             'status' => true,
@@ -118,8 +115,8 @@ class ForgotPasswordController extends Controller
 
         $user = User::withTrashed()->where('email', $request->email)->first();
 
-        $otpRecord = DB::table('password_otps')
-            ->where('user_id', $user->id)
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::PASSWORD_RESET->value)
             ->first();
 
         if (! $otpRecord || ! $otpRecord->verified_at || Carbon::now()->gt(Carbon::parse($otpRecord->expires_at))) {
@@ -138,7 +135,9 @@ class ForgotPasswordController extends Controller
         $user->has_password = true;
         $user->save();
 
-        DB::table('password_otps')->where('user_id', $user->id)->delete();
+        Otp::where('user_id', $user->id)
+            ->where('type', OtpType::PASSWORD_RESET->value)
+            ->delete();
 
         // === previous active sessions inactivity ===
         LoginActivity::where('user_id', $user->id)

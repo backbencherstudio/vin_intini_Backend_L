@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\OtpType;
 use App\Http\Controllers\Controller;
 use App\Mail\RecoveryOtpMail;
-use App\Models\RecoveryEmailOtp;
-use App\Models\RecoveryOtp;
+use App\Models\Otp;
 use App\Models\User;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -238,9 +238,9 @@ class TwoFactorController extends Controller
 
         $otp = rand(1000, 9999);
 
-        RecoveryEmailOtp::updateOrCreate(
-            ['user_id' => $user->id],
-            ['otp' => $otp, 'expires_at' => now()->addMinutes(3)],
+        Otp::updateOrCreate(
+            ['user_id' => $user->id, 'type' => OtpType::RECOVERY_EMAIL->value],
+            ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
         );
 
         $user->update([
@@ -258,7 +258,9 @@ class TwoFactorController extends Controller
         $request->validate(['otp' => 'required|digits:4']);
         $user = auth('api')->user();
 
-        $otpRecord = RecoveryEmailOtp::where('user_id', $user->id)->first();
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::RECOVERY_EMAIL->value)
+            ->first();
 
         if ($otpRecord && (string) $otpRecord->otp === (string) $request->otp && now()->lt($otpRecord->expires_at)) {
             $user->update([
@@ -314,9 +316,9 @@ class TwoFactorController extends Controller
         }
 
         $otp = rand(1000, 9999);
-        RecoveryOtp::updateOrCreate(
-            ['user_id' => $user->id],
-            ['otp' => $otp, 'expires_at' => now()->addMinutes(10)],
+        Otp::updateOrCreate(
+            ['user_id' => $user->id, 'type' => OtpType::RECOVERY->value],
+            ['otp' => $otp, 'expires_at' => now()->addMinutes(10), 'verified_at' => null],
         );
 
         Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
@@ -335,7 +337,7 @@ class TwoFactorController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-        $otpRecord = $user ? RecoveryOtp::where('user_id', $user->id)->first() : null;
+        $otpRecord = $user ? Otp::where('user_id', $user->id)->where('type', OtpType::RECOVERY->value)->first() : null;
 
         if ($otpRecord && (string) $otpRecord->otp === (string) $request->otp && now()->lt($otpRecord->expires_at)) {
 
@@ -386,7 +388,9 @@ class TwoFactorController extends Controller
             return response()->json(['status' => false, 'message' => 'No verified recovery email found.'], 422);
         }
 
-        $otpRecord = RecoveryOtp::where('user_id', $user->id)->first();
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::RECOVERY->value)
+            ->first();
 
         if ($otpRecord?->expires_at) {
             $totalExpirySeconds = 600;
@@ -403,9 +407,9 @@ class TwoFactorController extends Controller
         }
 
         $otp = rand(1000, 9999);
-        RecoveryOtp::updateOrCreate(
-            ['user_id' => $user->id],
-            ['otp' => $otp, 'expires_at' => now()->addMinutes(10)],
+        Otp::updateOrCreate(
+            ['user_id' => $user->id, 'type' => OtpType::RECOVERY->value],
+            ['otp' => $otp, 'expires_at' => now()->addMinutes(10), 'verified_at' => null],
         );
 
         Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
