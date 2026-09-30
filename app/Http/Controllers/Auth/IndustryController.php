@@ -29,11 +29,9 @@ class IndustryController extends Controller
      */
     private const POST_VISIBILITIES = ['public', 'followers', 'private'];
 
-    private const PROFILE_FEATURE = 'company_profile';
-
     public function store(Request $request)
     {
-        $subscription = $this->activeSubscription(auth()->id());
+        $subscription = auth('api')->user()->activeSubscription();
 
         if (! $subscription) {
             return response()->json([
@@ -188,7 +186,7 @@ class IndustryController extends Controller
 
     public function update(Request $request)
     {
-        $subscription = $this->activeSubscription(auth()->id());
+        $subscription = auth('api')->user()->activeSubscription();
 
         if (! $subscription) {
             return response()->json([
@@ -321,7 +319,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        if (! $this->activeSubscription($userId)) {
+        if (! auth('api')->user()->activeSubscription()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to delete your company page.',
@@ -397,7 +395,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        if (! $this->activeSubscription($userId)) {
+        if (! auth('api')->user()->activeSubscription()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to create a post.',
@@ -504,7 +502,7 @@ class IndustryController extends Controller
             ], 403);
         }
 
-        if (! $this->activeSubscription($userId)) {
+        if (! auth('api')->user()->activeSubscription()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to edit a post.',
@@ -628,7 +626,7 @@ class IndustryController extends Controller
             ], 403);
         }
 
-        if (! $this->activeSubscription($userId)) {
+        if (! auth('api')->user()->activeSubscription()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to delete a post.',
@@ -1649,25 +1647,9 @@ class IndustryController extends Controller
         return $slug;
     }
 
-    private function activeSubscription(int $userId): ?Subscription
-    {
-        return Subscription::where('user_id', $userId)
-            ->where('status', 'active')
-            ->whereNotNull('current_period_end')
-            ->where('current_period_end', '>', now())
-            ->whereHas('plan', fn ($query) => $query->where('status', 'active'))
-            ->with('plan')
-            ->latest('id')
-            ->first();
-    }
-
     private function planAllowsCompanyProfile(?Subscription $subscription): bool
     {
-        return in_array(
-            self::PROFILE_FEATURE,
-            $subscription?->plan?->features ?? [],
-            true
-        );
+        return (bool) $subscription?->allowsCompanyProfile();
     }
 
     private function ownedIndustry(int $userId): ?Industry

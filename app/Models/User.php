@@ -165,7 +165,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/' . ltrim($value, '/'));
+        return asset('storage/'.ltrim($value, '/'));
     }
 
     public function getCoverImageUrlAttribute(): ?string
@@ -179,7 +179,7 @@ class User extends Authenticatable implements JWTSubject
             return $value;
         }
 
-        return asset('storage/' . ltrim($value, '/'));
+        return asset('storage/'.ltrim($value, '/'));
     }
 
     public function posts()
@@ -231,7 +231,7 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->subscriptions()
             ->whereIn('status', ['active', 'trialing'])
-            ->when($type, fn($query) => $query->whereHas('plan', fn($query) => $query->where('plan_type', $type->value)))
+            ->when($type, fn ($query) => $query->whereHas('plan', fn ($query) => $query->where('plan_type', $type->value)))
             ->exists();
     }
 
@@ -339,6 +339,27 @@ class User extends Authenticatable implements JWTSubject
             Industry::class,
             'created_by'
         );
+    }
+
+    public function activeSubscription(): ?Subscription
+    {
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>', now())
+            ->whereHas('plan', fn ($query) => $query->where('status', 'active'))
+            ->with('plan')
+            ->latest('id')
+            ->first();
+    }
+
+    public function canCreateCompanyPage(): bool
+    {
+        if ($this->industry()->exists()) {
+            return false;
+        }
+
+        return (bool) $this->activeSubscription()?->allowsCompanyProfile();
     }
 
     public function savedIndustryJobs(): BelongsToMany

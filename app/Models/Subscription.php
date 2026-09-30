@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PlanFeature;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -51,5 +52,15 @@ class Subscription extends Model
     public function isActive(): bool
     {
         return in_array($this->status, ['active', 'trialing']);
+    }
+
+    public function allows(PlanFeature $feature): bool
+    {
+        return in_array($feature->value, $this->plan?->features ?? [], true);
+    }
+
+    public function allowsCompanyProfile(): bool
+    {
+        return $this->allows(PlanFeature::COMPANY_PROFILE);
     }
 }

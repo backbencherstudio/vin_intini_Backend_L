@@ -178,6 +178,8 @@ class AuthController extends Controller
 
                 'company_id' => $industry?->id,
 
+                'can_create_company_page' => $user->canCreateCompanyPage(),
+
                 'profile' => $user->profile ? [
                     'privacy_profile_activity' => $user->profile->privacy_profile_activity,
                     'privacy_profile_visibility' => $user->profile->privacy_profile_visibility,
