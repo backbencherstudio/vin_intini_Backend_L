@@ -125,7 +125,6 @@ class IndustryController extends Controller
                     'description' => $industry->description,
                     'authorization_confirmed' => $industry->authorization_confirmed,
                     'authorization_confirmed_at' => $industry->authorization_confirmed_at,
-                    'created_by' => $industry->created_by,
                     'created_at' => $industry->created_at,
                     'updated_at' => $industry->updated_at,
                 ],
@@ -299,7 +298,6 @@ class IndustryController extends Controller
                     'cover_image' => $this->publicUrl($industry->getRawOriginal('cover_image')),
                     'tagline' => $industry->tagline,
                     'description' => $industry->description,
-                    'created_by' => $industry->created_by,
                     'created_at' => $industry->created_at,
                     'updated_at' => $industry->updated_at,
                 ],
@@ -1695,7 +1693,13 @@ class IndustryController extends Controller
 
     private function publicUrl(?string $path): ?string
     {
-        return $path ? Storage::disk('public')->url($path) : null;
+        if (! $path) {
+            return null;
+        }
+
+        return str_starts_with($path, 'http')
+            ? $path
+            : Storage::disk('public')->url($path);
     }
 
     private function deleteFiles(array $paths): void

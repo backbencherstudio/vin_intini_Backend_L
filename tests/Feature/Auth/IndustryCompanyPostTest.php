@@ -1312,6 +1312,43 @@ class IndustryCompanyPostTest extends TestCase
         return $user;
     }
 
+    public function test_does_not_prefix_the_disk_url_when_the_stored_logo_is_already_absolute(): void
+    {
+        $owner = $this->makeUser();
+        $absoluteLogo = 'https://cdn.test/industries/logo.jpg';
+
+        $industry = $this->makeIndustry($owner);
+        $industry->update(['logo' => $absoluteLogo, 'cover_image' => $absoluteLogo]);
+
+        $response = $this->actingAs($owner, 'api')->getJson("/api/industry/show/{$industry->id}");
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.logo', $absoluteLogo)
+            ->assertJsonPath('data.cover_image', $absoluteLogo);
+    }
+
+    public function test_company_page_create_response_does_not_expose_the_owner_user_id(): void
+    {
+        $owner = $this->makeUser();
+
+        $response = $this->actingAs($owner, 'api')->postJson('/api/industry/create', [
+            'name' => 'Bright Labs',
+            'industry' => 'Software',
+            'authorization_confirmed' => true,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonMissingPath('data.created_by');
+
+        $this->assertDatabaseHas('industries', [
+            'name' => 'Bright Labs',
+            'created_by' => $owner->id,
+        ]);
+    }
+
     private function subscribe(User $user, array $overrides = []): Subscription
     {
         $existing = Subscription::where('user_id', $user->id)->latest('id')->first();
