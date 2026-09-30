@@ -588,6 +588,14 @@ class IndustryJobPostController extends Controller
             ], 403);
         }
 
+        $currentStatus = $jobPost->status instanceof \BackedEnum ? $jobPost->status->value : $jobPost->status;
+        if ($currentStatus === 'rejected') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This job post has been rejected and cannot be updated.',
+            ], 422);
+        }
+
         $industryPlan = PlanType::tryFrom('industry');
         if (!$user->hasActiveSubscription($industryPlan)) {
             return response()->json([
@@ -697,6 +705,14 @@ class IndustryJobPostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'You are not authorized to update the status of this job post.',
+            ], 403);
+        }
+
+        $currentStatus = $jobPost->status instanceof \BackedEnum ? $jobPost->status->value : $jobPost->status;
+        if ($isCreator && !$isAdmin && $currentStatus === 'rejected') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This job post has been rejected. Creators cannot update its status.',
             ], 403);
         }
 
