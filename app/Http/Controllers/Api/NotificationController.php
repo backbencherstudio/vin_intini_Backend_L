@@ -17,24 +17,47 @@ class NotificationController extends Controller
         $unreadOnly = (bool) $request->boolean('unread_only', false);
         $search = trim((string) $request->query('search', ''));
 
+        $isIndustry = $request->has('is_industry') ? $request->boolean('is_industry') : null;
+
         $query = $request->user()->notifications();
 
-        if ($unreadOnly) {
-            $query = $query->whereNull('read_at');
+        // Industry filter logic
+        if ($isIndustry === true) {
+            $industryId = $request->user()->industry?->id
+                ?? $request->user()->company_id
+                ?? $request->query('industry_id');
+
+            if ($industryId) {
+                $query->where('data->industry_id', (int) $industryId);
+            } else {
+                $query->whereNotNull('data->industry_id');
+            }
+        } elseif ($isIndustry === false) {
+            $query->whereNull('data->industry_id');
         }
 
+        // Search filter
         if ($search !== '') {
             $query = $query->where(function ($notificationQuery) use ($search) {
                 $notificationQuery
-                    ->where('type', 'like', '%'.$search.'%')
-                    ->orWhere('data', 'like', '%'.$search.'%');
+                    ->where('type', 'like', '%' . $search . '%')
+                    ->orWhere('data', 'like', '%' . $search . '%');
             });
+        }
+
+        // Stats calculation (current filter onujayi exact unread count)
+        $statsQuery = clone $query;
+        $unreadCount = (clone $statsQuery)->whereNull('read_at')->count();
+
+        // Unread only filter
+        if ($unreadOnly) {
+            $query = $query->whereNull('read_at');
         }
 
         $notifications = $query->orderByDesc('created_at')->paginate($perPage, page: $page);
 
         $formattedNotifications = collect($notifications->items())
-            ->map(fn ($n) => $this->formatNotification($n))
+            ->map(fn($n) => $this->formatNotification($n))
             ->filter()
             ->values();
 
@@ -42,21 +65,70 @@ class NotificationController extends Controller
             'success' => true,
             'message' => 'Notifications retrieved successfully',
             'stats' => [
-                'total_notifications' => $notifications->total(),
-                'unread_notifications' => $request->user()->unreadNotifications()->count(),
+                'total_notifications'  => $statsQuery->count(),
+                'unread_notifications' => $unreadCount,
             ],
-            'data' => $formattedNotifications,
-            'total' => $notifications->total(),
-            'limit' => $notifications->perPage(),
+            'data'         => $formattedNotifications,
+            'total'        => $notifications->total(),
+            'limit'        => $notifications->perPage(),
             'current_page' => $notifications->currentPage(),
-            'total_page' => $notifications->lastPage(),
-            'last_page' => $notifications->lastPage(),
-            'filters' => [
+            'total_page'   => $notifications->lastPage(),
+            'last_page'    => $notifications->lastPage(),
+            'filters'      => [
                 'unread_only' => $unreadOnly,
-                'search' => $search !== '' ? $search : null,
+                'is_industry' => $isIndustry,
+                'search'      => $search !== '' ? $search : null,
             ],
         ], 200);
     }
+
+    // public function index(Request $request): JsonResponse
+    // {
+    //     $perPage = max(1, min((int) $request->integer('limit', $request->integer('per_page', 20)), 50));
+    //     $page = max(1, (int) $request->integer('current_page', $request->integer('page', 1)));
+    //     $unreadOnly = (bool) $request->boolean('unread_only', false);
+    //     $search = trim((string) $request->query('search', ''));
+
+    //     $query = $request->user()->notifications();
+
+    //     if ($unreadOnly) {
+    //         $query = $query->whereNull('read_at');
+    //     }
+
+    //     if ($search !== '') {
+    //         $query = $query->where(function ($notificationQuery) use ($search) {
+    //             $notificationQuery
+    //                 ->where('type', 'like', '%'.$search.'%')
+    //                 ->orWhere('data', 'like', '%'.$search.'%');
+    //         });
+    //     }
+
+    //     $notifications = $query->orderByDesc('created_at')->paginate($perPage, page: $page);
+
+    //     $formattedNotifications = collect($notifications->items())
+    //         ->map(fn ($n) => $this->formatNotification($n))
+    //         ->filter()
+    //         ->values();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Notifications retrieved successfully',
+    //         'stats' => [
+    //             'total_notifications' => $notifications->total(),
+    //             'unread_notifications' => $request->user()->unreadNotifications()->count(),
+    //         ],
+    //         'data' => $formattedNotifications,
+    //         'total' => $notifications->total(),
+    //         'limit' => $notifications->perPage(),
+    //         'current_page' => $notifications->currentPage(),
+    //         'total_page' => $notifications->lastPage(),
+    //         'last_page' => $notifications->lastPage(),
+    //         'filters' => [
+    //             'unread_only' => $unreadOnly,
+    //             'search' => $search !== '' ? $search : null,
+    //         ],
+    //     ], 200);
+    // }
 
     public function unreadCount(Request $request): JsonResponse
     {
@@ -133,7 +205,7 @@ class NotificationController extends Controller
             $data = json_decode($data, true);
         }
 
-        $userId = $data['sender_id'] ?? $data['user_id'] ?? $data['acceptor_id'] ?? $data['inviter_id'] ?? null;
+        $userId = $data['sender_id'] ?? $data['user_id'] ?? $data['acceptor_id'] ?? $data['inviter_id'] ?? $data['applicant_id'] ?? null;
 
         if ($userId) {
             $user = User::find($userId);
@@ -146,7 +218,8 @@ class NotificationController extends Controller
             $data['username'] = $user->username;
             $data['acceptor_username'] = $user->username;
             $data['inviter_username'] = $user->username;
-            $data['sender_name'] = $user->first_name.' '.$user->last_name;
+            $data['sender_name'] = $user->first_name . ' ' . $user->last_name;
+            $data['applicant_name'] = $user->first_name . ' ' . $user->last_name;
             $data['profile_image_url'] = $user->profile_image_url;
         }
 

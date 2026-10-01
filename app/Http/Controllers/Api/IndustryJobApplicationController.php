@@ -7,6 +7,8 @@ use App\Enums\JobApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
+use App\Notifications\JobApplicationReceivedNotification;
+use App\Notifications\JobApplicationStatusUpdatedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -188,7 +190,7 @@ class IndustryJobApplicationController extends Controller
             'phone_number'     => $validated['phone_number'] ?? null,
             'experiences'      => $validated['experiences'] ?? null,
             'current_position' => $validated['current_position'] ?? null,
-            'expected_salary'  => $validated['expected_salary'],
+            'expected_salary'  => $validated['expected_salary'] ?? null,
             'location'         => $validated['location'] ?? null,
             'linkedin_url'     => $validated['linkedin_url'] ?? null,
             'portfolio_url'    => $validated['portfolio_url'] ?? null,
@@ -198,6 +200,13 @@ class IndustryJobApplicationController extends Controller
             'resume_path'      => $resumePath,
             'status'           => JobApplicationStatus::PENDING->value,
         ]);
+
+        // 1. Notification dispatch for creator and industry
+        $creator = $jobPost->creator;
+
+        if ($creator) {
+            $creator->notify(new JobApplicationReceivedNotification($application, $jobPost, $user));
+        }
 
         return response()->json([
             'success' => true,
@@ -408,7 +417,7 @@ class IndustryJobApplicationController extends Controller
         }
 
         // ----------------------------------------------------
-        // ১. Dynamic Filter Navigation Logic (Status Auto Update-এর আগেই রান হবে)
+        // 1. Dynamic Filter Navigation Logic (Status Auto Update-এর আগেই রান হবে)
         // ----------------------------------------------------
         $filterStatus = strtolower(trim((string) $request->query('status', 'all')));
 
@@ -448,21 +457,30 @@ class IndustryJobApplicationController extends Controller
         }
 
         // ----------------------------------------------------
-        // ২. Auto Status Update: Pending -> Reviewing
+        // 2. Auto Status Update: Pending -> Reviewing
         // ----------------------------------------------------
         $appStatus = $application->status instanceof \BackedEnum
             ? $application->status->value
             : $application->status;
 
-        if (! $isApplicant && $appStatus === JobApplicationStatus::PENDING->value) {
-            $application->update([
-                'status' => JobApplicationStatus::REVIEWING->value,
-            ]);
+        $isCompanyViewer = $isJobCreator || $isIndustryOwner;
+
+        if ($isCompanyViewer && $appStatus === JobApplicationStatus::PENDING->value) {
             $appStatus = JobApplicationStatus::REVIEWING->value;
+
+            $application->update([
+                'status' => $appStatus,
+            ]);
+
+            if ($application->applicant && $job) {
+                $application->applicant->notify(
+                    new JobApplicationStatusUpdatedNotification($application, $job, $appStatus, $user)
+                );
+            }
         }
 
         // ----------------------------------------------------
-        // ৩. Response Data Formatting
+        // 3. Response Data Formatting
         // ----------------------------------------------------
         $applicantAvatar = null;
         if ($application->applicant) {
@@ -547,8 +565,8 @@ class IndustryJobApplicationController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        // Application er shathe job ebong industry nested relation load kora
-        $application = IndustryJobApplication::with(['job.industry'])->find($applicationId);
+        // Application er shathe job.industry ebong applicant relation load kora
+        $application = IndustryJobApplication::with(['job.industry', 'applicant'])->find($applicationId);
 
         if (! $application) {
             return response()->json(['success' => false, 'message' => 'Application not found.'], 404);
@@ -573,13 +591,31 @@ class IndustryJobApplicationController extends Controller
             'status' => ['required', Rule::enum(JobApplicationStatus::class)],
         ]);
 
-        $application->update([
-            'status' => $validated['status'],
-        ]);
+        $newStatus = $validated['status'] instanceof \BackedEnum
+            ? $validated['status']->value
+            : $validated['status'];
+
+        $oldStatus = $application->status instanceof \BackedEnum
+            ? $application->status->value
+            : $application->status;
+
+        // Status change hole update ebong notification send hobe
+        if ($oldStatus !== $newStatus) {
+            $application->update([
+                'status' => $newStatus,
+            ]);
+
+            // Applicant-ke notify kora
+            if ($application->applicant) {
+                $application->applicant->notify(
+                    new JobApplicationStatusUpdatedNotification($application, $job, $newStatus, $user)
+                );
+            }
+        }
 
         return response()->json([
             'success' => true,
-            'message' => "Application status updated to {$validated['status']} successfully.",
+            'message' => "Application status updated to {$newStatus} successfully.",
             'data'    => [
                 'id'             => $application->id,
                 'application_id' => $application->application_id,
@@ -588,4 +624,56 @@ class IndustryJobApplicationController extends Controller
             ],
         ]);
     }
+
+
+
+    // public function updateApplicationStatus(Request $request, $applicationId): JsonResponse
+    // {
+    //     $user = auth('api')->user();
+
+    //     if (! $user) {
+    //         return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+    //     }
+
+    //     // Application er shathe job ebong industry nested relation load kora
+    //     $application = IndustryJobApplication::with(['job.industry'])->find($applicationId);
+
+    //     if (! $application) {
+    //         return response()->json(['success' => false, 'message' => 'Application not found.'], 404);
+    //     }
+
+    //     $job = $application->job;
+    //     $industry = $job?->industry;
+
+    //     // Permission check
+    //     $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+    //     $isJobCreator = $job && $job->created_by && ((int) $job->created_by === (int) $user->id);
+    //     $isIndustryOwner = $industry && ((int) $industry->created_by === (int) $user->id);
+
+    //     if (! $isAdmin && ! $isJobCreator && ! $isIndustryOwner) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'You are not authorized to update this application status.',
+    //         ], 403);
+    //     }
+
+    //     $validated = $request->validate([
+    //         'status' => ['required', Rule::enum(JobApplicationStatus::class)],
+    //     ]);
+
+    //     $application->update([
+    //         'status' => $validated['status'],
+    //     ]);
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => "Application status updated to {$validated['status']} successfully.",
+    //         'data'    => [
+    //             'id'             => $application->id,
+    //             'application_id' => $application->application_id,
+    //             'status'         => $application->status instanceof \BackedEnum ? $application->status->value : $application->status,
+    //             'updated_at'     => $application->updated_at->toDateTimeString(),
+    //         ],
+    //     ]);
+    // }
 }
