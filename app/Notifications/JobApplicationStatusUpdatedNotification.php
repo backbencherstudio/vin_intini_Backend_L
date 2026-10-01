@@ -46,13 +46,29 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             ? $notifiable->unreadNotifications()->count()
             : 0;
 
-        $companyName = $this->jobPost->industry->name ?? 'Company';
+        $industry = $this->jobPost->relationLoaded('industry')
+            ? $this->jobPost->industry
+            : $this->jobPost->industry()->first();
+
+
+        $companyName = $industry?->name ?? 'Company';
         $formattedStatus = ucfirst($this->newStatus);
+
+        // Industry Logo URL জেনারেট করা
+        $rawLogo = $industry?->logo;
+        $industryLogoUrl = null;
+        if ($rawLogo) {
+            $industryLogoUrl = str_starts_with($rawLogo, 'http')
+                ? $rawLogo
+                : asset('storage/' . ltrim($rawLogo, '/'));
+        }
 
         return [
             // Company & Post identifiers
             'industry_id'           => $this->jobPost->industry_id,
             'industry_name'         => $companyName,
+            'industry_logo'         => $rawLogo,
+            'industry_logo_url'     => $industryLogoUrl, // Full image URL
             'job_id'                => $this->jobPost->id,
             'job_unique_id'         => $this->jobPost->job_id,
             'job_title'             => $this->jobPost->job_title,
@@ -62,7 +78,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             'application_unique_id' => $this->application->application_id,
             'status'                => $this->newStatus,
 
-            // Sender/Updater info (Optional)
+            // Sender/Updater info
             'updater_id'            => $this->updater?->id,
             'updater_name'          => $this->updater ? trim(($this->updater->first_name ?? '') . ' ' . ($this->updater->last_name ?? '')) : null,
 
@@ -95,8 +111,19 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
 
     public function toFcm(object $notifiable): FcmMessage
     {
-        $companyName = $this->jobPost->industry->name ?? 'Company';
+        $industry = $this->jobPost->relationLoaded('industry')
+            ? $this->jobPost->industry
+            : $this->jobPost->industry()->first();
+        $companyName = $industry?->name ?? 'Company';
         $formattedStatus = ucfirst($this->newStatus);
+
+        $rawLogo = $industry?->logo;
+        $industryLogoUrl = null;
+        if ($rawLogo) {
+            $industryLogoUrl = str_starts_with($rawLogo, 'http')
+                ? $rawLogo
+                : asset('storage/' . ltrim($rawLogo, '/'));
+        }
 
         return FcmMessage::create()
             ->notification(
@@ -106,6 +133,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             )
             ->data([
                 'industry_id'           => (string) $this->jobPost->industry_id,
+                'industry_logo_url'     => (string) ($industryLogoUrl ?? ''),
                 'job_id'                => (string) $this->jobPost->id,
                 'application_id'        => (string) $this->application->id,
                 'application_unique_id' => (string) $this->application->application_id,
