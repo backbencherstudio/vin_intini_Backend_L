@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Connection;
+use App\Models\IndustryFollow;
 use App\Models\Post;
 use App\Models\UserFollow;
 use Illuminate\Http\Request;
@@ -46,6 +47,10 @@ class NewsfeedController extends Controller
             ->pluck('following_id');
 
         $unfollowedConnectionIds = $connectionIds->diff($followingIds);
+
+        $followedIndustryIds = IndustryFollow::where('user_id', $user->id)
+            ->pluck('industry_id')
+            ->flip();
 
         $posts = Post::query()
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
@@ -130,7 +135,7 @@ class NewsfeedController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Feed fetched successfully',
-            'data' => collect($posts->items())->map(function ($post) use ($user, $relationshipMap, $adminGroupIds) {
+            'data' => collect($posts->items())->map(function ($post) use ($user, $relationshipMap, $adminGroupIds, $followedIndustryIds) {
                 if (! $post->user) {
                     return null;
                 }
@@ -157,6 +162,19 @@ class NewsfeedController extends Controller
                     };
                 }
 
+                $industry = $post->industryLink?->industry;
+                $industryData = null;
+                if ($industry) {
+                    $industryData = [
+                        'id' => $industry->id,
+                        'name' => $industry->name,
+                        'slug' => $industry->slug,
+                        'tagline' => $industry->tagline,
+                        'logo' => $industry->logo,
+                        'is_following' => isset($followedIndustryIds[$industry->id]),
+                    ];
+                }
+
                 return [
                     'id' => $post->id,
                     'user' => $post->user,
@@ -169,7 +187,7 @@ class NewsfeedController extends Controller
                     'relationship_status' => $relationshipStatus,
                     'media' => $post->media,
                     'group' => $post->groups->first(),
-                    'industry' => $post->industryLink?->industry,
+                    'industry' => $industryData,
                     'created_at' => $post->created_at,
                     'can_edit' => $canEdit,
                     'can_delete' => $canDelete,
@@ -471,6 +489,21 @@ class NewsfeedController extends Controller
             };
         }
 
+        $industry = $post->industryLink?->industry;
+        $industryData = null;
+        if ($industry) {
+            $industryData = [
+                'id' => $industry->id,
+                'name' => $industry->name,
+                'slug' => $industry->slug,
+                'tagline' => $industry->tagline,
+                'logo' => $industry->logo,
+                'is_following' => IndustryFollow::where('industry_id', $industry->id)
+                    ->where('user_id', $user->id)
+                    ->exists(),
+            ];
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Post fetched successfully',
@@ -486,7 +519,7 @@ class NewsfeedController extends Controller
                 'relationship_status' => $relationshipStatus,
                 'media' => $post->media,
                 'group' => $post->groups->first(),
-                'industry' => $post->industryLink?->industry,
+                'industry' => $industryData,
                 'created_at' => $post->created_at,
                 'can_edit' => $canEdit,
                 'can_delete' => $canDelete,

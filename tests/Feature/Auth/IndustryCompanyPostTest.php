@@ -825,7 +825,8 @@ class IndustryCompanyPostTest extends TestCase
             ->getJson('/api/newsfeed')
             ->assertOk()
             ->assertJsonPath('data.0.description', 'Company announcement')
-            ->assertJsonPath('data.0.industry.id', Industry::where('created_by', $owner->id)->value('id'));
+            ->assertJsonPath('data.0.industry.id', Industry::where('created_by', $owner->id)->value('id'))
+            ->assertJsonPath('data.0.industry.is_following', false);
     }
 
     public function test_followers_only_company_post_is_absent_from_the_newsfeed_of_non_followers(): void
@@ -850,7 +851,8 @@ class IndustryCompanyPostTest extends TestCase
         $this->actingAs($follower, 'api')
             ->getJson('/api/newsfeed')
             ->assertOk()
-            ->assertJsonPath('data.0.description', 'Members only');
+            ->assertJsonPath('data.0.description', 'Members only')
+            ->assertJsonPath('data.0.industry.is_following', true);
     }
 
     public function test_private_company_post_is_absent_from_the_newsfeed_of_followers(): void
