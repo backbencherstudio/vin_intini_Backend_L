@@ -70,3 +70,5 @@ Route::post('/subscriptions/send-otp', [SubscriptionController::class, 'sendOtp'
 Route::post('/subscriptions/create', [SubscriptionController::class, 'create']);
 Route::get('/subscriptions/status', [SubscriptionController::class, 'status']);
 Route::post('/subscriptions/{subscription}/cancel', [SubscriptionController::class, 'cancel']);
+Route::get('/billing-history', [SubscriptionController::class, 'billingHistory'])->name('billing.history');
+Route::get('/subscriptions/billing-history', [SubscriptionController::class, 'billingHistory'])->name('subscriptions.billing-history');

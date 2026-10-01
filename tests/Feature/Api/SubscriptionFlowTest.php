@@ -7,6 +7,7 @@ use App\Mail\SubscriptionOtpMail;
 use App\Models\Otp;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\StripeService;
@@ -709,5 +710,155 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('subscription.plan_type', 'premium')
             ->assertJsonPath('subscription.status', 'active')
             ->assertJsonPath('subscription.will_renew', true);
+    }
+
+    public function test_user_can_fetch_empty_billing_history(): void
+    {
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/billing-history');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data', [])
+            ->assertJsonPath('pagination.total', 0);
+    }
+
+    public function test_user_can_fetch_billing_history_with_transactions(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Pro User',
+            'billing_rate' => 29.99,
+            'billing_cycle' => 'monthly',
+            'status' => 'active',
+            'plan_type' => 'premium',
+            'features' => ['search_profiles'],
+        ]);
+
+        $subscription = Subscription::create([
+            'user_id' => $this->user->id,
+            'plan_id' => $plan->id,
+            'platform' => 'stripe',
+            'provider_subscription_id' => 'sub_123',
+            'status' => 'active',
+            'current_period_start' => now(),
+            'current_period_end' => now()->addMonth(),
+        ]);
+
+        $transaction = Transaction::create([
+            'provider_transaction_id' => 'pi_test_123',
+            'user_id' => $this->user->id,
+            'plan_id' => $plan->id,
+            'subscription_id' => $subscription->id,
+            'amount' => 29.99,
+            'currency' => 'usd',
+            'card_brand' => 'visa',
+            'card_last4' => '5675',
+            'status' => 'succeeded',
+            'paid_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/billing-history');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $transaction->id)
+            ->assertJsonPath('data.0.invoice_no', sprintf('#MU%06d', $transaction->id))
+            ->assertJsonPath('data.0.status', 'Paid')
+            ->assertJsonPath('data.0.payment_status', 'succeeded')
+            ->assertJsonPath('data.0.plan.name', 'Pro User')
+            ->assertJsonPath('data.0.plan.plan_type', 'premium')
+            ->assertJsonPath('data.0.payment_method', 'VISA ************5675')
+            ->assertJsonPath('data.0.amount', 29.99)
+            ->assertJsonPath('data.0.amount_formatted', '$29.99 / month')
+            ->assertJsonPath('pagination.total', 1);
+    }
+
+    public function test_billing_history_does_not_leak_other_user_transactions(): void
+    {
+        $otherUser = User::factory()->create(['is_verified' => true]);
+        $plan = $this->makePlan(['name' => 'Pro User']);
+
+        Transaction::create([
+            'provider_transaction_id' => 'pi_other_user',
+            'user_id' => $otherUser->id,
+            'plan_id' => $plan->id,
+            'amount' => 29.99,
+            'currency' => 'usd',
+            'status' => 'succeeded',
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/billing-history');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_billing_history_filters_by_plan_type_and_status(): void
+    {
+        $premiumPlan = $this->makePlan([
+            'name' => 'Pro User',
+            'billing_rate' => 29.99,
+            'plan_type' => 'premium',
+        ]);
+
+        $industryPlan = $this->makePlan([
+            'name' => 'Pro Industries',
+            'billing_rate' => 59.99,
+            'plan_type' => 'industry',
+        ]);
+
+        Transaction::create([
+            'provider_transaction_id' => 'pi_prem',
+            'user_id' => $this->user->id,
+            'plan_id' => $premiumPlan->id,
+            'amount' => 29.99,
+            'currency' => 'usd',
+            'status' => 'succeeded',
+            'paid_at' => now(),
+        ]);
+
+        Transaction::create([
+            'provider_transaction_id' => 'pi_ind',
+            'user_id' => $this->user->id,
+            'plan_id' => $industryPlan->id,
+            'amount' => 59.99,
+            'currency' => 'usd',
+            'status' => 'expired',
+            'paid_at' => now(),
+        ]);
+
+        // Filter by industry plan
+        $responseIndustry = $this->actingAs($this->user, 'api')
+            ->getJson('/api/billing-history?plan_type=industry');
+
+        $responseIndustry
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.plan.name', 'Pro Industries')
+            ->assertJsonPath('data.0.status', 'Expired');
+
+        // Filter by status=paid
+        $responsePaid = $this->actingAs($this->user, 'api')
+            ->getJson('/api/billing-history?status=paid');
+
+        $responsePaid
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.plan.name', 'Pro User')
+            ->assertJsonPath('data.0.status', 'Paid');
+    }
+
+    public function test_billing_history_accessible_via_subscriptions_alias_route(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->getJson('/api/subscriptions/billing-history');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 }
