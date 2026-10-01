@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\OtpType;
 use App\Enums\PlanFeature;
+use App\Enums\PlanType;
 use App\Http\Controllers\Controller;
 use App\Mail\SubscriptionOtpMail;
 use App\Models\Otp;
@@ -294,6 +295,149 @@ class SubscriptionController extends Controller
                     'id' => $subscription->id,
                     'status' => $subscription->status,
                 ],
+            ],
+        ], 200);
+    }
+
+    public function billingHistory(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $query = Transaction::with(['plan', 'subscription'])
+            ->where('user_id', $user->id)
+            ->latest('id');
+
+        if ($request->filled('status')) {
+            $status = strtolower($request->string('status')->value());
+            if (in_array($status, ['paid', 'succeeded'], true)) {
+                $query->whereIn('status', ['paid', 'succeeded']);
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($request->filled('plan_type')) {
+            $planType = $request->string('plan_type')->value();
+            $query->whereHas('plan', function ($q) use ($planType) {
+                $q->where('plan_type', $planType);
+            });
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->value();
+            $query->where(function ($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                    ->orWhere('provider_transaction_id', 'like', "%{$search}%")
+                    ->orWhereHas('plan', function ($pq) use ($search) {
+                        $pq->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $perPage = min(max($request->integer('per_page', 10), 1), 100);
+        $paginated = $query->paginate($perPage);
+
+        $transactions = $paginated->getCollection()->map(function (Transaction $transaction) {
+            $issueDate = $transaction->paid_at ?? $transaction->created_at;
+
+            $cycle = strtolower((string) ($transaction->plan?->billing_cycle ?? 'monthly'));
+
+            $dueDate = match ($cycle) {
+                'yearly' => $issueDate?->copy()->addYear(),
+                'weekly' => $issueDate?->copy()->addWeek(),
+                default => $issueDate?->copy()->addMonth(),
+            };
+
+            $formattedBrand = match (strtolower((string) $transaction->card_brand)) {
+                'visa' => 'VISA',
+                'mastercard' => 'Mastercard',
+                'amex', 'american_express', 'american express' => 'AMEX',
+                'discover' => 'Discover',
+                'jcb' => 'JCB',
+                'diners', 'diners_club', 'diners club' => 'Diners Club',
+                default => ! empty($transaction->card_brand) ? ucfirst((string) $transaction->card_brand) : null,
+            };
+
+            $cardLast4 = $transaction->card_last4;
+            if ($formattedBrand && $cardLast4) {
+                $paymentMethod = "{$formattedBrand} ************{$cardLast4}";
+            } elseif ($formattedBrand) {
+                $paymentMethod = $formattedBrand;
+            } elseif ($cardLast4) {
+                $paymentMethod = "Card ************{$cardLast4}";
+            } else {
+                $paymentMethod = 'Credit/Debit Card';
+            }
+
+            $statusLower = strtolower((string) $transaction->status);
+            $statusLabel = match ($statusLower) {
+                'succeeded', 'paid' => 'Paid',
+                'expired' => 'Expired',
+                'failed' => 'Failed',
+                'refunded' => 'Refunded',
+                'pending' => 'Pending',
+                'canceled', 'cancelled' => 'Cancelled',
+                default => ucfirst((string) $transaction->status),
+            };
+
+            $amount = (float) $transaction->amount;
+            $currency = strtolower((string) ($transaction->currency ?? 'usd'));
+            $currencySymbol = match ($currency) {
+                'usd' => '$',
+                'eur' => '€',
+                'gbp' => '£',
+                default => strtoupper($currency).' ',
+            };
+
+            $cycleLabel = match ($cycle) {
+                'yearly' => '/ year',
+                'weekly' => '/ week',
+                default => '/ month',
+            };
+
+            $amountFormatted = $currencySymbol.number_format($amount, 2).' '.$cycleLabel;
+
+            $planType = $transaction->plan?->plan_type instanceof PlanType
+                ? $transaction->plan->plan_type->value
+                : ($transaction->plan?->plan_type ?? 'premium');
+
+            return [
+                'id' => $transaction->id,
+                'invoice_no' => sprintf('#MU%06d', $transaction->id),
+                'transaction_id' => $transaction->provider_transaction_id,
+                'status' => $statusLabel,
+                'payment_status' => $transaction->status,
+                'plan' => $transaction->plan ? [
+                    'id' => $transaction->plan->id,
+                    'name' => $transaction->plan->name,
+                    'plan_type' => $planType,
+                    'billing_cycle' => $transaction->plan->billing_cycle,
+                    'billing_rate' => (float) $transaction->plan->billing_rate,
+                    'badge_color' => $transaction->plan->badge_color,
+                ] : null,
+                'issue_date' => $issueDate?->format('d M Y h:i A'),
+                'issue_date_iso' => $issueDate?->toIso8601String(),
+                'due_date' => $dueDate?->format('d M Y h:i A'),
+                'due_date_iso' => $dueDate?->toIso8601String(),
+                'payment_method' => $paymentMethod,
+                'card_brand' => $transaction->card_brand,
+                'card_last4' => $transaction->card_last4,
+                'amount' => $amount,
+                'currency' => $currency,
+                'amount_formatted' => trim($amountFormatted),
+                'receipt_url' => null,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Billing history retrieved successfully.',
+            'data' => $transactions,
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
             ],
         ], 200);
     }
