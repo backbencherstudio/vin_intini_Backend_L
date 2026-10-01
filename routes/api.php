@@ -62,7 +62,7 @@ Route::prefix('2fa')->group(function () {
     Route::post('/recovery/resend-otp', [TwoFactorController::class, 'recoveryResendOtp'])->middleware('throttle:5,1');
 });
 
-Route::middleware('auth:api', 'active_session')->group(function () {
+Route::middleware(['auth:api', 'active_session'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
@@ -102,14 +102,14 @@ Route::middleware('auth:api', 'active_session')->group(function () {
         Route::post('/setup-profile', [UserProfileController::class, 'setupProfile'])->middleware('verified_user');
 
         Route::middleware('profile_completed')->group(function () {
-            require __DIR__.'/niaz.php';
-            require __DIR__.'/shanto.php';
+            require __DIR__ . '/niaz.php';
+            require __DIR__ . '/shanto.php';
         });
     });
 
     Route::middleware('role:admin')->group(function () {
-        require __DIR__.'/admin.php';
+        require __DIR__ . '/admin.php';
     });
 
-    require __DIR__.'/kamruzzaman.php';
+    require __DIR__ . '/kamruzzaman.php';
 });
