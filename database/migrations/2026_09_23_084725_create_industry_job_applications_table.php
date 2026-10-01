@@ -31,7 +31,7 @@ return new class extends Migration
             $table->string('phone_number')->nullable();
             $table->string('experiences')->nullable();
             $table->string('current_position')->nullable();
-            $table->decimal('expected_salary', 12, 2);
+            $table->decimal('expected_salary', 12, 2)->nullable();
             $table->string('location')->nullable();
 
             $table->string('linkedin_url')->nullable();
