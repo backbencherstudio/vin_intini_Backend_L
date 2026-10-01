@@ -247,7 +247,6 @@ class IndustryJobApplicationController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        // Header data sajate dorkari relation load
         $jobPost = IndustryJobPost::with([
             'industry:id,name,logo,created_by',
             'state:id,name',
@@ -260,7 +259,6 @@ class IndustryJobApplicationController extends Controller
             return response()->json(['success' => false, 'message' => 'Job post not found.'], 404);
         }
 
-        // Permission check
         $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
         $isJobCreator = $jobPost->created_by && ((int) $jobPost->created_by === (int) $user->id);
         $isIndustryOwner = $jobPost->industry && ((int) $jobPost->industry->created_by === (int) $user->id);
@@ -272,9 +270,6 @@ class IndustryJobApplicationController extends Controller
             ], 403);
         }
 
-        // ----------------------------------------------------
-        // Status Counts (Backend Enum Values Matching)
-        // ----------------------------------------------------
         $rawCounts = IndustryJobApplication::where('job_id', $jobPost->id)
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
@@ -292,17 +287,15 @@ class IndustryJobApplicationController extends Controller
             'rejected'    => (int) ($rawCounts['rejected'] ?? 0),
         ];
 
-        // ----------------------------------------------------
-        // Filter & Search Logic (Default Status: all)
-        // ----------------------------------------------------
         $status = strtolower(trim((string) $request->query('status', 'all')));
         $search = trim((string) $request->query('search', ''));
         $page   = max($request->integer('current_page', 1), 1);
         $limit  = min(max($request->integer('limit', 10), 1), 100);
 
+        // oldest('id') deya holo jate shobar ager application shobar age ashe
         $query = IndustryJobApplication::where('job_id', $jobPost->id)
             ->with(['applicant:id,first_name,last_name,username,email,profile_image'])
-            ->latest('id');
+            ->oldest('id');
 
         if ($status !== 'all' && $status !== '') {
             $query->where('status', $status);
@@ -318,7 +311,6 @@ class IndustryJobApplicationController extends Controller
 
         $paginated = $query->paginate($limit, ['*'], 'page', $page);
 
-        // Table Data Format
         $formattedApplicants = $paginated->getCollection()->map(function (IndustryJobApplication $app) use ($jobPost) {
             $avatar = null;
             if ($app->applicant) {
@@ -342,7 +334,6 @@ class IndustryJobApplicationController extends Controller
             ];
         });
 
-        // Header Summary Data
         $industryLogo = null;
         if ($jobPost->industry) {
             $rawLogo = $jobPost->industry->logo ?? null;
@@ -384,7 +375,7 @@ class IndustryJobApplicationController extends Controller
     }
 
 
-public function showApplication(Request $request, $id): JsonResponse
+    public function showApplication(Request $request, $id): JsonResponse
     {
         $user = auth('api')->user();
 
@@ -404,7 +395,6 @@ public function showApplication(Request $request, $id): JsonResponse
         $job = $application->job;
         $industry = $job?->industry;
 
-        // Permission check
         $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
         $isApplicant = (int) $application->applicant_id === (int) $user->id;
         $isJobCreator = $job && $job->created_by && ((int) $job->created_by === (int) $user->id);
@@ -418,15 +408,14 @@ public function showApplication(Request $request, $id): JsonResponse
         }
 
         // ----------------------------------------------------
-        // Dynamic Filter Navigation Logic
+        // ১. Dynamic Filter Navigation Logic (Status Auto Update-এর আগেই রান হবে)
         // ----------------------------------------------------
-        // Request theke status nibe (default 'all' dhora holo)
         $filterStatus = strtolower(trim((string) $request->query('status', 'all')));
 
-        $baseSiblingQuery = function () use ($application, $filterStatus) {
+        // Helper: Filter Query
+        $getSiblingQuery = function () use ($application, $filterStatus) {
             $query = IndustryJobApplication::where('job_id', $application->job_id);
 
-            // Jodi 'all' chara nirdishto kono status ashe (jemon pending, reviewing)
             if ($filterStatus !== 'all' && $filterStatus !== '') {
                 $query->where('status', $filterStatus);
             }
@@ -434,27 +423,46 @@ public function showApplication(Request $request, $id): JsonResponse
             return $query;
         };
 
-        // 1. Previous ID ber kora[cite: 2]
-        $prevId = $baseSiblingQuery()
-            ->where('id', '>', $application->id)
-            ->orderBy('id', 'asc')
-            ->value('id');
-
-        // 2. Next ID ber kora[cite: 2]
-        $nextId = $baseSiblingQuery()
+        // Ascending Order Logic (Oldest First)
+        $prevId = $getSiblingQuery()
             ->where('id', '<', $application->id)
             ->orderBy('id', 'desc')
             ->value('id');
 
-        // 3. Position count & total count[cite: 2]
-        $totalCount  = $baseSiblingQuery()->count();
-        $newerCount  = $baseSiblingQuery()->where('id', '>', $application->id)->count();
-        $currentPos  = $newerCount + 1;
+        $nextId = $getSiblingQuery()
+            ->where('id', '>', $application->id)
+            ->orderBy('id', 'asc')
+            ->value('id');
 
-        $positionText = "Applicants {$currentPos} of {$totalCount}"; // UI: Applicants 340 of 3[cite: 2]
+        // Total Count & Position Count
+        $totalCount = $getSiblingQuery()->count();
+        $isCurrentInFilter = $getSiblingQuery()->where('id', $application->id)->exists();
+
+        if ($isCurrentInFilter) {
+            $olderCount = $getSiblingQuery()->where('id', '<', $application->id)->count();
+            $currentPos = $olderCount + 1;
+            $positionText = "Applicants {$currentPos} of {$totalCount}";
+        } else {
+            $currentPos = null;
+            $positionText = "Applicants - of {$totalCount}";
+        }
 
         // ----------------------------------------------------
-        // Response Data Formatting
+        // ২. Auto Status Update: Pending -> Reviewing
+        // ----------------------------------------------------
+        $appStatus = $application->status instanceof \BackedEnum
+            ? $application->status->value
+            : $application->status;
+
+        if (! $isApplicant && $appStatus === JobApplicationStatus::PENDING->value) {
+            $application->update([
+                'status' => JobApplicationStatus::REVIEWING->value,
+            ]);
+            $appStatus = JobApplicationStatus::REVIEWING->value;
+        }
+
+        // ----------------------------------------------------
+        // ৩. Response Data Formatting
         // ----------------------------------------------------
         $applicantAvatar = null;
         if ($application->applicant) {
@@ -463,10 +471,6 @@ public function showApplication(Request $request, $id): JsonResponse
                 $applicantAvatar = str_starts_with($rawImg, 'http') ? $rawImg : asset('storage/' . ltrim($rawImg, '/'));
             }
         }
-
-        $currentStatus = $application->status instanceof \BackedEnum
-            ? $application->status->value
-            : $application->status;
 
         $data = [
             'id'               => $application->id,
@@ -485,13 +489,15 @@ public function showApplication(Request $request, $id): JsonResponse
             'about_yourself'   => $application->about_yourself,
             'skills'           => $application->skills ?? [],
             'resume_url'       => $application->resume_url,
-            'status'           => $currentStatus,
+            'status'           => $appStatus,
             'applied_at'       => $application->created_at?->format('M d, Y'),
             'updated_at'       => $application->updated_at?->toDateTimeString(),
 
-            // Dynamic Navigation details[cite: 2]
+            // Dynamic Navigation details
             'navigation' => [
                 'active_tab'     => $filterStatus,
+                'current_pos'    => $currentPos,
+                'total_count'    => $totalCount,
                 'prev_id'        => $prevId,
                 'next_id'        => $nextId,
                 'position_label' => $positionText,
