@@ -83,7 +83,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             'updater_name'          => $this->updater ? trim(($this->updater->first_name ?? '') . ' ' . ($this->updater->last_name ?? '')) : null,
 
             // Notification Meta
-            'message'               => "Your application for {$this->jobPost->job_title} at {$companyName} has been updated to {$formattedStatus}",
+            'message'               => "Your application for {$this->jobPost->job_title} has been updated to {$formattedStatus}",
             'type'                  => class_basename(self::class),
             'updated_at'            => now()->toIso8601String(),
             'unread_count'          => $unreadCount + 1,
