@@ -228,7 +228,13 @@ class NotificationController extends Controller
         }
 
         if (!empty($data['industry_logo_url'])) {
-            $data['profile_image_url'] = $data['industry_logo_url'];
+            $logoUrl = $data['industry_logo_url'];
+
+            $data['profile_image_url']        = $logoUrl;
+            $data['sender_profile_image_url'] = $logoUrl;
+            $data['sender_profile_image']     = $logoUrl;
+            $data['avatar']                   = $logoUrl;
+            $data['image']                    = $logoUrl;
         }
 
         return [
