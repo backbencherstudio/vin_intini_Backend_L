@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
-use App\Http\Controllers\GroupController;
+use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\IndustryJobApplicationController;
 use Illuminate\Support\Facades\Route;
 

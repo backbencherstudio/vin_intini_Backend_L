@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\RevenueCatWebhookController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\SocialController;
@@ -12,7 +13,6 @@ use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
-use App\Http\Controllers\GroupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', function () {
