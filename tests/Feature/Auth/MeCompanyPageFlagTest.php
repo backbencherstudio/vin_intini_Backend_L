@@ -25,8 +25,11 @@ class MeCompanyPageFlagTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.can_create_company_page', true)
-            ->assertJsonPath('user.company_id', null);
+            ->assertJsonPath('industry.can_create_company_page', true)
+            ->assertJsonPath('industry.has_company', false)
+            ->assertJsonPath('industry.company', null)
+            ->assertJsonMissingPath('user.can_create_company_page')
+            ->assertJsonMissingPath('user.company_id');
     }
 
     public function test_me_reports_can_create_company_page_as_false_for_a_trialing_subscription(): void
@@ -38,7 +41,8 @@ class MeCompanyPageFlagTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.can_create_company_page', false)
+            ->assertJsonPath('industry.can_create_company_page', false)
+            ->assertJsonPath('industry.has_company', false)
             ->assertJsonPath('subscription.is_subscribed', true);
     }
 
@@ -51,7 +55,8 @@ class MeCompanyPageFlagTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.can_create_company_page', false)
+            ->assertJsonPath('industry.can_create_company_page', false)
+            ->assertJsonPath('industry.has_company', false)
             ->assertJsonPath('subscription.is_subscribed', true);
     }
 
@@ -64,7 +69,8 @@ class MeCompanyPageFlagTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.can_create_company_page', false);
+            ->assertJsonPath('industry.can_create_company_page', false)
+            ->assertJsonPath('industry.has_company', false);
     }
 
     public function test_me_reports_can_create_company_page_as_false_when_the_plan_is_inactive(): void
@@ -77,7 +83,8 @@ class MeCompanyPageFlagTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.can_create_company_page', false);
+            ->assertJsonPath('industry.can_create_company_page', false)
+            ->assertJsonPath('industry.has_company', false);
     }
 
     public function test_me_reports_can_create_company_page_as_false_when_the_user_already_owns_a_page(): void
@@ -97,8 +104,12 @@ class MeCompanyPageFlagTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.can_create_company_page', false)
-            ->assertJsonPath('user.company_id', $industry->id);
+            ->assertJsonPath('industry.can_create_company_page', false)
+            ->assertJsonPath('industry.has_company', true)
+            ->assertJsonPath('industry.company.id', $industry->id)
+            ->assertJsonPath('industry.company.name', 'Bright Labs')
+            ->assertJsonMissingPath('user.can_create_company_page')
+            ->assertJsonMissingPath('user.company_id');
     }
 
     private function makeUser(): User

@@ -148,16 +148,6 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'is_onboarding' => $user->profile ? true : false,
-            'subscription' => [
-                'is_subscribed' => $isSubscribed,
-                'plan_id' => $isSubscribed ? $subscription->plan_id : null,
-                'plan_name' => $isSubscribed ? $subscription->plan?->name : null,
-                'plan_type' => $isSubscribed ? $subscription->plan?->plan_type : null,
-                'status' => $isSubscribed ? $subscription->status : null,
-                'features' => $isSubscribed ? ($subscription->plan?->features ?? []) : [],
-                'expires_at' => $isSubscribed ? $subscription->current_period_end?->toIso8601String() : null,
-                'will_renew' => $isSubscribed ? ! $subscription->cancel_at_period_end : null,
-            ],
             'user' => [
                 'id' => $user->id,
                 'username' => $user->username,
@@ -175,10 +165,6 @@ class AuthController extends Controller
                 'recovery_email' => $user->recovery_email,
                 'recovery_email_verified' => $user->recovery_email_verified_at ? true : false,
                 // 'recovery_email_pending' => !$user->recovery_email_verified_at && $user->recovery_email ? true : false,
-
-                'company_id' => $industry?->id,
-
-                'can_create_company_page' => $user->canCreateCompanyPage(),
 
                 'profile' => $user->profile ? [
                     'privacy_profile_activity' => $user->profile->privacy_profile_activity,
@@ -213,6 +199,33 @@ class AuthController extends Controller
                     ] : null,
 
                     'about' => $user->profile->about,
+                ] : null,
+            ],
+            'subscription' => [
+                'is_subscribed' => $isSubscribed,
+                'plan_id' => $isSubscribed ? $subscription->plan_id : null,
+                'plan_name' => $isSubscribed ? $subscription->plan?->name : null,
+                'plan_type' => $isSubscribed ? $subscription->plan?->plan_type : null,
+                'status' => $isSubscribed ? $subscription->status : null,
+                'features' => $isSubscribed ? ($subscription->plan?->features ?? []) : [],
+                'expires_at' => $isSubscribed ? $subscription->current_period_end?->toIso8601String() : null,
+                'will_renew' => $isSubscribed ? ! $subscription->cancel_at_period_end : null,
+            ],
+            'industry' => [
+                'can_create_company_page' => $user->canCreateCompanyPage(),
+                'has_company' => (bool) $industry,
+                'company' => $industry ? [
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'slug' => $industry->slug,
+                    'industry' => $industry->industry,
+                    'website' => $industry->website,
+                    'address' => $industry->address,
+                    'company_size' => $industry->company_size,
+                    'tagline' => $industry->tagline,
+                    'description' => $industry->description,
+                    'logo' => $industry->logo,
+                    'cover_image' => $industry->cover_image,
                 ] : null,
             ],
         ]);
