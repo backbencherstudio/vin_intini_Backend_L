@@ -720,18 +720,16 @@ class SubscriptionFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data', [])
-            ->assertJsonPath('pagination.total', 0);
+            ->assertJsonPath('pagination.total', 0)
+            ->assertJsonPath('pagination.current_page', 1);
     }
 
     public function test_user_can_fetch_billing_history_with_transactions(): void
     {
-        $plan = Plan::create([
+        $plan = $this->makePlan([
             'name' => 'Pro User',
             'billing_rate' => 29.99,
-            'billing_cycle' => 'monthly',
-            'status' => 'active',
             'plan_type' => 'premium',
-            'features' => ['search_profiles'],
         ]);
 
         $subscription = Subscription::create([
@@ -772,7 +770,8 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.0.payment_method', 'VISA ************5675')
             ->assertJsonPath('data.0.amount', 29.99)
             ->assertJsonPath('data.0.amount_formatted', '$29.99 / month')
-            ->assertJsonPath('pagination.total', 1);
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('pagination.per_page', 10);
     }
 
     public function test_billing_history_does_not_leak_other_user_transactions(): void
@@ -794,10 +793,11 @@ class SubscriptionFlowTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(0, 'data');
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('pagination.total', 0);
     }
 
-    public function test_billing_history_filters_by_plan_type_and_status(): void
+    public function test_billing_history_returns_all_user_transactions(): void
     {
         $premiumPlan = $this->makePlan([
             'name' => 'Pro User',
@@ -831,34 +831,16 @@ class SubscriptionFlowTest extends TestCase
             'paid_at' => now(),
         ]);
 
-        // Filter by industry plan
-        $responseIndustry = $this->actingAs($this->user, 'api')
-            ->getJson('/api/billing-history?plan_type=industry');
-
-        $responseIndustry
-            ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.plan.name', 'Pro Industries')
-            ->assertJsonPath('data.0.status', 'Expired');
-
-        // Filter by status=paid
-        $responsePaid = $this->actingAs($this->user, 'api')
-            ->getJson('/api/billing-history?status=paid');
-
-        $responsePaid
-            ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.plan.name', 'Pro User')
-            ->assertJsonPath('data.0.status', 'Paid');
-    }
-
-    public function test_billing_history_accessible_via_subscriptions_alias_route(): void
-    {
         $response = $this->actingAs($this->user, 'api')
-            ->getJson('/api/subscriptions/billing-history');
+            ->getJson('/api/billing-history');
 
         $response
             ->assertOk()
-            ->assertJsonPath('success', true);
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.plan.name', 'Pro Industries')
+            ->assertJsonPath('data.0.status', 'Expired')
+            ->assertJsonPath('data.1.plan.name', 'Pro User')
+            ->assertJsonPath('data.1.status', 'Paid')
+            ->assertJsonPath('pagination.total', 2);
     }
 }

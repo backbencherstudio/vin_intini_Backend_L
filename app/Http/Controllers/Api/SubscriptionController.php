@@ -303,39 +303,12 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
 
-        $query = Transaction::with(['plan', 'subscription'])
-            ->where('user_id', $user->id)
-            ->latest('id');
-
-        if ($request->filled('status')) {
-            $status = strtolower($request->string('status')->value());
-            if (in_array($status, ['paid', 'succeeded'], true)) {
-                $query->whereIn('status', ['paid', 'succeeded']);
-            } else {
-                $query->where('status', $status);
-            }
-        }
-
-        if ($request->filled('plan_type')) {
-            $planType = $request->string('plan_type')->value();
-            $query->whereHas('plan', function ($q) use ($planType) {
-                $q->where('plan_type', $planType);
-            });
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->string('search')->value();
-            $query->where(function ($q) use ($search) {
-                $q->where('id', 'like', "%{$search}%")
-                    ->orWhere('provider_transaction_id', 'like', "%{$search}%")
-                    ->orWhereHas('plan', function ($pq) use ($search) {
-                        $pq->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
-
         $perPage = min(max($request->integer('per_page', 10), 1), 100);
-        $paginated = $query->paginate($perPage);
+
+        $paginated = Transaction::with(['plan', 'subscription'])
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->paginate($perPage);
 
         $transactions = $paginated->getCollection()->map(function (Transaction $transaction) {
             $issueDate = $transaction->paid_at ?? $transaction->created_at;
