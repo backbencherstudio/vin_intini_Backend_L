@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\GroupController;
+use App\Http\Controllers\Api\IndustryAnalyticsController;
 use App\Http\Controllers\Api\IndustryJobApplicationController;
 use Illuminate\Support\Facades\Route;
 
@@ -133,13 +134,13 @@ Route::prefix('industry')->group(function () {
     Route::post('job-post/create', [IndustryJobPostController::class, 'store']); // create a new job post
     Route::put('job-post/{id}/update', [IndustryJobPostController::class, 'update']); // update a job post
     Route::delete('job-post/{id}/delete', [IndustryJobPostController::class, 'destroy']); // delete a job post
-    Route::patch('job-post/{id}/status', [IndustryJobPostController::class, 'updateStatus']);  // update job post status 
+    Route::patch('job-post/{id}/status', [IndustryJobPostController::class, 'updateStatus']);  // update job post status
 
     // user interaction routes for job posts (like, save, apply)
     Route::post('job-post/{id}/like', [IndustryJobPostController::class, 'toggleLike']); // like job post
     Route::post('job-post/{id}/save', [IndustryJobPostController::class, 'toggleSave']); // save/unsave job post
     Route::get('saved-jobs', [IndustryJobPostController::class, 'savedJobs']); // get saved jobs for current user
-    
+
     // user application routes for job posts
     Route::get('my-job-applications', [IndustryJobApplicationController::class, 'myApplications']); // get all applications of the current user
     Route::post('job-post/{id}/apply', [IndustryJobApplicationController::class, 'applyJob']); // apply for a job post
@@ -150,4 +151,9 @@ Route::prefix('industry')->group(function () {
     Route::patch('job-application/{id}/status', [IndustryJobApplicationController::class, 'updateApplicationStatus']); // update application status (shortlist, reject, hire)
 });
 
-
+// industry analytics routes
+Route::prefix('industry/analytics')->group(function () {
+    Route::get('/job-overviews', [IndustryAnalyticsController::class, 'jobOverview']);
+    Route::get('/advertisements', [IndustryAnalyticsController::class, 'advertisements']);
+    Route::get('/profile-insights', [IndustryAnalyticsController::class, 'profileInsights']);
+});
