@@ -223,6 +223,14 @@ class NotificationController extends Controller
             $data['profile_image_url'] = $user->profile_image_url;
         }
 
+        if (!empty($data['industry_name'])) {
+            $data['sender_name'] = $data['industry_name'];
+        }
+
+        if (!empty($data['industry_logo_url'])) {
+            $data['profile_image_url'] = $data['industry_logo_url'];
+        }
+
         return [
             'id' => $notification->id,
             'type' => $data['type'] ?? class_basename($notification->type),
