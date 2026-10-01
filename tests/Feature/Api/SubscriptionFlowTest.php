@@ -770,6 +770,7 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.0.payment_method', 'VISA ************5675')
             ->assertJsonPath('data.0.amount', 29.99)
             ->assertJsonPath('data.0.amount_formatted', '$29.99 / month')
+            ->assertJsonPath('data.0.issue_date', $transaction->paid_at->toIso8601String())
             ->assertJsonPath('pagination.total', 1)
             ->assertJsonPath('pagination.per_page', 10);
     }
