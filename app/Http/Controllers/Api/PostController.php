@@ -126,12 +126,19 @@ class PostController extends Controller
 
         $post = Post::with([
             'media:id,post_id,file_path,type,order',
-        ])->findOrFail($id);
+        ])->with('industryLink')->findOrFail($id);
 
         if ($post->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        if ($post->isCompanyPost()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company posts cannot be edited from here',
             ], 403);
         }
 
@@ -167,12 +174,19 @@ class PostController extends Controller
 
         $user = auth('api')->user();
 
-        $post = Post::with('media')->findOrFail($id);
+        $post = Post::with(['media', 'industryLink'])->findOrFail($id);
 
         if ($post->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        if ($post->isCompanyPost()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company posts cannot be updated from profile',
             ], 403);
         }
 
@@ -265,12 +279,19 @@ class PostController extends Controller
     {
         $user = auth('api')->user();
 
-        $post = Post::with(['media', 'comments.replies', 'likes'])->findOrFail($id);
+        $post = Post::with(['media', 'comments.replies', 'likes', 'industryLink'])->findOrFail($id);
 
         if ($post->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        if ($post->isCompanyPost()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company posts cannot be deleted from profile',
             ], 403);
         }
 

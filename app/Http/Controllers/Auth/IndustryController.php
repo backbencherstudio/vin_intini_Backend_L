@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Comment;
+use App\Models\CommentLike;
 use App\Models\Industry;
-use App\Models\IndustryCommentLike;
 use App\Models\IndustryFollow;
-use App\Models\IndustryPost;
-use App\Models\IndustryPostComment;
-use App\Models\IndustryPostLike;
+use App\Models\Post;
+use App\Models\PostIndustry;
+use App\Models\PostLike;
+use App\Models\Reply;
+use App\Models\ReplyLike;
 use App\Models\Subscription;
+use App\Models\User;
 use App\Services\IndustryMediaUploadService;
 use App\Services\OptimizedImageUploadService;
 use Illuminate\Http\Request;
@@ -20,19 +24,14 @@ use Illuminate\Validation\Rule;
 
 class IndustryController extends Controller
 {
+    /**
+     * Visibility values a company post may use.
+     */
+    private const POST_VISIBILITIES = ['public', 'followers', 'private'];
+
     public function store(Request $request)
     {
-        $subscription = Subscription::where('user_id', auth()->id())
-            ->where('status', 'active')
-            ->whereNotNull('current_period_end')
-            ->where('current_period_end', '>', now())
-
-            ->whereHas('plan', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->with('plan')
-            ->latest('id')
-            ->first();
+        $subscription = auth('api')->user()->activeSubscription();
 
         if (! $subscription) {
             return response()->json([
@@ -41,17 +40,14 @@ class IndustryController extends Controller
             ], 403);
         }
 
-        $features = $subscription->plan->features ?? [];
-
-        if (! in_array('company_profile', $features, true)) {
+        if (! $this->planAllowsCompanyProfile($subscription)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your current plan does not include company page creation.',
             ], 403);
         }
 
-        // Check if user already has a company page
-        $existingIndustry = Industry::where('created_by', auth()->id())->first();
+        $existingIndustry = $this->ownedIndustry(auth()->id());
 
         if ($existingIndustry) {
             return response()->json([
@@ -82,12 +78,7 @@ class IndustryController extends Controller
 
             $slug = $validated['slug'] ?? Str::slug($validated['name']);
 
-            $originalSlug = $slug;
-            $counter = 1;
-
-            while (Industry::where('slug', $slug)->exists()) {
-                $slug = $originalSlug . '-' . $counter++;
-            }
+            $validated['slug'] = $this->uniqueIndustrySlug($slug);
 
             if ($request->hasFile('logo')) {
                 $logoPath = $request->file('logo')->store(
@@ -107,11 +98,8 @@ class IndustryController extends Controller
                 $validated['cover_image'] = $coverImagePath;
             }
 
-            $validated['slug'] = $slug;
-
             $validated['authorization_confirmed'] = true;
             $validated['authorization_confirmed_at'] = now();
-
             $validated['created_by'] = auth()->id();
 
             $industry = Industry::create($validated);
@@ -125,45 +113,24 @@ class IndustryController extends Controller
                     'id' => $industry->id,
                     'name' => $industry->name,
                     'slug' => $industry->slug,
-
                     'industry' => $industry->industry,
-
                     'website' => $industry->website,
                     'address' => $industry->address,
                     'company_size' => $industry->company_size,
-
-                    'logo' => $industry->logo
-                        ? Storage::disk('public')->url($industry->logo)
-                        : null,
-
-                    'cover_image' => $industry->cover_image
-                        ? Storage::disk('public')->url($industry->cover_image)
-                        : null,
-
+                    'logo' => $this->publicUrl($industry->getRawOriginal('logo')),
+                    'cover_image' => $this->publicUrl($industry->getRawOriginal('cover_image')),
                     'tagline' => $industry->tagline,
                     'description' => $industry->description,
-
                     'authorization_confirmed' => $industry->authorization_confirmed,
-
                     'authorization_confirmed_at' => $industry->authorization_confirmed_at,
-
-                    'created_by' => $industry->created_by,
-
                     'created_at' => $industry->created_at,
                     'updated_at' => $industry->updated_at,
                 ],
             ], 201);
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
-            if ($logoPath) {
-                Storage::disk('public')->delete($logoPath);
-            }
-
-            if ($coverImagePath) {
-                Storage::disk('public')->delete($coverImagePath);
-            }
+            $this->deleteFiles([$logoPath, $coverImagePath]);
 
             return response()->json([
                 'success' => false,
@@ -186,8 +153,6 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $isOwner = (int) $industry->created_by === (int) auth()->id();
-
         $followersCount = IndustryFollow::where(
             'industry_id',
             $industry->id
@@ -208,42 +173,20 @@ class IndustryController extends Controller
                 'address' => $industry->address,
                 'website' => $industry->website,
                 'company_size' => $industry->company_size,
-
-                'logo' => $industry->getRawOriginal('logo')
-                    ? Storage::disk('public')->url(
-                        $industry->getRawOriginal('logo')
-                    )
-                    : null,
-
-                'cover_image' => $industry->getRawOriginal('cover_image')
-                    ? Storage::disk('public')->url(
-                        $industry->getRawOriginal('cover_image')
-                    )
-                    : null,
-
+                'logo' => $this->publicUrl($industry->getRawOriginal('logo')),
+                'cover_image' => $this->publicUrl($industry->getRawOriginal('cover_image')),
                 'tagline' => $industry->tagline,
                 'description' => $industry->description,
                 'followers_count' => $followersCount,
-                'is_owner' => $isOwner,
+                'is_owner' => (int) $industry->created_by === (int) auth()->id(),
                 'is_following' => $isFollowing,
-
             ],
         ], 200);
     }
 
     public function update(Request $request)
     {
-        $subscription = Subscription::where('user_id', auth()->id())
-            ->where('status', 'active')
-            ->whereNotNull('current_period_end')
-            ->where('current_period_end', '>', now())
-
-            ->whereHas('plan', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->with('plan')
-            ->latest('id')
-            ->first();
+        $subscription = auth('api')->user()->activeSubscription();
 
         if (! $subscription) {
             return response()->json([
@@ -252,16 +195,14 @@ class IndustryController extends Controller
             ], 403);
         }
 
-        $features = $subscription->plan->features ?? [];
-
-        if (! in_array('company_profile', $features, true)) {
+        if (! $this->planAllowsCompanyProfile($subscription)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your current plan does not include company management.',
             ], 403);
         }
 
-        $industry = Industry::where('created_by', auth()->id())->first();
+        $industry = $this->ownedIndustry(auth()->id());
 
         if (! $industry) {
             return response()->json([
@@ -279,9 +220,7 @@ class IndustryController extends Controller
                 'alpha_dash',
                 Rule::unique('industries', 'slug')->ignore($industry->id),
             ],
-
             'industry' => ['sometimes', 'string', 'max:255'],
-
             'website' => ['sometimes', 'nullable', 'url', 'max:255'],
             'address' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'company_size' => ['sometimes', 'nullable', 'string', 'max:100'],
@@ -291,8 +230,8 @@ class IndustryController extends Controller
             'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
         ]);
 
-        $oldLogoPath = $industry->logo;
-        $oldCoverImagePath = $industry->cover_image;
+        $oldLogoPath = $industry->getRawOriginal('logo');
+        $oldCoverImagePath = $industry->getRawOriginal('cover_image');
 
         $newLogoPath = null;
         $newCoverImagePath = null;
@@ -301,31 +240,13 @@ class IndustryController extends Controller
             DB::beginTransaction();
 
             if (array_key_exists('name', $validated)) {
-
                 $slug = $validated['slug'] ?? Str::slug($validated['name']);
             } elseif (array_key_exists('slug', $validated)) {
-
                 $slug = $validated['slug'];
             }
 
             if (isset($slug)) {
-
-                if ($slug === '') {
-                    $slug = 'industry';
-                }
-
-                $originalSlug = $slug;
-                $counter = 1;
-
-                while (
-                    Industry::where('slug', $slug)
-                    ->where('id', '!=', $industry->id)
-                    ->exists()
-                ) {
-                    $slug = $originalSlug . '-' . $counter++;
-                }
-
-                $validated['slug'] = $slug;
+                $validated['slug'] = $this->uniqueIndustrySlug($slug, $industry->id);
             }
 
             if ($request->hasFile('logo')) {
@@ -350,12 +271,12 @@ class IndustryController extends Controller
 
             DB::commit();
 
-            if ($newLogoPath && $oldLogoPath) {
-                Storage::disk('public')->delete($oldLogoPath);
+            if ($newLogoPath) {
+                $this->deleteFiles([$oldLogoPath]);
             }
 
-            if ($newCoverImagePath && $oldCoverImagePath) {
-                Storage::disk('public')->delete($oldCoverImagePath);
+            if ($newCoverImagePath) {
+                $this->deleteFiles([$oldCoverImagePath]);
             }
 
             $industry->refresh();
@@ -367,41 +288,22 @@ class IndustryController extends Controller
                     'id' => $industry->id,
                     'name' => $industry->name,
                     'slug' => $industry->slug,
-
                     'industry' => $industry->industry,
-
                     'website' => $industry->website,
                     'address' => $industry->address,
                     'company_size' => $industry->company_size,
-
-                    'logo' => $industry->logo
-                        ? Storage::disk('public')->url($industry->logo)
-                        : null,
-
-                    'cover_image' => $industry->cover_image
-                        ? Storage::disk('public')->url($industry->cover_image)
-                        : null,
-
+                    'logo' => $this->publicUrl($industry->getRawOriginal('logo')),
+                    'cover_image' => $this->publicUrl($industry->getRawOriginal('cover_image')),
                     'tagline' => $industry->tagline,
                     'description' => $industry->description,
-
-                    'created_by' => $industry->created_by,
-
                     'created_at' => $industry->created_at,
                     'updated_at' => $industry->updated_at,
                 ],
             ], 200);
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
-            if ($newLogoPath) {
-                Storage::disk('public')->delete($newLogoPath);
-            }
-
-            if ($newCoverImagePath) {
-                Storage::disk('public')->delete($newCoverImagePath);
-            }
+            $this->deleteFiles([$newLogoPath, $newCoverImagePath]);
 
             return response()->json([
                 'success' => false,
@@ -413,33 +315,94 @@ class IndustryController extends Controller
         }
     }
 
+    public function deleteCompany()
+    {
+        $userId = auth()->id();
+
+        if (! auth('api')->user()->activeSubscription()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your subscription is not active. Please renew your subscription to delete your company page.',
+            ], 403);
+        }
+
+        $industry = $this->ownedIndustry($userId);
+
+        if (! $industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company page not found.',
+            ], 404);
+        }
+
+        $logoPath = $industry->getRawOriginal('logo');
+        $coverImagePath = $industry->getRawOriginal('cover_image');
+
+        $posts = Post::query()
+            ->whereHas('industryLink', fn ($query) => $query->where('industry_id', $industry->id))
+            ->with(['media', 'comments.replies'])
+            ->get();
+
+        $stats = [
+            'deleted_posts' => $posts->count(),
+            'deleted_post_media' => $posts->sum(
+                fn ($post) => $post->media->count()
+            ),
+            'deleted_comment_images' => $posts->sum(
+                fn ($post) => $post->comments->sum(
+                    fn ($comment) => (int) (bool) $comment->image
+                        + $comment->replies->filter(
+                            fn ($reply) => (bool) $reply->image
+                        )->count()
+                )
+            ),
+        ];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($posts as $post) {
+                $post->delete();
+            }
+
+            IndustryFollow::where('industry_id', $industry->id)->delete();
+
+            $industry->delete();
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete company page.',
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+
+        $this->deleteFiles([$logoPath, $coverImagePath]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Company page and all related data deleted successfully.',
+            'data' => array_merge(['company_id' => $industry->id], $stats),
+        ], 200);
+    }
+
     public function storePost(Request $request, IndustryMediaUploadService $mediaUploadService)
     {
         $userId = auth()->id();
 
-        $subscription = Subscription::where('user_id', $userId)
-            ->where('status', 'active')
-            ->whereNotNull('current_period_end')
-            ->where('current_period_end', '>', now())
-
-            ->whereHas('plan', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->with('plan')
-            ->latest('id')
-            ->first();
-
-        if (! $subscription) {
+        if (! auth('api')->user()->activeSubscription()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to create a post.',
             ], 403);
         }
 
-        $industry = Industry::where(
-            'created_by',
-            $userId
-        )->first();
+        $industry = $this->ownedIndustry($userId);
 
         if (! $industry) {
             return response()->json([
@@ -450,66 +413,21 @@ class IndustryController extends Controller
 
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
-            'visibility' => [
-                'required',
-                Rule::in(['public', 'followers', 'private',]),
-            ],
-
+            'visibility' => ['required', Rule::in(self::POST_VISIBILITIES)],
             'media' => ['nullable', 'array', 'max:10'],
-
             'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:102400'],
         ]);
 
-        if ($request->hasFile('media')) {
-
-            $mediaFiles = $request->file('media');
-
-            $videoCount = collect($mediaFiles)
-                ->filter(function ($file) {
-                    return str_starts_with(
-                        $file->getMimeType() ?? '',
-                        'video/'
-                    );
-                })
-                ->count();
-
-            $imageCount = collect($mediaFiles)
-                ->filter(function ($file) {
-                    return str_starts_with(
-                        $file->getMimeType() ?? '',
-                        'image/'
-                    );
-                })
-                ->count();
-
-            if ($videoCount > 1) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can upload a maximum of 1 video per post.',
-                ], 422);
-            }
-
-            if ($videoCount === 1 && $imageCount > 9) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can upload a maximum of 9 images with 1 video.',
-                ], 422);
-            }
-
-            if ($videoCount === 0 && $imageCount > 10) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can upload a maximum of 10 images per post.',
-                ], 422);
-            }
+        if (! $this->mediaCountsAreValid($request, 'You can upload')) {
+            return response()->json([
+                'success' => false,
+                'message' => $this->mediaValidationMessage($request),
+            ], 422);
         }
 
         $content = trim($validated['content'] ?? '');
 
-        if (
-            blank($content) &&
-            ! $request->hasFile('media')
-        ) {
+        if (blank($content) && ! $request->hasFile('media')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post must contain text or media.',
@@ -518,31 +436,26 @@ class IndustryController extends Controller
 
         $uploadedFiles = [];
 
-        DB::beginTransaction();
-
         try {
+            DB::beginTransaction();
 
-            $post = IndustryPost::create([
-                'industry_id' => $industry->id,
-                'created_by' => $userId,
-                'content' => $content ?: null,
+            $post = Post::create([
+                'user_id' => $userId,
+                'description' => $content ?: null,
                 'visibility' => $validated['visibility'],
             ]);
 
-            if ($request->hasFile('media')) {
+            PostIndustry::create([
+                'post_id' => $post->id,
+                'industry_id' => $industry->id,
+            ]);
 
-                foreach ($request->file('media') as $index => $file) {
-
-                    $media = $mediaUploadService->upload($file);
-
-                    $uploadedFiles[] = $media['file_path'];
-
-                    $post->media()->create([
-                        'type' => $media['type'],
-                        'path' => $media['file_path'],
-                        'sort_order' => $index,
-                    ]);
-                }
+            foreach ($this->uploadPostMedia($request, $mediaUploadService, $uploadedFiles) as $index => $media) {
+                $post->media()->create([
+                    'type' => $media['type'],
+                    'file_path' => $media['file_path'],
+                    'order' => $index,
+                ]);
             }
 
             DB::commit();
@@ -552,56 +465,19 @@ class IndustryController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Company post created successfully.',
-
-                'data' => [
-                    'id' => $post->id,
-
-                    'industry_id' => $post->industry_id,
-
-                    'created_by' => $post->created_by,
-
-                    'content' => $post->content,
-
-                    'visibility' => $post->visibility,
-
-                    'media' => $post->media->map(function ($media) {
-
-                        return [
-                            'id' => $media->id,
-
-                            'type' => $media->type,
-
-                            'url' => Storage::disk('public')
-                                ->url($media->path),
-
-                            'sort_order' => $media->sort_order,
-                        ];
-                    })->values(),
-
-                    'created_at' => $post->created_at,
-
-                    'updated_at' => $post->updated_at,
-                ],
+                'data' => $this->postResource($post, false),
             ], 201);
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
-            foreach ($uploadedFiles as $file) {
-
-                if (Storage::disk('public')->exists($file)) {
-                    Storage::disk('public')->delete($file);
-                }
-            }
+            $this->deleteFiles($uploadedFiles);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create company post.',
-
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
-
             ], 500);
         }
     }
@@ -610,7 +486,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $post = IndustryPost::find($postId);
+        $post = $this->findCompanyPost($postId);
 
         if (! $post) {
             return response()->json([
@@ -619,25 +495,14 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        if ((int) $post->created_by !== (int) $userId) {
+        if ((int) $post->user_id !== (int) $userId) {
             return response()->json([
                 'success' => false,
                 'message' => 'You are not allowed to edit this post.',
             ], 403);
         }
 
-        $subscription = Subscription::where('user_id', $userId)
-            ->where('status', 'active')
-            ->whereNotNull('current_period_end')
-            ->where('current_period_end', '>', now())
-            ->whereHas('plan', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->with('plan')
-            ->latest('id')
-            ->first();
-
-        if (! $subscription) {
+        if (! auth('api')->user()->activeSubscription()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to edit a post.',
@@ -646,25 +511,17 @@ class IndustryController extends Controller
 
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
-
-            'visibility' => [
-                'sometimes',
-                Rule::in(['public', 'followers', 'private',]),
-            ],
-
+            'visibility' => ['sometimes', Rule::in(self::POST_VISIBILITIES)],
             'media' => ['nullable', 'array', 'max:10'],
-
-            'media.*' => [
-                'file',
-                'mimes:jpg,jpeg,png,webp,mp4,mov,webm',
-                'max:102400',
-            ],
+            'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:102400'],
         ]);
 
+        $hasNewMedia = $request->hasFile('media');
+
         if (
-            ! array_key_exists('content', $validated) &&
-            ! array_key_exists('visibility', $validated) &&
-            ! $request->hasFile('media')
+            ! array_key_exists('content', $validated)
+            && ! array_key_exists('visibility', $validated)
+            && ! $hasNewMedia
         ) {
             return response()->json([
                 'success' => false,
@@ -672,60 +529,20 @@ class IndustryController extends Controller
             ], 422);
         }
 
+        if ($hasNewMedia && ! $this->mediaCountsAreValid($request, 'You can upload')) {
+            return response()->json([
+                'success' => false,
+                'message' => $this->mediaValidationMessage($request),
+            ], 422);
+        }
+
+        $existingMediaCount = $post->media()->count();
 
         $content = array_key_exists('content', $validated)
             ? trim($validated['content'] ?? '')
-            : $post->content;
+            : $post->description;
 
-        if ($request->hasFile('media')) {
-
-            $mediaFiles = $request->file('media');
-
-            $videoCount = collect($mediaFiles)
-                ->filter(function ($file) {
-                    return str_starts_with(
-                        $file->getMimeType() ?? '',
-                        'video/'
-                    );
-                })
-                ->count();
-
-            $imageCount = collect($mediaFiles)
-                ->filter(function ($file) {
-                    return str_starts_with(
-                        $file->getMimeType() ?? '',
-                        'image/'
-                    );
-                })
-                ->count();
-
-            if ($videoCount > 1) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can upload a maximum of 1 video per post.',
-                ], 422);
-            }
-
-            if ($videoCount === 1 && $imageCount > 9) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can upload a maximum of 9 images with 1 video.',
-                ], 422);
-            }
-
-            if ($videoCount === 0 && $imageCount > 10) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can upload a maximum of 10 images per post.',
-                ], 422);
-            }
-        }
-
-        if (
-            blank($content) &&
-            ! $request->hasFile('media') &&
-            $post->media()->count() === 0
-        ) {
+        if (blank($content) && ! $hasNewMedia && $existingMediaCount === 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post must contain text or media.',
@@ -733,122 +550,55 @@ class IndustryController extends Controller
         }
 
         $uploadedFiles = [];
-        $oldMediaPaths = [];
-
-        DB::beginTransaction();
 
         try {
-
-            $newMedia = [];
-
-            if ($request->hasFile('media')) {
-
-                foreach ($request->file('media') as $index => $file) {
-
-                    $media = $mediaUploadService->upload($file);
-
-                    $uploadedFiles[] = $media['file_path'];
-
-                    $newMedia[] = [
-                        'type' => $media['type'],
-                        'path' => $media['file_path'],
-                        'sort_order' => $index,
-                    ];
-                }
-            }
+            DB::beginTransaction();
 
             if (array_key_exists('content', $validated)) {
-                $post->content = $content ?: null;
+                $post->description = $content ?: null;
             }
 
             if (array_key_exists('visibility', $validated)) {
                 $post->visibility = $validated['visibility'];
             }
 
-            if (
-                array_key_exists('content', $validated) ||
-                array_key_exists('visibility', $validated)
-            ) {
+            if ($post->isDirty()) {
                 $post->save();
             }
 
+            if ($hasNewMedia) {
+                $oldMediaPaths = $post->media()->pluck('file_path')->all();
 
-            if ($request->hasFile('media')) {
+                $post->media()->delete();
 
-                $oldMedia = $post->media()->get();
-
-                foreach ($oldMedia as $media) {
-                    if ($media->path) {
-                        $oldMediaPaths[] = $media->path;
-                    }
-
-                    $media->delete();
+                foreach ($this->uploadPostMedia($request, $mediaUploadService, $uploadedFiles) as $index => $media) {
+                    $post->media()->create([
+                        'type' => $media['type'],
+                        'file_path' => $media['file_path'],
+                        'order' => $index,
+                    ]);
                 }
 
-                foreach ($newMedia as $mediaData) {
-                    $post->media()->create($mediaData);
-                }
+                DB::afterCommit(fn () => $this->deleteFiles($oldMediaPaths));
             }
 
             DB::commit();
-
-            foreach ($oldMediaPaths as $path) {
-                if (Storage::disk('public')->exists($path)) {
-                    Storage::disk('public')->delete($path);
-                }
-            }
 
             $post->load('media');
 
             return response()->json([
                 'success' => true,
                 'message' => 'Company post updated successfully.',
-
-                'data' => [
-                    'post_id' => $post->id,
-
-                    'company_id' => $post->industry_id,
-
-                    'created_by' => $post->created_by,
-
-                    'content' => $post->content,
-
-                    'visibility' => $post->visibility,
-
-                    'media' => $post->media
-                        ->map(function ($media) {
-                            return [
-                                'id' => $media->id,
-
-                                'type' => $media->type,
-
-                                'url' => Storage::disk('public')
-                                    ->url($media->path),
-
-                                'sort_order' => $media->sort_order,
-                            ];
-                        })
-                        ->values(),
-
-                    'updated_at' => $post->updated_at,
-                ],
+                'data' => $this->postResource($post, false),
             ], 200);
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
-            foreach ($uploadedFiles as $file) {
-
-                if (Storage::disk('public')->exists($file)) {
-                    Storage::disk('public')->delete($file);
-                }
-            }
+            $this->deleteFiles($uploadedFiles);
 
             return response()->json([
                 'success' => false,
-
                 'message' => 'Failed to update company post.',
-
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
@@ -860,7 +610,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $post = IndustryPost::with('media')->find($postId);
+        $post = $this->findCompanyPost($postId);
 
         if (! $post) {
             return response()->json([
@@ -869,61 +619,27 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        if ((int) $post->created_by !== (int) $userId) {
+        if ((int) $post->user_id !== (int) $userId) {
             return response()->json([
                 'success' => false,
                 'message' => 'You are not allowed to delete this post.',
             ], 403);
         }
 
-        $subscription = Subscription::where('user_id', $userId)
-            ->where('status', 'active')
-            ->whereNotNull('current_period_end')
-            ->where('current_period_end', '>', now())
-            ->whereHas('plan', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->latest('id')
-            ->first();
-
-        if (! $subscription) {
+        if (! auth('api')->user()->activeSubscription()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your subscription is not active. Please renew your subscription to delete a post.',
             ], 403);
         }
 
-        $mediaPaths = $post->media
-            ->pluck('path')
-            ->filter()
-            ->values()
-            ->toArray();
-
-        DB::beginTransaction();
-
         try {
-
-            $post->media()->delete();
+            DB::beginTransaction();
 
             $post->delete();
 
             DB::commit();
-
-            foreach ($mediaPaths as $path) {
-                if (Storage::disk('public')->exists($path)) {
-                    Storage::disk('public')->delete($path);
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Company post deleted successfully.',
-                'data' => [
-                    'post_id' => $post->id,
-                ],
-            ], 200);
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return response()->json([
@@ -934,17 +650,19 @@ class IndustryController extends Controller
                     : null,
             ], 500);
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Company post deleted successfully.',
+            'data' => [
+                'post_id' => $post->id,
+            ],
+        ], 200);
     }
 
     public function indexPost(Request $request, $industryId)
     {
-        $perPage = max(
-            1,
-            min(
-                (int) $request->get('per_page', 10),
-                100
-            )
-        );
+        $perPage = $this->perPage($request);
 
         $industry = Industry::find($industryId);
 
@@ -957,105 +675,24 @@ class IndustryController extends Controller
 
         $userId = auth()->id();
 
-        $posts = IndustryPost::with([
-            'media',
-            'industry',
-        ])
-            ->where('industry_id', $industryId)
-            ->where(function ($query) use ($userId) {
-
-                $query->where('industry_posts.created_by', $userId)
-
-                    ->orWhere('visibility', 'public')
-
-                    ->orWhere(function ($query) use ($userId) {
-                        $query->where('visibility', 'followers')
-                            ->whereExists(function ($subQuery) use ($userId) {
-                                $subQuery->select(DB::raw(1))
-                                    ->from('industry_follows')
-                                    ->whereColumn(
-                                        'industry_follows.industry_id',
-                                        'industry_posts.industry_id'
-                                    )
-                                    ->where(
-                                        'industry_follows.user_id',
-                                        $userId
-                                    );
-                            });
-                    });
-            })
-
+        $posts = Post::query()
+            ->with(['media', 'industryLink.industry'])
+            ->whereHas('industryLink', fn ($query) => $query->where('industry_id', $industry->id))
+            ->where(fn ($query) => $this->visibleCompanyPostsQuery($query, $userId))
             ->withExists([
-                'likes as is_liked' => function ($query) {
-                    $query->where(
-                        'user_id',
-                        auth()->id()
-                    );
-                },
+                'likes as is_liked' => fn ($query) => $query->where('user_id', $userId),
             ])
-            ->latest()
+            ->orderByDesc('posts.created_at')
+            ->orderByDesc('posts.id')
             ->paginate($perPage);
 
         return response()->json([
             'success' => true,
-
             'message' => 'Company posts fetched successfully.',
-
-            'data' => collect($posts->items())->map(function ($post) {
-
-                return [
-                    'company_id' => $post->industry_id,
-                    'company_name' => $post->industry?->name,
-                    'tagline' => $post->industry?->tagline,
-                    'time_ago' => $post->created_at
-                        ? $post->created_at->diffForHumans()
-                        : null,
-
-                    'logo' => $post->industry?->getRawOriginal('logo')
-                        ? Storage::disk('public')->url(
-                            $post->industry->getRawOriginal('logo')
-                        )
-                        : null,
-
-                    'post_id' => $post->id,
-                    'content' => $post->content,
-                    'visibility' => $post->visibility,
-
-                    'media' => $post->media
-                        ->map(function ($media) {
-
-                            return [
-                                'id' => $media->id,
-
-                                'type' => $media->type,
-
-                                'url' => Storage::disk('public')
-                                    ->url($media->path),
-
-                                'sort_order' => $media->sort_order,
-                            ];
-                        })
-                        ->values(),
-                    'likes_count' => $post->likes_count,
-
-                    'comments_count' => $post->comments_count,
-
-                    'is_liked' => (bool) $post->is_liked,
-                ];
-            })->values(),
-
-            'pagination' => [
-                'current_page' => $posts->currentPage(),
-
-                'per_page' => $posts->perPage(),
-
-                'total' => $posts->total(),
-
-                'last_page' => $posts->lastPage(),
-
-                'has_more_pages' => $posts->hasMorePages(),
-            ],
-
+            'data' => collect($posts->items())
+                ->map(fn ($post) => $this->postResource($post, true))
+                ->values(),
+            'pagination' => $this->pagination($posts),
         ], 200);
     }
 
@@ -1063,7 +700,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $industry = Industry::where('created_by', $userId)->first();
+        $industry = $this->ownedIndustry($userId);
 
         if (! $industry) {
             return response()->json([
@@ -1072,76 +709,23 @@ class IndustryController extends Controller
             ], 404);
         }
 
-        $posts = IndustryPost::with([
-            'media' => function ($query) {
-                $query->orderBy('sort_order');
-            },
-            'industry',
-        ])
-            ->where('industry_id', $industry->id)
-
+        $posts = Post::query()
+            ->with(['media', 'industryLink.industry'])
+            ->whereHas('industryLink', fn ($query) => $query->where('industry_id', $industry->id))
             ->withExists([
-                'likes as is_liked' => function ($query) use ($userId) {
-                    $query->where('user_id', $userId);
-                },
+                'likes as is_liked' => fn ($query) => $query->where('user_id', $userId),
             ])
-            ->latest()
+            ->orderByDesc('posts.created_at')
+            ->orderByDesc('posts.id')
             ->limit(5)
             ->get();
 
         return response()->json([
             'success' => true,
-
             'message' => 'Latest company posts fetched successfully.',
-
-            'data' => $posts->map(function ($post) {
-
-                return [
-                    'company_id' => $post->industry_id,
-
-                    'company_name' => $post->industry?->name,
-
-                    'tagline' => $post->industry?->tagline,
-
-                    'time_ago' => $post->created_at
-                        ? $post->created_at->diffForHumans()
-                        : null,
-
-                    'logo' => $post->industry?->getRawOriginal('logo')
-                        ? Storage::disk('public')->url(
-                            $post->industry->getRawOriginal('logo')
-                        )
-                        : null,
-
-                    'post_id' => $post->id,
-
-                    'content' => $post->content,
-
-                    'visibility' => $post->visibility,
-
-                    'media' => $post->media
-                        ->map(function ($media) {
-
-                            return [
-                                'id' => $media->id,
-
-                                'type' => $media->type,
-
-                                'url' => Storage::disk('public')
-                                    ->url($media->path),
-
-                                'sort_order' => $media->sort_order,
-                            ];
-                        })
-                        ->values(),
-
-                    'likes_count' => $post->likes_count,
-
-                    'comments_count' => $post->comments_count,
-
-                    'is_liked' => (bool) $post->is_liked,
-                ];
-            })->values(),
+            'data' => $posts
+                ->map(fn ($post) => $this->postResource($post, true))
+                ->values(),
         ], 200);
     }
 
@@ -1149,7 +733,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $post = IndustryPost::find($postId);
+        $post = $this->findCompanyPost($postId);
 
         if (! $post) {
             return response()->json([
@@ -1165,39 +749,31 @@ class IndustryController extends Controller
             ], 403);
         }
 
-        DB::beginTransaction();
-
         try {
+            DB::beginTransaction();
 
-            $like = IndustryPostLike::where('post_id', $postId)
+            $like = PostLike::where('post_id', $post->id)
                 ->where('user_id', $userId)
                 ->first();
 
             if ($like) {
-
                 $like->delete();
 
                 $post->update([
-                    'likes_count' => max(
-                        0,
-                        $post->likes_count - 1
-                    ),
+                    'total_like' => max(0, (int) $post->total_like - 1),
                 ]);
 
                 $liked = false;
-
                 $message = 'Post unliked successfully.';
             } else {
-
-                IndustryPostLike::create([
-                    'post_id' => $postId,
+                PostLike::create([
+                    'post_id' => $post->id,
                     'user_id' => $userId,
                 ]);
 
-                $post->increment('likes_count');
+                $post->increment('total_like');
 
                 $liked = true;
-
                 $message = 'Post liked successfully.';
             }
 
@@ -1205,26 +781,19 @@ class IndustryController extends Controller
 
             return response()->json([
                 'success' => true,
-
                 'message' => $message,
-
                 'data' => [
                     'post_id' => $post->id,
-
                     'liked' => $liked,
-
-                    'likes_count' => $post->likes_count,
+                    'likes_count' => (int) $post->total_like,
                 ],
             ], 200);
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return response()->json([
                 'success' => false,
-
                 'message' => 'Failed to update post like.',
-
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
@@ -1234,15 +803,9 @@ class IndustryController extends Controller
 
     public function likeList(Request $request, $postId)
     {
-        $perPage = max(
-            1,
-            min(
-                (int) $request->get('per_page', 10),
-                100
-            )
-        );
+        $perPage = $this->perPage($request);
 
-        $post = IndustryPost::find($postId);
+        $post = $this->findCompanyPost($postId);
 
         if (! $post) {
             return response()->json([
@@ -1258,89 +821,46 @@ class IndustryController extends Controller
             ], 403);
         }
 
-        $likes = IndustryPostLike::with([
+        $likes = PostLike::with([
             'user:id,username,first_name,last_name,profile_image',
         ])
-            ->where('post_id', $postId)
-
-            ->whereHas('user', function ($query) {
-                $query->whereNull('deleted_at');
-            })
-
+            ->where('post_id', $post->id)
+            ->whereHas('user', fn ($query) => $query->whereNull('deleted_at'))
             ->latest()
-
             ->paginate($perPage);
-
-        $users = collect($likes->items())
-            ->map(function ($like) {
-
-                if (! $like->user) {
-                    return null;
-                }
-
-                return [
-                    'id' => $like->user->id,
-
-                    'username' => $like->user->username,
-
-                    'name' => trim(
-                        ($like->user->first_name ?? '') .
-                            ' ' .
-                            ($like->user->last_name ?? '')
-                    ),
-
-                    'profile_image' => $like->user->profile_image_url,
-                ];
-            })
-            ->filter()
-            ->values();
 
         return response()->json([
             'success' => true,
-
             'message' => 'Post liked users fetched successfully.',
-
-            'data' => $users,
-
-            'pagination' => [
-                'current_page' => $likes->currentPage(),
-
-                'per_page' => $likes->perPage(),
-
-                'total' => $likes->total(),
-
-                'last_page' => $likes->lastPage(),
-
-                'has_more_pages' => $likes->hasMorePages(),
-            ],
+            'data' => collect($likes->items())
+                ->map(fn ($like) => $this->likedUserResource($like->user))
+                ->filter()
+                ->values(),
+            'pagination' => $this->pagination($likes),
         ], 200);
     }
 
     public function storeComment(Request $request, $postId, OptimizedImageUploadService $imageUploadService)
     {
-        $validated = $request->validate([
-            'comment' => ['nullable', 'string', 'max:5000'],
-
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ]);
-
-        if (
-            blank($validated['comment'] ?? null)
-            && ! $request->hasFile('image')
-        ) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Comment must contain text or image.',
-            ], 422);
-        }
-
-        $post = IndustryPost::find($postId);
+        $post = $this->findCompanyPost($postId);
 
         if (! $post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
             ], 404);
+        }
+
+        $validated = $request->validate([
+            'comment' => ['nullable', 'string', 'max:5000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        if (blank($validated['comment'] ?? null) && ! $request->hasFile('image')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment must contain text or image.',
+            ], 422);
         }
 
         if (! $this->canViewPost($post, auth()->id())) {
@@ -1350,423 +870,55 @@ class IndustryController extends Controller
             ], 403);
         }
 
-
-        DB::beginTransaction();
+        $imagePath = null;
 
         try {
-
-            $imagePath = null;
+            DB::beginTransaction();
 
             if ($request->hasFile('image')) {
-
                 $imagePath = $imageUploadService->store(
                     $request->file('image'),
                     'industries/comments'
                 );
             }
 
-            $comment = IndustryPostComment::create([
+            $comment = Comment::create([
                 'post_id' => $post->id,
                 'user_id' => auth()->id(),
-                'parent_id' => null,
                 'comment' => $validated['comment'] ?? null,
                 'image' => $imagePath,
             ]);
 
-            $post->increment('comments_count');
+            $post->increment('total_comment');
+            $post->refresh();
 
             DB::commit();
 
-            $comment->load('user');
-
             return response()->json([
                 'success' => true,
-
                 'message' => 'Comment added successfully.',
-
-                'data' => [
-                    'id' => $comment->id,
-
-                    'post_id' => $comment->post_id,
-
-                    'user_id' => $comment->user_id,
-
-                    'comment' => $comment->comment,
-
-                    'image' => $comment->image
-                        ? Storage::disk('public')
-                        ->url($comment->image)
-                        : null,
-
-                    'likes_count' => $comment->likes_count,
-
-                    'created_at' => $comment->created_at,
-
-                    'time_ago' => $comment->created_at
-                        ->diffForHumans(),
-                ],
+                'data' => $this->commentResource($comment),
             ], 201);
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
-            if (
-                $imagePath &&
-                Storage::disk('public')->exists($imagePath)
-            ) {
-                Storage::disk('public')->delete($imagePath);
-            }
+            $this->deleteFiles([$imagePath]);
 
             return response()->json([
                 'success' => false,
-
                 'message' => 'Failed to add comment.',
-
                 'error' => config('app.debug')
                     ? $e->getMessage()
                     : null,
             ], 500);
         }
-    }
-
-    public function replyComment(Request $request, $commentId, OptimizedImageUploadService $imageUploadService)
-    {
-        $validated = $request->validate([
-            'comment' => ['nullable', 'string', 'max:5000'],
-
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ]);
-
-        if (
-            blank($validated['comment'] ?? null)
-            && ! $request->hasFile('image')
-        ) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reply must contain text or image.',
-            ], 422);
-        }
-
-        $parentComment = IndustryPostComment::find(
-            $commentId
-        );
-
-        if (! $parentComment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Comment not found.',
-            ], 404);
-        }
-
-        $post = $parentComment->post;
-
-        if (! $post) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Post not found.',
-            ], 404);
-        }
-
-        if (! $this->canViewPost($post, auth()->id())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not allowed to reply to this comment.',
-            ], 403);
-        }
-
-        DB::beginTransaction();
-
-        try {
-
-            $imagePath = null;
-
-            if ($request->hasFile('image')) {
-
-                $imagePath = $imageUploadService->store(
-                    $request->file('image'),
-                    'industries/comments'
-                );
-            }
-
-            $reply = IndustryPostComment::create([
-                'post_id' => $parentComment->post_id,
-
-                'user_id' => auth()->id(),
-
-                'parent_id' => $parentComment->id,
-
-                'comment' => $validated['comment'] ?? null,
-
-                'image' => $imagePath,
-            ]);
-
-            $parentComment->post
-                ->increment('comments_count');
-
-            DB::commit();
-
-            $reply->load('user');
-
-            return response()->json([
-                'success' => true,
-
-                'message' => 'Reply added successfully.',
-
-                'data' => [
-                    'id' => $reply->id,
-
-                    'post_id' => $reply->post_id,
-
-                    'parent_id' => $reply->parent_id,
-
-                    'user_id' => $reply->user_id,
-
-                    'comment' => $reply->comment,
-
-                    'image' => $reply->image
-                        ? Storage::disk('public')
-                        ->url($reply->image)
-                        : null,
-
-                    'likes_count' => $reply->likes_count,
-
-                    'created_at' => $reply->created_at,
-
-                    'time_ago' => $reply->created_at
-                        ->diffForHumans(),
-                ],
-            ], 201);
-        } catch (\Throwable $e) {
-
-            DB::rollBack();
-
-            if (
-                $imagePath &&
-                Storage::disk('public')->exists($imagePath)
-            ) {
-                Storage::disk('public')->delete($imagePath);
-            }
-
-            return response()->json([
-                'success' => false,
-
-                'message' => 'Failed to add reply.',
-
-                'error' => config('app.debug')
-                    ? $e->getMessage()
-                    : null,
-            ], 500);
-        }
-    }
-
-    public function toggleCommentLike($commentId)
-    {
-        $userId = auth()->id();
-
-        $comment = IndustryPostComment::find($commentId);
-
-        if (! $comment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Comment not found.',
-            ], 404);
-        }
-
-        $post = $comment->post;
-
-        if (! $post) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Post not found.',
-            ], 404);
-        }
-
-        if (! $this->canViewPost($post, auth()->id())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not allowed to like this comment.',
-            ], 403);
-        }
-
-        DB::beginTransaction();
-
-        try {
-
-            $like = IndustryCommentLike::where(
-                'comment_id',
-                $commentId
-            )
-                ->where(
-                    'user_id',
-                    $userId
-                )
-                ->first();
-
-            if ($like) {
-
-                $like->delete();
-
-                $comment->update([
-                    'likes_count' => max(
-                        0,
-                        $comment->likes_count - 1
-                    ),
-                ]);
-
-                $liked = false;
-
-                $message = 'Comment unliked successfully.';
-            } else {
-
-                IndustryCommentLike::create([
-                    'comment_id' => $commentId,
-                    'user_id' => $userId,
-                ]);
-
-                $comment->increment('likes_count');
-
-                $liked = true;
-
-                $message = 'Comment liked successfully.';
-            }
-
-            DB::commit();
-
-            $comment->refresh();
-
-            return response()->json([
-                'success' => true,
-
-                'message' => $message,
-
-                'data' => [
-                    'comment_id' => $comment->id,
-
-                    'liked' => $liked,
-
-                    'likes_count' => $comment->likes_count,
-                ],
-            ], 200);
-        } catch (\Throwable $e) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-
-                'message' => 'Failed to update comment like.',
-
-                'error' => config('app.debug')
-                    ? $e->getMessage()
-                    : null,
-            ], 500);
-        }
-    }
-
-    public function commentLikeList(Request $request, $commentId)
-    {
-        $perPage = max(
-            1,
-            min(
-                (int) $request->get('per_page', 10),
-                100
-            )
-        );
-
-        $comment = IndustryPostComment::find($commentId);
-
-        if (! $comment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Comment not found.',
-            ], 404);
-        }
-
-        $post = $comment->post;
-
-        if (! $post) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Post not found.',
-            ], 404);
-        }
-
-        if (! $this->canViewPost($post, auth()->id())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not allowed to view comment likes.',
-            ], 403);
-        }
-
-        $likes = IndustryCommentLike::with([
-            'user:id,username,first_name,last_name,profile_image',
-        ])
-            ->where('comment_id', $commentId)
-
-            ->whereHas('user', function ($query) {
-                $query->whereNull('deleted_at');
-            })
-
-            ->latest()
-
-            ->paginate($perPage);
-
-        $users = collect($likes->items())
-            ->map(function ($like) {
-
-                if (! $like->user) {
-                    return null;
-                }
-
-                return [
-                    'id' => $like->user->id,
-
-                    'username' => $like->user->username,
-
-                    'name' => trim(
-                        ($like->user->first_name ?? '') .
-                            ' ' .
-                            ($like->user->last_name ?? '')
-                    ),
-
-                    'profile_image' => $like->user->profile_image_url,
-                ];
-            })
-            ->filter()
-            ->values();
-
-        return response()->json([
-            'success' => true,
-
-            'message' => 'Comment liked users fetched successfully.',
-
-            'data' => $users,
-
-            'pagination' => [
-                'current_page' => $likes->currentPage(),
-
-                'per_page' => $likes->perPage(),
-
-                'total' => $likes->total(),
-
-                'last_page' => $likes->lastPage(),
-
-                'has_more_pages' => $likes->hasMorePages(),
-            ],
-        ], 200);
     }
 
     public function commentList(Request $request, $postId)
     {
-        $perPage = max(
-            1,
-            min(
-                (int) $request->get('per_page', 10),
-                100
-            )
-        );
+        $perPage = $this->perPage($request);
 
-        $post = IndustryPost::find($postId);
+        $post = $this->findCompanyPost($postId);
 
         if (! $post) {
             return response()->json([
@@ -1782,322 +934,39 @@ class IndustryController extends Controller
             ], 403);
         }
 
+        $userId = auth()->id();
 
-        $comments = IndustryPostComment::with([
+        $comments = Comment::with([
             'user:id,username,first_name,last_name,title,profile_image',
         ])
             ->withExists([
-                'likes as is_liked' => function ($query) {
-                    $query->where(
-                        'user_id',
-                        auth()->id()
-                    );
-                },
+                'likes as is_liked' => fn ($query) => $query->where('user_id', $userId),
             ])
             ->withCount('replies')
-            ->where('post_id', $postId)
-            ->whereNull('parent_id')
+            ->where('post_id', $post->id)
             ->latest()
             ->paginate($perPage);
 
-        $commentIds = collect($comments->items())
-            ->pluck('id')
-            ->values();
+        $commentIds = collect($comments->items())->pluck('id')->values();
 
-        $replies = collect();
-
-        if ($commentIds->isNotEmpty()) {
-
-            $rankedReplies = DB::query()
-                ->fromSub(
-                    IndustryPostComment::query()
-                        ->select([
-                            'id',
-                            'post_id',
-                            'parent_id',
-                            'user_id',
-                            'comment',
-                            'image',
-                            'likes_count',
-                            'created_at',
-                        ])
-                        ->selectRaw(
-                            'ROW_NUMBER() OVER (
-                            PARTITION BY parent_id
-                            ORDER BY created_at DESC, id DESC
-                        ) as reply_rank'
-                        )
-                        ->whereIn(
-                            'parent_id',
-                            $commentIds
-                        ),
-                    'ranked_replies'
-                )
-                ->where('reply_rank', '<=', 3)
-                ->get();
-
-            $replyIds = $rankedReplies
-                ->pluck('id')
-                ->values();
-
-            if ($replyIds->isNotEmpty()) {
-
-                $replies = IndustryPostComment::with([
-                    'user:id,username,first_name,last_name,title,profile_image',
-                ])
-                    ->withExists([
-                        'likes as is_liked' => function ($query) {
-                            $query->where(
-                                'user_id',
-                                auth()->id()
-                            );
-                        },
-                    ])
-                    ->whereIn('id', $replyIds)
-                    ->get()
-                    ->groupBy('parent_id');
-            }
-        }
-
-        $data = collect($comments->items())
-            ->map(function ($comment) use ($replies) {
-
-                return [
-                    'id' => $comment->id,
-
-                    'post_id' => $comment->post_id,
-
-                    'parent_id' => $comment->parent_id,
-
-                    'user' => $comment->user ? [
-                        'id' => $comment->user->id,
-
-                        'username' => $comment->user->username,
-
-                        'name' => trim(
-                            ($comment->user->first_name ?? '') .
-                                ' ' .
-                                ($comment->user->last_name ?? '')
-                        ),
-
-                        'title' => $comment->user->title,
-
-                        'profile_image' => $comment->user->profile_image_url,
-                    ] : null,
-
-                    'comment' => $comment->comment,
-
-                    'image' => $comment->image
-                        ? Storage::disk('public')->url(
-                            $comment->image
-                        )
-                        : null,
-
-                    'likes_count' => $comment->likes_count,
-
-                    'is_liked' => (bool) $comment->is_liked,
-
-                    'replies_count' => $comment->replies_count,
-
-                    'created_at' => $comment->created_at,
-
-                    'time_ago' => $comment->created_at
-                        ? $comment->created_at->diffForHumans()
-                        : null,
-
-                    'replies' => $replies
-                        ->get($comment->id, collect())
-                        ->sortByDesc(function ($reply) {
-                            return $reply->created_at;
-                        })
-                        ->values()
-                        ->map(function ($reply) {
-
-                            return [
-                                'id' => $reply->id,
-
-                                'post_id' => $reply->post_id,
-
-                                'parent_id' => $reply->parent_id,
-
-                                'user' => $reply->user ? [
-                                    'id' => $reply->user->id,
-
-                                    'username' => $reply->user->username,
-
-                                    'name' => trim(
-                                        ($reply->user->first_name ?? '') .
-                                            ' ' .
-                                            ($reply->user->last_name ?? '')
-                                    ),
-
-                                    'title' => $reply->user->title,
-
-                                    'profile_image' => $reply->user->profile_image_url,
-                                ] : null,
-
-                                'comment' => $reply->comment,
-
-                                'image' => $reply->image
-                                    ? Storage::disk('public')->url(
-                                        $reply->image
-                                    )
-                                    : null,
-
-                                'likes_count' => $reply->likes_count,
-
-                                'is_liked' => (bool) $reply->is_liked,
-
-                                'created_at' => $reply->created_at,
-
-                                'time_ago' => $reply->created_at
-                                    ? $reply->created_at->diffForHumans()
-                                    : null,
-                            ];
-                        }),
-                ];
-            })
-            ->values();
+        $replies = $this->latestRepliesByParent($commentIds, $userId);
 
         return response()->json([
             'success' => true,
-
             'message' => 'Post comments fetched successfully.',
+            'data' => collect($comments->items())
+                ->map(function ($comment) use ($replies) {
+                    $resource = $this->commentResource($comment);
 
-            'data' => $data,
+                    $resource['replies'] = $replies
+                        ->get($comment->id, collect())
+                        ->map(fn ($reply) => $this->replyResource($reply))
+                        ->values();
 
-            'pagination' => [
-                'current_page' => $comments->currentPage(),
-
-                'per_page' => $comments->perPage(),
-
-                'total' => $comments->total(),
-
-                'last_page' => $comments->lastPage(),
-
-                'has_more_pages' => $comments->hasMorePages(),
-            ],
-        ], 200);
-    }
-
-    public function replyList(Request $request, $commentId)
-    {
-        $perPage = max(
-            1,
-            min(
-                (int) $request->get('per_page', 10),
-                100
-            )
-        );
-
-        $comment = IndustryPostComment::whereNull('parent_id')
-            ->find($commentId);
-
-        if (! $comment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Comment not found.',
-            ], 404);
-        }
-
-        $post = $comment->post;
-
-        if (! $post) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Post not found.',
-            ], 404);
-        }
-
-        if (! $this->canViewPost($post, auth()->id())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not allowed to view replies on this comment.',
-            ], 403);
-        }
-
-        $replies = IndustryPostComment::with([
-            'user:id,username,first_name,last_name,title,profile_image',
-        ])
-            ->withExists([
-                'likes as is_liked' => function ($query) {
-                    $query->where(
-                        'user_id',
-                        auth()->id()
-                    );
-                },
-            ])
-            ->where(
-                'parent_id',
-                $commentId
-            )
-            ->latest()
-            ->paginate($perPage);
-
-        $data = collect($replies->items())
-            ->map(function ($reply) {
-
-                return [
-                    'id' => $reply->id,
-
-                    'post_id' => $reply->post_id,
-
-                    'parent_id' => $reply->parent_id,
-
-                    'user' => $reply->user ? [
-                        'id' => $reply->user->id,
-
-                        'username' => $reply->user->username,
-
-                        'name' => trim(
-                            ($reply->user->first_name ?? '') .
-                                ' ' .
-                                ($reply->user->last_name ?? '')
-                        ),
-
-                        'title' => $reply->user->title,
-
-                        'profile_image' => $reply->user->profile_image_url,
-                    ] : null,
-
-                    'comment' => $reply->comment,
-
-                    'image' => $reply->image
-                        ? Storage::disk('public')->url(
-                            $reply->image
-                        )
-                        : null,
-
-                    'time_ago' => $reply->created_at
-                        ? $reply->created_at->diffForHumans()
-                        : null,
-
-                    'is_liked' => (bool) $reply->is_liked,
-
-                    'likes_count' => $reply->likes_count,
-
-                ];
-            })
-            ->values();
-
-        return response()->json([
-            'success' => true,
-
-            'message' => 'Comment replies fetched successfully.',
-
-            'data' => $data,
-
-            'pagination' => [
-                'current_page' => $replies->currentPage(),
-
-                'per_page' => $replies->perPage(),
-
-                'total' => $replies->total(),
-
-                'last_page' => $replies->lastPage(),
-
-                'has_more_pages' => $replies->hasMorePages(),
-            ],
+                    return $resource;
+                })
+                ->values(),
+            'pagination' => $this->pagination($comments),
         ], 200);
     }
 
@@ -2105,8 +974,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $comment = IndustryPostComment::with('post')
-            ->find($commentId);
+        $comment = $this->findCompanyComment($commentId);
 
         if (! $comment) {
             return response()->json([
@@ -2117,16 +985,9 @@ class IndustryController extends Controller
 
         $post = $comment->post;
 
-        if (! $post) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Post not found.',
-            ], 404);
-        }
-
         if (
-            (int) $comment->user_id !== (int) $userId &&
-            (int) $post->created_by !== (int) $userId
+            (int) $comment->user_id !== (int) $userId
+            && (int) $post->user_id !== (int) $userId
         ) {
             return response()->json([
                 'success' => false,
@@ -2134,80 +995,21 @@ class IndustryController extends Controller
             ], 403);
         }
 
-        $isReply = ! is_null($comment->parent_id);
+        $replyCount = $comment->replies()->count();
 
-        $imagePaths = [];
-        $deletedCount = 0;
-
-        DB::beginTransaction();
+        $deletedCount = 1 + $replyCount;
 
         try {
+            DB::beginTransaction();
 
-            if (! $isReply) {
-
-                $replies = IndustryPostComment::where(
-                    'parent_id',
-                    $comment->id
-                )->get();
-
-                foreach ($replies as $reply) {
-
-                    if ($reply->image) {
-                        $imagePaths[] = $reply->image;
-                    }
-
-                    $reply->delete();
-
-                    $deletedCount++;
-                }
-
-                if ($comment->image) {
-                    $imagePaths[] = $comment->image;
-                }
-
-                $comment->delete();
-
-                $deletedCount++;
-            } else {
-
-                if ($comment->image) {
-                    $imagePaths[] = $comment->image;
-                }
-
-                $comment->delete();
-
-                $deletedCount++;
-            }
+            $comment->delete();
 
             $post->update([
-                'comments_count' => max(
-                    0,
-                    (int) $post->comments_count - $deletedCount
-                ),
+                'total_comment' => max(0, (int) $post->total_comment - $deletedCount),
             ]);
 
             DB::commit();
-
-            foreach ($imagePaths as $path) {
-
-                if (Storage::disk('public')->exists($path)) {
-                    Storage::disk('public')->delete($path);
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => $isReply
-                    ? 'Reply deleted successfully.'
-                    : 'Comment and replies deleted successfully.',
-                'data' => [
-                    'comment_id' => $commentId,
-                    'deleted_count' => $deletedCount,
-                    'comments_count' => (int) $post->comments_count,
-                ],
-            ], 200);
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return response()->json([
@@ -2218,6 +1020,360 @@ class IndustryController extends Controller
                     : null,
             ], 500);
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => $replyCount > 0
+                ? 'Comment and replies deleted successfully.'
+                : 'Comment deleted successfully.',
+            'data' => [
+                'comment_id' => $comment->id,
+                'deleted_count' => $deletedCount,
+                'comments_count' => (int) $post->total_comment,
+            ],
+        ], 200);
+    }
+
+    public function toggleCommentLike($commentId)
+    {
+        $userId = auth()->id();
+
+        $comment = $this->findCompanyComment($commentId);
+
+        if (! $comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        if (! $this->canViewPost($comment->post, $userId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to like this comment.',
+            ], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $like = CommentLike::where('comment_id', $comment->id)
+                ->where('user_id', $userId)
+                ->first();
+
+            if ($like) {
+                $like->delete();
+
+                $comment->update([
+                    'like_count' => max(0, (int) $comment->like_count - 1),
+                ]);
+
+                $liked = false;
+                $message = 'Comment unliked successfully.';
+            } else {
+                CommentLike::create([
+                    'comment_id' => $comment->id,
+                    'user_id' => $userId,
+                ]);
+
+                $comment->increment('like_count');
+
+                $liked = true;
+                $message = 'Comment liked successfully.';
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'comment_id' => $comment->id,
+                    'liked' => $liked,
+                    'likes_count' => (int) $comment->like_count,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update comment like.',
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+    public function commentLikeList(Request $request, $commentId)
+    {
+        $perPage = $this->perPage($request);
+
+        $comment = $this->findCompanyComment($commentId);
+
+        if (! $comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        if (! $this->canViewPost($comment->post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to view comment likes.',
+            ], 403);
+        }
+
+        $likes = CommentLike::with([
+            'user:id,username,first_name,last_name,profile_image',
+        ])
+            ->where('comment_id', $comment->id)
+            ->whereHas('user', fn ($query) => $query->whereNull('deleted_at'))
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comment liked users fetched successfully.',
+            'data' => collect($likes->items())
+                ->map(fn ($like) => $this->likedUserResource($like->user))
+                ->filter()
+                ->values(),
+            'pagination' => $this->pagination($likes),
+        ], 200);
+    }
+
+    public function replyComment(Request $request, $commentId, OptimizedImageUploadService $imageUploadService)
+    {
+        $parentComment = $this->findCompanyComment($commentId);
+
+        if (! $parentComment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'comment' => ['nullable', 'string', 'max:5000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        if (blank($validated['comment'] ?? null) && ! $request->hasFile('image')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Reply must contain text or image.',
+            ], 422);
+        }
+
+        $post = $parentComment->post;
+
+        if (! $this->canViewPost($post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to reply to this comment.',
+            ], 403);
+        }
+
+        $imagePath = null;
+
+        try {
+            DB::beginTransaction();
+
+            if ($request->hasFile('image')) {
+                $imagePath = $imageUploadService->store(
+                    $request->file('image'),
+                    'industries/comments'
+                );
+            }
+
+            $reply = Reply::create([
+                'post_id' => $post->id,
+                'comment_id' => $parentComment->id,
+                'user_id' => auth()->id(),
+                'reply' => $validated['comment'] ?? null,
+                'image' => $imagePath,
+            ]);
+
+            $parentComment->increment('reply_count');
+            $post->increment('total_comment');
+
+            $parentComment->refresh();
+            $post->refresh();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Reply added successfully.',
+                'data' => $this->replyResource($reply),
+            ], 201);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            $this->deleteFiles([$imagePath]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to add reply.',
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+    public function replyList(Request $request, $commentId)
+    {
+        $perPage = $this->perPage($request);
+
+        $comment = $this->findCompanyComment($commentId);
+
+        if (! $comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment not found.',
+            ], 404);
+        }
+
+        if (! $this->canViewPost($comment->post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to view replies on this comment.',
+            ], 403);
+        }
+
+        $replies = Reply::with([
+            'user:id,username,first_name,last_name,title,profile_image',
+        ])
+            ->withExists([
+                'likes as is_liked' => fn ($query) => $query->where('user_id', auth()->id()),
+            ])
+            ->where('comment_id', $comment->id)
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comment replies fetched successfully.',
+            'data' => collect($replies->items())
+                ->map(fn ($reply) => $this->replyResource($reply))
+                ->values(),
+            'pagination' => $this->pagination($replies),
+        ], 200);
+    }
+
+    public function toggleReplyLike($replyId)
+    {
+        $userId = auth()->id();
+
+        $reply = $this->findCompanyReply($replyId);
+
+        if (! $reply) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Reply not found.',
+            ], 404);
+        }
+
+        if (! $this->canViewPost($reply->post, $userId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to like this reply.',
+            ], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $like = ReplyLike::where('reply_id', $reply->id)
+                ->where('user_id', $userId)
+                ->first();
+
+            if ($like) {
+                $like->delete();
+
+                $reply->update([
+                    'like_count' => max(0, (int) $reply->like_count - 1),
+                ]);
+
+                $liked = false;
+                $message = 'Reply unliked successfully.';
+            } else {
+                ReplyLike::create([
+                    'reply_id' => $reply->id,
+                    'user_id' => $userId,
+                ]);
+
+                $reply->increment('like_count');
+
+                $liked = true;
+                $message = 'Reply liked successfully.';
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'reply_id' => $reply->id,
+                    'liked' => $liked,
+                    'likes_count' => (int) $reply->like_count,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update reply like.',
+                'error' => config('app.debug')
+                    ? $e->getMessage()
+                    : null,
+            ], 500);
+        }
+    }
+
+    public function replyLikeList(Request $request, $replyId)
+    {
+        $perPage = $this->perPage($request);
+
+        $reply = $this->findCompanyReply($replyId);
+
+        if (! $reply) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Reply not found.',
+            ], 404);
+        }
+
+        if (! $this->canViewPost($reply->post, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to view reply likes.',
+            ], 403);
+        }
+
+        $likes = ReplyLike::with([
+            'user:id,username,first_name,last_name,profile_image',
+        ])
+            ->where('reply_id', $reply->id)
+            ->whereHas('user', fn ($query) => $query->whereNull('deleted_at'))
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reply liked users fetched successfully.',
+            'data' => collect($likes->items())
+                ->map(fn ($like) => $this->likedUserResource($like->user))
+                ->filter()
+                ->values(),
+            'pagination' => $this->pagination($likes),
+        ], 200);
     }
 
     public function toggleFollow($industryId)
@@ -2259,42 +1415,399 @@ class IndustryController extends Controller
             $message = 'Company page followed successfully.';
         }
 
-        $followersCount = IndustryFollow::where(
-            'industry_id',
-            $industry->id
-        )->count();
-
         return response()->json([
             'success' => true,
             'message' => $message,
             'data' => [
                 'industry_id' => $industry->id,
                 'is_following' => $following,
-                'followers_count' => $followersCount,
+                'followers_count' => IndustryFollow::where(
+                    'industry_id',
+                    $industry->id
+                )->count(),
             ],
         ], 200);
     }
 
-    private function canViewPost(IndustryPost $post, int $userId): bool
+    /**
+     * Fetch a post only when it belongs to a company page. Regular user posts
+     * are invisible to every endpoint in this controller.
+     */
+    private function findCompanyPost($postId): ?Post
     {
-        if ((int) $post->created_by === $userId) {
-            return true;
+        return Post::query()
+            ->with('industryLink.industry')
+            ->whereHas('industryLink')
+            ->find($postId);
+    }
+
+    /**
+     * Fetch a comment only when its post belongs to a company page.
+     */
+    private function findCompanyComment($commentId): ?Comment
+    {
+        return Comment::query()
+            ->whereHas(
+                'post',
+                fn ($query) => $query->forIndustry()
+            )
+            ->with('post')
+            ->find($commentId);
+    }
+
+    /**
+     * Fetch a reply only when its post belongs to a company page.
+     */
+    private function findCompanyReply($replyId): ?Reply
+    {
+        return Reply::query()
+            ->whereHas(
+                'post',
+                fn ($query) => $query->forIndustry()
+            )
+            ->with('post')
+            ->find($replyId);
+    }
+
+    private function canViewPost(Post $post, int $userId): bool
+    {
+        return $post->isVisibleTo(User::find($userId));
+    }
+
+    /**
+     * Restrict a company post query to posts the given user may read.
+     */
+    private function visibleCompanyPostsQuery($query, int $userId)
+    {
+        return $query->where(function ($query) use ($userId) {
+            $query->where('posts.user_id', $userId)
+
+                ->orWhere('visibility', 'public')
+
+                ->orWhere(function ($query) use ($userId) {
+                    $query->where('visibility', 'followers')
+                        ->whereExists(function ($subQuery) use ($userId) {
+                            $subQuery->select(DB::raw(1))
+                                ->from('industry_follows')
+                                ->join(
+                                    'post_industry',
+                                    'post_industry.industry_id',
+                                    '=',
+                                    'industry_follows.industry_id'
+                                )
+                                ->whereColumn('post_industry.post_id', 'posts.id')
+                                ->where('industry_follows.user_id', $userId);
+                        });
+                });
+        });
+    }
+
+    /**
+     * The three most recent replies per comment, grouped by parent comment id.
+     */
+    private function latestRepliesByParent($commentIds, int $userId)
+    {
+        if ($commentIds->isEmpty()) {
+            return collect();
         }
 
-        if ($post->visibility === 'public') {
-            return true;
+        $rankedReplies = DB::query()
+            ->fromSub(
+                Reply::query()
+                    ->select([
+                        'id',
+                        'post_id',
+                        'comment_id',
+                        'user_id',
+                        'reply',
+                        'image',
+                        'like_count',
+                        'created_at',
+                    ])
+                    ->selectRaw(
+                        'ROW_NUMBER() OVER (
+                            PARTITION BY comment_id
+                            ORDER BY created_at DESC, id DESC
+                        ) as reply_rank'
+                    )
+                    ->whereIn('comment_id', $commentIds),
+                'ranked_replies'
+            )
+            ->where('reply_rank', '<=', 3)
+            ->pluck('id');
+
+        if ($rankedReplies->isEmpty()) {
+            return collect();
         }
 
-        if ($post->visibility === 'private') {
+        return Reply::with([
+            'user:id,username,first_name,last_name,title,profile_image',
+        ])
+            ->withExists([
+                'likes as is_liked' => fn ($query) => $query->where('user_id', $userId),
+            ])
+            ->whereIn('id', $rankedReplies)
+            ->get()
+            ->groupBy('comment_id');
+    }
+
+    private function uploadPostMedia(
+        Request $request,
+        IndustryMediaUploadService $mediaUploadService,
+        array &$uploadedFiles
+    ): array {
+        $media = [];
+
+        if (! $request->hasFile('media')) {
+            return $media;
+        }
+
+        foreach ($request->file('media') as $file) {
+            $uploaded = $mediaUploadService->upload($file);
+
+            $uploadedFiles[] = $uploaded['file_path'];
+
+            $media[] = $uploaded;
+        }
+
+        return $media;
+    }
+
+    /**
+     * @return array{images: int, videos: int}
+     */
+    private function mediaCounts(Request $request): array
+    {
+        if (! $request->hasFile('media')) {
+            return ['images' => 0, 'videos' => 0];
+        }
+
+        $counts = ['images' => 0, 'videos' => 0];
+
+        foreach ($request->file('media') as $file) {
+            $mime = $file->getMimeType() ?? '';
+
+            if (str_starts_with($mime, 'video/')) {
+                $counts['videos']++;
+            } elseif (str_starts_with($mime, 'image/')) {
+                $counts['images']++;
+            }
+        }
+
+        return $counts;
+    }
+
+    private function mediaCountsAreValid(Request $request, string $subject): bool
+    {
+        ['images' => $images, 'videos' => $videos] = $this->mediaCounts($request);
+
+        if ($videos > 1) {
             return false;
         }
 
-        if ($post->visibility === 'followers') {
-            return IndustryFollow::where('industry_id', $post->industry_id)
-                ->where('user_id', $userId)
-                ->exists();
+        if ($videos === 1 && $images > 9) {
+            return false;
         }
 
-        return false;
+        return ! ($videos === 0 && $images > 10);
+    }
+
+    private function mediaValidationMessage(Request $request): string
+    {
+        ['images' => $images, 'videos' => $videos] = $this->mediaCounts($request);
+
+        if ($videos > 1) {
+            return 'You can upload a maximum of 1 video per post.';
+        }
+
+        if ($videos === 1 && $images > 9) {
+            return 'You can upload a maximum of 9 images with 1 video.';
+        }
+
+        return 'You can upload a maximum of 10 images per post.';
+    }
+
+    private function uniqueIndustrySlug(string $slug, ?int $ignoreId = null): string
+    {
+        if ($slug === '') {
+            $slug = 'industry';
+        }
+
+        $original = $slug;
+        $counter = 1;
+
+        while (
+            Industry::where('slug', $slug)
+                ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = $original.'-'.$counter++;
+        }
+
+        return $slug;
+    }
+
+    private function planAllowsCompanyProfile(?Subscription $subscription): bool
+    {
+        return (bool) $subscription?->allowsCompanyProfile();
+    }
+
+    private function ownedIndustry(int $userId): ?Industry
+    {
+        return Industry::where('created_by', $userId)->first();
+    }
+
+    private function perPage(Request $request): int
+    {
+        return max(1, min((int) $request->get('per_page', 10), 100));
+    }
+
+    private function pagination($paginator): array
+    {
+        return [
+            'current_page' => $paginator->currentPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'last_page' => $paginator->lastPage(),
+            'has_more_pages' => $paginator->hasMorePages(),
+        ];
+    }
+
+    private function publicUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        return str_starts_with($path, 'http')
+            ? $path
+            : Storage::disk('public')->url($path);
+    }
+
+    private function deleteFiles(array $paths): void
+    {
+        foreach ($paths as $path) {
+            if ($path && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+    }
+
+    private function postResource(Post $post, bool $withEngagement): array
+    {
+        $industryLink = $post->relationLoaded('industryLink')
+            ? $post->industryLink
+            : $post->industryLink()->first();
+
+        $industry = $industryLink?->industry;
+
+        $data = [
+            'post_id' => $post->id,
+            'company_id' => $industryLink?->industry_id,
+            'created_by' => $post->user_id,
+            'content' => $post->description,
+            'visibility' => $post->visibility,
+            'media' => $post->media
+                ->map(fn ($media) => [
+                    'id' => $media->id,
+                    'type' => $media->type,
+                    'url' => $this->publicUrl($media->file_path),
+                    'sort_order' => $media->order,
+                ])
+                ->values(),
+            'created_at' => $post->created_at,
+            'updated_at' => $post->updated_at,
+        ];
+
+        if ($industry) {
+            $data = array_merge([
+                'company_name' => $industry->name,
+                'tagline' => $industry->tagline,
+                'logo' => $this->publicUrl($industry->getRawOriginal('logo')),
+            ], $data);
+        }
+
+        if ($withEngagement) {
+            $data['time_ago'] = $post->created_at
+                ? $post->created_at->diffForHumans()
+                : null;
+
+            $data['likes_count'] = (int) $post->total_like;
+            $data['comments_count'] = (int) $post->total_comment;
+            $data['is_liked'] = (bool) $post->is_liked;
+        }
+
+        return $data;
+    }
+
+    private function commentResource(Comment $comment): array
+    {
+        return [
+            'id' => $comment->id,
+            'post_id' => $comment->post_id,
+            'user_id' => $comment->user_id,
+            'user' => $this->commentAuthorResource($comment),
+            'comment' => $comment->comment,
+            'image' => $this->publicUrl($comment->image),
+            'likes_count' => (int) $comment->like_count,
+            'replies_count' => (int) ($comment->replies_count ?? $comment->replies()->count()),
+            'is_liked' => (bool) $comment->is_liked,
+            'created_at' => $comment->created_at,
+            'time_ago' => $comment->created_at
+                ? $comment->created_at->diffForHumans()
+                : null,
+        ];
+    }
+
+    private function replyResource(Reply $reply): array
+    {
+        return [
+            'id' => $reply->id,
+            'post_id' => $reply->post_id,
+            'comment_id' => $reply->comment_id,
+            'user_id' => $reply->user_id,
+            'user' => $this->commentAuthorResource($reply),
+            'comment' => $reply->reply,
+            'image' => $this->publicUrl($reply->image),
+            'likes_count' => (int) $reply->like_count,
+            'is_liked' => (bool) $reply->is_liked,
+            'created_at' => $reply->created_at,
+            'time_ago' => $reply->created_at
+                ? $reply->created_at->diffForHumans()
+                : null,
+        ];
+    }
+
+    private function commentAuthorResource($model): ?array
+    {
+        if (! $model->relationLoaded('user') || ! $model->user) {
+            return null;
+        }
+
+        return [
+            'id' => $model->user->id,
+            'username' => $model->user->username,
+            'name' => trim(
+                ($model->user->first_name ?? '').' '.($model->user->last_name ?? '')
+            ),
+            'title' => $model->user->title,
+            'profile_image' => $model->user->profile_image_url,
+        ];
+    }
+
+    private function likedUserResource($user): ?array
+    {
+        if (! $user) {
+            return null;
+        }
+
+        return [
+            'id' => $user->id,
+            'username' => $user->username,
+            'name' => trim(
+                ($user->first_name ?? '').' '.($user->last_name ?? '')
+            ),
+            'profile_image' => $user->profile_image_url,
+        ];
     }
 }

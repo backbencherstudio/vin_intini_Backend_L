@@ -7,9 +7,11 @@ use App\Models\Comment;
 use App\Models\Connection;
 use App\Models\Post;
 use App\Models\Reply;
+use App\Models\User;
 use App\Notifications\CommentRepliedNotification;
 use App\Notifications\PostCommentedNotification;
 use App\Services\OptimizedImageUploadService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -26,13 +28,20 @@ class CommentController extends Controller
 
         $user = auth('api')->user();
 
-        $post = Post::with(['user' => fn ($q) => $q->withTrashed()])->findOrFail($postId);
+        $post = Post::with(['user' => fn ($q) => $q->withTrashed(), 'industryLink'])->findOrFail($postId);
 
         if (! $post->user || $post->user->trashed()) {
             return response()->json([
                 'success' => false,
                 'message' => 'This post is no longer available.',
             ], 404);
+        }
+
+        if ($post->isCompanyPost() && ! $post->isVisibleTo($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to comment on this post',
+            ], 403);
         }
 
         if ($post->who_can_comment === 'no_one') {
@@ -132,6 +141,15 @@ class CommentController extends Controller
         $perPage = $request->get('per_page', 10);
         $user = auth('api')->user();
 
+        $post = Post::with(['user' => fn ($q) => $q->withTrashed(), 'industryLink'])->findOrFail($postId);
+
+        if ($post->isCompanyPost() && ! $post->isVisibleTo($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to view comments on this post',
+            ], 403);
+        }
+
         $comments = Comment::with(['user:id,username,title,first_name,last_name,profile_image', 'post'])
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->withExists(['likes as liked_by_me' => fn ($q) => $q->where('user_id', $user->id)])
@@ -181,6 +199,10 @@ class CommentController extends Controller
     {
         $perPage = $request->get('per_page', 10);
         $user = auth('api')->user();
+
+        if ($error = $this->denyWhenParentPostHidden($user, Comment::findOrFail($commentId)->post_id)) {
+            return $error;
+        }
 
         $replies = Reply::with(['user:id,username,title,first_name,last_name,profile_image', 'comment.post'])
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
@@ -733,4 +755,26 @@ class CommentController extends Controller
     //         ],
     //     ]);
     // }
+
+    /**
+     * Company comments and replies live in the shared tables, so the generic
+     * comment and reply endpoints must honour company post visibility too.
+     */
+    private function denyWhenParentPostHidden(?User $user, ?int $postId): ?JsonResponse
+    {
+        if (! $postId) {
+            return null;
+        }
+
+        $post = Post::with('industryLink')->find($postId);
+
+        if ($post && $post->isCompanyPost() && ! $post->isVisibleTo($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to interact with this post',
+            ], 403);
+        }
+
+        return null;
+    }
 }

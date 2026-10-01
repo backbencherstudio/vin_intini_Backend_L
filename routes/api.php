@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\RevenueCatWebhookController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\SocialController;
@@ -12,7 +13,6 @@ use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
-use App\Http\Controllers\GroupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', function () {
@@ -62,7 +62,7 @@ Route::prefix('2fa')->group(function () {
     Route::post('/recovery/resend-otp', [TwoFactorController::class, 'recoveryResendOtp'])->middleware('throttle:5,1');
 });
 
-Route::middleware('auth:api', 'active_session')->group(function () {
+Route::middleware(['auth:api', 'active_session'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
@@ -102,14 +102,14 @@ Route::middleware('auth:api', 'active_session')->group(function () {
         Route::post('/setup-profile', [UserProfileController::class, 'setupProfile'])->middleware('verified_user');
 
         Route::middleware('profile_completed')->group(function () {
-            require __DIR__.'/niaz.php';
-            require __DIR__.'/shanto.php';
+            require __DIR__ . '/niaz.php';
+            require __DIR__ . '/shanto.php';
         });
     });
 
     Route::middleware('role:admin')->group(function () {
-        require __DIR__.'/admin.php';
+        require __DIR__ . '/admin.php';
     });
 
-    require __DIR__.'/kamruzzaman.php';
+    require __DIR__ . '/kamruzzaman.php';
 });

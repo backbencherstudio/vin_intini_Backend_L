@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Connection;
 use App\Models\Group;
 use App\Models\GroupInvitation;
