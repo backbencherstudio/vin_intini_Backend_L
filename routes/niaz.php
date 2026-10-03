@@ -4,16 +4,17 @@ use App\Http\Controllers\Admin\IndustryApiController;
 use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\ConnectionController;
 use App\Http\Controllers\Api\FollowController;
+use App\Http\Controllers\Api\GroupController;
+use App\Http\Controllers\Api\IndustryAnalyticsController;
+use App\Http\Controllers\Api\IndustryDashboardController;
+use App\Http\Controllers\Api\IndustryJobApplicationController;
 use App\Http\Controllers\Api\IndustryJobPostController;
+use App\Http\Controllers\Api\JobsFeedController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
 use App\Http\Controllers\Api\UserProfileController;
-use App\Http\Controllers\Api\GroupController;
-use App\Http\Controllers\Api\IndustryAnalyticsController;
-use App\Http\Controllers\Api\IndustryJobApplicationController;
-use App\Http\Controllers\Api\JobsFeedController;
 use Illuminate\Support\Facades\Route;
 
 // group routes
@@ -126,12 +127,15 @@ Route::post('/account/delete-request', [SecuritySettingsController::class, 'requ
 
 // pro Industry job post
 Route::prefix('industry')->group(function () {
-    Route::get('jobsfeed', [JobsFeedController::class, 'jobsFeed']); //global route
-    Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']);//global show route
+    Route::get('jobsfeed', [JobsFeedController::class, 'jobsFeed']); // global route
+    Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']); // global show route
 
-    //industry job post routes for the authenticated user (creator)
-    Route::get('my-job-posts', [IndustryJobPostController::class, 'myJobs']); //my created job list
-    Route::get('my-archived-job-posts', [IndustryJobPostController::class, 'myArchivedJobs']); //created my archive job
+    // recruiter dashboard
+    Route::get('recruiter-dashboard', [IndustryDashboardController::class, 'index']);
+
+    // industry job post routes for the authenticated user (creator)
+    Route::get('my-job-posts', [IndustryJobPostController::class, 'myJobs']); // my created job list
+    Route::get('my-archived-job-posts', [IndustryJobPostController::class, 'myArchivedJobs']); // created my archive job
     Route::post('job-post/create', [IndustryJobPostController::class, 'store']); // create a new job post
     Route::put('job-post/{id}/update', [IndustryJobPostController::class, 'update']); // update a job post
     Route::delete('job-post/{id}/delete', [IndustryJobPostController::class, 'destroy']); // delete a job post
