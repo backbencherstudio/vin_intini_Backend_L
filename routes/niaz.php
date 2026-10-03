@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\IndustryAnalyticsController;
 use App\Http\Controllers\Api\IndustryJobApplicationController;
+use App\Http\Controllers\Api\JobsFeedController;
 use Illuminate\Support\Facades\Route;
 
 // group routes
@@ -125,7 +126,7 @@ Route::post('/account/delete-request', [SecuritySettingsController::class, 'requ
 
 // pro Industry job post
 Route::prefix('industry')->group(function () {
-    Route::get('job-posts', [IndustryJobPostController::class, 'index']); //global route
+    Route::get('jobsfeed', [JobsFeedController::class, 'jobsFeed']); //global route
     Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']);//global show route
 
     //industry job post routes for the authenticated user (creator)

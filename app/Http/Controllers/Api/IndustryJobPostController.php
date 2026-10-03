@@ -18,152 +18,6 @@ use Illuminate\Validation\Rule;
 
 class IndustryJobPostController extends Controller
 {
-    public function index(Request $request): JsonResponse
-    {
-        $currentUser = auth('api')->user();
-
-        $search = trim((string) $request->query('search', ''));
-        $networkType = $request->query('network_type');
-        $workMode = $request->query('work_mode');
-        $employmentType = $request->query('employment_type');
-        $employmentOffering = $request->query('employment_offering');
-        $stateId = $request->filled('state_id') ? $request->integer('state_id') : null;
-        $cityId = $request->filled('city_id') ? $request->integer('city_id') : null;
-        $category = $request->query('category');
-        $subCategory = $request->query('sub_category');
-        $salaryType = $request->query('salary_type');
-
-        $limit = min($request->integer('limit', 10), 100);
-
-        $baseQuery = IndustryJobPost::query()
-            ->where('status', IndustryJobPostStatus::PUBLISHED);
-
-        $totalJobsCount = (clone $baseQuery)->count();
-
-        if ($search !== '') {
-            $baseQuery->where(function ($q) use ($search) {
-                $q->where('job_title', 'LIKE', "%{$search}%")
-                    ->orWhere('job_id', 'LIKE', "%{$search}%")
-                    ->orWhere('position', 'LIKE', "%{$search}%");
-            });
-        }
-
-        if (!empty($networkType)) {
-            $baseQuery->where('network_type', $networkType);
-        }
-        if (!empty($employmentOffering)) {
-            $baseQuery->where('employment_offering', $employmentOffering);
-        }
-        if (!empty($workMode)) {
-            $baseQuery->where('work_mode', $workMode);
-        }
-        if (!empty($employmentType)) {
-            $baseQuery->where('employment_type', $employmentType);
-        }
-        if (!empty($stateId)) {
-            $baseQuery->where('state_id', $stateId);
-        }
-        if (!empty($cityId)) {
-            $baseQuery->where('city_id', $cityId);
-        }
-        if (!empty($category)) {
-            is_array($category) ? $baseQuery->whereIn('category', $category) : $baseQuery->where('category', $category);
-        }
-
-        if (!empty($subCategory)) {
-            is_array($subCategory) ? $baseQuery->whereIn('sub_category', $subCategory) : $baseQuery->where('sub_category', $subCategory);
-        }
-
-        if (!empty($salaryType)) {
-            $baseQuery->where('salary_type', $salaryType);
-        }
-
-        $paginated = $baseQuery->with(['industry', 'state', 'city', 'creator'])
-            ->withCount('applications')
-            ->latest('id')
-            ->paginate($limit);
-
-        $jobIds = $paginated->pluck('id')->all();
-
-        $likedJobIds = ($currentUser && !empty($jobIds))
-            ? IndustryJobPostLike::where('user_id', $currentUser->id)
-            ->whereIn('industry_job_post_id', $jobIds)
-            ->pluck('industry_job_post_id')
-            ->flip()
-            ->all()
-            : [];
-
-        $savedJobIds = ($currentUser && !empty($jobIds))
-            ? IndustryJobPostSave::where('user_id', $currentUser->id)
-            ->whereIn('industry_job_post_id', $jobIds)
-            ->pluck('industry_job_post_id')
-            ->flip()
-            ->all()
-            : [];
-
-        $appliedJobs = ($currentUser && !empty($jobIds))
-            ? IndustryJobApplication::where('applicant_id', $currentUser->id)
-            ->whereIn('job_id', $jobIds)
-            ->pluck('status', 'job_id')
-            ->all()
-            : [];
-
-        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $currentUser) {
-            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $currentUser);
-        })->values();
-
-        $filters = [
-            'search'              => $search !== '' ? $search : null,
-            'network_type'        => $networkType ?: null,
-            'employment_offering' => $employmentOffering ?: null,
-            'work_mode'           => $workMode ?: null,
-            'employment_type'     => $employmentType ?: null,
-            'category'            => $category ?: null,
-            'sub_category'        => $subCategory ?: null,
-            'salary_type'         => $salaryType ?: null,
-            'state_id'            => $stateId,
-            'city_id'             => $cityId,
-        ];
-
-        if ($paginated->isEmpty()) {
-            return response()->json([
-                'success'      => true,
-                'message'      => $search !== '' ? 'No job posts found for this search.' : 'No job posts available.',
-                'status'       => 'success',
-                'total_jobs'   => $totalJobsCount,
-                'data'         => [],
-                'stats'        => [
-                    'total_jobs'    => $totalJobsCount,
-                    'filtered_jobs' => 0,
-                ],
-                'total'        => 0,
-                'limit'        => $limit,
-                'current_page' => $paginated->currentPage(),
-                'total_page'   => 0,
-                'last_page'    => 0,
-                'filters'      => $filters,
-            ], 200);
-        }
-
-        return response()->json([
-            'success'      => true,
-            'message'      => 'Job posts retrieved successfully.',
-            'status'       => 'success',
-            'total_jobs'   => $totalJobsCount,
-            'data'         => $formattedData,
-            'stats'        => [
-                'total_jobs'    => $totalJobsCount,
-                'filtered_jobs' => $paginated->total(),
-            ],
-            'total'        => $paginated->total(),
-            'limit'        => $paginated->perPage(),
-            'current_page' => $paginated->currentPage(),
-            'total_page'   => $paginated->lastPage(),
-            'last_page'    => $paginated->lastPage(),
-            'filters'      => $filters,
-        ], 200);
-    }
-
     //industry job post list for the authenticated user (creator)
     public function myJobs(Request $request): JsonResponse
     {
@@ -882,33 +736,51 @@ class IndustryJobPostController extends Controller
 
     private function validateJobPost(Request $request, bool $isDraft): array
     {
+        $isRequired = $isDraft ? 'nullable' : 'required';
+
         return $request->validate([
             'status'                  => ['nullable', 'in:draft,published,rejected,archive,expired'],
             'job_title'               => ['required', 'string', 'max:255'],
-            'position'                => [$isDraft ? 'nullable' : 'required', 'string', 'max:255'],
-            'category'                => [$isDraft ? 'nullable' : 'required', 'string', 'max:100'],
+            'position'                => [$isRequired, 'string', 'max:255'],
+            'category'                => [$isRequired, 'string', 'max:100'],
             'sub_category'            => ['nullable', 'string', 'max:100'],
-            'job_description'         => ['required', 'string', 'max:5000'],
-            'work_mode'               => ['required', 'string'],
-            'employment_type'         => ['required', 'string'],
+            'job_description'         => [$isRequired, 'string', 'max:5000'],
+
+            'work_mode'               => [$isRequired, 'string', 'in:remote,on_site,hybrid'],
+            'employment_type'         => [$isRequired, 'string', 'in:full_time,part_time,short_term,contract,internship'],
+
             'level'                   => ['nullable', 'string'],
             'experience'              => ['nullable', 'string'],
-            'network_type'            => [$isDraft ? 'nullable' : 'required', 'string', 'in:psychology,neuroscience'],
-            'employment_offering'     => [$isDraft ? 'nullable' : 'required', 'string', 'in:state,private'],
-            'state_id'                => [$isDraft ? 'nullable' : 'required', 'integer', 'exists:states,id'],
+            'network_type'            => [$isRequired, 'string', 'in:psychology,neuroscience'],
+            'employment_offering'     => [$isRequired, 'string', 'in:state,private'],
+
+            'state_id'                => [
+                $isDraft ? 'nullable' : Rule::requiredIf($request->input('work_mode') !== 'remote'),
+                'nullable',
+                'integer',
+                'exists:states,id'
+            ],
             'city_id'                 => [
-                $isDraft ? 'nullable' : 'required',
+                $isDraft ? 'nullable' : Rule::requiredIf($request->input('work_mode') !== 'remote'),
+                'nullable',
                 'integer',
                 Rule::exists('cities', 'id')->when($request->filled('state_id'), function ($rule) use ($request) {
                     return $rule->where('state_id', $request->input('state_id'));
                 }),
             ],
-            'email'                   => ['required', 'email'],
-            'phone_number'            => [$isDraft ? 'nullable' : 'required', 'string'],
+
+            'email'                   => [$isRequired, 'email'],
+            'phone_number'            => [$isRequired, 'string'],
             'website'                 => ['nullable', 'url'],
-            'salary_min'              => [$isDraft ? 'nullable' : 'required', 'numeric', 'min:0'],
-            'salary_max'              => [$isDraft ? 'nullable' : 'required', 'numeric', 'gte:salary_min'],
-            'salary_type'             => [$isDraft ? 'nullable' : 'required', 'string', 'in:Monthly,Yearly,Hourly'],
+
+            'salary_min'              => [$isRequired, 'numeric', 'min:0'],
+            'salary_max'              => [
+                $isRequired,
+                'numeric',
+                $request->filled('salary_min') ? 'gte:salary_min' : 'min:0'
+            ],
+            'salary_type'             => [$isRequired, 'string', 'in:Monthly,Yearly,Hourly'],
+
             'location_url'            => ['nullable', 'string', 'max:1000'],
             'tags'                    => ['nullable'],
             'start_date'              => ['nullable', 'date'],
