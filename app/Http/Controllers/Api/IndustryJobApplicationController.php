@@ -8,6 +8,7 @@ use App\Enums\PlanType;
 use App\Http\Controllers\Controller;
 use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
+use App\Models\Skill;
 use App\Notifications\JobApplicationReceivedNotification;
 use App\Notifications\JobApplicationStatusUpdatedNotification;
 use Illuminate\Http\JsonResponse;
@@ -176,10 +177,13 @@ class IndustryJobApplicationController extends Controller
             ], 422);
         }
 
+        $applicationType = $request->input('application_type', 'custom');
+        $isQuick = $applicationType === 'quick';
+
         // 3. Validation
         $validated = $request->validate([
             'application_type' => ['nullable', 'in:custom,quick'],
-            'full_name' => ['required', 'string', 'max:255'],
+            'full_name' => [$isQuick ? 'nullable' : 'required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:30'],
             'experiences' => ['nullable', 'string', 'max:255'],
@@ -194,9 +198,6 @@ class IndustryJobApplicationController extends Controller
             'resume' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,png', 'max:10240'], // 10MB max
         ]);
 
-        // Skills parse kora
-        $skills = $this->formatSkills($validated['skills'] ?? null);
-
         // Resume upload kora
         $resumePath = null;
         if ($request->hasFile('resume')) {
@@ -206,22 +207,62 @@ class IndustryJobApplicationController extends Controller
         // Auto-generate unique 6-digit application_id
         $applicationId = $this->generateUniqueApplicationId();
 
+        if ($isQuick) {
+            $user->loadMissing(['profile.state']);
+
+            // 1. Name: user er first_name + last_name
+            $profileName = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
+            $fullName = ! empty($profileName) ? $profileName : ($validated['full_name'] ?? $user->username);
+
+            // 2. About Me: user profile-er 'about' theke
+            $aboutYourself = $user->profile?->about ?? ($validated['about_yourself'] ?? null);
+
+            // 3. Skills: user profile-er skills_id theke skill names (string akare)
+            $rawSkillIds = $user->profile?->skills_id ?? [];
+            if (! empty($rawSkillIds)) {
+                $numericIds = array_filter($rawSkillIds, 'is_numeric');
+                $stringSkills = array_values(array_filter($rawSkillIds, fn ($s) => ! is_numeric($s)));
+                $fetchedSkills = ! empty($numericIds)
+                    ? Skill::whereIn('id', $numericIds)->pluck('name')->toArray()
+                    : [];
+                $skills = array_values(array_unique(array_merge($stringSkills, $fetchedSkills)));
+            } else {
+                $skills = $this->formatSkills($validated['skills'] ?? null);
+            }
+
+            // 4. Current Position: request input ?? user-er title
+            $currentPosition = $validated['current_position'] ?? $user->title;
+
+            // 5. Location: request input ?? user profile-er state name ebong country
+            $stateName = $user->profile?->state?->name;
+            $country = $user->profile?->country;
+            $profileLocation = implode(', ', array_filter([$stateName, $country])) ?: null;
+            $location = $validated['location'] ?? $profileLocation;
+        } else {
+            // Custom Application: strictly uses submitted form data
+            $fullName = $validated['full_name'];
+            $aboutYourself = $validated['about_yourself'] ?? null;
+            $skills = $this->formatSkills($validated['skills'] ?? null);
+            $currentPosition = $validated['current_position'] ?? null;
+            $location = $validated['location'] ?? null;
+        }
+
         $application = IndustryJobApplication::create([
             'application_id' => $applicationId,
             'job_id' => $jobPost->id,
             'applicant_id' => $user->id,
             'application_type' => $validated['application_type'] ?? 'custom',
-            'full_name' => $validated['full_name'],
+            'full_name' => $fullName,
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
             'experiences' => $validated['experiences'] ?? null,
-            'current_position' => $validated['current_position'] ?? null,
+            'current_position' => $currentPosition,
             'expected_salary' => $validated['expected_salary'] ?? null,
-            'location' => $validated['location'] ?? null,
+            'location' => $location,
             'linkedin_url' => $validated['linkedin_url'] ?? null,
             'portfolio_url' => $validated['portfolio_url'] ?? null,
             'cover_letter' => $validated['cover_letter'] ?? null,
-            'about_yourself' => $validated['about_yourself'] ?? null,
+            'about_yourself' => $aboutYourself,
             'skills' => $skills,
             'resume_path' => $resumePath,
             'status' => JobApplicationStatus::PENDING->value,
