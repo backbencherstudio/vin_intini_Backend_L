@@ -106,7 +106,9 @@ class IndustryJobPost extends Model
 
     public function isSavedBy(?User $user): bool
     {
-        if (!$user) return false;
+        if (! $user) {
+            return false;
+        }
 
         if ($this->relationLoaded('saves')) {
             return $this->saves->contains('user_id', $user->id);
@@ -117,7 +119,9 @@ class IndustryJobPost extends Model
 
     public function isLikedBy(?User $user): bool
     {
-        if (!$user) return false;
+        if (! $user) {
+            return false;
+        }
 
         if ($this->relationLoaded('likes')) {
             return $this->likes->contains('user_id', $user->id);
@@ -129,5 +133,14 @@ class IndustryJobPost extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(IndustryJobApplication::class, 'job_id');
+    }
+
+    public function isExpired(): bool
+    {
+        if ($this->status === IndustryJobPostStatus::EXPIRED) {
+            return true;
+        }
+
+        return $this->announcement_end_date && $this->announcement_end_date->isPast();
     }
 }
