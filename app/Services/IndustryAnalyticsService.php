@@ -7,19 +7,28 @@ use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
 use App\Models\IndustryJobPostView;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class IndustryAnalyticsService
 {
     public function getJobOverviewAnalytics(int $industryId, string $period = 'last_6_months'): array
     {
+        // JIT auto-sync: Expire past-deadline published jobs for this industry
+        IndustryJobPost::where('industry_id', $industryId)
+            ->where('status', IndustryJobPostStatus::PUBLISHED->value)
+            ->whereNotNull('announcement_end_date')
+            ->whereDate('announcement_end_date', '<', today())
+            ->update(['status' => IndustryJobPostStatus::EXPIRED]);
+
         $now = Carbon::now();
         $startOfCurrentMonth = $now->copy()->startOfMonth();
-        $endOfCurrentMonth   = $now->copy()->endOfMonth();
+        $endOfCurrentMonth = $now->copy()->endOfMonth();
 
-        $startOfLastMonth    = $now->copy()->subMonth()->startOfMonth();
-        $endOfLastMonth      = $now->copy()->subMonth()->endOfMonth();
+        // subMonthNoOverflow ensures safe previous-month navigation on days 28-31
+        $startOfLastMonth = $startOfCurrentMonth->copy()->subMonthNoOverflow();
+        $endOfLastMonth = $startOfLastMonth->copy()->endOfMonth();
 
-        // ১. KPI Cards
+        // 1. KPI Cards
         $cards = $this->calculateKpiCards(
             $industryId,
             $startOfCurrentMonth,
@@ -28,10 +37,11 @@ class IndustryAnalyticsService
             $endOfLastMonth
         );
 
-        // ২. Trend Graph 
+        // 2. Trend Graph
         $graph = $this->calculateTrendGraph($industryId, $period);
 
         return [
+            'period' => $period,
             'cards' => $cards,
             'graph' => $graph,
         ];
@@ -47,7 +57,9 @@ class IndustryAnalyticsService
         $jobPostIds = IndustryJobPost::where('industry_id', $industryId)->select('id');
 
         // Total Views
-        $totalViews = IndustryJobPost::where('industry_id', $industryId)->sum('views_count');
+        $storedViewsCount = (int) IndustryJobPost::where('industry_id', $industryId)->sum('views_count');
+        $logViewsCount = IndustryJobPostView::whereIn('industry_job_post_id', $jobPostIds)->count();
+        $totalViews = max($storedViewsCount, $logViewsCount);
 
         $currentMonthViews = IndustryJobPostView::whereIn('industry_job_post_id', $jobPostIds)
             ->whereBetween('created_at', [$startCurrent, $endCurrent])
@@ -59,7 +71,7 @@ class IndustryAnalyticsService
 
         $viewsGrowth = $this->calculatePercentageChange($currentMonthViews, $lastMonthViews);
 
-        // Applicants
+        // Total Applicants
         $totalApplicants = IndustryJobApplication::whereIn('job_id', $jobPostIds)->count();
 
         $currentMonthApplicants = IndustryJobApplication::whereIn('job_id', $jobPostIds)
@@ -72,7 +84,7 @@ class IndustryAnalyticsService
 
         $applicantsGrowth = $this->calculatePercentageChange($currentMonthApplicants, $lastMonthApplicants);
 
-        // Active Positions (PUBLISHED ও ডেডলাইন শেষ না হওয়া পোস্টগুলো)
+        // Active Positions (Current snapshot: published and not expired)
         $currentActivePositions = IndustryJobPost::where('industry_id', $industryId)
             ->where('status', IndustryJobPostStatus::PUBLISHED)
             ->where(function ($q) {
@@ -81,9 +93,20 @@ class IndustryAnalyticsService
             })
             ->count();
 
+        // Active Positions at the end of last month (Historical comparison)
         $lastMonthActivePositions = IndustryJobPost::where('industry_id', $industryId)
-            ->where('status', IndustryJobPostStatus::PUBLISHED)
-            ->whereBetween('created_at', [$startLast, $endLast])
+            ->where('created_at', '<=', $endLast)
+            ->where(function ($q) use ($endLast) {
+                $q->where('status', IndustryJobPostStatus::PUBLISHED)
+                    ->orWhere(function ($sub) use ($endLast) {
+                        $sub->whereIn('status', [IndustryJobPostStatus::EXPIRED, IndustryJobPostStatus::ARCHIVE])
+                            ->where('updated_at', '>', $endLast);
+                    });
+            })
+            ->where(function ($q) use ($endLast) {
+                $q->whereNull('announcement_end_date')
+                    ->orWhere('announcement_end_date', '>=', $endLast->toDateString());
+            })
             ->count();
 
         $positionsGrowth = $this->calculatePercentageChange($currentActivePositions, $lastMonthActivePositions);
@@ -109,39 +132,49 @@ class IndustryAnalyticsService
 
     private function calculateTrendGraph(int $industryId, string $period): array
     {
-        // 3 ta filter option ache: last_3_months, last_6_months, last_12_months. Default hobe last_6_months.
         $monthsCount = match ($period) {
-            'last_3_months'  => 3,
+            'last_3_months' => 3,
             'last_12_months' => 12,
-            default          => 6, // last_6_months
+            default => 6, // last_6_months
         };
 
-        $startDate = Carbon::now()->subMonths($monthsCount - 1)->startOfMonth();
-        $endDate   = Carbon::now()->endOfMonth();
+        $endDate = Carbon::now()->endOfMonth();
+        $startDate = Carbon::now()->startOfMonth()->subMonthsNoOverflow($monthsCount - 1);
 
         $jobPostIds = IndustryJobPost::where('industry_id', $industryId)->select('id');
 
-        // month Views
+        $driver = DB::connection()->getDriverName();
+        $dateFormat = match ($driver) {
+            'sqlite' => "strftime('%Y-%m', created_at)",
+            'pgsql' => "to_char(created_at, 'YYYY-MM')",
+            default => "DATE_FORMAT(created_at, '%Y-%m')",
+        };
+
+        // Month-wise Views
         $viewsData = IndustryJobPostView::whereIn('industry_job_post_id', $jobPostIds)
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count")
+            ->selectRaw("{$dateFormat} as month, COUNT(*) as count")
             ->groupBy('month')
             ->pluck('count', 'month')
             ->toArray();
 
-        // month Applicants
+        // Month-wise Applicants
         $applicantsData = IndustryJobApplication::whereIn('job_id', $jobPostIds)
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count")
+            ->selectRaw("{$dateFormat} as month, COUNT(*) as count")
             ->groupBy('month')
             ->pluck('count', 'month')
             ->toArray();
 
-        // month Active Positions
+        // Month-wise Positions posted/activated
         $positionsData = IndustryJobPost::where('industry_id', $industryId)
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->where('status', IndustryJobPostStatus::PUBLISHED)
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count")
+            ->whereNotIn('status', [
+                IndustryJobPostStatus::DRAFT->value,
+                IndustryJobPostStatus::REJECTED->value,
+                IndustryJobPostStatus::PENDING->value,
+            ])
+            ->selectRaw("{$dateFormat} as month, COUNT(*) as count")
             ->groupBy('month')
             ->pluck('count', 'month')
             ->toArray();
@@ -152,10 +185,10 @@ class IndustryAnalyticsService
         $positionsSeries = [];
 
         for ($i = $monthsCount - 1; $i >= 0; $i--) {
-            $monthCarbon = Carbon::now()->subMonths($i);
+            $monthCarbon = Carbon::now()->startOfMonth()->subMonthsNoOverflow($i);
             $monthKey = $monthCarbon->format('Y-m');
 
-            $labels[] = $monthCarbon->format('M'); // like: Jan, Feb, Mar...
+            $labels[] = $monthCarbon->format('M'); // e.g. Jan, Feb, Mar...
             $viewsSeries[] = (int) ($viewsData[$monthKey] ?? 0);
             $applicantsSeries[] = (int) ($applicantsData[$monthKey] ?? 0);
             $positionsSeries[] = (int) ($positionsData[$monthKey] ?? 0);
@@ -166,17 +199,17 @@ class IndustryAnalyticsService
             'series' => [
                 [
                     'name' => 'Total Applicant',
-                    'key'  => 'total_applicants',
+                    'key' => 'total_applicants',
                     'data' => $applicantsSeries,
                 ],
                 [
                     'name' => 'Job Views',
-                    'key'  => 'job_views',
+                    'key' => 'job_views',
                     'data' => $viewsSeries,
                 ],
                 [
                     'name' => 'Active Positions',
-                    'key'  => 'active_positions',
+                    'key' => 'active_positions',
                     'data' => $positionsSeries,
                 ],
             ],
@@ -185,7 +218,7 @@ class IndustryAnalyticsService
 
     private function calculatePercentageChange(float $current, float $previous): float
     {
-        if ($previous == 0) {
+        if ($previous == 0.0) {
             return $current > 0 ? 100.0 : 0.0;
         }
 

@@ -15,65 +15,113 @@ class IndustryAnalyticsController extends Controller
 
     public function jobOverview(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = auth('api')->user() ?? $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthenticated user.',
+                'message' => 'Unauthorized.',
             ], 401);
         }
 
+        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+
         $validated = $request->validate([
-            'filter'      => ['nullable', 'string', 'in:last_3_months,last_6_months,last_12_months'],
+            'filter' => ['nullable', 'string'],
+            'period' => ['nullable', 'string'],
             'industry_id' => ['nullable', 'integer', 'exists:industries,id'],
         ]);
 
-        $industryId = $user->industry?->id
-            ?? $user->company_id
-            ?? ($validated['industry_id'] ?? null);
+        $industryId = $user->industry?->id ?? $user->company_id;
 
-        if (!$industryId) {
+        if ($isAdmin && ! empty($validated['industry_id'])) {
+            $industryId = (int) $validated['industry_id'];
+        }
+
+        if (! $industryId) {
             return response()->json([
                 'success' => false,
-                'message' => 'Industry not found for this account.',
+                'message' => 'Your account is not associated with any company profile. Please create a company profile first.',
             ], 422);
         }
 
-        $period = $validated['filter'] ?? 'last_6_months';
+        // Support 'filter' or 'period' parameter (default: 'last_6_months')
+        $rawFilter = $validated['filter'] ?? $validated['period'] ?? $request->query('filter', $request->query('period', 'last_6_months'));
+
+        $period = match (strtolower(trim((string) $rawFilter))) {
+            'last_3_months', 'last_3_month', '3_months', '3_month', '3' => 'last_3_months',
+            'last_12_months', 'last_12_month', '12_months', '12_month', '12' => 'last_12_months',
+            default => 'last_6_months',
+        };
 
         $data = $this->analyticsService->getJobOverviewAnalytics((int) $industryId, $period);
 
         return response()->json([
             'success' => true,
             'message' => 'Job overview analytics retrieved successfully.',
-            'data'    => $data,
+            'data' => $data,
         ]);
     }
 
     public function advertisements(Request $request): JsonResponse
     {
-        $industryId = $request->user()?->industry?->id ?? $request->query('industry_id');
-        if (!$industryId) {
-            return response()->json(['success' => false, 'message' => 'Industry not found.'], 422);
+        $user = auth('api')->user() ?? $request->user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        $period = $request->query('filter', 'last_6_months');
+        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+        $industryId = $user->industry?->id ?? $user->company_id;
+
+        if ($isAdmin && $request->filled('industry_id')) {
+            $industryId = (int) $request->input('industry_id');
+        }
+
+        if (! $industryId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account is not associated with any company profile.',
+            ], 422);
+        }
+
+        $period = $request->query('filter', $request->query('period', 'last_6_months'));
         $data = $this->analyticsService->getAdvertisementAnalytics((int) $industryId, $period);
 
-        return response()->json(['success' => true, 'data' => $data]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Advertisement analytics retrieved successfully.',
+            'data' => $data,
+        ]);
     }
 
     public function profileInsights(Request $request): JsonResponse
     {
-        $industryId = $request->user()?->industry?->id ?? $request->query('industry_id');
-        if (!$industryId) {
-            return response()->json(['success' => false, 'message' => 'Industry not found.'], 422);
+        $user = auth('api')->user() ?? $request->user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        $period = $request->query('filter', 'last_6_months');
+        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+        $industryId = $user->industry?->id ?? $user->company_id;
+
+        if ($isAdmin && $request->filled('industry_id')) {
+            $industryId = (int) $request->input('industry_id');
+        }
+
+        if (! $industryId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account is not associated with any company profile.',
+            ], 422);
+        }
+
+        $period = $request->query('filter', $request->query('period', 'last_6_months'));
         $data = $this->analyticsService->getProfileInsightsAnalytics((int) $industryId, $period);
 
-        return response()->json(['success' => true, 'data' => $data]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile insights analytics retrieved successfully.',
+            'data' => $data,
+        ]);
     }
 }
