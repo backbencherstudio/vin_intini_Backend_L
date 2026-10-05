@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\IndustryCategory;
 use App\Models\IndustrySections;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class IndustryCategoryController extends Controller
 {
     public function psychology(Request $request)
     {
+        $request->validate([
+            'type' => 'nullable|in:biotechnology,psychotropics',
+        ]);
+
         $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
 
         $query = IndustrySections::where('network_type', 'psychology')
@@ -76,21 +79,11 @@ class IndustryCategoryController extends Controller
             'industry_type' => 'required|in:biotechnology,psychotropics',
         ]);
 
-        $section = DB::transaction(function () use ($validated) {
-
-            $section = IndustrySections::create([
-                'name' => $validated['name'],
-                'industry_type' => $validated['industry_type'],
-                'network_type' => 'psychology',
-            ]);
-
-            IndustryCategory::firstOrCreate([
-                'section_id' => $section->id,
-                'category_name' => 'All',
-            ]);
-
-            return $section;
-        });
+        $section = IndustrySections::create([
+            'name' => $validated['name'],
+            'industry_type' => $validated['industry_type'],
+            'network_type' => 'psychology',
+        ]);
 
         $section->load([
             'IndustryCategory' => function ($query) {
@@ -123,7 +116,7 @@ class IndustryCategoryController extends Controller
 
     public function updateSection(Request $request, $id)
     {
-        $section = IndustrySections::findOrFail($id);
+        $section = IndustrySections::where('network_type', 'psychology')->findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -167,6 +160,10 @@ class IndustryCategoryController extends Controller
 
     public function neuroscience(Request $request)
     {
+        $request->validate([
+            'type' => 'nullable|in:biotechnology,psychotropics',
+        ]);
+
         $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
 
         $query = IndustrySections::where('network_type', 'neuroscience')
@@ -230,21 +227,11 @@ class IndustryCategoryController extends Controller
             'industry_type' => 'required|in:biotechnology,psychotropics',
         ]);
 
-        $section = DB::transaction(function () use ($validated) {
-
-            $section = IndustrySections::create([
-                'name' => $validated['name'],
-                'industry_type' => $validated['industry_type'],
-                'network_type' => 'neuroscience',
-            ]);
-
-            IndustryCategory::firstOrCreate([
-                'section_id' => $section->id,
-                'category_name' => 'All',
-            ]);
-
-            return $section;
-        });
+        $section = IndustrySections::create([
+            'name' => $validated['name'],
+            'industry_type' => $validated['industry_type'],
+            'network_type' => 'neuroscience',
+        ]);
 
         $section->load([
             'IndustryCategory' => function ($query) {
@@ -277,7 +264,7 @@ class IndustryCategoryController extends Controller
 
     public function updateNeuroSection(Request $request, $id)
     {
-        $section = IndustrySections::findOrFail($id);
+        $section = IndustrySections::where('network_type', 'neuroscience')->findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',

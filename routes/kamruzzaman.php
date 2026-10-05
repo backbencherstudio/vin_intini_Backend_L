@@ -71,6 +71,11 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::delete('section/delete/{id}', [IndustryCategoryController::class, 'destroySection']);
 
         // Sub Tabs/Categories.....
+        Route::post('sub-category/create', [IndustryCategoryController::class, 'storeSubCategory']);
+        Route::put('sub-category/update/{id}', [IndustryCategoryController::class, 'updateSubCategory']);
+        Route::delete('sub-category/delete/{id}', [IndustryCategoryController::class, 'destroySubCategory']);
+
+        // Backward compatibility for typo
         Route::post('sub-cateroy/create', [IndustryCategoryController::class, 'storeSubCategory']);
         Route::put('sub-cateroy/update/{id}', [IndustryCategoryController::class, 'updateSubCategory']);
         Route::delete('sub-cateroy/delete/{id}', [IndustryCategoryController::class, 'destroySubCategory']);
