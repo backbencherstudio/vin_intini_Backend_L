@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\IndustryAnalyticsController;
 use App\Http\Controllers\Api\IndustryDashboardController;
 use App\Http\Controllers\Api\IndustryJobApplicationController;
 use App\Http\Controllers\Api\IndustryJobPostController;
+use App\Http\Controllers\Api\IndustryProductController;
 use App\Http\Controllers\Api\JobsFeedController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SecuritySettingsController;
@@ -161,4 +162,23 @@ Route::prefix('industry/analytics')->group(function () {
     Route::get('/job-overviews', [IndustryAnalyticsController::class, 'jobOverview']);
     Route::get('/advertisements', [IndustryAnalyticsController::class, 'advertisements']);
     Route::get('/profile-insights', [IndustryAnalyticsController::class, 'profileInsights']);
+});
+
+// Pro Industry Products & Advertisements
+Route::prefix('industry')->group(function () {
+    // Public / User Feed & Interactions (Screenshots 1 & 2)
+    Route::get('products/feed', [IndustryProductController::class, 'feed']);
+    Route::get('products/categories', [IndustryProductController::class, 'dropdownCategories']);
+    Route::get('products/{id}/details', [IndustryProductController::class, 'show']);
+    Route::post('products/{id}/like', [IndustryProductController::class, 'toggleLike']);
+
+    // Pro Industry Advertisement Dashboard & Management (Screenshot 3)
+    Route::prefix('advertisements')->group(function () {
+        Route::get('dashboard', [IndustryProductController::class, 'dashboard']);
+        Route::get('my-listings', [IndustryProductController::class, 'myListings']);
+        Route::post('create', [IndustryProductController::class, 'store']);
+        Route::get('{id}', [IndustryProductController::class, 'editData']);
+        Route::match(['put', 'post'], '{id}/update', [IndustryProductController::class, 'update']);
+        Route::delete('{id}/delete', [IndustryProductController::class, 'destroy']);
+    });
 });
