@@ -595,4 +595,83 @@ class IndustryProductTest extends TestCase
             ->assertJsonPath('data.section_id', $this->section->id)
             ->assertJsonCount(2, 'data.categories');
     }
+
+    public function test_update_product_status_route(): void
+    {
+        $product = IndustryProduct::create([
+            'creator_id' => $this->creator->id,
+            'industry_id' => $this->industry->id,
+            'network_type' => 'psychology',
+            'industry_type' => 'biotechnology',
+            'section_id' => $this->section->id,
+            'category_id' => $this->subCategory1->id,
+            'product_name' => 'Status Test Product',
+            'slug' => 'status-test-product',
+            'description' => 'Product to test status updates.',
+            'image' => 'products/sample.jpg',
+            'status' => 'active',
+        ]);
+
+        // 1. Set draft status via advertisements prefix (PATCH)
+        $draftResponse = $this->actingAs($this->creator, 'api')
+            ->patchJson("/api/industry/advertisements/{$product->id}/status", [
+                'status' => 'draft',
+            ]);
+
+        $draftResponse->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->assertEquals('draft', $product->fresh()->status);
+
+        // 2. Set inactive via advertisements prefix using unique product_id (POST)
+        $inactiveResponse = $this->actingAs($this->creator, 'api')
+            ->postJson("/api/industry/advertisements/{$product->product_id}/status", [
+                'status' => 'inactive',
+            ]);
+
+        $inactiveResponse->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'inactive');
+
+        $this->assertEquals('inactive', $product->fresh()->status);
+
+        // 3. Reactivate back to active
+        $activeResponse = $this->actingAs($this->creator, 'api')
+            ->patchJson("/api/industry/advertisements/{$product->id}/status", [
+                'status' => 'active',
+            ]);
+
+        $activeResponse->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'active');
+
+        $this->assertEquals('active', $product->fresh()->status);
+
+        // 4. Reject paused or invalid status
+        $invalidResponse = $this->actingAs($this->creator, 'api')
+            ->patchJson("/api/industry/advertisements/{$product->id}/status", [
+                'status' => 'paused',
+            ]);
+
+        $invalidResponse->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+
+        // 5. Unauthorized user from another company
+        $otherCreator = User::factory()->create(['is_verified' => true]);
+        $unauthorizedResponse = $this->actingAs($otherCreator, 'api')
+            ->patchJson("/api/industry/advertisements/{$product->id}/status", [
+                'status' => 'inactive',
+            ]);
+
+        $unauthorizedResponse->assertForbidden();
+
+        // 6. Non-existing product returns 404
+        $notFoundResponse = $this->actingAs($this->creator, 'api')
+            ->patchJson('/api/industry/advertisements/999999/status', [
+                'status' => 'inactive',
+            ]);
+
+        $notFoundResponse->assertNotFound();
+    }
 }

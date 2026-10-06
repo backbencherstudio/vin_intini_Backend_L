@@ -13,6 +13,7 @@ use App\Models\IndustryProductView;
 use App\Models\IndustrySections;
 use App\Models\User;
 use App\Services\OptimizedImageUploadService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -595,6 +596,62 @@ class IndustryProductController extends Controller
             'success' => true,
             'message' => 'Product advertisement updated successfully.',
             'data' => (new IndustryProductResource($product))->resolve(),
+        ]);
+    }
+
+    /**
+     * Update product advertisement status (e.g. active, inactive, draft).
+     */
+    public function updateStatus(Request $request, int|string $id): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+        }
+
+        try {
+            $product = $this->findProduct($id);
+        } catch (ModelNotFoundException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found.',
+            ], 404);
+        }
+
+        if (! $this->authorizeProductAction($user, $product)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to modify this product.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'in:active,inactive,draft'],
+        ]);
+
+        $newStatus = $validated['status'];
+
+        // If activating, verify that user still has an active Pro Industry subscription
+        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+        if (! $isAdmin && $newStatus === 'active') {
+            if ($accessError = $this->validateIndustryAccess($user)) {
+                return $accessError;
+            }
+        }
+
+        $product->status = $newStatus;
+        $product->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Product advertisement status updated to {$product->status} successfully.",
+            'data' => [
+                'id' => $product->id,
+                'product_id' => $product->product_id,
+                'product_name' => $product->product_name,
+                'status' => $product->status,
+                'updated_at' => optional($product->updated_at)?->toDateTimeString(),
+            ],
         ]);
     }
 

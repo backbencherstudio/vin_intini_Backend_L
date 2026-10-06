@@ -182,6 +182,7 @@ Route::prefix('industry')->group(function () {
         Route::post('create', [IndustryProductController::class, 'store']);
         Route::get('{id}', [IndustryProductController::class, 'editData']);
         Route::match(['put', 'post'], '{id}/update', [IndustryProductController::class, 'update']);
+        Route::match(['patch', 'post'], '{id}/status', [IndustryProductController::class, 'updateStatus']);
         Route::delete('{id}/delete', [IndustryProductController::class, 'destroy']);
     });
 });

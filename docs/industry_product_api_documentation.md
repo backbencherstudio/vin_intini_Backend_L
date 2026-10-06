@@ -17,7 +17,7 @@ This API powers the **Industry Product Showcase / Advertisements** ecosystem. It
 ### Allowed Enum Values
 - **`network_type`**: `'psychology'` | `'neuroscience'`
 - **`industry_type`**: `'biotechnology'` | `'psychotropics'`
-- **`status`**: `'active'` | `'paused'` | `'draft'`
+- **`status`**: `'active'` | `'inactive'` | `'draft'`
 
 ### Product Tracking ID (`product_id`)
 - Auto-generated unique tracking code prefixed with `industry_id`.
@@ -392,7 +392,7 @@ Fetches all products owned by the authenticated user's company with search and s
 #### Query Parameters:
 | Parameter | Type | Required | Values | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `status` | `string` | No | `'all'`, `'active'`, `'paused'`, `'draft'` | Default: `'all'` |
+| `status` | `string` | No | `'all'`, `'active'`, `'inactive'`, `'draft'` | Default: `'all'` |
 | `search` | `string` | No | Text | Search in title or description |
 | `per_page` | `integer`| No | 1-100 | Default: `15` |
 | `page` | `integer`| No | Integer | Page number |
@@ -453,7 +453,7 @@ Creates a new product under the company profile.
 | `poc_email` | `string` | No | Person of Contact Email (e.g. `smashik@company.com`, max: 255) |
 | `poc_phone` | `string` | No | Person of Contact Phone Number (e.g. `+1 234 5678 87`, max: 50) |
 | `information_confirmed` | `boolean` | **Yes** | Must be `1` or `true` |
-| `status` | `string` | No | `'active'`, `'paused'`, or `'draft'`. Default: `'active'` |
+| `status` | `string` | No | `'active'`, `'inactive'`, or `'draft'`. Default: `'active'` |
 
 **Success Response (`201 Created`):**
 ```json
@@ -526,7 +526,7 @@ All fields from Create Product are available as **optional / nullable**:
 - `poc_name`: `string` (Person of Contact Name)
 - `poc_email`: `string` (Person of Contact Email)
 - `poc_phone`: `string` (Person of Contact Phone)
-- `status`: `'active'` | `'paused'` | `'draft'`
+- `status`: `'active'` | `'inactive'` | `'draft'`
 
 **Success Response (`200 OK`):**
 ```json
@@ -543,7 +543,42 @@ All fields from Create Product are available as **optional / nullable**:
 
 ---
 
-### 3.6. Delete Product / Advertisement
+### 3.6. Update Product Status
+Toggles or updates the product advertisement status (e.g., active, inactive, draft).
+
+- **Method:** `PATCH` or `POST`
+- **URL:** `/api/industry/advertisements/{id}/status`
+- **Auth:** Required (`Bearer <token>`)
+- **URL Parameter `{id}`:** Primary ID, unique `product_id` (e.g., `4PU9SA`), or `slug`.
+
+#### Request Body (JSON):
+```json
+{
+  "status": "inactive"
+}
+```
+| Field | Type | Required | Allowed Values | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `status` | `string` | **Yes** | `'active'`, `'inactive'`, `'draft'` | New product status |
+
+**Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "Product advertisement status updated to inactive successfully.",
+  "data": {
+    "id": 102,
+    "product_id": "4PU9SA",
+    "product_name": "EyeLink 1000 Plus",
+    "status": "inactive",
+    "updated_at": "2026-10-06 17:00:00"
+  }
+}
+```
+
+---
+
+### 3.7. Delete Product / Advertisement
 Removes the product, purges stored images, and updates company counters.
 
 - **Method:** `DELETE`
