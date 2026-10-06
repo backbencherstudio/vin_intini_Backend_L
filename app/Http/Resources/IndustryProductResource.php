@@ -50,6 +50,7 @@ class IndustryProductResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'product_id' => $this->product_id,
             'creator_id' => $this->creator_id,
             'creator' => $this->creator ? [
                 'id' => $this->creator->id,
@@ -77,6 +78,9 @@ class IndustryProductResource extends JsonResource
             'image' => $this->image,
             'image_url' => $this->image_url,
             'tags' => $this->tags,
+            'poc_name' => $this->poc_name,
+            'poc_email' => $this->poc_email,
+            'poc_phone' => $this->poc_phone,
             'information_confirmed' => (bool) $this->information_confirmed,
             'status' => $this->status,
             'views_count' => (int) ($this->views_count ?? 0),
