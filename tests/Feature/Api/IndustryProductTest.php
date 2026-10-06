@@ -148,6 +148,18 @@ class IndustryProductTest extends TestCase
             'section_id' => $this->section->id,
             'category_id' => $this->subCategory1->id,
         ]);
+
+        // Product without product_url succeeds as product_url is nullable
+        $payloadWithoutUrl = $payload;
+        $payloadWithoutUrl['product_name'] = 'Product No URL';
+        $payloadWithoutUrl['product_url'] = null;
+        $payloadWithoutUrl['image'] = UploadedFile::fake()->image('nourl.jpg');
+
+        $responseNoUrl = $this->actingAs($this->creator, 'api')
+            ->postJson('/api/industry/advertisements/create', $payloadWithoutUrl);
+
+        $responseNoUrl->assertStatus(201)
+            ->assertJsonPath('data.product_url', null);
     }
 
     public function test_feed_displays_all_tab_and_sub_category_filtering(): void

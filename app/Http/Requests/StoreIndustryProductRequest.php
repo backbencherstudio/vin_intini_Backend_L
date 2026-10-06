@@ -39,7 +39,7 @@ class StoreIndustryProductRequest extends FormRequest
             'section_id' => ['required', 'integer', 'exists:industry_sections,id'],
             'category_id' => ['required', 'integer', 'exists:industry_categories,id'],
             'description' => ['required', 'string', 'max:5000'],
-            'product_url' => ['required', 'string', 'url', 'max:1000'],
+            'product_url' => ['nullable', 'string', 'url', 'max:1000'],
             'image' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'tags' => ['nullable'],
             'poc_name' => ['nullable', 'string', 'max:255'],

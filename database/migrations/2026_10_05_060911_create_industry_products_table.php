@@ -39,7 +39,7 @@ return new class extends Migration
             $table->string('product_name');
             $table->string('slug')->unique();
             $table->text('description');
-            $table->string('product_url', 1000);
+            $table->string('product_url', 1000)->nullable();
             $table->string('image')->nullable();
             $table->json('tags')->nullable();
 

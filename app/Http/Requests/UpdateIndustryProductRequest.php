@@ -39,7 +39,7 @@ class UpdateIndustryProductRequest extends FormRequest
             'section_id' => ['sometimes', 'required', 'integer', 'exists:industry_sections,id'],
             'category_id' => ['sometimes', 'required', 'integer', 'exists:industry_categories,id'],
             'description' => ['sometimes', 'required', 'string', 'max:5000'],
-            'product_url' => ['sometimes', 'required', 'string', 'url', 'max:1000'],
+            'product_url' => ['nullable', 'string', 'url', 'max:1000'],
             'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'tags' => ['nullable'],
             'poc_name' => ['nullable', 'string', 'max:255'],

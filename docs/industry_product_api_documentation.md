@@ -440,7 +440,7 @@ Creates a new product under the company profile.
 | `category_id` | `integer` | **Yes** | Valid `industry_categories.id` |
 | `product_name` | `string` | **Yes** | Max 255 chars |
 | `description` | `string` | **Yes** | Detailed description (HTML or Plain Text, max 10000 chars) |
-| `product_url` | `string` | **Yes** | Valid URL (e.g., `https://biopac.com/item`) |
+| `product_url` | `string` | No | Valid URL (optional, max 1000 chars, e.g., `https://biopac.com/item`) |
 | `image` | `file` | **Yes** | Image file (`jpeg, png, jpg, gif, webp`, max: 10MB) |
 | `tags` | `array` or `string` | No | e.g. `tags[0]=EEG&tags[1]=Brain` or `"EEG, Brain"` |
 | `poc_name` | `string` | No | Person of Contact Name (e.g. `Sheikh Muhammad Ashik`, max: 255) |
