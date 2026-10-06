@@ -26,21 +26,32 @@ class IndustryProductController extends Controller
     ) {}
 
     /**
-     * Categories and Sub-categories for dynamic cascading dropdowns.
+     * Plain sections list for the "Select a Section" dropdown.
      */
-    public function dropdownCategories(Request $request): JsonResponse
+    public function dropdownSections(Request $request): JsonResponse
     {
+        if ($request->filled('network_type')) {
+            $rawNet = strtolower(str_replace(['_', '-'], '', (string) $request->input('network_type')));
+            if (str_contains($rawNet, 'neuro')) {
+                $request->merge(['network_type' => 'neuroscience']);
+            } elseif (str_contains($rawNet, 'psych')) {
+                $request->merge(['network_type' => 'psychology']);
+            }
+        }
+
+        if ($request->filled('industry_type')) {
+            $rawInd = strtolower(trim((string) $request->input('industry_type')));
+            if ($rawInd === 'biotech') {
+                $request->merge(['industry_type' => 'biotechnology']);
+            }
+        }
+
         $request->validate([
             'network_type' => ['nullable', 'string', 'in:psychology,neuroscience'],
             'industry_type' => ['nullable', 'string', 'in:biotechnology,psychotropics'],
         ]);
 
-        $query = IndustrySections::query()
-            ->with([
-                'IndustryCategory' => function ($q) {
-                    $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
-                },
-            ]);
+        $query = IndustrySections::query();
 
         if ($request->filled('network_type')) {
             $query->where('network_type', $request->input('network_type'));
@@ -50,29 +61,60 @@ class IndustryProductController extends Controller
             $query->where('industry_type', $request->input('industry_type'));
         }
 
-        $sections = $query->orderBy('name')->get();
-
-        $formatted = $sections->map(function ($section) {
-            return [
-                'id' => $section->id,
-                'name' => $section->name,
-                'network_type' => $section->network_type,
-                'industry_type' => $section->industry_type,
-                'categories' => $section->IndustryCategory->map(function ($cat) {
-                    return [
-                        'id' => $cat->id,
-                        'section_id' => $cat->section_id,
-                        'category_name' => $cat->category_name,
-                    ];
-                })->values(),
-            ];
-        });
+        $sections = $query->orderBy('name')->get(['id', 'name', 'network_type', 'industry_type']);
 
         return response()->json([
             'success' => true,
-            'message' => 'Categories retrieved successfully.',
-            'data' => $formatted,
+            'message' => 'Sections retrieved successfully.',
+            'data' => $sections,
         ]);
+    }
+
+    /**
+     * Categories under a specific section for the "Select a Category" dependent dropdown.
+     */
+    public function sectionCategories(int $id): JsonResponse
+    {
+        $section = IndustrySections::with([
+            'IndustryCategory' => function ($q) {
+                $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
+            },
+        ])->find($id);
+
+        if (! $section) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Section not found.',
+            ], 404);
+        }
+
+        $categories = $section->IndustryCategory->map(function ($cat) {
+            return [
+                'id' => $cat->id,
+                'section_id' => $cat->section_id,
+                'category_name' => $cat->category_name,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Section categories retrieved successfully.',
+            'data' => [
+                'section_id' => $section->id,
+                'section_name' => $section->name,
+                'network_type' => $section->network_type,
+                'industry_type' => $section->industry_type,
+                'categories' => $categories,
+            ],
+        ]);
+    }
+
+    /**
+     * Alias for productFeed to ensure backwards compatibility.
+     */
+    public function feed(Request $request): JsonResponse
+    {
+        return $this->productFeed($request);
     }
 
     /**
@@ -80,8 +122,26 @@ class IndustryProductController extends Controller
      * - When accessed without specific section/search, returns section-wise grouped data with tabs and products.
      * - When section_id, category_id, search, or flat=1 is passed, returns a paginated list of products.
      */
-    public function feed(Request $request): JsonResponse
+    public function productFeed(Request $request): JsonResponse
     {
+        // Normalize network_type (e.g. 'PsychologyNetwork', 'psychology_network' -> 'psychology')
+        if ($request->filled('network_type')) {
+            $rawNet = strtolower(str_replace(['_', '-'], '', (string) $request->input('network_type')));
+            if (str_contains($rawNet, 'neuro')) {
+                $request->merge(['network_type' => 'neuroscience']);
+            } elseif (str_contains($rawNet, 'psych')) {
+                $request->merge(['network_type' => 'psychology']);
+            }
+        }
+
+        // Normalize industry_type (e.g. 'biotech' -> 'biotechnology')
+        if ($request->filled('industry_type')) {
+            $rawInd = strtolower(trim((string) $request->input('industry_type')));
+            if ($rawInd === 'biotech') {
+                $request->merge(['industry_type' => 'biotechnology']);
+            }
+        }
+
         $request->validate([
             'network_type' => ['required', 'string', 'in:psychology,neuroscience'],
             'industry_type' => ['required', 'string', 'in:biotechnology,psychotropics'],
@@ -100,9 +160,9 @@ class IndustryProductController extends Controller
             $perPage = (int) $request->input('per_page', 12);
 
             $query = IndustryProduct::query()
+                ->where('status', 'active')
                 ->where('network_type', $request->input('network_type'))
                 ->where('industry_type', $request->input('industry_type'))
-                ->where('status', 'active')
                 ->with(['creator', 'industry', 'section', 'category'])
                 ->latest('id');
 
@@ -116,11 +176,12 @@ class IndustryProductController extends Controller
                 $query->where('category_id', $request->integer('category_id'));
             }
 
-            // Search by product name or tags
+            // Search by product name, product_id, or description
             if ($request->filled('search')) {
                 $search = $request->input('search');
                 $query->where(function ($q) use ($search) {
                     $q->where('product_name', 'LIKE', "%{$search}%")
+                        ->orWhere('product_id', 'LIKE', "%{$search}%")
                         ->orWhere('description', 'LIKE', "%{$search}%");
                 });
             }
@@ -159,9 +220,12 @@ class IndustryProductController extends Controller
         }
 
         // 2. Default Section-wise feed view (Renders the entire MindUnite feed page with section blocks & tabs)
+        $networkType = $request->input('network_type');
+        $industryType = $request->input('industry_type');
+
         $sections = IndustrySections::query()
-            ->where('network_type', $request->input('network_type'))
-            ->where('industry_type', $request->input('industry_type'))
+            ->where('network_type', $networkType)
+            ->where('industry_type', $industryType)
             ->with([
                 'IndustryCategory' => function ($q) {
                     $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
@@ -174,8 +238,8 @@ class IndustryProductController extends Controller
         $limitPerSection = (int) $request->input('limit_per_section', 12);
 
         $products = IndustryProduct::query()
-            ->where('network_type', $request->input('network_type'))
-            ->where('industry_type', $request->input('industry_type'))
+            ->where('network_type', $networkType)
+            ->where('industry_type', $industryType)
             ->where('status', 'active')
             ->whereIn('section_id', $sectionIds)
             ->with(['creator', 'industry', 'section', 'category'])
@@ -194,10 +258,10 @@ class IndustryProductController extends Controller
             }
         }
 
-        $groupedProducts = $products->groupBy('section_id');
+        $groupedProducts = $products->groupBy(fn ($item) => (int) $item->section_id);
 
         $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $limitPerSection) {
-            $sectionProducts = $groupedProducts->get($section->id, collect())
+            $sectionProducts = $groupedProducts->get((int) $section->id, collect())
                 ->take($limitPerSection)
                 ->map(function ($product) use ($likedProductIds) {
                     return (new IndustryProductResource($product, $likedProductIds))->resolve();
@@ -230,11 +294,7 @@ class IndustryProductController extends Controller
      */
     public function show(Request $request, int|string $id): JsonResponse
     {
-        $product = IndustryProduct::query()
-            ->where('id', $id)
-            ->orWhere('slug', $id)
-            ->with(['creator', 'industry', 'section', 'category'])
-            ->firstOrFail();
+        $product = $this->findProduct($id, ['creator', 'industry', 'section', 'category']);
 
         $currentUser = auth('api')->user();
 
@@ -251,14 +311,14 @@ class IndustryProductController extends Controller
     /**
      * Toggle like on a product + record unique view if not viewed yet.
      */
-    public function toggleLike(Request $request, int $id): JsonResponse
+    public function toggleLike(Request $request, int|string $id): JsonResponse
     {
         $user = auth('api')->user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        $product = IndustryProduct::findOrFail($id);
+        $product = $this->findProduct($id);
 
         return DB::transaction(function () use ($product, $user, $request) {
             $like = IndustryProductLike::where('industry_product_id', $product->id)
@@ -352,6 +412,7 @@ class IndustryProductController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('product_name', 'LIKE', "%{$search}%")
+                    ->orWhere('product_id', 'LIKE', "%{$search}%")
                     ->orWhere('description', 'LIKE', "%{$search}%");
             });
         }
@@ -411,6 +472,9 @@ class IndustryProductController extends Controller
             'product_url' => $validated['product_url'],
             'image' => $imagePath,
             'tags' => $tags,
+            'poc_name' => $validated['poc_name'] ?? null,
+            'poc_email' => $validated['poc_email'] ?? null,
+            'poc_phone' => $validated['poc_phone'] ?? null,
             'information_confirmed' => (bool) $request->boolean('information_confirmed', true),
             'status' => $validated['status'] ?? 'active',
             'views_count' => 0,
@@ -429,14 +493,14 @@ class IndustryProductController extends Controller
     /**
      * Get single product data for editing.
      */
-    public function editData(Request $request, int $id): JsonResponse
+    public function editData(Request $request, int|string $id): JsonResponse
     {
         $user = auth('api')->user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        $product = IndustryProduct::with(['creator', 'industry', 'section', 'category'])->findOrFail($id);
+        $product = $this->findProduct($id, ['creator', 'industry', 'section', 'category']);
 
         if (! $this->authorizeProductAction($user, $product)) {
             return response()->json([
@@ -454,14 +518,14 @@ class IndustryProductController extends Controller
     /**
      * Update an existing product / advertisement.
      */
-    public function update(UpdateIndustryProductRequest $request, int $id): JsonResponse
+    public function update(UpdateIndustryProductRequest $request, int|string $id): JsonResponse
     {
         $user = auth('api')->user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        $product = IndustryProduct::findOrFail($id);
+        $product = $this->findProduct($id);
 
         if (! $this->authorizeProductAction($user, $product)) {
             return response()->json([
@@ -508,6 +572,15 @@ class IndustryProductController extends Controller
         if ($request->has('tags')) {
             $product->tags = $this->formatTags($request->input('tags'));
         }
+        if ($request->has('poc_name')) {
+            $product->poc_name = $validated['poc_name'] ?? null;
+        }
+        if ($request->has('poc_email')) {
+            $product->poc_email = $validated['poc_email'] ?? null;
+        }
+        if ($request->has('poc_phone')) {
+            $product->poc_phone = $validated['poc_phone'] ?? null;
+        }
         if ($request->has('information_confirmed')) {
             $product->information_confirmed = (bool) $request->boolean('information_confirmed');
         }
@@ -528,14 +601,14 @@ class IndustryProductController extends Controller
     /**
      * Delete product advertisement.
      */
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(Request $request, int|string $id): JsonResponse
     {
         $user = auth('api')->user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        $product = IndustryProduct::findOrFail($id);
+        $product = $this->findProduct($id);
 
         if (! $this->authorizeProductAction($user, $product)) {
             return response()->json([
@@ -555,6 +628,25 @@ class IndustryProductController extends Controller
             'success' => true,
             'message' => 'Product advertisement removed successfully.',
         ]);
+    }
+
+    /**
+     * Find product by primary id, unique 6-digit product_id, or slug.
+     */
+    private function findProduct(int|string $id, array $relations = []): IndustryProduct
+    {
+        $query = IndustryProduct::query()
+            ->where(function ($q) use ($id) {
+                $q->where('id', $id)
+                    ->orWhere('product_id', (string) $id)
+                    ->orWhere('slug', (string) $id);
+            });
+
+        if (! empty($relations)) {
+            $query->with($relations);
+        }
+
+        return $query->firstOrFail();
     }
 
     /**

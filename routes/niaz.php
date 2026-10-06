@@ -167,8 +167,9 @@ Route::prefix('industry/analytics')->group(function () {
 // Pro Industry Products & Advertisements
 Route::prefix('industry')->group(function () {
     // Public / User Feed & Interactions (Screenshots 1 & 2)
-    Route::get('products/feed', [IndustryProductController::class, 'feed']);
-    Route::get('products/categories', [IndustryProductController::class, 'dropdownCategories']);
+    Route::get('product-feed', [IndustryProductController::class, 'productFeed']);
+    Route::get('feed', [IndustryProductController::class, 'productFeed']);
+    Route::get('products/feed', [IndustryProductController::class, 'productFeed']);
     Route::get('products/{id}/details', [IndustryProductController::class, 'show']);
     Route::post('products/{id}/like', [IndustryProductController::class, 'toggleLike']);
 
@@ -176,6 +177,8 @@ Route::prefix('industry')->group(function () {
     Route::prefix('advertisements')->group(function () {
         Route::get('dashboard', [IndustryProductController::class, 'dashboard']);
         Route::get('my-listings', [IndustryProductController::class, 'myListings']);
+        Route::get('sections', [IndustryProductController::class, 'dropdownSections']);
+        Route::get('sections/{id}/categories', [IndustryProductController::class, 'sectionCategories']);
         Route::post('create', [IndustryProductController::class, 'store']);
         Route::get('{id}', [IndustryProductController::class, 'editData']);
         Route::match(['put', 'post'], '{id}/update', [IndustryProductController::class, 'update']);
