@@ -117,7 +117,7 @@ class JobsFeedController extends Controller
         ])
             ->withCount('applications')
             ->latest('id')
-            ->paginate($limit);
+            ->cursorPaginate($limit);
 
         $formattedData = $this->formatJobCollection($paginated->getCollection(), $currentUser);
 
@@ -128,14 +128,13 @@ class JobsFeedController extends Controller
             'total_jobs' => $totalJobsCount,
             'stats' => [
                 'total_jobs' => $totalJobsCount,
-                'filtered_jobs' => $paginated->total(),
             ],
             'pagination' => [
-                'total' => $paginated->total(),
                 'limit' => $paginated->perPage(),
-                'current_page' => $paginated->currentPage(),
-                'total_page' => $paginated->lastPage(),
-                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'next_cursor' => $paginated->nextCursor()?->encode(),
+                'prev_cursor' => $paginated->previousCursor()?->encode(),
+                'has_more_pages' => $paginated->hasMorePages(),
             ],
         ], 200);
     }
