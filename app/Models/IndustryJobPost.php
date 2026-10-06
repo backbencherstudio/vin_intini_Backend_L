@@ -51,6 +51,36 @@ class IndustryJobPost extends Model
         'rejection_reason',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (IndustryJobPost $jobPost) {
+            if (empty($jobPost->job_id)) {
+                $jobPost->job_id = static::generateUniqueJobId((int) ($jobPost->industry_id ?: 1));
+            }
+        });
+    }
+
+    /**
+     * Generate an industry-scoped unique job ID without database looping.
+     * Incorporates industry_id as prefix with dynamic suffix length:
+     * - 1 to 3 digit industry IDs produce a clean 6-character code (e.g. 47K9M2, 129B7Q, 1058XF)
+     * - 4+ digit industry IDs scale cleanly with at least 3 random chars (e.g. 10008XF -> 7 chars)
+     */
+    public static function generateUniqueJobId(int $industryId): string
+    {
+        $prefix = (string) $industryId;
+        $randomLength = max(3, 6 - strlen($prefix));
+        $characters = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $charLength = strlen($characters);
+
+        $suffix = '';
+        for ($i = 0; $i < $randomLength; $i++) {
+            $suffix .= $characters[random_int(0, $charLength - 1)];
+        }
+
+        return $prefix.$suffix;
+    }
+
     protected $casts = [
         'status' => IndustryJobPostStatus::class,
         'tags' => 'array',

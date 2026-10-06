@@ -294,7 +294,7 @@ class IndustryJobPostController extends Controller
         $validated = $this->validateJobPost($request, $isDraft);
 
         $tags = $this->formatTags($validated['tags'] ?? null);
-        $uniqueJobId = $this->generateUniqueJobId();
+        $uniqueJobId = $this->generateUniqueJobId((int) $industry->id);
         $slug = Str::slug($validated['job_title']).'-'.$uniqueJobId;
 
         $startDate = $validated['announcement_start_date'] ?? $validated['start_date'] ?? null;
@@ -821,15 +821,11 @@ class IndustryJobPostController extends Controller
     }
 
     /**
-     * Generate unique 6-digit job ID.
+     * Generate unique job ID prefixed by industry ID.
      */
-    private function generateUniqueJobId(): string
+    private function generateUniqueJobId(int $industryId): string
     {
-        do {
-            $jobId = (string) random_int(100000, 999999);
-        } while (IndustryJobPost::where('job_id', $jobId)->exists());
-
-        return $jobId;
+        return IndustryJobPost::generateUniqueJobId($industryId);
     }
 
     /**
