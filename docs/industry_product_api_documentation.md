@@ -78,6 +78,7 @@ GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnol
       "products": [
         {
           "id": 101,
+          "product_id": "849201",
           "creator_id": 25,
           "creator": {
             "id": 25,
@@ -191,44 +192,57 @@ GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnol
 
 ---
 
-### 2.2. Categories & Sub-Categories Dropdown
-Used for populating category dropdowns in forms or custom filter sidebars.
+### 2.2. Categories & Cascading Dropdown Endpoints
+Used for populating dependent cascading dropdowns in the **Product Creation / Edit Form** (e.g., Network Type -> Industry Type -> Select Section -> Select Category).
 
-- **Method:** `GET`
-- **URL:** `/api/industry/products/categories`
-- **Auth:** Optional / Not strictly required
+1. **Get Sections List for "Select a Section *" Dropdown:**
+   - **Method:** `GET`
+   - **URL:** `/api/industry/advertisements/sections`
+   - **Query Params:** `network_type` (optional), `industry_type` (optional: `'biotechnology'` | `'psychotropics'`)
+   - **Response (`200 OK`):**
+     ```json
+     {
+       "success": true,
+       "message": "Sections retrieved successfully.",
+       "data": [
+         {
+           "id": 1,
+           "name": "Neuroscientific and Psychophysiological Equipment",
+           "network_type": "psychology",
+           "industry_type": "biotechnology"
+         }
+       ]
+     }
+     ```
 
-#### Query Parameters:
-- `network_type` (optional): `'psychology'` | `'neuroscience'`
-- `industry_type` (optional): `'biotechnology'` | `'psychotropics'`
-
-**Response (`200 OK`):**
-```json
-{
-  "success": true,
-  "message": "Categories retrieved successfully.",
-  "data": [
-    {
-      "id": 1,
-      "name": "Neuroscientific and Psychophysiological Equipment",
-      "network_type": "psychology",
-      "industry_type": "biotechnology",
-      "categories": [
-        {
-          "id": 10,
-          "section_id": 1,
-          "category_name": "Brain Scanners"
-        },
-        {
-          "id": 11,
-          "section_id": 1,
-          "category_name": "Physiological Monitoring Devices"
-        }
-      ]
-    }
-  ]
-}
-```
+2. **Get Categories for Selected Section ("Select a Category *" Dropdown):**
+   - **Method:** `GET`
+   - **URL:** `/api/industry/advertisements/sections/{section_id}/categories`
+   - **Response (`200 OK`):**
+     ```json
+     {
+       "success": true,
+       "message": "Section categories retrieved successfully.",
+       "data": {
+         "section_id": 1,
+         "section_name": "Neuroscientific and Psychophysiological Equipment",
+         "network_type": "psychology",
+         "industry_type": "biotechnology",
+         "categories": [
+           {
+             "id": 1,
+             "section_id": 1,
+             "category_name": "Brain Scanners"
+           },
+           {
+             "id": 3,
+             "section_id": 1,
+             "category_name": "Physiological Monitoring Devices"
+           }
+         ]
+       }
+     }
+     ```
 
 ---
 
@@ -247,6 +261,7 @@ Returns complete product data.
   "message": "Product details retrieved successfully.",
   "data": {
     "id": 101,
+    "product_id": "849201",
     "creator_id": 25,
     "creator": {
       "id": 25,
@@ -274,6 +289,9 @@ Returns complete product data.
     "image": "industry_products/mp160.webp",
     "image_url": "https://domain.com/storage/industry_products/mp160.webp",
     "tags": ["EEG", "Brain Imaging"],
+    "poc_name": "Sheikh Muhammad Ashik",
+    "poc_email": "smashik@company.com",
+    "poc_phone": "+1 234 5678 87",
     "information_confirmed": true,
     "status": "active",
     "views_count": 49,
@@ -425,6 +443,9 @@ Creates a new product under the company profile.
 | `product_url` | `string` | **Yes** | Valid URL (e.g., `https://biopac.com/item`) |
 | `image` | `file` | **Yes** | Image file (`jpeg, png, jpg, gif, webp`, max: 10MB) |
 | `tags` | `array` or `string` | No | e.g. `tags[0]=EEG&tags[1]=Brain` or `"EEG, Brain"` |
+| `poc_name` | `string` | No | Person of Contact Name (e.g. `Sheikh Muhammad Ashik`, max: 255) |
+| `poc_email` | `string` | No | Person of Contact Email (e.g. `smashik@company.com`, max: 255) |
+| `poc_phone` | `string` | No | Person of Contact Phone Number (e.g. `+1 234 5678 87`, max: 50) |
 | `information_confirmed` | `boolean` | **Yes** | Must be `1` or `true` |
 | `status` | `string` | No | `'active'`, `'paused'`, or `'draft'`. Default: `'active'` |
 
@@ -435,6 +456,7 @@ Creates a new product under the company profile.
   "message": "Product created successfully.",
   "data": {
     "id": 102,
+    "product_id": "719304",
     "product_name": "EyeLink 1000 Plus",
     "slug": "eyelink-1000-plus-39d0",
     "image_url": "https://domain.com/storage/industry_products/eyelink.webp",
@@ -495,6 +517,9 @@ All fields from Create Product are available as **optional / nullable**:
 - `product_url`: `string`
 - `image`: `file` (Send only if replacing the image. If omitted, existing image is kept)
 - `tags`: `array` or `string`
+- `poc_name`: `string` (Person of Contact Name)
+- `poc_email`: `string` (Person of Contact Email)
+- `poc_phone`: `string` (Person of Contact Phone)
 - `status`: `'active'` | `'paused'` | `'draft'`
 
 **Success Response (`200 OK`):**

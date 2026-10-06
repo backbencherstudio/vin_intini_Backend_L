@@ -433,4 +433,148 @@ class IndustryProductTest extends TestCase
         // Image file is completely removed from storage
         $this->assertFalse(Storage::disk('public')->exists($imagePath));
     }
+
+    public function test_unique_6_digit_product_id_generated_and_trackable(): void
+    {
+        $file = UploadedFile::fake()->image('scanner.jpg', 600, 600);
+
+        // 1. Create product via API
+        $createResponse = $this->actingAs($this->creator, 'api')
+            ->postJson('/api/industry/advertisements/create', [
+                'network_type' => 'psychology',
+                'industry_type' => 'biotechnology',
+                'section_id' => $this->section->id,
+                'category_id' => $this->subCategory1->id,
+                'product_name' => 'Trackable 6-digit Product',
+                'description' => 'Product with 6 digit unique tracking ID',
+                'product_url' => 'https://example.com/item',
+                'image' => $file,
+                'information_confirmed' => true,
+            ]);
+
+        $createResponse->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $productId = $createResponse->json('data.product_id');
+
+        // Verify product_id is exactly 6 digits numeric string
+        $this->assertNotNull($productId);
+        $this->assertMatchesRegularExpression('/^[1-9][0-9]{5}$/', (string) $productId);
+
+        // 2. Fetch details using the 6-digit product_id
+        $detailsResponse = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/products/{$productId}/details");
+
+        $detailsResponse->assertOk()
+            ->assertJsonPath('data.product_id', $productId)
+            ->assertJsonPath('data.product_name', 'Trackable 6-digit Product');
+
+        // 3. Toggle like using the 6-digit product_id
+        $likeResponse = $this->actingAs($this->creator, 'api')
+            ->postJson("/api/industry/products/{$productId}/like");
+
+        $likeResponse->assertOk()
+            ->assertJsonPath('data.is_liked', true);
+
+        // 4. Search by the 6-digit product_id in feed
+        $feedSearchResponse = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/products/feed?network_type=psychology&industry_type=biotechnology&search={$productId}");
+
+        $feedSearchResponse->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.product_id', $productId);
+    }
+
+    public function test_poc_fields_can_be_stored_retrieved_and_updated(): void
+    {
+        $file = UploadedFile::fake()->image('poc_test.jpg', 600, 600);
+
+        // 1. Create with POC fields
+        $createResponse = $this->actingAs($this->creator, 'api')
+            ->postJson('/api/industry/advertisements/create', [
+                'network_type' => 'psychology',
+                'industry_type' => 'biotechnology',
+                'section_id' => $this->section->id,
+                'category_id' => $this->subCategory1->id,
+                'product_name' => 'POC Product Test',
+                'description' => 'Test with Person of Contact',
+                'product_url' => 'https://example.com/item',
+                'image' => $file,
+                'poc_name' => 'Sheikh Muhammad Ashik',
+                'poc_email' => 'smashik@company.com',
+                'poc_phone' => '+1 234 5678 87',
+                'information_confirmed' => true,
+            ]);
+
+        $createResponse->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $productId = $createResponse->json('data.id');
+
+        $this->assertDatabaseHas('industry_products', [
+            'id' => $productId,
+            'poc_name' => 'Sheikh Muhammad Ashik',
+            'poc_email' => 'smashik@company.com',
+            'poc_phone' => '+1 234 5678 87',
+        ]);
+
+        // 2. Details response contains POC fields
+        $detailsResponse = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/products/{$productId}/details");
+
+        $detailsResponse->assertOk()
+            ->assertJsonPath('data.poc_name', 'Sheikh Muhammad Ashik')
+            ->assertJsonPath('data.poc_email', 'smashik@company.com')
+            ->assertJsonPath('data.poc_phone', '+1 234 5678 87');
+
+        // 3. Update POC fields
+        $updateResponse = $this->actingAs($this->creator, 'api')
+            ->postJson("/api/industry/advertisements/{$productId}/update", [
+                'poc_name' => 'Updated Contact Person',
+                'poc_email' => 'updated@company.com',
+                'poc_phone' => '+880 1712 345678',
+            ]);
+
+        $updateResponse->assertOk()
+            ->assertJsonPath('data.poc_name', 'Updated Contact Person')
+            ->assertJsonPath('data.poc_email', 'updated@company.com')
+            ->assertJsonPath('data.poc_phone', '+880 1712 345678');
+
+        $this->assertDatabaseHas('industry_products', [
+            'id' => $productId,
+            'poc_name' => 'Updated Contact Person',
+            'poc_email' => 'updated@company.com',
+            'poc_phone' => '+880 1712 345678',
+        ]);
+    }
+
+    public function test_dropdown_sections_and_section_categories_for_dependent_dropdowns(): void
+    {
+        // 1. Get plain sections list
+        $sectionsResponse = $this->actingAs($this->creator, 'api')
+            ->getJson('/api/industry/advertisements/sections?network_type=psychology&industry_type=biotechnology');
+
+        $sectionsResponse->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonFragment([
+                'id' => $this->section->id,
+                'name' => $this->section->name,
+            ]);
+
+        // 2. Reject publications as industry_type
+        $invalidTypeResponse = $this->actingAs($this->creator, 'api')
+            ->getJson('/api/industry/advertisements/sections?network_type=psychology&industry_type=publications');
+
+        $invalidTypeResponse->assertUnprocessable()
+            ->assertJsonValidationErrors(['industry_type']);
+
+        // 3. Get categories for a specific section
+        $sectionCatResponse = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/advertisements/sections/{$this->section->id}/categories");
+
+        $sectionCatResponse->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.section_id', $this->section->id)
+            ->assertJsonCount(2, 'data.categories');
+    }
 }
