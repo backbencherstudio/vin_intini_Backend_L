@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('industry_products', function (Blueprint $table) {
             $table->id();
+            $table->string('product_id', 10)->nullable()->unique();
 
             // Ownership & Association
             $table->foreignId('creator_id')
@@ -41,6 +42,12 @@ return new class extends Migration
             $table->string('product_url', 1000);
             $table->string('image')->nullable();
             $table->json('tags')->nullable();
+
+            // Person of Contact (POC)
+            $table->string('poc_name')->nullable();
+            $table->string('poc_email')->nullable();
+            $table->string('poc_phone')->nullable();
+
             $table->boolean('information_confirmed')->default(true);
 
             // Status & Counters

@@ -14,6 +14,7 @@ class IndustryProduct extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'product_id',
         'creator_id',
         'industry_id',
         'network_type',
@@ -26,11 +27,27 @@ class IndustryProduct extends Model
         'product_url',
         'image',
         'tags',
+        'poc_name',
+        'poc_email',
+        'poc_phone',
         'information_confirmed',
         'status',
         'views_count',
         'likes_count',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (IndustryProduct $product) {
+            if (empty($product->product_id)) {
+                do {
+                    $productId = (string) random_int(100000, 999999);
+                } while (static::where('product_id', $productId)->exists());
+
+                $product->product_id = $productId;
+            }
+        });
+    }
 
     protected $casts = [
         'tags' => 'array',
