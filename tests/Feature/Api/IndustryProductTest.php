@@ -469,9 +469,15 @@ class IndustryProductTest extends TestCase
 
         $productId = $createResponse->json('data.product_id');
 
-        // Verify product_id is exactly 6 digits numeric string
+        // Verify product_id starts with industry_id and has 6 chars total for small industry_ids
         $this->assertNotNull($productId);
-        $this->assertMatchesRegularExpression('/^[1-9][0-9]{5}$/', (string) $productId);
+        $this->assertEquals(6, strlen((string) $productId));
+        $this->assertStringStartsWith((string) $this->industry->id, (string) $productId);
+
+        // Verify generator scales to 7 chars when industry_id has 4 digits
+        $fourDigitIndustryCode = IndustryProduct::generateUniqueProductId(1000);
+        $this->assertEquals(7, strlen($fourDigitIndustryCode));
+        $this->assertStringStartsWith('1000', $fourDigitIndustryCode);
 
         // 2. Fetch details using the 6-digit product_id
         $detailsResponse = $this->actingAs($this->creator, 'api')

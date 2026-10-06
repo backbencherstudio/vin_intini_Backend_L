@@ -19,6 +19,12 @@ This API powers the **Industry Product Showcase / Advertisements** ecosystem. It
 - **`industry_type`**: `'biotechnology'` | `'psychotropics'`
 - **`status`**: `'active'` | `'paused'` | `'draft'`
 
+### Product Tracking ID (`product_id`)
+- Auto-generated unique tracking code prefixed with `industry_id`.
+- 1–3 digit industry IDs produce a clean 6-character code (e.g., `4PU9SA`, `12DP7Z`, `105ET7`).
+- Scales dynamically to 7+ characters for 4+ digit industry IDs (e.g., `10002QQ`).
+- Zero loops, O(1) instant generation without race conditions.
+
 ---
 
 ## 2. Public / User Endpoints

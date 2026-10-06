@@ -40,13 +40,30 @@ class IndustryProduct extends Model
     {
         static::creating(function (IndustryProduct $product) {
             if (empty($product->product_id)) {
-                do {
-                    $productId = (string) random_int(100000, 999999);
-                } while (static::where('product_id', $productId)->exists());
-
-                $product->product_id = $productId;
+                $product->product_id = static::generateUniqueProductId((int) ($product->industry_id ?: 1));
             }
         });
+    }
+
+    /**
+     * Generate an industry-scoped unique product ID without database looping.
+     * Incorporates industry_id as prefix with dynamic suffix length:
+     * - 1 to 3 digit industry IDs produce a clean 6-character code (e.g. 47K9M2, 129B7Q, 1058XF)
+     * - 4+ digit industry IDs scale cleanly with at least 3 random chars (e.g. 10008XF -> 7 chars)
+     */
+    public static function generateUniqueProductId(int $industryId): string
+    {
+        $prefix = (string) $industryId;
+        $randomLength = max(3, 6 - strlen($prefix));
+        $characters = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $charLength = strlen($characters);
+
+        $suffix = '';
+        for ($i = 0; $i < $randomLength; $i++) {
+            $suffix .= $characters[random_int(0, $charLength - 1)];
+        }
+
+        return $prefix.$suffix;
     }
 
     protected $casts = [
