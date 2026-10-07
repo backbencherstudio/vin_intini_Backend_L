@@ -382,6 +382,105 @@ Provides real-time analytics for the company's advertisement dashboard overview.
 
 ---
 
+### 3.1.1. Advertisements Analytics (Analytics Screen & Tab)
+Fetches advertisement analytics metrics, KPI cards with month-over-month comparisons, Top Performing Products table, and interactive performance graph supporting Weekly and Monthly intervals.
+
+- **Method:** `GET`
+- **URL:** `/api/industry/analytics/advertisements`
+- **Auth:** Required (`Bearer <token>`)
+
+#### Query Parameters:
+| Parameter | Type | Required | Values | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `filter` / `period` | `string` | No | `'weekly'`, `'monthly'` | Default: `'weekly'` |
+| `industry_id` | `integer`| No | Admin only | Allows admin to view analytics for a specific company |
+
+**Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "Advertisement analytics retrieved successfully.",
+  "data": {
+    "cards": {
+      "total_products": {
+        "total": 723,
+        "growth_percentage": 45.7,
+        "growth": "+45.7% from last month",
+        "is_positive": true
+      },
+      "active_products": {
+        "total": 543,
+        "growth_percentage": 59.2,
+        "growth": "+59.2% from last month",
+        "is_positive": true
+      },
+      "product_views": {
+        "total": 80640,
+        "growth_percentage": 25.5,
+        "growth": "+25.5% from last month",
+        "is_positive": true
+      },
+      "total_likes": {
+        "total": 441452,
+        "growth_percentage": 78.8,
+        "growth": "+78.8% from last month",
+        "is_positive": true
+      }
+    },
+    "top_performing_products": [
+      {
+        "id": 101,
+        "product_id": "4PU9SA",
+        "product_name": "Product 1",
+        "views_count": 2456,
+        "likes_count": 78
+      }
+    ],
+    "graph": {
+      "title": "Advertisement Performance",
+      "subtitle": "Views vs Like",
+      "period": "weekly",
+      "active": "weekly",
+      "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      "series": [
+        {
+          "name": "Views",
+          "key": "views",
+          "data": [12, 18, 25, 30, 40, 22, 15]
+        },
+        {
+          "name": "Like",
+          "key": "likes",
+          "data": [5, 8, 12, 15, 20, 10, 7]
+        }
+      ],
+      "ranges": {
+        "weekly": {
+          "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          "series": [
+            { "name": "Views", "key": "views", "data": [12, 18, 25, 30, 40, 22, 15] },
+            { "name": "Like", "key": "likes", "data": [5, 8, 12, 15, 20, 10, 7] }
+          ],
+          "total_views": 162,
+          "total_likes": 77
+        },
+        "monthly": {
+          "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+          "series": [
+            { "name": "Views", "key": "views", "data": [300, 450, 600, 320, 680, 850, 920, 810, 750, 620, 580, 700] },
+            { "name": "Like", "key": "likes", "data": [210, 310, 480, 240, 510, 610, 680, 590, 540, 430, 390, 520] }
+          ],
+          "total_views": 7780,
+          "total_likes": 5510
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
 ### 3.2. My Listings (Company Advertisements Table)
 Fetches all products owned by the authenticated user's company with search and status filtering.
 
