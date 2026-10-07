@@ -255,7 +255,11 @@ class User extends Authenticatable implements JWTSubject
     protected static function booted()
     {
         static::deleting(function ($user) {
+            // Delete publications directly owned by this user (Premium user publications)
+            $user->publications()->whereNull('industry_id')->delete();
+
             if ($user->isForceDeleting()) {
+                $user->publications()->whereNull('industry_id')->forceDelete();
                 $filesToDelete = [];
 
                 if ($user->profile_image) {
@@ -339,6 +343,11 @@ class User extends Authenticatable implements JWTSubject
             Industry::class,
             'created_by'
         );
+    }
+
+    public function publications(): HasMany
+    {
+        return $this->hasMany(Publication::class, 'creator_id');
     }
 
     public function activeSubscription(): ?Subscription

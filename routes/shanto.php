@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NewsfeedController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\PublicationController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TimelineController;
 use Illuminate\Support\Facades\Route;
@@ -71,3 +72,19 @@ Route::post('/subscriptions/create', [SubscriptionController::class, 'create']);
 Route::get('/subscriptions/status', [SubscriptionController::class, 'status']);
 Route::post('/subscriptions/{subscription}/cancel', [SubscriptionController::class, 'cancel']);
 Route::get('/billing-history', [SubscriptionController::class, 'billingHistory']);
+
+// Publications Feed & Management
+Route::prefix('publications')->group(function () {
+    // Public Reader Endpoints & Interactions
+    Route::get('feed', [PublicationController::class, 'feed']);
+    Route::get('{id}/details', [PublicationController::class, 'show']);
+    Route::post('{id}/like', [PublicationController::class, 'toggleLike']);
+
+    // Author / Dashboard Management Endpoints
+    Route::get('my-listings', [PublicationController::class, 'myListings']);
+    Route::post('create', [PublicationController::class, 'store']);
+    Route::get('{id}', [PublicationController::class, 'editData']);
+    Route::match(['put', 'post'], '{id}/update', [PublicationController::class, 'update']);
+    Route::match(['patch', 'post'], '{id}/status', [PublicationController::class, 'updateStatus']);
+    Route::delete('{id}/delete', [PublicationController::class, 'destroy']);
+});

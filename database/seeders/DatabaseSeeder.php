@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\PlanType;
 use App\Models\Connection;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -26,6 +27,7 @@ class DatabaseSeeder extends Seeder
         $this->call(IntegrationSettingSeeder::class);
         $this->call(TransactionSeeder::class);
         $this->call(CitySeeder::class);
+        $this->call(PublicationSeeder::class);
 
         $adminApi = User::updateOrCreate(
             ['email' => 'admin@gmail.com'],
@@ -55,10 +57,13 @@ class DatabaseSeeder extends Seeder
 
         $user1->assignRole($userRole);
 
+        $proUserPlan = Plan::where('plan_type', PlanType::PREMIUM->value)->first()
+            ?? Plan::where('name', 'Pro User')->first();
+
         Subscription::updateOrCreate(
             ['user_id' => $user1->id],
             [
-                'plan_id' => Plan::where('name', 'Premium Plan')->first()?->id,
+                'plan_id' => $proUserPlan?->id,
                 'platform' => 'stripe',
                 'status' => 'active',
                 'current_period_start' => now(),
