@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\PlanFeature;
+use App\Enums\PlanType;
 use App\Models\Plan;
 use Illuminate\Database\Seeder;
 
@@ -13,6 +14,7 @@ class PlanSeeder extends Seeder
         Plan::updateOrCreate(
             ['name' => 'Pro User'],
             [
+                'plan_type' => PlanType::PREMIUM->value,
                 'short_description' => 'Unlock full networking, messaging, and job tools',
                 'billing_rate' => 29.99,
                 'billing_cycle' => 'monthly',
@@ -35,6 +37,7 @@ class PlanSeeder extends Seeder
         Plan::updateOrCreate(
             ['name' => 'Pro Industries'],
             [
+                'plan_type' => PlanType::INDUSTRY->value,
                 'short_description' => 'Everything in Pro User plus product advertisement',
                 'billing_rate' => 59.99,
                 'billing_cycle' => 'monthly',
