@@ -29,6 +29,7 @@ class IndustryAnalyticsController extends Controller
         $validated = $request->validate([
             'filter' => ['nullable', 'string'],
             'period' => ['nullable', 'string'],
+            'range' => ['nullable', 'string'],
             'industry_id' => ['nullable', 'integer', 'exists:industries,id'],
         ]);
 
@@ -45,13 +46,12 @@ class IndustryAnalyticsController extends Controller
             ], 422);
         }
 
-        // Support 'filter' or 'period' parameter (default: 'last_6_months')
-        $rawFilter = $validated['filter'] ?? $validated['period'] ?? $request->query('filter', $request->query('period', 'last_6_months'));
+        // Support 'filter', 'period', or 'range' parameter (default: 'weekly')
+        $rawFilter = $validated['filter'] ?? $validated['period'] ?? $validated['range'] ?? $request->query('filter', $request->query('period', $request->query('range', 'weekly')));
 
         $period = match (strtolower(trim((string) $rawFilter))) {
-            'last_3_months', 'last_3_month', '3_months', '3_month', '3' => 'last_3_months',
-            'last_12_months', 'last_12_month', '12_months', '12_month', '12' => 'last_12_months',
-            default => 'last_6_months',
+            'monthly', 'month' => 'monthly',
+            default => 'weekly',
         };
 
         $data = $this->analyticsService->getJobOverviewAnalytics((int) $industryId, $period);
