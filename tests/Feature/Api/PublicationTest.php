@@ -127,7 +127,6 @@ class PublicationTest extends TestCase
         $response->assertStatus(201);
         $response->assertJsonPath('data.title', 'Breakthroughs in Deep Brain Stimulation');
         $response->assertJsonPath('data.publication_type', 'professional');
-        $response->assertJsonPath('data.category_tab', 'professional');
         $response->assertJsonPath('data.industry_id', $this->industry->id);
         $response->assertJsonPath('data.creator_id', $this->industryUser->id);
 
@@ -153,7 +152,6 @@ class PublicationTest extends TestCase
         $response->assertStatus(201);
         $response->assertJsonPath('data.title', 'Automated Type Industry Paper');
         $response->assertJsonPath('data.publication_type', 'professional');
-        $response->assertJsonPath('data.category_tab', 'professional');
         $response->assertJsonPath('data.industry_id', $this->industry->id);
 
         $this->assertDatabaseHas('publications', [
@@ -193,7 +191,6 @@ class PublicationTest extends TestCase
         $response->assertStatus(201);
         $response->assertJsonPath('data.title', 'Cognitive Behavioral Therapy for Anxiety Disorders');
         $response->assertJsonPath('data.publication_type', 'university');
-        $response->assertJsonPath('data.category_tab', 'peer_reviewed');
         $response->assertJsonPath('data.industry_id', null);
         $response->assertJsonPath('data.creator_id', $this->premiumUser->id);
 

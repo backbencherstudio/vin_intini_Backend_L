@@ -48,8 +48,6 @@ class PublicationResource extends JsonResource
             $isLiked = $this->likes()->where('user_id', auth('api')->id())->exists();
         }
 
-        $categoryTab = $this->publication_type === 'professional' ? 'professional' : 'peer_reviewed';
-
         return [
             'id' => $this->id,
             'publication_id' => $this->publication_id,
@@ -68,7 +66,6 @@ class PublicationResource extends JsonResource
             ] : null,
             'network_type' => $this->network_type,
             'publication_type' => $this->publication_type,
-            'category_tab' => $categoryTab,
             'title' => $this->title,
             'slug' => $this->slug,
             'authors' => $this->authors,
