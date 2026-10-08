@@ -33,6 +33,36 @@ class IndustryJobApplication extends Model
         'status',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (IndustryJobApplication $application) {
+            if (empty($application->application_id)) {
+                $application->application_id = static::generateUniqueApplicationId((int) ($application->job_id ?: 1));
+            }
+        });
+    }
+
+    /**
+     * Generate a job-scoped unique application ID without database looping.
+     * Incorporates job_id as prefix with dynamic suffix length:
+     * - 1 to 3 digit job IDs produce a clean 6-character code (e.g. 7K9M2, 429B7Q, 5008XF)
+     * - 4+ digit job IDs scale cleanly with at least 3 random chars (e.g. 10008XF -> 7 chars)
+     */
+    public static function generateUniqueApplicationId(int $jobId): string
+    {
+        $prefix = (string) $jobId;
+        $randomLength = max(3, 6 - strlen($prefix));
+        $characters = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $charLength = strlen($characters);
+
+        $suffix = '';
+        for ($i = 0; $i < $randomLength; $i++) {
+            $suffix .= $characters[random_int(0, $charLength - 1)];
+        }
+
+        return $prefix.$suffix;
+    }
+
     protected $casts = [
         'skills' => 'array',
         'expected_salary' => 'decimal:2',
@@ -50,6 +80,6 @@ class IndustryJobApplication extends Model
 
     public function getResumeUrlAttribute(): ?string
     {
-        return $this->resume_path ? asset('storage/' . ltrim($this->resume_path, '/')) : null;
+        return $this->resume_path ? asset('storage/'.ltrim($this->resume_path, '/')) : null;
     }
 }

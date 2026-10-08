@@ -233,8 +233,8 @@ class IndustryJobApplicationController extends Controller
             $resumePath = $request->file('resume')->store('resumes/industry_jobs', 'public');
         }
 
-        // Auto-generate unique 6-digit application_id
-        $applicationId = $this->generateUniqueApplicationId();
+        // Auto-generate unique job-scoped application_id
+        $applicationId = $this->generateUniqueApplicationId((int) $jobPost->id);
 
         if ($isQuick) {
             $user->loadMissing(['profile.state']);
@@ -320,13 +320,12 @@ class IndustryJobApplicationController extends Controller
         ], 201);
     }
 
-    private function generateUniqueApplicationId(): string
+    /**
+     * Generate unique application ID prefixed by job post ID.
+     */
+    private function generateUniqueApplicationId(int $jobId): string
     {
-        do {
-            $applicationId = (string) random_int(100000, 999999);
-        } while (IndustryJobApplication::where('application_id', $applicationId)->exists());
-
-        return $applicationId;
+        return IndustryJobApplication::generateUniqueApplicationId($jobId);
     }
 
     private function formatSkills(mixed $skills): ?array
@@ -488,7 +487,10 @@ class IndustryJobApplicationController extends Controller
         $application = IndustryJobApplication::with([
             'job.industry',
             'applicant:id,first_name,last_name,username,email,profile_image',
-        ])->find($id);
+        ])->where(function ($q) use ($id) {
+            $q->where('id', $id)
+                ->orWhere('application_id', (string) $id);
+        })->first();
 
         if (! $application) {
             return response()->json(['success' => false, 'message' => 'Job application not found.'], 404);
@@ -658,7 +660,11 @@ class IndustryJobApplicationController extends Controller
         }
 
         // Application er shathe job.industry ebong applicant relation load kora
-        $application = IndustryJobApplication::with(['job.industry', 'applicant'])->find($applicationId);
+        $application = IndustryJobApplication::with(['job.industry', 'applicant'])
+            ->where(function ($q) use ($applicationId) {
+                $q->where('id', $applicationId)
+                    ->orWhere('application_id', (string) $applicationId);
+            })->first();
 
         if (! $application) {
             return response()->json(['success' => false, 'message' => 'Application not found.'], 404);

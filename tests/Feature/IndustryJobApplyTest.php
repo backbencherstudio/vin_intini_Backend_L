@@ -192,5 +192,56 @@ class IndustryJobApplyTest extends TestCase
 
         // Verify skills are saved as string names (not IDs)
         $this->assertEqualsCanonicalizing(['Figma', 'UI/UX Design', 'Prototyping'], $application->skills);
+
+        // Verify application_id format
+        $this->assertNotNull($application->application_id);
+        $this->assertEquals(6, strlen($application->application_id));
+        $this->assertStringStartsWith((string) $jobPost->id, $application->application_id);
+    }
+
+    public function test_generate_unique_application_id_format_and_lengths(): void
+    {
+        // 1-digit job ID: 1 + 5 = 6 characters
+        $id1 = IndustryJobApplication::generateUniqueApplicationId(3);
+        $this->assertEquals(6, strlen($id1));
+        $this->assertStringStartsWith('3', $id1);
+        $this->assertMatchesRegularExpression('/^3[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/', $id1);
+
+        // 2-digit job ID: 2 + 4 = 6 characters
+        $id2 = IndustryJobApplication::generateUniqueApplicationId(42);
+        $this->assertEquals(6, strlen($id2));
+        $this->assertStringStartsWith('42', $id2);
+        $this->assertMatchesRegularExpression('/^42[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/', $id2);
+
+        // 3-digit job ID: 3 + 3 = 6 characters
+        $id3 = IndustryJobApplication::generateUniqueApplicationId(250);
+        $this->assertEquals(6, strlen($id3));
+        $this->assertStringStartsWith('250', $id3);
+        $this->assertMatchesRegularExpression('/^250[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{3}$/', $id3);
+
+        // 4-digit job ID: 4 + 3 = 7 characters
+        $id4 = IndustryJobApplication::generateUniqueApplicationId(1024);
+        $this->assertEquals(7, strlen($id4));
+        $this->assertStringStartsWith('1024', $id4);
+        $this->assertMatchesRegularExpression('/^1024[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{3}$/', $id4);
+    }
+
+    public function test_model_boot_creates_application_id_automatically_when_omitted(): void
+    {
+        $applicant = $this->createPremiumApplicant();
+        $jobPost = $this->createJobPost();
+
+        $app = IndustryJobApplication::create([
+            'job_id' => $jobPost->id,
+            'applicant_id' => $applicant->id,
+            'full_name' => 'Auto ID Applicant',
+            'email' => 'auto@example.com',
+            'resume_path' => 'resumes/auto.pdf',
+            'status' => 'pending',
+        ]);
+
+        $this->assertNotNull($app->application_id);
+        $this->assertEquals(6, strlen($app->application_id));
+        $this->assertStringStartsWith((string) $jobPost->id, $app->application_id);
     }
 }
