@@ -28,9 +28,37 @@ class IndustryJobApplicationController extends Controller
             ], 401);
         }
 
-        $status = $request->query('status'); // pending, shortlisted, rejected, hired
-        $limit = min($request->integer('limit', 10), 100);
+        $statusInput = strtolower(trim((string) $request->query('status', 'all')));
+        $statusAliases = [
+            'interview' => JobApplicationStatus::INTERVIEWED->value,
+            'offering' => JobApplicationStatus::OFFERED->value,
+            'reject' => JobApplicationStatus::REJECTED->value,
+            'accepted' => JobApplicationStatus::HIRED->value,
+            'acceptance' => JobApplicationStatus::HIRED->value,
+        ];
+        $status = $statusAliases[$statusInput] ?? $statusInput;
 
+        $limit = max(1, min($request->integer('limit', $request->integer('per_page', 10)), 100));
+
+        // 1. Calculate status counts for all JobApplicationStatus cases
+        $rawCounts = IndustryJobApplication::where('applicant_id', $user->id)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->toArray();
+
+        $statusCounts = [
+            'all' => (int) array_sum($rawCounts),
+            JobApplicationStatus::PENDING->value => (int) ($rawCounts[JobApplicationStatus::PENDING->value] ?? 0),
+            JobApplicationStatus::REVIEWING->value => (int) ($rawCounts[JobApplicationStatus::REVIEWING->value] ?? 0),
+            JobApplicationStatus::SHORTLISTED->value => (int) ($rawCounts[JobApplicationStatus::SHORTLISTED->value] ?? 0),
+            JobApplicationStatus::INTERVIEWED->value => (int) ($rawCounts[JobApplicationStatus::INTERVIEWED->value] ?? 0),
+            JobApplicationStatus::OFFERED->value => (int) ($rawCounts[JobApplicationStatus::OFFERED->value] ?? 0),
+            JobApplicationStatus::HIRED->value => (int) ($rawCounts[JobApplicationStatus::HIRED->value] ?? 0),
+            JobApplicationStatus::REJECTED->value => (int) ($rawCounts[JobApplicationStatus::REJECTED->value] ?? 0),
+        ];
+
+        // 2. Query applications of the authenticated user
         $query = IndustryJobApplication::query()
             ->where('applicant_id', $user->id)
             ->with([
@@ -41,22 +69,14 @@ class IndustryJobApplicationController extends Controller
             ])
             ->latest('id');
 
-        if (! empty($status)) {
+        if ($status !== 'all' && $status !== '') {
             $query->where('status', $status);
         }
 
-        $paginated = $query->paginate($limit);
+        $paginated = $query->cursorPaginate($limit);
 
         $formattedData = $paginated->getCollection()->map(function (IndustryJobApplication $application) {
             $job = $application->job;
-
-            $logo = null;
-            if ($job && $job->industry) {
-                $rawLogo = $job->industry->logo ?? null;
-                if ($rawLogo) {
-                    $logo = str_starts_with($rawLogo, 'http') ? $rawLogo : asset('storage/'.ltrim($rawLogo, '/'));
-                }
-            }
 
             return [
                 'id' => $application->id,
@@ -65,7 +85,7 @@ class IndustryJobApplicationController extends Controller
                 'expected_salary' => $application->expected_salary,
                 'status' => $application->status,
                 'resume_url' => $application->resume_url,
-                'applied_at' => $application->created_at->toDateTimeString(),
+                'applied_at' => $application->created_at?->toDateTimeString(),
                 'job' => $job ? [
                     'id' => $job->id,
                     'job_id' => $job->job_id,
@@ -80,7 +100,7 @@ class IndustryJobApplicationController extends Controller
                         'id' => $job->industry->id,
                         'name' => $job->industry->name,
                         'slug' => $job->industry->slug,
-                        'logo' => $logo,
+                        'logo' => $job->industry->logo,
                     ] : null,
                     'state' => $job->state?->name,
                     'city' => $job->city?->name,
@@ -88,16 +108,25 @@ class IndustryJobApplicationController extends Controller
             ];
         });
 
+        $filteredTotal = ($status !== 'all' && $status !== '')
+            ? ($statusCounts[$status] ?? 0)
+            : $statusCounts['all'];
+
         return response()->json([
             'success' => true,
             'message' => $paginated->isEmpty() ? 'No job applications found.' : 'Applications retrieved successfully.',
             'status' => 'success',
+            'status_counts' => $statusCounts,
+            'current_status' => $status,
             'data' => $formattedData,
-            'total' => $paginated->total(),
-            'limit' => $paginated->perPage(),
-            'current_page' => $paginated->currentPage(),
-            'total_page' => $paginated->lastPage(),
-            'last_page' => $paginated->lastPage(),
+            'total' => $filteredTotal,
+            'pagination' => [
+                'limit' => $paginated->perPage(),
+                'per_page' => $paginated->perPage(),
+                'next_cursor' => $paginated->nextCursor()?->encode(),
+                'prev_cursor' => $paginated->previousCursor()?->encode(),
+                'has_more_pages' => $paginated->hasMorePages(),
+            ],
         ], 200);
     }
 
