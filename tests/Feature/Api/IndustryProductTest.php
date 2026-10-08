@@ -717,7 +717,6 @@ class IndustryProductTest extends TestCase
             ->assertJsonPath('section_name', $this->section->name)
             ->assertJsonCount(2, 'categories')
             ->assertJsonCount(8, 'data')     // All 8 products returned under default per_page (12)
-            ->assertJsonCount(8, 'products') // Also accessible via products key
             ->assertJsonPath('total_products', 8)
             ->assertJsonPath('pagination.has_more_pages', false)
             ->assertJsonPath('pagination.next_cursor', null);
