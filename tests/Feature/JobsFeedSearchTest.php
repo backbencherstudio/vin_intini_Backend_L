@@ -368,4 +368,71 @@ class JobsFeedSearchTest extends TestCase
         $this->assertSame(0, $city2Group['total']);
         $this->assertCount(0, $city2Group['jobs']);
     }
+
+    public function test_jobsfeed_show_all_under_single_city_and_preview_with_has_more(): void
+    {
+        $user = $this->createAuthenticatedUser();
+
+        $state = State::create(['name' => 'Arizona', 'code' => 'AZ', 'slug' => 'az']);
+        $phoenix = City::create(['name' => 'Phoenix', 'state_id' => $state->id]);
+
+        // Create 3 jobs in Phoenix
+        $job1 = $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
+        $job2 = $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
+        $job3 = $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
+
+        // 1. Grouped preview with per_city_limit=2 (Shows 2 preview cards and has_more = true)
+        $previewRes = $this->actingAs($user, 'api')->getJson('/api/industry/jobsfeed?'.http_build_query([
+            'state_id' => $state->id,
+            'city_ids' => [$phoenix->id],
+            'group_by' => 'city',
+            'per_city_limit' => 2,
+        ]));
+
+        $previewRes->assertOk();
+        $phoenixGroup = collect($previewRes->json('grouped_by_city'))->firstWhere('city_name', 'Phoenix');
+        $this->assertSame(3, $phoenixGroup['total']); // Total in DB is 3
+        $this->assertCount(2, $phoenixGroup['jobs']); // Preview contains 2 jobs
+        $this->assertTrue($phoenixGroup['has_more']); // has_more is true, prompting "Show All ->" button
+
+        // 2. When user clicks "Show All ->", frontend fetches all jobs of Phoenix as a list
+        $showAllRes = $this->actingAs($user, 'api')->getJson('/api/industry/jobsfeed?'.http_build_query([
+            'state_id' => $state->id,
+            'city_id' => $phoenix->id,
+        ]));
+
+        $showAllRes->assertOk();
+        $this->assertSame(3, $showAllRes->json('total_jobs'));
+        $this->assertCount(3, $showAllRes->json('data')); // All 3 jobs are returned as a flat paginated list!
+        $this->assertArrayNotHasKey('grouped_by_city', $showAllRes->json());
+    }
+
+    public function test_jobsfeed_filters_by_contract_and_internship_tabs(): void
+    {
+        $user = $this->createAuthenticatedUser();
+
+        $contractJob = $this->createJob([
+            'employment_type' => 'contract',
+        ]);
+
+        $internshipJob = $this->createJob([
+            'employment_type' => 'internship',
+        ]);
+
+        $fullTimeJob = $this->createJob([
+            'employment_type' => 'full_time',
+        ]);
+
+        // 1. Tab contract
+        $resContract = $this->actingAs($user, 'api')->getJson('/api/industry/jobsfeed?tab=contract');
+        $resContract->assertOk();
+        $this->assertSame(1, $resContract->json('total_jobs'));
+        $this->assertSame($contractJob->id, $resContract->json('data.0.id'));
+
+        // 2. Tab internship
+        $resInternship = $this->actingAs($user, 'api')->getJson('/api/industry/jobsfeed?tab=internship');
+        $resInternship->assertOk();
+        $this->assertSame(1, $resInternship->json('total_jobs'));
+        $this->assertSame($internshipJob->id, $resInternship->json('data.0.id'));
+    }
 }

@@ -92,12 +92,20 @@ class JobsFeedController extends Controller
         // Tab filter
         if ($tab === 'remote') {
             $query->where('work_mode', 'remote');
+        } elseif ($tab === 'hybrid') {
+            $query->where('work_mode', 'hybrid');
+        } elseif (in_array($tab, ['on_site', 'on-site'])) {
+            $query->where('work_mode', 'on_site');
         } elseif (in_array($tab, ['full_time', 'full-time'])) {
             $query->where('employment_type', 'full_time');
         } elseif (in_array($tab, ['part_time', 'part-time'])) {
             $query->where('employment_type', 'part_time');
         } elseif (in_array($tab, ['short_term', 'short-term'])) {
             $query->where('employment_type', 'short_term');
+        } elseif ($tab === 'contract') {
+            $query->where('employment_type', 'contract');
+        } elseif ($tab === 'internship') {
+            $query->where('employment_type', 'internship');
         }
 
         // Search filter
@@ -268,7 +276,9 @@ class JobsFeedController extends Controller
                 $formattedData,
                 $cityIds,
                 $cityNames,
-                $stateIds
+                $stateIds,
+                (clone $query),
+                $request->integer('per_city_limit', 0)
             );
         }
 
@@ -402,7 +412,9 @@ class JobsFeedController extends Controller
         array $formattedJobs,
         array $selectedCityIds = [],
         array $selectedCityNames = [],
-        array $selectedStateIds = []
+        array $selectedStateIds = [],
+        $baseQuery = null,
+        int $perCityLimit = 0
     ): array {
         $formattedById = [];
         foreach ($formattedJobs as $job) {
@@ -422,6 +434,7 @@ class JobsFeedController extends Controller
                         'city_name' => $name,
                         'title' => "{$name} Jobs",
                         'total' => 0,
+                        'has_more' => false,
                         'jobs' => [],
                     ];
                 }
@@ -435,6 +448,7 @@ class JobsFeedController extends Controller
                     'city_name' => $name,
                     'title' => "{$name} Jobs",
                     'total' => 0,
+                    'has_more' => false,
                     'jobs' => [],
                 ];
             }
@@ -450,6 +464,7 @@ class JobsFeedController extends Controller
                         'city_name' => $name,
                         'title' => "{$name} Jobs",
                         'total' => 0,
+                        'has_more' => false,
                         'jobs' => [],
                     ];
                 }
@@ -470,15 +485,46 @@ class JobsFeedController extends Controller
                     'city_name' => $cName,
                     'title' => $cName !== 'Other' ? "{$cName} Jobs" : 'Other Jobs',
                     'total' => 0,
+                    'has_more' => false,
                     'jobs' => [],
                 ];
             }
 
             if (isset($formattedById[$job->id])) {
                 $grouped[$targetKey]['jobs'][] = $formattedById[$job->id];
-                $grouped[$targetKey]['total']++;
             }
         }
+
+        // 4. Calculate real database totals per city and has_more indicator for Show All support
+        $cityTotals = [];
+        if ($baseQuery !== null) {
+            try {
+                $cityTotals = (clone $baseQuery)
+                    ->reorder()
+                    ->groupBy('city_id')
+                    ->selectRaw('city_id, count(*) as aggregate_total')
+                    ->pluck('aggregate_total', 'city_id')
+                    ->all();
+            } catch (\Throwable) {
+                $cityTotals = [];
+            }
+        }
+
+        foreach ($grouped as &$group) {
+            $cId = $group['city_id'];
+            if ($cId !== null && isset($cityTotals[$cId])) {
+                $group['total'] = (int) $cityTotals[$cId];
+            } else {
+                $group['total'] = count($group['jobs']);
+            }
+
+            if ($perCityLimit > 0 && count($group['jobs']) > $perCityLimit) {
+                $group['jobs'] = array_slice($group['jobs'], 0, $perCityLimit);
+            }
+
+            $group['has_more'] = $group['total'] > count($group['jobs']);
+        }
+        unset($group);
 
         return array_values($grouped);
     }
