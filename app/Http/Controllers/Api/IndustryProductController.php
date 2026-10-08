@@ -213,7 +213,7 @@ class IndustryProductController extends Controller
                 }
             }
 
-            $totalCount = (clone $query)->count();
+            $totalCount = (clone $query)->without(['creator', 'industry', 'section', 'category'])->count();
 
             // Calculate pagination:
             $showAllRequested = $request->boolean('all') || $request->boolean('show_all') || $request->input('per_page') === 'all';
@@ -299,40 +299,68 @@ class IndustryProductController extends Controller
         $sectionIds = $sections->pluck('id')->all();
         $rawLimit = $request->input('limit_per_section');
         $limitPerSection = ($request->filled('limit_per_section') && is_numeric($rawLimit) && (int) $rawLimit > 0)
-            ? (int) $rawLimit
+            ? min((int) $rawLimit, 50)
             : 6;
 
-        $products = IndustryProduct::query()
-            ->where('network_type', $networkType)
-            ->where('industry_type', $industryType)
-            ->where('status', 'active')
-            ->whereIn('section_id', $sectionIds)
-            ->with(['creator', 'industry', 'section', 'category'])
-            ->latest('id')
-            ->get();
-
+        $groupedProducts = collect();
+        $productCounts = collect();
         $likedProductIds = [];
-        if ($currentUser) {
-            $productIds = $products->pluck('id')->all();
-            if (! empty($productIds)) {
-                $likedProductIds = IndustryProductLike::where('user_id', $currentUser->id)
-                    ->whereIn('industry_product_id', $productIds)
-                    ->pluck('industry_product_id')
-                    ->flip()
-                    ->all();
+
+        if (! empty($sectionIds)) {
+            // High-performance aggregate count per section without loading models into memory
+            $productCounts = IndustryProduct::query()
+                ->where('network_type', $networkType)
+                ->where('industry_type', $industryType)
+                ->where('status', 'active')
+                ->whereIn('section_id', $sectionIds)
+                ->groupBy('section_id')
+                ->selectRaw('section_id, count(*) as total')
+                ->pluck('total', 'section_id');
+
+            // Fetch only top N product IDs per section using window function (O(1) memory at million-row scale)
+            $placeholders = implode(',', array_fill(0, count($sectionIds), '?'));
+            $rankedSql = "
+                SELECT id FROM (
+                    SELECT id, section_id, ROW_NUMBER() OVER (PARTITION BY section_id ORDER BY id DESC) as rn
+                    FROM industry_products
+                    WHERE network_type = ?
+                      AND industry_type = ?
+                      AND status = 'active'
+                      AND section_id IN ({$placeholders})
+                      AND deleted_at IS NULL
+                ) as ranked
+                WHERE rn <= ?
+            ";
+            $bindings = array_merge([$networkType, $industryType], $sectionIds, [$limitPerSection]);
+            $rankedRows = DB::select($rankedSql, $bindings);
+            $topProductIds = array_column($rankedRows, 'id');
+
+            if (! empty($topProductIds)) {
+                $products = IndustryProduct::query()
+                    ->whereIn('id', $topProductIds)
+                    ->with(['creator', 'industry', 'section', 'category'])
+                    ->latest('id')
+                    ->get();
+
+                if ($currentUser) {
+                    $likedProductIds = IndustryProductLike::where('user_id', $currentUser->id)
+                        ->whereIn('industry_product_id', $topProductIds)
+                        ->pluck('industry_product_id')
+                        ->flip()
+                        ->all();
+                }
+
+                $groupedProducts = $products->groupBy(fn ($item) => (int) $item->section_id);
             }
         }
 
-        $groupedProducts = $products->groupBy(fn ($item) => (int) $item->section_id);
-
-        $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $limitPerSection) {
-            $allSectionProducts = $groupedProducts->get((int) $section->id, collect());
-            $totalProducts = $allSectionProducts->count();
-            $sectionProducts = $allSectionProducts
-                ->take($limitPerSection)
+        $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $productCounts, $limitPerSection) {
+            $sectionProducts = $groupedProducts->get((int) $section->id, collect())
                 ->map(function ($product) use ($likedProductIds) {
                     return (new IndustryProductResource($product, $likedProductIds))->resolve();
                 })->values();
+
+            $totalProducts = (int) ($productCounts->get($section->id, 0));
 
             return [
                 'section_id' => $section->id,

@@ -14,14 +14,14 @@ class IndustryProductResource extends JsonResource
 {
     /**
      * @param  IndustryProduct  $resource
-     * @param  array<int, bool>|int  $likedProductIds
+     * @param  array<int, bool>|int|null  $likedProductIds
      */
     public function __construct(
         $resource,
-        protected array|int $likedProductIds = []
+        protected array|int|null $likedProductIds = null
     ) {
         if (is_int($likedProductIds)) {
-            $this->likedProductIds = [];
+            $this->likedProductIds = null;
         }
         parent::__construct($resource);
     }
@@ -42,7 +42,7 @@ class IndustryProductResource extends JsonResource
         }
 
         $isLiked = false;
-        if (! empty($this->likedProductIds)) {
+        if (is_array($this->likedProductIds)) {
             $isLiked = isset($this->likedProductIds[$this->id]);
         } elseif (auth('api')->check()) {
             $isLiked = $this->likes()->where('user_id', auth('api')->id())->exists();
