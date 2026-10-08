@@ -135,9 +135,6 @@ GET /api/industry/product-feed?network_type=psychology&industry_type=biotechnolo
   "data": [
     /* Products array */
   ],
-  "products": [
-    /* Same product array accessible via products key */
-  ],
   "pagination": {
     "limit": 12,
     "per_page": 12,

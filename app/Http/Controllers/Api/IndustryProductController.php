@@ -218,10 +218,21 @@ class IndustryProductController extends Controller
             // Calculate pagination:
             $showAllRequested = $request->boolean('all') || $request->boolean('show_all') || $request->input('per_page') === 'all';
 
+            $rawPerPage = $request->input('per_page');
+            $hasValidPerPage = $request->filled('per_page') && is_numeric($rawPerPage) && (int) $rawPerPage > 0;
+
             if ($showAllRequested) {
                 $perPage = max($totalCount, 1);
+            } elseif ($hasValidPerPage) {
+                $perPage = min(max((int) $rawPerPage, 1), 100);
+            } elseif ($request->filled('limit_per_section') && is_numeric($request->input('limit_per_section')) && (int) $request->input('limit_per_section') > 0) {
+                $perPage = min(max((int) $request->input('limit_per_section'), 1), 100);
+            } elseif ($request->filled('category_id')) {
+                // When switching to a specific sub-category tab on the section card, show up to 6 products
+                $perPage = 6;
             } else {
-                $perPage = min(max($request->integer('per_page', 12), 1), 100);
+                // Section show-all or flat list defaults to 12
+                $perPage = 12;
             }
 
             $paginated = $query->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
@@ -258,7 +269,6 @@ class IndustryProductController extends Controller
 
             $responseData['total_products'] = $totalCount;
             $responseData['data'] = $data;
-            $responseData['products'] = $data;
             $responseData['pagination'] = [
                 'limit' => $paginated->perPage(),
                 'per_page' => $paginated->perPage(),
@@ -287,7 +297,10 @@ class IndustryProductController extends Controller
             ->get();
 
         $sectionIds = $sections->pluck('id')->all();
-        $limitPerSection = (int) $request->input('limit_per_section', 6);
+        $rawLimit = $request->input('limit_per_section');
+        $limitPerSection = ($request->filled('limit_per_section') && is_numeric($rawLimit) && (int) $rawLimit > 0)
+            ? (int) $rawLimit
+            : 6;
 
         $products = IndustryProduct::query()
             ->where('network_type', $networkType)
