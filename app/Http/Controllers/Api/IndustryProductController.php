@@ -149,6 +149,7 @@ class IndustryProductController extends Controller
             'section_id' => ['nullable', 'integer', 'exists:industry_sections,id'],
             'category_id' => ['nullable', 'integer', 'exists:industry_categories,id'],
             'search' => ['nullable', 'string', 'max:100'],
+            'cursor' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'flat' => ['nullable', 'boolean'],
             'limit_per_section' => ['nullable', 'integer', 'min:1', 'max:50'],
@@ -156,10 +157,8 @@ class IndustryProductController extends Controller
 
         $currentUser = auth('api')->user();
 
-        // 1. Tab filter / Search / Explicit flat pagination view
-        if ($request->filled('section_id') || $request->filled('category_id') || $request->filled('search') || $request->boolean('flat')) {
-            $perPage = (int) $request->input('per_page', 12);
-
+        // 1. Tab filter / Search / Section show-all / Explicit flat pagination view
+        if ($request->filled('section_id') || $request->filled('category_id') || $request->filled('search') || $request->boolean('flat') || $request->filled('cursor')) {
             $query = IndustryProduct::query()
                 ->where('status', 'active')
                 ->where('network_type', $request->input('network_type'))
@@ -187,12 +186,50 @@ class IndustryProductController extends Controller
                 });
             }
 
-            $paginated = $query->paginate($perPage);
+            // Resolve target section and its categories if section_id or category_id is provided
+            $targetSectionId = $request->input('section_id');
+            if (! $targetSectionId && $request->filled('category_id')) {
+                $targetSectionId = DB::table('industry_categories')
+                    ->where('id', $request->integer('category_id'))
+                    ->value('section_id');
+            }
+
+            $sectionObj = null;
+            $sectionCategories = [];
+            if ($targetSectionId) {
+                $sectionObj = IndustrySections::with([
+                    'IndustryCategory' => function ($q) {
+                        $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
+                    },
+                ])->find($targetSectionId);
+
+                if ($sectionObj) {
+                    $sectionCategories = $sectionObj->IndustryCategory->map(function ($cat) {
+                        return [
+                            'id' => $cat->id,
+                            'category_name' => $cat->category_name,
+                        ];
+                    })->values();
+                }
+            }
+
+            $totalCount = (clone $query)->count();
+
+            // Calculate pagination:
+            $showAllRequested = $request->boolean('all') || $request->boolean('show_all') || $request->input('per_page') === 'all';
+
+            if ($showAllRequested) {
+                $perPage = max($totalCount, 1);
+            } else {
+                $perPage = min(max($request->integer('per_page', 12), 1), 100);
+            }
+
+            $paginated = $query->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
 
             // Fetch liked ids in a single fast query to avoid N+1
             $likedProductIds = [];
             if ($currentUser) {
-                $productIds = $paginated->pluck('id')->all();
+                $productIds = $paginated->getCollection()->pluck('id')->all();
                 if (! empty($productIds)) {
                     $likedProductIds = IndustryProductLike::where('user_id', $currentUser->id)
                         ->whereIn('industry_product_id', $productIds)
@@ -206,18 +243,32 @@ class IndustryProductController extends Controller
                 return (new IndustryProductResource($product, $likedProductIds))->resolve();
             });
 
-            return response()->json([
+            $responseData = [
                 'success' => true,
                 'message' => 'Products retrieved successfully.',
-                'data' => $data,
-                'pagination' => [
-                    'current_page' => $paginated->currentPage(),
-                    'per_page' => $paginated->perPage(),
-                    'total' => $paginated->total(),
-                    'last_page' => $paginated->lastPage(),
-                    'has_more_pages' => $paginated->hasMorePages(),
-                ],
-            ]);
+            ];
+
+            if ($sectionObj) {
+                $responseData['section_id'] = $sectionObj->id;
+                $responseData['section_name'] = $sectionObj->name;
+                $responseData['network_type'] = $sectionObj->network_type;
+                $responseData['industry_type'] = $sectionObj->industry_type;
+                $responseData['categories'] = $sectionCategories;
+            }
+
+            $responseData['total_products'] = $totalCount;
+            $responseData['data'] = $data;
+            $responseData['products'] = $data;
+            $responseData['pagination'] = [
+                'limit' => $paginated->perPage(),
+                'per_page' => $paginated->perPage(),
+                'next_cursor' => $paginated->nextCursor()?->encode(),
+                'prev_cursor' => $paginated->previousCursor()?->encode(),
+                'has_more_pages' => $paginated->hasMorePages(),
+                'total' => $totalCount,
+            ];
+
+            return response()->json($responseData);
         }
 
         // 2. Default Section-wise feed view (Renders the entire MindUnite feed page with section blocks & tabs)
@@ -236,7 +287,7 @@ class IndustryProductController extends Controller
             ->get();
 
         $sectionIds = $sections->pluck('id')->all();
-        $limitPerSection = (int) $request->input('limit_per_section', 12);
+        $limitPerSection = (int) $request->input('limit_per_section', 6);
 
         $products = IndustryProduct::query()
             ->where('network_type', $networkType)
@@ -262,7 +313,9 @@ class IndustryProductController extends Controller
         $groupedProducts = $products->groupBy(fn ($item) => (int) $item->section_id);
 
         $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $limitPerSection) {
-            $sectionProducts = $groupedProducts->get((int) $section->id, collect())
+            $allSectionProducts = $groupedProducts->get((int) $section->id, collect());
+            $totalProducts = $allSectionProducts->count();
+            $sectionProducts = $allSectionProducts
                 ->take($limitPerSection)
                 ->map(function ($product) use ($likedProductIds) {
                     return (new IndustryProductResource($product, $likedProductIds))->resolve();
@@ -273,6 +326,8 @@ class IndustryProductController extends Controller
                 'section_name' => $section->name,
                 'network_type' => $section->network_type,
                 'industry_type' => $section->industry_type,
+                'total_products' => $totalProducts,
+                'has_more' => $totalProducts > $limitPerSection,
                 'categories' => $section->IndustryCategory->map(function ($cat) {
                     return [
                         'id' => $cat->id,

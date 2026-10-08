@@ -674,4 +674,76 @@ class IndustryProductTest extends TestCase
 
         $notFoundResponse->assertNotFound();
     }
+
+    public function test_section_feed_limits_to_6_products_and_show_all_returns_all_products_with_categories(): void
+    {
+        // Create 8 products in section
+        for ($i = 1; $i <= 8; $i++) {
+            IndustryProduct::create([
+                'creator_id' => $this->creator->id,
+                'industry_id' => $this->industry->id,
+                'network_type' => 'psychology',
+                'industry_type' => 'biotechnology',
+                'section_id' => $this->section->id,
+                'category_id' => $i % 2 === 0 ? $this->subCategory1->id : $this->subCategory2->id,
+                'product_name' => "Batch Product {$i}",
+                'slug' => "batch-product-{$i}-".uniqid(),
+                'description' => "Description for batch product {$i}",
+                'status' => 'active',
+            ]);
+        }
+
+        // 1. Initial Page Load Feed: Returns section with max 6 products, categories, total_products: 8, has_more: true
+        $feedResponse = $this->actingAs($this->creator, 'api')
+            ->getJson('/api/industry/product-feed?network_type=psychology&industry_type=biotechnology');
+
+        $feedResponse->assertOk()
+            ->assertJsonPath('success', true);
+
+        $sectionData = collect($feedResponse->json('data'))->firstWhere('section_id', $this->section->id);
+        $this->assertNotNull($sectionData);
+        $this->assertCount(2, $sectionData['categories']);
+        $this->assertCount(6, $sectionData['products']); // Max 6 products
+        $this->assertEquals(8, $sectionData['total_products']);
+        $this->assertTrue($sectionData['has_more']);
+
+        // 2. Click "show All" on this section: Returns section info, categories, and products with cursor pagination
+        $showAllResponse = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/product-feed?network_type=psychology&industry_type=biotechnology&section_id={$this->section->id}");
+
+        $showAllResponse->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('section_id', $this->section->id)
+            ->assertJsonPath('section_name', $this->section->name)
+            ->assertJsonCount(2, 'categories')
+            ->assertJsonCount(8, 'data')     // All 8 products returned under default per_page (12)
+            ->assertJsonCount(8, 'products') // Also accessible via products key
+            ->assertJsonPath('total_products', 8)
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+
+        // 3. Cursor pagination: Request with per_page=4 -> returns first 4 items with next_cursor
+        $page1Response = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/product-feed?network_type=psychology&industry_type=biotechnology&section_id={$this->section->id}&per_page=4");
+
+        $page1Response->assertOk()
+            ->assertJsonCount(4, 'data')
+            ->assertJsonPath('pagination.per_page', 4)
+            ->assertJsonPath('pagination.has_more_pages', true);
+
+        $nextCursor = $page1Response->json('pagination.next_cursor');
+        $this->assertNotEmpty($nextCursor);
+
+        // Request next page using next_cursor -> returns remaining 4 items
+        $page2Response = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/product-feed?network_type=psychology&industry_type=biotechnology&section_id={$this->section->id}&per_page=4&cursor={$nextCursor}");
+
+        $page2Response->assertOk()
+            ->assertJsonCount(4, 'data')
+            ->assertJsonPath('pagination.per_page', 4)
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+
+        $this->assertNotEmpty($page2Response->json('pagination.prev_cursor'));
+    }
 }

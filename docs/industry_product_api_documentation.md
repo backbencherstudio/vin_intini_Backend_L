@@ -48,16 +48,17 @@ Fetches products for the public feed. Supports **three distinct modes**:
 | `category_id` | `integer` | No | `null` | Filter by specific Sub-category ID. |
 | `search` | `string` | No | `null` | Keyword search matching `product_name` or `description`. |
 | `flat` | `boolean` | No | `false` | Pass `flat=1` for flat paginated list (Ideal for Mobile App infinite scroll). |
-| `limit_per_section` | `integer`| No | `12` | Max products per section in Section-Wise mode (max: 50). |
-| `per_page` | `integer` | No | `12` | Number of items per page in Tab-Filter / Flat mode (max: 100). |
-| `page` | `integer` | No | `1` | Page number for pagination. |
+| `limit_per_section` | `integer`| No | `6` | Max products per section in Section-Wise mode (default: 6, max: 50). |
+| `per_page` | `integer` | No | `12` | Number of items per page (default: 12, max: 100). |
+| `cursor` | `string` | No | `null` | Encoded cursor token for cursor pagination (`next_cursor` / `prev_cursor`). |
+| `all` / `show_all` | `boolean` | No | `false` | Pass `all=1` to fetch all products for the section/filter. |
 
 ---
 
 #### Mode A: Section-Wise Response (Web Initial Page Load)
 **Request:**
 ```http
-GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnology
+GET /api/industry/product-feed?network_type=psychology&industry_type=biotechnology
 ```
 
 **Response (`200 OK`):**
@@ -71,6 +72,8 @@ GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnol
       "section_name": "Neuroscientific and Psychophysiological Equipment",
       "network_type": "psychology",
       "industry_type": "biotechnology",
+      "total_products": 8,
+      "has_more": true,
       "categories": [
         {
           "id": 10,
@@ -82,44 +85,7 @@ GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnol
         }
       ],
       "products": [
-        {
-          "id": 101,
-          "product_id": "849201",
-          "creator_id": 25,
-          "creator": {
-            "id": 25,
-            "name": "Dr. Sarah Connor",
-            "username": "sarah_connor",
-            "profile_image": "https://domain.com/storage/profiles/avatar.png"
-          },
-          "industry_id": 4,
-          "industry": {
-            "id": 4,
-            "name": "Biopac Systems",
-            "logo": "https://domain.com/storage/industries/logo.png"
-          },
-          "product_name": "MP160 System with AcqKnowledge",
-          "slug": "mp160-system-with-acqknowledge",
-          "network_type": "psychology",
-          "industry_type": "biotechnology",
-          "section_id": 1,
-          "section_name": "Neuroscientific and Psychophysiological Equipment",
-          "category_id": 10,
-          "category_name": "Brain Scanners",
-          "description": "High-resolution functional brain imaging with real-time analysis.",
-          "short_description": "High-resolution functional brain imaging with real-time analysis.",
-          "product_url": "https://www.biopac.com/product/mp160-system/",
-          "image": "industry_products/mp160.webp",
-          "image_url": "https://domain.com/storage/industry_products/mp160.webp",
-          "tags": ["EEG", "Brain Imaging", "AcqKnowledge"],
-          "information_confirmed": true,
-          "status": "active",
-          "views_count": 48,
-          "likes_count": 15,
-          "is_liked": false,
-          "created_at": "2026-10-05T06:15:00.000000Z",
-          "updated_at": "2026-10-05T06:15:00.000000Z"
-        }
+        /* Max 6 products returned here */
       ]
     },
     {
@@ -127,16 +93,9 @@ GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnol
       "section_name": "Psychological Assessment Instruments",
       "network_type": "psychology",
       "industry_type": "biotechnology",
-      "categories": [
-        {
-          "id": 12,
-          "category_name": "Intelligence and Cognitive Tests"
-        },
-        {
-          "id": 13,
-          "category_name": "Personality Assessments"
-        }
-      ],
+      "total_products": 4,
+      "has_more": false,
+      "categories": [ ... ],
       "products": [ ... ]
     }
   ]
@@ -145,10 +104,12 @@ GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnol
 
 ---
 
-#### Mode B: Tab Filter Response (User clicks a Sub-Category Tab or All Tab)
-**Request:**
+#### Mode B: Section "Show All" / Tab Filter Response (User clicks "show All" or a Sub-Category Tab)
+When user clicks **"show All"** on a section, call the API with `section_id`. It returns the section details, all sub-category tabs (`categories`), products, and cursor pagination:
+
+**Request (Clicking "show All" on Section 1):**
 ```http
-GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnology&section_id=1&category_id=10&page=1
+GET /api/industry/product-feed?network_type=psychology&industry_type=biotechnology&section_id=1
 ```
 
 **Response (`200 OK`):**
@@ -156,45 +117,47 @@ GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnol
 {
   "success": true,
   "message": "Products retrieved successfully.",
-  "data": [
+  "section_id": 1,
+  "section_name": "Neuroscientific and Psychophysiological Equipment",
+  "network_type": "psychology",
+  "industry_type": "biotechnology",
+  "categories": [
     {
-      "id": 101,
-      "product_name": "MP160 System with AcqKnowledge",
-      "slug": "mp160-system-with-acqknowledge",
-      "industry": {
-        "id": 4,
-        "name": "Biopac Systems",
-        "logo": "https://domain.com/storage/industries/logo.png"
-      },
-      "section_name": "Neuroscientific and Psychophysiological Equipment",
-      "category_name": "Brain Scanners",
-      "short_description": "High-resolution functional brain imaging...",
-      "product_url": "https://www.biopac.com/product/mp160-system/",
-      "image_url": "https://domain.com/storage/industry_products/mp160.webp",
-      "views_count": 48,
-      "likes_count": 15,
-      "is_liked": false
+      "id": 10,
+      "category_name": "Brain Scanners"
+    },
+    {
+      "id": 11,
+      "category_name": "Physiological Monitoring Devices"
     }
   ],
+  "total_products": 8,
+  "data": [
+    /* Products array */
+  ],
+  "products": [
+    /* Same product array accessible via products key */
+  ],
   "pagination": {
-    "current_page": 1,
+    "limit": 12,
     "per_page": 12,
-    "total": 1,
-    "last_page": 1,
-    "has_more_pages": false
+    "next_cursor": null,
+    "prev_cursor": null,
+    "has_more_pages": false,
+    "total": 8
   }
 }
 ```
 
 ---
 
-#### Mode C: Flat Infinite Scroll Response (Mobile App / Catalog View)
+#### Mode C: Flat Cursor-Paginated Response (Mobile App / Catalog Infinite Scroll)
 **Request:**
 ```http
-GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnology&flat=1&page=1
+GET /api/industry/products/feed?network_type=psychology&industry_type=biotechnology&flat=1&per_page=12&cursor=eyJpZCI6MTIsIl9wb2ludHNUb05leHRJdGVtcyI6dHJ1ZX0
 ```
 
-**Response (`200 OK`):** Same structure as Mode B with `data` array and `pagination` object.
+**Response (`200 OK`):** Same structure as Mode B with `data` array, `total_products`, and cursor `pagination` object (`next_cursor`, `prev_cursor`, `has_more_pages`).
 
 ---
 
