@@ -50,43 +50,42 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             ? $this->jobPost->industry
             : $this->jobPost->industry()->first();
 
-
         $companyName = $industry?->name ?? 'Company';
         $formattedStatus = ucfirst($this->newStatus);
 
-        // Industry Logo URL জেনারেট করা
+        // Industry Logo URL
         $rawLogo = $industry?->logo;
         $industryLogoUrl = null;
         if ($rawLogo) {
             $industryLogoUrl = str_starts_with($rawLogo, 'http')
                 ? $rawLogo
-                : asset('storage/' . ltrim($rawLogo, '/'));
+                : asset('storage/'.ltrim($rawLogo, '/'));
         }
 
         return [
             // Company & Post identifiers
-            'industry_id'           => $this->jobPost->industry_id,
-            'industry_name'         => $companyName,
-            'industry_logo'         => $rawLogo,
-            'industry_logo_url'     => $industryLogoUrl, // Full image URL
-            'job_id'                => $this->jobPost->id,
-            'job_unique_id'         => $this->jobPost->job_id,
-            'job_title'             => $this->jobPost->job_title,
+            'industry_id' => $this->jobPost->industry_id,
+            'industry_name' => $companyName,
+            'industry_logo' => $rawLogo,
+            'industry_logo_url' => $industryLogoUrl, // Full image URL
+            'job_id' => $this->jobPost->id,
+            'job_unique_id' => $this->jobPost->job_id,
+            'job_title' => $this->jobPost->job_title,
 
             // Application & Status details
-            'application_id'        => $this->application->id,
+            'application_id' => $this->application->id,
             'application_unique_id' => $this->application->application_id,
-            'status'                => $this->newStatus,
+            'status' => $this->newStatus,
 
             // Sender/Updater info
-            'updater_id'            => $this->updater?->id,
-            'updater_name'          => $this->updater ? trim(($this->updater->first_name ?? '') . ' ' . ($this->updater->last_name ?? '')) : null,
+            'updater_id' => $this->updater?->id,
+            'updater_name' => $this->updater ? trim(($this->updater->first_name ?? '').' '.($this->updater->last_name ?? '')) : null,
 
             // Notification Meta
-            'message'               => "Your application for {$this->jobPost->job_title} has been updated to {$formattedStatus}",
-            'type'                  => class_basename(self::class),
-            'updated_at'            => now()->toIso8601String(),
-            'unread_count'          => $unreadCount + 1,
+            'message' => "Your application for {$this->jobPost->job_title} has been updated to {$formattedStatus}",
+            'type' => class_basename(self::class),
+            'updated_at' => now()->toIso8601String(),
+            'unread_count' => $unreadCount + 1,
         ];
     }
 
@@ -105,7 +104,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('App.Models.User.' . $this->application->applicant_id),
+            new PrivateChannel('App.Models.User.'.$this->application->applicant_id),
         ];
     }
 
@@ -122,7 +121,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
         if ($rawLogo) {
             $industryLogoUrl = str_starts_with($rawLogo, 'http')
                 ? $rawLogo
-                : asset('storage/' . ltrim($rawLogo, '/'));
+                : asset('storage/'.ltrim($rawLogo, '/'));
         }
 
         return FcmMessage::create()
@@ -132,14 +131,14 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
                     ->body("Your application for {$this->jobPost->job_title} at {$companyName} is now {$formattedStatus}.")
             )
             ->data([
-                'industry_id'           => (string) $this->jobPost->industry_id,
-                'industry_logo_url'     => (string) ($industryLogoUrl ?? ''),
-                'job_id'                => (string) $this->jobPost->id,
-                'application_id'        => (string) $this->application->id,
+                'industry_id' => (string) $this->jobPost->industry_id,
+                'industry_logo_url' => (string) ($industryLogoUrl ?? ''),
+                'job_id' => (string) $this->jobPost->id,
+                'application_id' => (string) $this->application->id,
                 'application_unique_id' => (string) $this->application->application_id,
-                'status'                => (string) $this->newStatus,
-                'type'                  => class_basename(self::class),
-                'updated_at'            => now()->toIso8601String(),
+                'status' => (string) $this->newStatus,
+                'type' => class_basename(self::class),
+                'updated_at' => now()->toIso8601String(),
             ]);
     }
 

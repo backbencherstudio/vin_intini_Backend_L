@@ -129,6 +129,7 @@ Route::post('/account/delete-request', [SecuritySettingsController::class, 'requ
 // pro Industry job post
 Route::prefix('industry')->group(function () {
     Route::get('jobsfeed', [JobsFeedController::class, 'jobsFeed']); // global route
+    Route::get('jobs-by-state-offering', [JobsFeedController::class, 'jobsByStateAndOffering']); // jobs filtered by state_id & employment_offering
     Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']); // global show route
 
     // recruiter dashboard

@@ -286,6 +286,112 @@ class JobsFeedController extends Controller
     }
 
     /**
+     * Get active jobs filtered by state_id and employment_offering
+     */
+    public function jobsByStateAndOffering(Request $request): JsonResponse
+    {
+        $currentUser = auth('api')->user();
+        $today = Carbon::today()->toDateString();
+
+        $query = IndustryJobPost::query()
+            ->select([
+                'id',
+                'job_id',
+                'industry_id',
+                'created_by',
+                'job_title',
+                'slug',
+                'position',
+                'work_mode',
+                'employment_type',
+                'level',
+                'experience',
+                'state_id',
+                'city_id',
+                'salary_min',
+                'salary_max',
+                'salary_type',
+                'employment_offering',
+                'network_type',
+                'category',
+                'sub_category',
+                'status',
+                'announcement_start_date',
+                'announcement_end_date',
+                'created_at',
+            ])
+            ->where('status', IndustryJobPostStatus::PUBLISHED)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('announcement_start_date')
+                    ->orWhere('announcement_start_date', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('announcement_end_date')
+                    ->orWhere('announcement_end_date', '>=', $today);
+            });
+
+        // Filter by state_id (supports single ID, array, or comma-separated)
+        $rawStateIds = $request->input('state_ids', $request->input('state_id'));
+        $stateIds = array_filter(array_map('intval', $this->normalizeArrayInput($rawStateIds)));
+        if (! empty($stateIds)) {
+            $query->whereIn('state_id', $stateIds);
+        }
+
+        // Filter by employment_offering (supports single, array, or comma-separated)
+        $rawOfferings = $request->input('employment_offering', $request->input('employment_offerings'));
+        $offerings = $this->normalizeArrayInput($rawOfferings);
+        if (! empty($offerings)) {
+            $query->whereIn('employment_offering', $offerings);
+        }
+
+        // Optional network_type filter
+        if ($request->filled('network_type')) {
+            $networkTypes = $this->normalizeArrayInput($request->input('network_type'));
+            if (! empty($networkTypes)) {
+                $query->whereIn('network_type', $networkTypes);
+            }
+        }
+
+        $limit = min($request->integer('limit', $request->integer('per_page', 10)), 100);
+
+        // Filtered total count for accurate statistics
+        $totalJobsCount = (clone $query)->count();
+
+        $paginated = $query->with([
+            'industry:id,name,slug,logo,website',
+            'state:id,name',
+            'city:id,name',
+        ])
+            ->withCount('applications')
+            ->latest('id')
+            ->cursorPaginate($limit);
+
+        $formattedData = $this->formatJobCollection($paginated->getCollection(), $currentUser);
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'message' => 'Jobs filtered by state and employment offering retrieved successfully.',
+            'data' => $formattedData,
+            'total_jobs' => $totalJobsCount,
+            'stats' => [
+                'total_jobs' => $totalJobsCount,
+            ],
+            'pagination' => [
+                'limit' => $paginated->perPage(),
+                'per_page' => $paginated->perPage(),
+                'next_cursor' => $paginated->nextCursor()?->encode(),
+                'prev_cursor' => $paginated->previousCursor()?->encode(),
+                'has_more_pages' => $paginated->hasMorePages(),
+            ],
+            'filters' => [
+                'state_id' => ! empty($stateIds) ? (count($stateIds) === 1 ? reset($stateIds) : array_values($stateIds)) : null,
+                'employment_offering' => ! empty($offerings) ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
+            ],
+        ], 200);
+    }
+
+    /**
      * Job list formatter
      */
     private function formatJobCollection($jobs, $currentUser): array

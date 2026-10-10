@@ -435,4 +435,59 @@ class JobsFeedSearchTest extends TestCase
         $this->assertSame(1, $resInternship->json('total_jobs'));
         $this->assertSame($internshipJob->id, $resInternship->json('data.0.id'));
     }
+
+    public function test_jobs_by_state_and_offering_endpoint(): void
+    {
+        $user = $this->createAuthenticatedUser();
+
+        $state1 = State::create(['name' => 'Texas', 'code' => 'TX', 'slug' => 'tx']);
+        $state2 = State::create(['name' => 'Florida', 'code' => 'FL', 'slug' => 'fl']);
+
+        // Job 1: Texas + private
+        $job1 = $this->createJob([
+            'state_id' => $state1->id,
+            'employment_offering' => 'private',
+        ]);
+
+        // Job 2: Texas + state
+        $job2 = $this->createJob([
+            'state_id' => $state1->id,
+            'employment_offering' => 'state',
+        ]);
+
+        // Job 3: Florida + private
+        $job3 = $this->createJob([
+            'state_id' => $state2->id,
+            'employment_offering' => 'private',
+        ]);
+
+        // 1. Filter by Texas and private
+        $res = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state1->id}&employment_offering=private");
+        $res->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('data.0.id', $job1->id)
+            ->assertJsonPath('filters.state_id', $state1->id)
+            ->assertJsonPath('filters.employment_offering', 'private')
+            ->assertJsonStructure([
+                'pagination' => [
+                    'limit',
+                    'per_page',
+                    'next_cursor',
+                    'prev_cursor',
+                    'has_more_pages',
+                ],
+            ]);
+
+        // 2. Filter by Texas only
+        $resTexas = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state1->id}");
+        $resTexas->assertOk()
+            ->assertJsonPath('total_jobs', 2);
+
+        // 3. Filter by Florida and private
+        $resFlorida = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state2->id}&employment_offering=private");
+        $resFlorida->assertOk()
+            ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('data.0.id', $job3->id);
+    }
 }
