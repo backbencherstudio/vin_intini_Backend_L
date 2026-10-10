@@ -469,7 +469,7 @@ class IndustryProductController extends Controller
 
         $stats = IndustryProduct::query()
             ->where('industry_id', $industry->id)
-            ->selectRaw('COUNT(*) as total_advertisements, COALESCE(SUM(likes_count), 0) as total_likes, COALESCE(SUM(views_count), 0) as total_views')
+            ->selectRaw("COUNT(*) as total_advertisements, COUNT(CASE WHEN status = 'active' THEN 1 END) as total_active_products, COALESCE(SUM(likes_count), 0) as total_likes, COALESCE(SUM(views_count), 0) as total_views")
             ->first();
 
         return response()->json([
@@ -477,6 +477,7 @@ class IndustryProductController extends Controller
             'message' => 'Advertisement dashboard statistics retrieved successfully.',
             'data' => [
                 'total_advertisements' => (int) ($stats->total_advertisements ?? 0),
+                'total_active_products' => (int) ($stats->total_active_products ?? 0),
                 'total_likes' => (int) ($stats->total_likes ?? 0),
                 'total_views' => (int) ($stats->total_views ?? 0),
             ],

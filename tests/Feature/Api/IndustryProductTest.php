@@ -359,6 +359,7 @@ class IndustryProductTest extends TestCase
         $dashResponse->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.total_advertisements', 2)
+            ->assertJsonPath('data.total_active_products', 2)
             ->assertJsonPath('data.total_likes', 60)
             ->assertJsonPath('data.total_views', 200);
 
@@ -368,6 +369,29 @@ class IndustryProductTest extends TestCase
         $listingsResponse->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonCount(2, 'data');
+
+        IndustryProduct::create([
+            'creator_id' => $this->creator->id,
+            'industry_id' => $this->industry->id,
+            'network_type' => 'psychology',
+            'industry_type' => 'biotechnology',
+            'section_id' => $this->section->id,
+            'category_id' => $this->subCategory2->id,
+            'product_name' => 'Dash Product Inactive',
+            'slug' => 'dash-prod-inactive',
+            'description' => 'Desc Inactive',
+            'product_url' => 'https://example.com',
+            'information_confirmed' => true,
+            'status' => 'inactive',
+            'views_count' => 10,
+            'likes_count' => 5,
+        ]);
+
+        $this->actingAs($this->creator, 'api')
+            ->getJson('/api/industry/advertisements/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.total_advertisements', 3)
+            ->assertJsonPath('data.total_active_products', 2);
     }
 
     public function test_product_survives_when_creator_deletes_account(): void
