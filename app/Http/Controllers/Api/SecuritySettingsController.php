@@ -38,13 +38,18 @@ class SecuritySettingsController extends Controller
         $suspiciousId = null;
         $canResolveFromHere = true;
 
+        $trustedCombinations = LoginActivity::where('user_id', $user->id)
+            ->where('status', 'Successful')
+            ->where('is_trusted', true)
+            ->select('device', 'location')
+            ->distinct()
+            ->get()
+            ->map(fn ($item) => $item->device.'|'.$item->location)
+            ->toArray();
+
         foreach ($unresolvedLogins as $login) {
-            $seenBefore = LoginActivity::where('user_id', $user->id)
-                ->where('status', 'Successful')
-                ->where('location', $login->location)
-                ->where('device', $login->device)
-                ->where('is_trusted', true)
-                ->exists();
+            $currentCombo = $login->device.'|'.$login->location;
+            $seenBefore = in_array($currentCombo, $trustedCombinations);
 
             if (! $seenBefore) {
                 $isSuspicious = true;
@@ -94,9 +99,14 @@ class SecuritySettingsController extends Controller
         if (! $user->two_factor_confirmed_at) {
             $backupCodesCountText = 'Enable 2FA to generate backup codes';
         } else {
-            $recoveryCodes = $user->two_factor_recovery_codes
-                ? json_decode(decrypt($user->two_factor_recovery_codes), true)
-                : [];
+            $recoveryCodes = [];
+            if ($user->two_factor_recovery_codes) {
+                try {
+                    $recoveryCodes = json_decode(decrypt($user->two_factor_recovery_codes), true) ?: [];
+                } catch (\Throwable $e) {
+                    $recoveryCodes = [];
+                }
+            }
 
             $remaining = count($recoveryCodes);
             $used = 10 - $remaining;
@@ -172,7 +182,7 @@ class SecuritySettingsController extends Controller
                     'location' => $login->location,
                     'ip_address' => $login->ip_address,
                     'is_mobile' => $isMobile,
-                    'login_at' => Carbon::parse($login->login_at)->toISOString(),
+                    'login_at' => $login->login_at ? Carbon::parse($login->login_at)->toISOString() : null,
                     'warning_message' => "Unrecognized login from {$login->location}",
                 ];
             }
@@ -381,6 +391,10 @@ class SecuritySettingsController extends Controller
 
     public function revokeSession($id): JsonResponse
     {
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
         $session = LoginActivity::where('id', $id)
             ->where('user_id', auth()->id())
             ->where('is_active', true)
@@ -388,6 +402,13 @@ class SecuritySettingsController extends Controller
 
         if (! $session) {
             return response()->json(['success' => false, 'message' => 'Session not found or already revoked.'], 404);
+        }
+
+        if ($session->token_id === $currentTokenId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot revoke your current active session.',
+            ], 403);
         }
 
         $session->update(['is_active' => false]);
@@ -405,7 +426,10 @@ class SecuritySettingsController extends Controller
             : session()->getId();
 
         LoginActivity::where('user_id', auth()->id())
-            ->where('token_id', '!=', $currentTokenId)
+            ->where(function ($query) use ($currentTokenId) {
+                $query->where('token_id', '!=', $currentTokenId)
+                    ->orWhereNull('token_id');
+            })
             ->where('is_active', true)
             ->update(['is_active' => false]);
 
@@ -511,25 +535,36 @@ class SecuritySettingsController extends Controller
     {
         $user = auth()->user();
 
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
         $activity = LoginActivity::where('id', $id)
             ->where('user_id', $user->id)
             ->first();
 
-        if ($activity) {
-            $activity->update([
-                'is_active' => false,
-                'is_resolved' => true,
-                'is_trusted' => false,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'The suspicious session has been blocked successfully. We recommend changing your password as soon as possible.',
-                'action_required' => 'change_password',
-            ]);
+        if (! $activity) {
+            return response()->json(['success' => false, 'message' => 'Activity not found.'], 404);
         }
 
-        return response()->json(['success' => false, 'message' => 'Activity not found.'], 404);
+        if ($activity->token_id === $currentTokenId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot secure or block your current active session.',
+            ], 403);
+        }
+
+        $activity->update([
+            'is_active' => false,
+            'is_resolved' => true,
+            'is_trusted' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'The suspicious session has been blocked successfully. We recommend changing your password as soon as possible.',
+            'action_required' => 'change_password',
+        ]);
     }
 
     public function resolveFromEmail(Request $request, $id)
