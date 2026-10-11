@@ -137,12 +137,12 @@ class IndustryAnalyticsController extends Controller
             ], 422);
         }
 
-        $rawFilter = $validated['filter'] ?? $validated['period'] ?? $validated['range'] ?? $request->query('filter', $request->query('period', $request->query('range', 'monthly')));
+        // Support 'filter', 'period', or 'range' parameter (default: 'weekly')
+        $rawFilter = $validated['filter'] ?? $validated['period'] ?? $validated['range'] ?? $request->query('filter', $request->query('period', $request->query('range', 'weekly')));
 
         $period = match (strtolower(trim((string) $rawFilter))) {
-            'yearly', 'year', 'this_year', 'this-year' => 'yearly',
-            'weekly', 'week' => 'weekly',
-            default => 'monthly',
+            'monthly', 'month' => 'monthly',
+            default => 'weekly',
         };
 
         $data = $this->analyticsService->getProfileInsightsAnalytics((int) $industryId, $period);

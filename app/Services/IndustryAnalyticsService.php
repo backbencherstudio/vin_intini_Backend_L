@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\IndustryJobPostStatus;
+use App\Models\Comment;
 use App\Models\Industry;
 use App\Models\IndustryFollow;
 use App\Models\IndustryJobApplication;
@@ -12,6 +13,8 @@ use App\Models\IndustryProduct;
 use App\Models\IndustryProductLike;
 use App\Models\IndustryProductView;
 use App\Models\IndustryProfileView;
+use App\Models\PostIndustry;
+use App\Models\PostLike;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -503,7 +506,7 @@ class IndustryAnalyticsService
         ];
     }
 
-    public function getProfileInsightsAnalytics(int $industryId, string $period = 'monthly'): array
+    public function getProfileInsightsAnalytics(int $industryId, string $period = 'weekly'): array
     {
         $now = Carbon::now();
         $startOfCurrentMonth = $now->copy()->startOfMonth();
@@ -513,7 +516,7 @@ class IndustryAnalyticsService
         $startOfLastMonth = $startOfCurrentMonth->copy()->subMonthNoOverflow();
         $endOfLastMonth = $startOfLastMonth->copy()->endOfMonth();
 
-        // 1. KPI Cards: New Followers, Total Followers, Profile Visit
+        // 1. KPI Cards: New Followers, Total Followers, Profile Visits
         $cards = $this->calculateProfileInsightsCards(
             $industryId,
             $startOfCurrentMonth,
@@ -522,7 +525,7 @@ class IndustryAnalyticsService
             $endOfLastMonth
         );
 
-        // 2. Trend Graph: Monthly & Yearly ranges
+        // 2. Trend Graph (Profile Insights Graph)
         $graph = $this->calculateProfileInsightsGraph($industryId, $period);
 
         return [
@@ -549,14 +552,30 @@ class IndustryAnalyticsService
 
         $newFollowersGrowth = $this->calculatePercentageChange($currentMonthNewFollowers, $lastMonthNewFollowers);
 
-        // 2. Total Followers (Lifetime count vs Snapshot at end of last month)
-        $totalFollowers = IndustryFollow::where('industry_id', $industryId)->count();
+        // 2. Post Engagement (Likes + Comments on industry posts: Current month vs Last month)
+        $postIds = $this->getIndustryPostIdsQuery($industryId);
 
-        $lastMonthTotalFollowers = IndustryFollow::where('industry_id', $industryId)
-            ->where('created_at', '<=', $endLast)
+        $currentMonthLikes = PostLike::whereIn('post_id', $postIds)
+            ->whereBetween('created_at', [$startCurrent, $endCurrent])
             ->count();
 
-        $totalFollowersGrowth = $this->calculatePercentageChange($totalFollowers, $lastMonthTotalFollowers);
+        $currentMonthComments = Comment::whereIn('post_id', $postIds)
+            ->whereBetween('created_at', [$startCurrent, $endCurrent])
+            ->count();
+
+        $currentMonthEngagement = $currentMonthLikes + $currentMonthComments;
+
+        $lastMonthLikes = PostLike::whereIn('post_id', $postIds)
+            ->whereBetween('created_at', [$startLast, $endLast])
+            ->count();
+
+        $lastMonthComments = Comment::whereIn('post_id', $postIds)
+            ->whereBetween('created_at', [$startLast, $endLast])
+            ->count();
+
+        $lastMonthEngagement = $lastMonthLikes + $lastMonthComments;
+
+        $engagementGrowth = $this->calculatePercentageChange($currentMonthEngagement, $lastMonthEngagement);
 
         // 3. Profile Visits (Lifetime total vs Growth this month vs last month)
         $storedViewsCount = (int) Industry::where('id', $industryId)->value('views_count');
@@ -580,19 +599,13 @@ class IndustryAnalyticsService
                 'growth' => sprintf('%s%s%% from last month', $newFollowersGrowth >= 0 ? '+' : '-', abs($newFollowersGrowth)),
                 'is_positive' => $newFollowersGrowth >= 0,
             ],
-            'total_followers' => [
-                'total' => (int) $totalFollowers,
-                'growth_percentage' => abs($totalFollowersGrowth),
-                'growth' => sprintf('%s%s%% from last month', $totalFollowersGrowth >= 0 ? '+' : '-', abs($totalFollowersGrowth)),
-                'is_positive' => $totalFollowersGrowth >= 0,
+            'post_engagement' => [
+                'total' => (int) $currentMonthEngagement,
+                'growth_percentage' => abs($engagementGrowth),
+                'growth' => sprintf('%s%s%% from last month', $engagementGrowth >= 0 ? '+' : '-', abs($engagementGrowth)),
+                'is_positive' => $engagementGrowth >= 0,
             ],
             'profile_visits' => [
-                'total' => (int) $totalProfileVisits,
-                'growth_percentage' => abs($visitsGrowth),
-                'growth' => sprintf('%s%s%% from last month', $visitsGrowth >= 0 ? '+' : '-', abs($visitsGrowth)),
-                'is_positive' => $visitsGrowth >= 0,
-            ],
-            'profile_visit' => [
                 'total' => (int) $totalProfileVisits,
                 'growth_percentage' => abs($visitsGrowth),
                 'growth' => sprintf('%s%s%% from last month', $visitsGrowth >= 0 ? '+' : '-', abs($visitsGrowth)),
@@ -617,100 +630,27 @@ class IndustryAnalyticsService
             default => "DATE_FORMAT(created_at, '%Y-%m')",
         };
 
-        $now = Carbon::now();
-        $currentYearNum = $now->year;
-        $currentMonthNum = $now->month;
+        $postIds = $this->getIndustryPostIdsQuery($industryId);
 
-        // --- 1. Monthly Chart (Current month: day 1 to day N) ---
-        $startOfMonth = $now->copy()->startOfMonth()->startOfDay();
-        $endOfMonth = $now->copy()->endOfMonth()->endOfDay();
-        $daysInMonth = $now->daysInMonth;
-
-        $dailyFollowersData = IndustryFollow::where('industry_id', $industryId)
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
-            ->groupBy('period_key')
-            ->pluck('count', 'period_key')
-            ->toArray();
-
-        $dailyVisitsData = IndustryProfileView::where('industry_id', $industryId)
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
-            ->groupBy('period_key')
-            ->pluck('count', 'period_key')
-            ->toArray();
-
-        $initialFollowersBeforeMonth = IndustryFollow::where('industry_id', $industryId)
-            ->where('created_at', '<', $startOfMonth)
-            ->count();
-
-        $monthlyLabels = [];
-        $monthlyNewFollowersSeries = [];
-        $monthlyTotalFollowersSeries = [];
-        $monthlyProfileVisitsSeries = [];
-
-        $runningFollowersMonth = $initialFollowersBeforeMonth;
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            $dayCarbon = Carbon::create($currentYearNum, $currentMonthNum, $d);
-            $key = $dayCarbon->format('Y-m-d');
-            $monthlyLabels[] = (string) $d;
-
-            $dayNew = (int) ($dailyFollowersData[$key] ?? 0);
-            $monthlyNewFollowersSeries[] = $dayNew;
-
-            $runningFollowersMonth += $dayNew;
-            $monthlyTotalFollowersSeries[] = $runningFollowersMonth;
-
-            $monthlyProfileVisitsSeries[] = (int) ($dailyVisitsData[$key] ?? 0);
-        }
-
-        // --- 2. Yearly Chart (Current year: Jan to Dec 12 months) ---
-        $startOfYear = $now->copy()->startOfYear()->startOfDay();
-        $endOfYear = $now->copy()->endOfYear()->endOfDay();
-
-        $yearlyFollowersData = IndustryFollow::where('industry_id', $industryId)
-            ->whereBetween('created_at', [$startOfYear, $endOfYear])
-            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
-            ->groupBy('period_key')
-            ->pluck('count', 'period_key')
-            ->toArray();
-
-        $yearlyVisitsData = IndustryProfileView::where('industry_id', $industryId)
-            ->whereBetween('created_at', [$startOfYear, $endOfYear])
-            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
-            ->groupBy('period_key')
-            ->pluck('count', 'period_key')
-            ->toArray();
-
-        $initialFollowersBeforeYear = IndustryFollow::where('industry_id', $industryId)
-            ->where('created_at', '<', $startOfYear)
-            ->count();
-
-        $yearlyLabels = [];
-        $yearlyNewFollowersSeries = [];
-        $yearlyTotalFollowersSeries = [];
-        $yearlyProfileVisitsSeries = [];
-
-        $runningFollowersYear = $initialFollowersBeforeYear;
-        for ($m = 1; $m <= 12; $m++) {
-            $monthCarbon = Carbon::create($currentYearNum, $m, 1);
-            $key = $monthCarbon->format('Y-m');
-            $yearlyLabels[] = $monthCarbon->format('M');
-
-            $monthNew = (int) ($yearlyFollowersData[$key] ?? 0);
-            $yearlyNewFollowersSeries[] = $monthNew;
-
-            $runningFollowersYear += $monthNew;
-            $yearlyTotalFollowersSeries[] = $runningFollowersYear;
-
-            $yearlyProfileVisitsSeries[] = (int) ($yearlyVisitsData[$key] ?? 0);
-        }
-
-        // --- 3. Weekly Chart (Monday to Sunday, 7 days) ---
-        $startOfWeek = $now->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
-        $endOfWeek = $now->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+        // 1. Weekly Chart (Monday to Sunday, 7 days)
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $endOfWeek = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
         $weeklyFollowersData = IndustryFollow::where('industry_id', $industryId)
+            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $weeklyLikesData = PostLike::whereIn('post_id', $postIds)
+            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $weeklyCommentsData = Comment::whereIn('post_id', $postIds)
             ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
             ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
             ->groupBy('period_key')
@@ -724,119 +664,105 @@ class IndustryAnalyticsService
             ->pluck('count', 'period_key')
             ->toArray();
 
-        $initialFollowersBeforeWeek = IndustryFollow::where('industry_id', $industryId)
-            ->where('created_at', '<', $startOfWeek)
-            ->count();
+        $weeklyChartData = [];
 
-        $weeklyLabels = [];
-        $weeklyNewFollowersSeries = [];
-        $weeklyTotalFollowersSeries = [];
-        $weeklyProfileVisitsSeries = [];
-
-        $runningFollowersWeek = $initialFollowersBeforeWeek;
         for ($d = 0; $d < 7; $d++) {
             $dayCarbon = $startOfWeek->copy()->addDays($d);
             $key = $dayCarbon->format('Y-m-d');
-            $weeklyLabels[] = $dayCarbon->format('D');
+            $dayLikes = (int) ($weeklyLikesData[$key] ?? 0);
+            $dayComments = (int) ($weeklyCommentsData[$key] ?? 0);
 
-            $dayNew = (int) ($weeklyFollowersData[$key] ?? 0);
-            $weeklyNewFollowersSeries[] = $dayNew;
-
-            $runningFollowersWeek += $dayNew;
-            $weeklyTotalFollowersSeries[] = $runningFollowersWeek;
-
-            $weeklyProfileVisitsSeries[] = (int) ($weeklyVisitsData[$key] ?? 0);
+            $weeklyChartData[] = [
+                'label' => $dayCarbon->format('D'), // Mon, Tue, Wed, Thu, Fri, Sat, Sun
+                'new_followers' => (int) ($weeklyFollowersData[$key] ?? 0),
+                'post_engagement' => $dayLikes + $dayComments,
+                'profile_visits' => (int) ($weeklyVisitsData[$key] ?? 0),
+            ];
         }
 
-        $allRanges = [
-            'monthly' => [
-                'labels' => $monthlyLabels,
-                'series' => [
-                    [
-                        'name' => 'New Followers',
-                        'key' => 'new_followers',
-                        'data' => $monthlyNewFollowersSeries,
-                    ],
-                    [
-                        'name' => 'Total Followers',
-                        'key' => 'total_followers',
-                        'data' => $monthlyTotalFollowersSeries,
-                    ],
-                    [
-                        'name' => 'Profile Visit',
-                        'key' => 'profile_visits',
-                        'data' => $monthlyProfileVisitsSeries,
-                    ],
-                ],
-                'total_new_followers' => array_sum($monthlyNewFollowersSeries),
-                'total_followers' => (int) $runningFollowersMonth,
-                'total_profile_visits' => array_sum($monthlyProfileVisitsSeries),
-            ],
-            'yearly' => [
-                'labels' => $yearlyLabels,
-                'series' => [
-                    [
-                        'name' => 'New Followers',
-                        'key' => 'new_followers',
-                        'data' => $yearlyNewFollowersSeries,
-                    ],
-                    [
-                        'name' => 'Total Followers',
-                        'key' => 'total_followers',
-                        'data' => $yearlyTotalFollowersSeries,
-                    ],
-                    [
-                        'name' => 'Profile Visit',
-                        'key' => 'profile_visits',
-                        'data' => $yearlyProfileVisitsSeries,
-                    ],
-                ],
-                'total_new_followers' => array_sum($yearlyNewFollowersSeries),
-                'total_followers' => (int) $runningFollowersYear,
-                'total_profile_visits' => array_sum($yearlyProfileVisitsSeries),
-            ],
-            'weekly' => [
-                'labels' => $weeklyLabels,
-                'series' => [
-                    [
-                        'name' => 'New Followers',
-                        'key' => 'new_followers',
-                        'data' => $weeklyNewFollowersSeries,
-                    ],
-                    [
-                        'name' => 'Total Followers',
-                        'key' => 'total_followers',
-                        'data' => $weeklyTotalFollowersSeries,
-                    ],
-                    [
-                        'name' => 'Profile Visit',
-                        'key' => 'profile_visits',
-                        'data' => $weeklyProfileVisitsSeries,
-                    ],
-                ],
-                'total_new_followers' => array_sum($weeklyNewFollowersSeries),
-                'total_followers' => (int) $runningFollowersWeek,
-                'total_profile_visits' => array_sum($weeklyProfileVisitsSeries),
-            ],
-        ];
+        // 2. Monthly Chart (Current year: Jan to Dec 12 months)
+        $startOfCurrentYear = Carbon::now()->startOfYear()->startOfDay();
+        $endOfCurrentYear = Carbon::now()->endOfYear()->endOfDay();
 
-        $activeRange = match (strtolower(trim($period))) {
-            'yearly', 'year', 'this_year', 'this-year' => 'yearly',
-            'weekly', 'week' => 'weekly',
-            default => 'monthly',
+        $monthlyFollowersData = IndustryFollow::where('industry_id', $industryId)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $monthlyLikesData = PostLike::whereIn('post_id', $postIds)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $monthlyCommentsData = Comment::whereIn('post_id', $postIds)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $monthlyVisitsData = IndustryProfileView::where('industry_id', $industryId)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $monthlyChartData = [];
+
+        $currentYearNum = Carbon::now()->year;
+        for ($m = 1; $m <= 12; $m++) {
+            $monthCarbon = Carbon::create($currentYearNum, $m, 1);
+            $key = $monthCarbon->format('Y-m');
+            $monthLikes = (int) ($monthlyLikesData[$key] ?? 0);
+            $monthComments = (int) ($monthlyCommentsData[$key] ?? 0);
+
+            $monthlyChartData[] = [
+                'label' => $monthCarbon->format('M'), // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+                'new_followers' => (int) ($monthlyFollowersData[$key] ?? 0),
+                'post_engagement' => $monthLikes + $monthComments,
+                'profile_visits' => (int) ($monthlyVisitsData[$key] ?? 0),
+            ];
+        }
+
+        // Active range selection (default: weekly)
+        $activeRange = match ($period) {
+            'monthly' => 'monthly',
+            default => 'weekly',
         };
-
-        $activeLabels = $allRanges[$activeRange]['labels'];
-        $activeSeries = $allRanges[$activeRange]['series'];
 
         return [
             'title' => 'Profile Insights',
             'subtitle' => 'Profile Insights Per Month',
             'period' => $activeRange,
             'active' => $activeRange,
-            'labels' => $activeLabels,
-            'series' => $activeSeries,
-            'ranges' => $allRanges,
+            'weekly' => $weeklyChartData,
+            'monthly' => $monthlyChartData,
         ];
+    }
+
+    /**
+     * Query builder for post IDs that strictly belong to the given industry,
+     * explicitly excluding group posts and regular personal user profile posts.
+     */
+    private function getIndustryPostIdsQuery(int $industryId)
+    {
+        return PostIndustry::where('industry_id', $industryId)
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('post_groups')
+                    ->whereColumn('post_groups.post_id', 'post_industry.post_id');
+            })
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('posts')
+                    ->whereColumn('posts.id', 'post_industry.post_id')
+                    ->where('posts.visibility', 'groups');
+            })
+            ->select('post_id');
     }
 }
