@@ -15,6 +15,9 @@ use App\Models\IndustryProductView;
 use App\Models\IndustryProfileView;
 use App\Models\PostIndustry;
 use App\Models\PostLike;
+use App\Models\Publication;
+use App\Models\PublicationLike;
+use App\Models\PublicationView;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -764,5 +767,217 @@ class IndustryAnalyticsService
                     ->where('posts.visibility', 'groups');
             })
             ->select('post_id');
+    }
+
+    public function getPublicationInsightsAnalytics(int $industryId, string $period = 'weekly'): array
+    {
+        $now = Carbon::now();
+        $startOfCurrentMonth = $now->copy()->startOfMonth();
+        $endOfCurrentMonth = $now->copy()->endOfMonth();
+
+        $startOfLastMonth = $startOfCurrentMonth->copy()->subMonthNoOverflow();
+        $endOfLastMonth = $startOfLastMonth->copy()->endOfMonth();
+
+        // 1. KPI Cards (Total Publications, Active Publications, Publications Views, Total Publications Like)
+        $cards = $this->calculatePublicationCards(
+            $industryId,
+            $startOfCurrentMonth,
+            $endOfCurrentMonth,
+            $startOfLastMonth,
+            $endOfLastMonth
+        );
+
+        // 2. Performance Graph (Views vs Likes across Weekly, Monthly)
+        $graph = $this->calculatePublicationPerformanceGraph($industryId, $period);
+
+        return [
+            'cards' => $cards,
+            'graph' => $graph,
+        ];
+    }
+
+    private function calculatePublicationCards(
+        int $industryId,
+        Carbon $startCurrent,
+        Carbon $endCurrent,
+        Carbon $startLast,
+        Carbon $endLast
+    ): array {
+        $publicationIds = Publication::where('industry_id', $industryId)->select('id');
+
+        // Total Publications
+        $totalPublications = Publication::where('industry_id', $industryId)->count();
+        $lastMonthPublications = Publication::where('industry_id', $industryId)
+            ->where('created_at', '<=', $endLast)
+            ->count();
+        $publicationsGrowth = $this->calculatePercentageChange($totalPublications, $lastMonthPublications);
+
+        // Active Publications (status = 'active')
+        $activePublications = Publication::where('industry_id', $industryId)
+            ->where('status', 'active')
+            ->count();
+        $lastMonthActive = Publication::where('industry_id', $industryId)
+            ->where('status', 'active')
+            ->where('created_at', '<=', $endLast)
+            ->count();
+        $activeGrowth = $this->calculatePercentageChange($activePublications, $lastMonthActive);
+
+        // Publications Views
+        $storedViewsCount = (int) Publication::where('industry_id', $industryId)->sum('views_count');
+        $logViewsCount = PublicationView::whereIn('publication_id', $publicationIds)->count();
+        $totalViews = max($storedViewsCount, $logViewsCount);
+
+        $currentMonthViews = PublicationView::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startCurrent, $endCurrent])
+            ->count();
+        $lastMonthViews = PublicationView::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startLast, $endLast])
+            ->count();
+        $viewsGrowth = $this->calculatePercentageChange($currentMonthViews, $lastMonthViews);
+
+        // Total Publications Like
+        $storedLikesCount = (int) Publication::where('industry_id', $industryId)->sum('likes_count');
+        $logLikesCount = PublicationLike::whereIn('publication_id', $publicationIds)->count();
+        $totalLikes = max($storedLikesCount, $logLikesCount);
+
+        $currentMonthLikes = PublicationLike::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startCurrent, $endCurrent])
+            ->count();
+        $lastMonthLikes = PublicationLike::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startLast, $endLast])
+            ->count();
+        $likesGrowth = $this->calculatePercentageChange($currentMonthLikes, $lastMonthLikes);
+
+        return [
+            'total_publications' => [
+                'total' => (int) $totalPublications,
+                'growth_percentage' => abs($publicationsGrowth),
+                'growth' => sprintf('%s%s%% from last month', $publicationsGrowth >= 0 ? '+' : '-', abs($publicationsGrowth)),
+                'is_positive' => $publicationsGrowth >= 0,
+            ],
+            'active_publications' => [
+                'total' => (int) $activePublications,
+                'growth_percentage' => abs($activeGrowth),
+                'growth' => sprintf('%s%s%% from last month', $activeGrowth >= 0 ? '+' : '-', abs($activeGrowth)),
+                'is_positive' => $activeGrowth >= 0,
+            ],
+            'publications_views' => [
+                'total' => (int) $totalViews,
+                'growth_percentage' => abs($viewsGrowth),
+                'growth' => sprintf('%s%s%% from last month', $viewsGrowth >= 0 ? '+' : '-', abs($viewsGrowth)),
+                'is_positive' => $viewsGrowth >= 0,
+            ],
+            'total_publications_like' => [
+                'total' => (int) $totalLikes,
+                'growth_percentage' => abs($likesGrowth),
+                'growth' => sprintf('%s%s%% from last month', $likesGrowth >= 0 ? '+' : '-', abs($likesGrowth)),
+                'is_positive' => $likesGrowth >= 0,
+            ],
+        ];
+    }
+
+    private function calculatePublicationPerformanceGraph(int $industryId, string $period): array
+    {
+        $driver = DB::connection()->getDriverName();
+
+        $dayDateFormat = match ($driver) {
+            'sqlite' => "strftime('%Y-%m-%d', created_at)",
+            'pgsql' => "to_char(created_at, 'YYYY-MM-DD')",
+            default => "DATE_FORMAT(created_at, '%Y-%m-%d')",
+        };
+
+        $publicationIds = Publication::where('industry_id', $industryId)->select('id');
+
+        // 1. Weekly Chart (Monday to Sunday, 7 days)
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $endOfWeek = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+
+        $weeklyViewsData = PublicationView::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $weeklyLikesData = PublicationLike::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $weeklyChartData = [];
+
+        for ($d = 0; $d < 7; $d++) {
+            $dayCarbon = $startOfWeek->copy()->addDays($d);
+            $key = $dayCarbon->format('Y-m-d');
+            $viewsCount = (int) ($weeklyViewsData[$key] ?? 0);
+            $likesCount = (int) ($weeklyLikesData[$key] ?? 0);
+
+            $weeklyChartData[] = [
+                'label' => $dayCarbon->format('D'), // Mon, Tue, Wed, Thu, Fri, Sat, Sun
+                'publications_views' => $viewsCount,
+                'publications_likes' => $likesCount,
+                'views' => $viewsCount,
+                'likes' => $likesCount,
+            ];
+        }
+
+        // 2. Monthly Chart (Current year: Jan to Dec 12 months)
+        $monthDateFormat = match ($driver) {
+            'sqlite' => "strftime('%Y-%m', created_at)",
+            'pgsql' => "to_char(created_at, 'YYYY-MM')",
+            default => "DATE_FORMAT(created_at, '%Y-%m')",
+        };
+
+        $startOfCurrentYear = Carbon::now()->startOfYear()->startOfDay();
+        $endOfCurrentYear = Carbon::now()->endOfYear()->endOfDay();
+
+        $monthlyViewsData = PublicationView::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $monthlyLikesData = PublicationLike::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $monthlyChartData = [];
+
+        $currentYearNum = Carbon::now()->year;
+        for ($m = 1; $m <= 12; $m++) {
+            $monthCarbon = Carbon::create($currentYearNum, $m, 1);
+            $key = $monthCarbon->format('Y-m');
+            $viewsCount = (int) ($monthlyViewsData[$key] ?? 0);
+            $likesCount = (int) ($monthlyLikesData[$key] ?? 0);
+
+            $monthlyChartData[] = [
+                'label' => $monthCarbon->format('M'), // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+                'publications_views' => $viewsCount,
+                'publications_likes' => $likesCount,
+                'views' => $viewsCount,
+                'likes' => $likesCount,
+            ];
+        }
+
+        // Active range selection (default: weekly)
+        $activeRange = match ($period) {
+            'monthly' => 'monthly',
+            default => 'weekly',
+        };
+
+        return [
+            'title' => 'Publications Insights',
+            'subtitle' => 'Publications Insights Per Month',
+            'period' => $activeRange,
+            'active' => $activeRange,
+            'weekly' => $weeklyChartData,
+            'monthly' => $monthlyChartData,
+        ];
     }
 }
