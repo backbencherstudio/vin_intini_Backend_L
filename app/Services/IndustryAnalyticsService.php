@@ -918,8 +918,6 @@ class IndustryAnalyticsService
                 'label' => $dayCarbon->format('D'), // Mon, Tue, Wed, Thu, Fri, Sat, Sun
                 'publications_views' => $viewsCount,
                 'publications_likes' => $likesCount,
-                'views' => $viewsCount,
-                'likes' => $likesCount,
             ];
         }
 
@@ -960,8 +958,6 @@ class IndustryAnalyticsService
                 'label' => $monthCarbon->format('M'), // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
                 'publications_views' => $viewsCount,
                 'publications_likes' => $likesCount,
-                'views' => $viewsCount,
-                'likes' => $likesCount,
             ];
         }
 

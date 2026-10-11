@@ -116,10 +116,10 @@ class IndustryPublicationsAnalyticsTest extends TestCase
                         'period',
                         'active',
                         'weekly' => [
-                            '*' => ['label', 'publications_views', 'publications_likes', 'views', 'likes'],
+                            '*' => ['label', 'publications_views', 'publications_likes'],
                         ],
                         'monthly' => [
-                            '*' => ['label', 'publications_views', 'publications_likes', 'views', 'likes'],
+                            '*' => ['label', 'publications_views', 'publications_likes'],
                         ],
                     ],
                 ],
