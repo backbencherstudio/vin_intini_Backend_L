@@ -24,6 +24,7 @@ class Industry extends Model
         'cover_image',
         'tagline',
         'description',
+        'views_count',
         'authorization_confirmed',
         'authorization_confirmed_at',
         'created_by',
@@ -84,5 +85,10 @@ class Industry extends Model
             User::class,
             'industry_follows'
         )->withTimestamps();
+    }
+
+    public function profileViews(): HasMany
+    {
+        return $this->hasMany(IndustryProfileView::class);
     }
 }
