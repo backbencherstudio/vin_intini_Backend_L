@@ -7,6 +7,7 @@ use App\Models\Comment;
 use App\Models\CommentLike;
 use App\Models\Industry;
 use App\Models\IndustryFollow;
+use App\Models\IndustryProfileView;
 use App\Models\Post;
 use App\Models\PostIndustry;
 use App\Models\PostLike;
@@ -162,6 +163,14 @@ class IndustryController extends Controller
             ->where('user_id', auth()->id())
             ->exists();
 
+        $viewerId = auth('api')->id() ?? auth()->id();
+        IndustryProfileView::create([
+            'industry_id' => $industry->id,
+            'user_id' => $viewerId,
+            'ip_address' => request()->ip(),
+        ]);
+        $industry->increment('views_count');
+
         return response()->json([
             'success' => true,
             'message' => 'Company retrieved successfully.',
@@ -178,6 +187,7 @@ class IndustryController extends Controller
                 'tagline' => $industry->tagline,
                 'description' => $industry->description,
                 'followers_count' => $followersCount,
+                'views_count' => (int) $industry->views_count,
                 'is_owner' => (int) $industry->created_by === (int) auth()->id(),
                 'is_following' => $isFollowing,
             ],
