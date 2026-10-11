@@ -173,20 +173,33 @@ class RecruiterDashboardTest extends TestCase
                     'recent_jobs' => [
                         '*' => ['id', 'job_id', 'job_title', 'status', 'badges'],
                     ],
-                    'applicants_chart' => [
+                    'graph' => [
+                        'title',
+                        'subtitle',
+                        'period',
                         'active',
-                        'active_range',
-                        'labels',
-                        'series',
-                        'ranges' => [
-                            'weekly' => ['labels', 'series', 'total'],
-                            'monthly' => ['labels', 'series', 'total'],
-                            'yearly' => ['labels', 'series', 'total'],
+                        'weekly' => [
+                            '*' => ['label', 'total_applicants', 'job_views', 'active_positions'],
+                        ],
+                        'monthly' => [
+                            '*' => ['label', 'total_applicants', 'job_views', 'active_positions'],
                         ],
                     ],
                     'activity_feed',
                     'recent_applicants' => [
-                        '*' => ['id', 'job_id', 'applicant_name', 'applicant_email', 'position', 'status', 'applied_on'],
+                        '*' => [
+                            'id',
+                            'application_id',
+                            'job_id',
+                            'job_title',
+                            'position',
+                            'applicant_name',
+                            'applicant_email',
+                            'applicant_avatar',
+                            'network',
+                            'status',
+                            'applied_on',
+                        ],
                     ],
                 ],
             ]);
@@ -203,20 +216,25 @@ class RecruiterDashboardTest extends TestCase
         // Check Recent Jobs (3 jobs created)
         $this->assertCount(3, $data['recent_jobs']);
 
-        // Check Applicants Chart
-        // Weekly: 7 days, Monthly: current month 1 to 31 date-wise, Yearly: Jan to Dec 12 months
-        $daysInCurrentMonth = (int) now()->daysInMonth;
-        $this->assertCount(7, $data['applicants_chart']['ranges']['weekly']['labels']);
-        $this->assertCount($daysInCurrentMonth, $data['applicants_chart']['ranges']['monthly']['labels']);
-        $this->assertCount(12, $data['applicants_chart']['ranges']['yearly']['labels']);
+        // Check Graph (weekly has 7 days, monthly has 12 months)
+        $this->assertArrayNotHasKey('applicants_chart', $data);
+        $this->assertArrayNotHasKey('chartData', $data['graph']);
+        $this->assertCount(7, $data['graph']['weekly']);
+        $this->assertCount(12, $data['graph']['monthly']);
 
         // Check default active range is weekly
-        $this->assertSame('weekly', $data['applicants_chart']['active']);
-        $this->assertSame('weekly', $data['applicants_chart']['active_range']);
-        $this->assertCount(7, $data['applicants_chart']['labels']);
+        $this->assertSame('weekly', $data['graph']['active']);
+        $this->assertSame('weekly', $data['graph']['period']);
+        $this->assertSame('Jobs Overview Graph', $data['graph']['title']);
+        $this->assertSame('Applications Over Time', $data['graph']['subtitle']);
 
         // Check Recent Applicants
         $this->assertCount(1, $data['recent_applicants']);
+        $this->assertSame('APP-999', $data['recent_applicants'][0]['application_id']);
+        $this->assertSame('#JOB-101', $data['recent_applicants'][0]['job_id']);
+        $this->assertSame('Clinical Psychologist', $data['recent_applicants'][0]['job_title']);
+        $this->assertArrayNotHasKey('job_post_id', $data['recent_applicants'][0]);
+        $this->assertArrayNotHasKey('title', $data['recent_applicants'][0]);
         $this->assertSame('Pristia Candra', $data['recent_applicants'][0]['applicant_name']);
         $this->assertSame('shortlisted', $data['recent_applicants'][0]['status']);
     }
@@ -225,19 +243,17 @@ class RecruiterDashboardTest extends TestCase
     {
         [$user, $industry] = $this->createTestUserWithIndustry();
 
-        // 1. Yearly range
-        $yearlyResponse = $this->actingAs($user, 'api')->getJson('/api/industry/recruiter-dashboard?chart_range=yearly');
-        $yearlyResponse->assertOk();
-        $yearlyData = $yearlyResponse->json('data');
-        $this->assertSame('yearly', $yearlyData['applicants_chart']['active_range']);
-        $this->assertCount(12, $yearlyData['applicants_chart']['labels']);
-
-        // 2. Monthly range
-        $daysInCurrentMonth = (int) now()->daysInMonth;
-        $monthlyResponse = $this->actingAs($user, 'api')->getJson('/api/industry/recruiter-dashboard?chart_range=monthly');
+        // 1. Monthly range with ?period=monthly
+        $monthlyResponse = $this->actingAs($user, 'api')->getJson('/api/industry/recruiter-dashboard?period=monthly');
         $monthlyResponse->assertOk();
         $monthlyData = $monthlyResponse->json('data');
-        $this->assertSame('monthly', $monthlyData['applicants_chart']['active_range']);
-        $this->assertCount($daysInCurrentMonth, $monthlyData['applicants_chart']['labels']);
+        $this->assertSame('monthly', $monthlyData['graph']['active']);
+        $this->assertSame('monthly', $monthlyData['graph']['period']);
+
+        // 2. Monthly range with ?chart_range=monthly
+        $chartRangeResponse = $this->actingAs($user, 'api')->getJson('/api/industry/recruiter-dashboard?chart_range=monthly');
+        $chartRangeResponse->assertOk();
+        $chartRangeData = $chartRangeResponse->json('data');
+        $this->assertSame('monthly', $chartRangeData['graph']['active']);
     }
 }
