@@ -10,6 +10,7 @@ use App\Http\Resources\IndustryJobPostResource;
 use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
 use App\Models\IndustryJobPostLike;
+use App\Models\IndustryJobPostSave;
 use App\Models\IndustryJobPostView;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -659,6 +660,17 @@ class IndustryJobPostController extends Controller
         }
 
         $limit = min(max($request->integer('limit', 10), 1), 100);
+        $search = trim((string) $request->query('search', ''));
+        $jobId = trim((string) $request->query('job_id', ''));
+        $rawStatus = $request->query('status');
+        $networkType = $request->query('network_type');
+        $workMode = $request->query('work_mode');
+        $employmentOffering = $request->query('employment_offering');
+        $employmentType = $request->query('employment_type');
+        $category = $request->query('category');
+        $subCategory = $request->query('sub_category');
+        $stateId = $request->filled('state_id') ? $request->integer('state_id') : null;
+        $cityId = $request->filled('city_id') ? $request->integer('city_id') : null;
 
         // JIT auto-sync: Automatically update past-deadline published jobs to expired in DB
         IndustryJobPost::where('status', IndustryJobPostStatus::PUBLISHED->value)
@@ -666,21 +678,90 @@ class IndustryJobPostController extends Controller
             ->whereDate('announcement_end_date', '<', today())
             ->update(['status' => IndustryJobPostStatus::EXPIRED]);
 
-        $paginated = IndustryJobPost::query()
-            ->join('industry_job_post_saves', 'industry_job_posts.id', '=', 'industry_job_post_saves.industry_job_post_id')
+        $query = IndustryJobPostSave::query()
             ->where('industry_job_post_saves.user_id', $currentUser->id)
-            ->select('industry_job_posts.*')
-            ->with([
-                'industry',
-                'state:id,name',
-                'city:id,name',
-                'creator:id,first_name,last_name,username,profile_image',
-            ])
-            ->withCount('applications')
-            ->orderByDesc('industry_job_post_saves.created_at')
-            ->paginate($limit);
+            ->join('industry_job_posts', 'industry_job_post_saves.industry_job_post_id', '=', 'industry_job_posts.id')
+            ->select('industry_job_post_saves.*');
 
-        $jobIds = $paginated->pluck('id')->all();
+        // 1. Specific Job ID Filter
+        if ($jobId !== '') {
+            $query->where('industry_job_posts.job_id', $jobId);
+        }
+
+        // 2. Global Text Search (job_title, job_id, position, or company name)
+        if ($search !== '') {
+            $query->where(function (Builder $q) use ($search) {
+                $q->where('industry_job_posts.job_title', 'LIKE', "%{$search}%")
+                    ->orWhere('industry_job_posts.job_id', 'LIKE', "%{$search}%")
+                    ->orWhere('industry_job_posts.position', 'LIKE', "%{$search}%")
+                    ->orWhereHas('jobPost.industry', function ($sub) use ($search) {
+                        $sub->where('name', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        // 3. Status Filter
+        if (! empty($rawStatus)) {
+            $statuses = is_array($rawStatus)
+                ? array_filter(array_map('trim', $rawStatus))
+                : array_filter(array_map('trim', explode(',', (string) $rawStatus)));
+
+            if (! empty($statuses)) {
+                $query->whereIn('industry_job_posts.status', $statuses);
+            }
+        }
+
+        // 4. Attribute Filters
+        if (! empty($networkType)) {
+            $query->where('industry_job_posts.network_type', $networkType);
+        }
+        if (! empty($workMode)) {
+            $query->where('industry_job_posts.work_mode', $workMode);
+        }
+        if (! empty($employmentOffering)) {
+            $query->where('industry_job_posts.employment_offering', $employmentOffering);
+        }
+        if (! empty($employmentType)) {
+            $query->where('industry_job_posts.employment_type', $employmentType);
+        }
+        if (! empty($category)) {
+            is_array($category)
+                ? $query->whereIn('industry_job_posts.category', $category)
+                : $query->where('industry_job_posts.category', $category);
+        }
+        if (! empty($subCategory)) {
+            is_array($subCategory)
+                ? $query->whereIn('industry_job_posts.sub_category', $subCategory)
+                : $query->where('industry_job_posts.sub_category', $subCategory);
+        }
+
+        // 5. Location Filters
+        if (! empty($stateId)) {
+            $query->where('industry_job_posts.state_id', $stateId);
+        }
+        if (! empty($cityId)) {
+            $query->where('industry_job_posts.city_id', $cityId);
+        }
+
+        // Total count for stats/metadata
+        $totalJobsCount = (clone $query)->count();
+
+        $paginated = $query
+            ->with([
+                'jobPost' => function ($q) {
+                    $q->with([
+                        'industry',
+                        'state:id,name',
+                        'city:id,name',
+                        'creator:id,first_name,last_name,username,profile_image',
+                    ])->withCount('applications');
+                },
+            ])
+            ->orderByDesc('industry_job_post_saves.id')
+            ->cursorPaginate($limit);
+
+        $jobs = $paginated->getCollection()->map(fn ($save) => $save->jobPost)->filter()->values();
+        $jobIds = $jobs->pluck('id')->all();
 
         $savedJobIds = ! empty($jobIds) ? array_fill_keys($jobIds, true) : [];
 
@@ -699,7 +780,7 @@ class IndustryJobPostController extends Controller
                 ->all()
             : [];
 
-        $formattedData = $paginated->getCollection()->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $currentUser) {
+        $formattedData = $jobs->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $currentUser) {
             return (new IndustryJobPostResource($job, $likedJobIds, $savedJobIds, $appliedJobs, $currentUser))->resolve();
         })->values();
 
@@ -708,10 +789,14 @@ class IndustryJobPostController extends Controller
             'message' => 'Saved jobs retrieved successfully.',
             'status' => 'success',
             'data' => $formattedData,
-            'total' => $paginated->total(),
-            'limit' => $paginated->perPage(),
-            'current_page' => $paginated->currentPage(),
-            'total_page' => $paginated->lastPage(),
+            'total' => $totalJobsCount,
+            'pagination' => [
+                'limit' => $paginated->perPage(),
+                'per_page' => $paginated->perPage(),
+                'next_cursor' => $paginated->nextCursor()?->encode(),
+                'prev_cursor' => $paginated->previousCursor()?->encode(),
+                'has_more_pages' => $paginated->hasMorePages(),
+            ],
         ]);
     }
 
