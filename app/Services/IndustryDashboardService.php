@@ -50,8 +50,8 @@ class IndustryDashboardService
         // 5. Activity Feed (Latest 3 notifications)
         $activityFeed = $this->getActivityFeed($user, $industryId);
 
-        // 6. Applicant Overview (Latest 5 candidates)
-        $recentApplicants = $this->getRecentApplicants($jobPostIds);
+        // 6. Applicant Overview (Latest 10 candidates)
+        $recentApplicants = $this->getRecentApplicants($jobPostIds, 10);
 
         return [
             'cards' => $cards,
@@ -316,9 +316,9 @@ class IndustryDashboardService
     }
 
     /**
-     * Fetch recent candidate applicants (limit 5).
+     * Fetch recent candidate applicants (limit 10).
      */
-    private function getRecentApplicants($jobPostIds): array
+    private function getRecentApplicants($jobPostIds, int $limit = 10): array
     {
         return IndustryJobApplication::whereIn('job_id', $jobPostIds)
             ->with([
@@ -326,7 +326,7 @@ class IndustryDashboardService
                 'job:id,job_id,job_title,position,network_type',
             ])
             ->latest('id')
-            ->take(5)
+            ->take($limit)
             ->get()
             ->map(function (IndustryJobApplication $app) {
                 $applicant = $app->applicant;
@@ -345,6 +345,7 @@ class IndustryDashboardService
                 return [
                     'id' => $app->id,
                     'application_id' => (string) ($app->application_id ?: $app->id),
+                    'job_post_id' => $job?->id,
                     'job_id' => $formattedJobId,
                     'job_title' => $job?->job_title,
                     'position' => $job?->position ?? $job?->job_title ?? 'N/A',

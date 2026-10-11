@@ -190,6 +190,7 @@ class RecruiterDashboardTest extends TestCase
                         '*' => [
                             'id',
                             'application_id',
+                            'job_post_id',
                             'job_id',
                             'job_title',
                             'position',
@@ -231,9 +232,9 @@ class RecruiterDashboardTest extends TestCase
         // Check Recent Applicants
         $this->assertCount(1, $data['recent_applicants']);
         $this->assertSame('APP-999', $data['recent_applicants'][0]['application_id']);
+        $this->assertSame($publishedJob->id, $data['recent_applicants'][0]['job_post_id']);
         $this->assertSame('#JOB-101', $data['recent_applicants'][0]['job_id']);
         $this->assertSame('Clinical Psychologist', $data['recent_applicants'][0]['job_title']);
-        $this->assertArrayNotHasKey('job_post_id', $data['recent_applicants'][0]);
         $this->assertArrayNotHasKey('title', $data['recent_applicants'][0]);
         $this->assertSame('Pristia Candra', $data['recent_applicants'][0]['applicant_name']);
         $this->assertSame('shortlisted', $data['recent_applicants'][0]['status']);
