@@ -163,6 +163,7 @@ Route::prefix('industry/analytics')->group(function () {
     Route::get('/job-overviews', [IndustryAnalyticsController::class, 'jobOverview']);
     Route::get('/advertisements', [IndustryAnalyticsController::class, 'advertisements']);
     Route::get('/profile-insights', [IndustryAnalyticsController::class, 'profileInsights']);
+    Route::get('/publications-insights', [IndustryAnalyticsController::class, 'publicationsInsights']);
 });
 
 // Pro Industry Products & Advertisements

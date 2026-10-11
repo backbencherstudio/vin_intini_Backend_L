@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\Comment;
+use App\Models\Group;
 use App\Models\Industry;
 use App\Models\IndustryFollow;
 use App\Models\IndustryProfileView;
+use App\Models\Post;
+use App\Models\PostIndustry;
+use App\Models\PostLike;
 use App\Models\User;
 use App\Models\UserProfile;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
@@ -92,7 +96,7 @@ class IndustryProfileInsightsAnalyticsTest extends TestCase
             ->assertJsonPath('message', 'Your account is not associated with any company profile. Please create a company profile first.');
     }
 
-    public function test_user_with_industry_gets_200_with_default_monthly_analytics(): void
+    public function test_user_with_industry_gets_200_with_default_weekly_analytics(): void
     {
         [$user, $industry] = $this->createTestUserWithIndustry();
 
@@ -107,7 +111,7 @@ class IndustryProfileInsightsAnalyticsTest extends TestCase
                 'data' => [
                     'cards' => [
                         'new_followers' => ['total', 'growth_percentage', 'growth', 'is_positive'],
-                        'total_followers' => ['total', 'growth_percentage', 'growth', 'is_positive'],
+                        'post_engagement' => ['total', 'growth_percentage', 'growth', 'is_positive'],
                         'profile_visits' => ['total', 'growth_percentage', 'growth', 'is_positive'],
                     ],
                     'graph' => [
@@ -115,13 +119,11 @@ class IndustryProfileInsightsAnalyticsTest extends TestCase
                         'subtitle',
                         'period',
                         'active',
-                        'labels',
-                        'series' => [
-                            '*' => ['name', 'key', 'data'],
+                        'weekly' => [
+                            '*' => ['label', 'new_followers', 'post_engagement', 'profile_visits'],
                         ],
-                        'ranges' => [
-                            'monthly' => ['labels', 'series', 'total_new_followers', 'total_followers', 'total_profile_visits'],
-                            'yearly' => ['labels', 'series', 'total_new_followers', 'total_followers', 'total_profile_visits'],
+                        'monthly' => [
+                            '*' => ['label', 'new_followers', 'post_engagement', 'profile_visits'],
                         ],
                     ],
                 ],
@@ -129,57 +131,78 @@ class IndustryProfileInsightsAnalyticsTest extends TestCase
 
         $data = $response->json('data');
         $this->assertSame('Profile Insights', $data['graph']['title']);
-        $this->assertSame('monthly', $data['graph']['active']);
-        $this->assertCount(Carbon::now()->daysInMonth, $data['graph']['labels']);
-        $this->assertCount(3, $data['graph']['series']);
-        $this->assertSame('new_followers', $data['graph']['series'][0]['key']);
-        $this->assertSame('total_followers', $data['graph']['series'][1]['key']);
-        $this->assertSame('profile_visits', $data['graph']['series'][2]['key']);
+        $this->assertSame('weekly', $data['graph']['active']);
+        $this->assertSame('weekly', $data['graph']['period']);
+
+        // Assert weekly items (7 days)
+        $this->assertCount(7, $data['graph']['weekly']);
+        $this->assertArrayHasKey('label', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('new_followers', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('post_engagement', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('profile_visits', $data['graph']['weekly'][0]);
+
+        // Assert monthly items (12 months)
+        $this->assertCount(12, $data['graph']['monthly']);
+        $this->assertArrayHasKey('label', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('new_followers', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('post_engagement', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('profile_visits', $data['graph']['monthly'][0]);
     }
 
-    public function test_user_can_filter_graph_by_yearly(): void
+    public function test_user_can_filter_graph_by_monthly(): void
     {
         [$user, $industry] = $this->createTestUserWithIndustry();
 
-        $response = $this->actingAs($user, 'api')->getJson('/api/industry/analytics/profile-insights?filter=yearly');
+        $response = $this->actingAs($user, 'api')->getJson('/api/industry/analytics/profile-insights?filter=monthly');
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.graph.active', 'yearly');
+            ->assertJsonPath('data.graph.active', 'monthly');
 
         $data = $response->json('data');
-        $this->assertSame('yearly', $data['graph']['period']);
-        $this->assertCount(12, $data['graph']['labels']);
+        $this->assertSame('monthly', $data['graph']['period']);
+        $this->assertCount(12, $data['graph']['monthly']);
         $this->assertEquals(
             ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            $data['graph']['labels']
+            array_column($data['graph']['monthly'], 'label')
         );
     }
 
-    public function test_followers_and_visits_are_counted_in_cards_and_graph(): void
+    public function test_followers_engagement_and_visits_are_counted_in_cards_and_graph(): void
     {
         [$user, $industry] = $this->createTestUserWithIndustry();
 
         $followerUser1 = User::factory()->create();
-        $followerUser2 = User::factory()->create();
 
-        // Follower added this month
-        $follow1 = IndustryFollow::create([
+        // 1. Follower added this month
+        IndustryFollow::create([
             'industry_id' => $industry->id,
             'user_id' => $followerUser1->id,
         ]);
 
-        // Follower added last year
-        $follow2 = IndustryFollow::create([
-            'industry_id' => $industry->id,
-            'user_id' => $followerUser2->id,
+        // 2. Company Post with a Like and a Comment this month
+        $post = Post::create([
+            'user_id' => $user->id,
+            'description' => 'Test industry post',
+            'visibility' => 'public',
         ]);
-        DB::table('industry_follows')->where('id', $follow2->id)->update([
-            'created_at' => now()->subYear(),
-            'updated_at' => now()->subYear(),
+        PostIndustry::create([
+            'post_id' => $post->id,
+            'industry_id' => $industry->id,
         ]);
 
-        // Profile visit today
+        PostLike::create([
+            'post_id' => $post->id,
+            'user_id' => $followerUser1->id,
+        ]);
+
+        Comment::create([
+            'post_id' => $post->id,
+            'user_id' => $followerUser1->id,
+            'comment' => 'Awesome update!',
+        ]);
+
+        // 3. Profile visit today
         IndustryProfileView::create([
             'industry_id' => $industry->id,
             'user_id' => $followerUser1->id,
@@ -193,71 +216,70 @@ class IndustryProfileInsightsAnalyticsTest extends TestCase
         $response->assertOk();
         $data = $response->json('data');
 
-        // Cards check
+        // Cards check: 1 new follower, 2 post engagements (1 like + 1 comment), 1 profile visit
         $this->assertSame(1, $data['cards']['new_followers']['total']);
-        $this->assertSame(2, $data['cards']['total_followers']['total']);
+        $this->assertSame(2, $data['cards']['post_engagement']['total']);
         $this->assertSame(1, $data['cards']['profile_visits']['total']);
 
         // Monthly graph check
-        $totalMonthlyNewFollowers = array_sum($data['graph']['series'][0]['data']);
-        $totalMonthlyVisits = array_sum($data['graph']['series'][2]['data']);
+        $totalMonthlyNewFollowers = array_sum(array_column($data['graph']['monthly'], 'new_followers'));
+        $totalMonthlyEngagement = array_sum(array_column($data['graph']['monthly'], 'post_engagement'));
+        $totalMonthlyVisits = array_sum(array_column($data['graph']['monthly'], 'profile_visits'));
         $this->assertSame(1, $totalMonthlyNewFollowers);
+        $this->assertSame(2, $totalMonthlyEngagement);
         $this->assertSame(1, $totalMonthlyVisits);
-
-        // Yearly graph check via ranges
-        $yearlySeries = $data['graph']['ranges']['yearly']['series'];
-        $totalYearlyNewFollowers = array_sum($yearlySeries[0]['data']);
-        $totalYearlyVisits = array_sum($yearlySeries[2]['data']);
-        $this->assertSame(1, $totalYearlyNewFollowers);
-        $this->assertSame(1, $totalYearlyVisits);
     }
 
-    public function test_cards_always_show_lifetime_and_month_data_regardless_of_graph_filter(): void
+    public function test_cards_always_show_month_data_regardless_of_graph_filter(): void
     {
         [$user, $industry] = $this->createTestUserWithIndustry();
 
         $follower1 = User::factory()->create();
-        $follower2 = User::factory()->create();
 
-        $follow1 = IndustryFollow::create([
+        IndustryFollow::create([
             'industry_id' => $industry->id,
             'user_id' => $follower1->id,
         ]);
-        DB::table('industry_follows')->where('id', $follow1->id)->update([
-            'created_at' => now()->subYears(2),
-            'updated_at' => now()->subYears(2),
-        ]);
 
-        $follow2 = IndustryFollow::create([
+        $post = Post::create([
+            'user_id' => $user->id,
+            'description' => 'Test post',
+            'visibility' => 'public',
+        ]);
+        PostIndustry::create([
+            'post_id' => $post->id,
             'industry_id' => $industry->id,
-            'user_id' => $follower2->id,
+        ]);
+        PostLike::create([
+            'post_id' => $post->id,
+            'user_id' => $follower1->id,
         ]);
 
         $industry->update(['views_count' => 150]);
+
+        $resWeekly = $this->actingAs($user, 'api')->getJson('/api/industry/analytics/profile-insights?filter=weekly');
+        $resWeekly->assertOk();
+        $weeklyData = $resWeekly->json('data');
 
         $resMonthly = $this->actingAs($user, 'api')->getJson('/api/industry/analytics/profile-insights?filter=monthly');
         $resMonthly->assertOk();
         $monthlyData = $resMonthly->json('data');
 
-        $resYearly = $this->actingAs($user, 'api')->getJson('/api/industry/analytics/profile-insights?filter=yearly');
-        $resYearly->assertOk();
-        $yearlyData = $resYearly->json('data');
-
-        // Total followers: 2 across both
-        $this->assertSame(2, $monthlyData['cards']['total_followers']['total']);
-        $this->assertSame(2, $yearlyData['cards']['total_followers']['total']);
+        // Post engagement: 1 across both
+        $this->assertSame(1, $weeklyData['cards']['post_engagement']['total']);
+        $this->assertSame(1, $monthlyData['cards']['post_engagement']['total']);
 
         // New followers this month: 1 across both
+        $this->assertSame(1, $weeklyData['cards']['new_followers']['total']);
         $this->assertSame(1, $monthlyData['cards']['new_followers']['total']);
-        $this->assertSame(1, $yearlyData['cards']['new_followers']['total']);
 
         // Profile visits: 150 across both
+        $this->assertSame(150, $weeklyData['cards']['profile_visits']['total']);
         $this->assertSame(150, $monthlyData['cards']['profile_visits']['total']);
-        $this->assertSame(150, $yearlyData['cards']['profile_visits']['total']);
 
         // Graph periods differ
+        $this->assertSame('weekly', $weeklyData['graph']['active']);
         $this->assertSame('monthly', $monthlyData['graph']['active']);
-        $this->assertSame('yearly', $yearlyData['graph']['active']);
     }
 
     public function test_admin_can_view_specific_industry_analytics(): void
@@ -285,5 +307,94 @@ class IndustryProfileInsightsAnalyticsTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'Profile insights analytics retrieved successfully.');
+    }
+
+    public function test_group_posts_and_profile_posts_engagement_are_not_counted(): void
+    {
+        [$user, $industry] = $this->createTestUserWithIndustry();
+        $otherUser = User::factory()->create();
+
+        // 1. Valid Industry Post (published on this industry page)
+        $industryPost = Post::create([
+            'user_id' => $user->id,
+            'description' => 'Valid company post',
+            'visibility' => 'public',
+        ]);
+        PostIndustry::create([
+            'post_id' => $industryPost->id,
+            'industry_id' => $industry->id,
+        ]);
+        // 1 like and 1 comment on this industry post
+        PostLike::create(['post_id' => $industryPost->id, 'user_id' => $otherUser->id]);
+        Comment::create(['post_id' => $industryPost->id, 'user_id' => $otherUser->id, 'comment' => 'Great product!']);
+
+        // 2. Personal Profile Post (user post without any industry link)
+        $profilePost = Post::create([
+            'user_id' => $user->id,
+            'description' => 'Personal profile status',
+            'visibility' => 'public',
+        ]);
+        // 2 likes and 1 comment on this profile post -> MUST NOT BE COUNTED
+        PostLike::create(['post_id' => $profilePost->id, 'user_id' => $otherUser->id]);
+        PostLike::create(['post_id' => $profilePost->id, 'user_id' => $user->id]);
+        Comment::create(['post_id' => $profilePost->id, 'user_id' => $otherUser->id, 'comment' => 'Nice picture']);
+
+        // 3. Group Post (post associated with a group, visibility groups)
+        $group = Group::create([
+            'name' => 'Test Community Group',
+            'slug' => 'test-community-group-'.uniqid(),
+            'description' => 'Test community group description',
+            'creator_id' => $user->id,
+            'type' => 'public',
+            'discoverability' => 'listed',
+        ]);
+        $groupPost = Post::create([
+            'user_id' => $user->id,
+            'description' => 'Discussion in group',
+            'visibility' => 'groups',
+        ]);
+        DB::table('post_groups')->insert([
+            'post_id' => $groupPost->id,
+            'group_id' => $group->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        // 1 like and 1 comment on group post -> MUST NOT BE COUNTED
+        PostLike::create(['post_id' => $groupPost->id, 'user_id' => $otherUser->id]);
+        Comment::create(['post_id' => $groupPost->id, 'user_id' => $otherUser->id, 'comment' => 'Group comment']);
+
+        // 4. Another Company's Industry Post
+        $otherIndustry = Industry::create([
+            'name' => 'Other Corp',
+            'slug' => 'other-corp-'.uniqid(),
+            'created_by' => $otherUser->id,
+        ]);
+        $otherIndustryPost = Post::create([
+            'user_id' => $otherUser->id,
+            'description' => 'Other company post',
+            'visibility' => 'public',
+        ]);
+        PostIndustry::create([
+            'post_id' => $otherIndustryPost->id,
+            'industry_id' => $otherIndustry->id,
+        ]);
+        PostLike::create(['post_id' => $otherIndustryPost->id, 'user_id' => $user->id]);
+        Comment::create(['post_id' => $otherIndustryPost->id, 'user_id' => $user->id, 'comment' => 'Other company comment']);
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/industry/analytics/profile-insights');
+
+        $response->assertOk();
+        $data = $response->json('data');
+
+        // Total post engagement in cards should be exactly 2 (1 like + 1 comment from the industry post ONLY)
+        $this->assertSame(2, $data['cards']['post_engagement']['total']);
+
+        // Total weekly graph engagement should also be exactly 2
+        $totalWeeklyEngagement = array_sum(array_column($data['graph']['weekly'], 'post_engagement'));
+        $this->assertSame(2, $totalWeeklyEngagement);
+
+        // Total monthly graph engagement should also be exactly 2
+        $totalMonthlyEngagement = array_sum(array_column($data['graph']['monthly'], 'post_engagement'));
+        $this->assertSame(2, $totalMonthlyEngagement);
     }
 }
