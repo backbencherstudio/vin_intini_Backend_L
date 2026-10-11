@@ -155,13 +155,11 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
                         'subtitle',
                         'period',
                         'active',
-                        'labels',
-                        'series' => [
-                            '*' => ['name', 'key', 'data'],
+                        'weekly' => [
+                            '*' => ['label', 'views', 'likes'],
                         ],
-                        'ranges' => [
-                            'weekly' => ['labels', 'series', 'total_views', 'total_likes'],
-                            'monthly' => ['labels', 'series', 'total_views', 'total_likes'],
+                        'monthly' => [
+                            '*' => ['label', 'views', 'likes'],
                         ],
                     ],
                 ],
@@ -184,12 +182,16 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
         $this->assertSame(800, $data['top_performing_products'][1]['views_count']);
         $this->assertSame(120, $data['top_performing_products'][1]['likes_count']);
 
-        // Check default weekly graph labels (7 days)
+        // Check default weekly graph (7 days)
         $this->assertSame('weekly', $data['graph']['active']);
-        $this->assertCount(7, $data['graph']['labels']);
-        $this->assertCount(2, $data['graph']['series']);
-        $this->assertSame('Views', $data['graph']['series'][0]['name']);
-        $this->assertSame('Like', $data['graph']['series'][1]['name']);
+        $this->assertCount(7, $data['graph']['weekly']);
+        $this->assertArrayHasKey('label', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('views', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('likes', $data['graph']['weekly'][0]);
+        $this->assertCount(12, $data['graph']['monthly']);
+        $this->assertArrayHasKey('label', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('views', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('likes', $data['graph']['monthly'][0]);
     }
 
     public function test_user_can_filter_graph_by_monthly(): void
@@ -203,9 +205,11 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
         $this->assertArrayNotHasKey('period', $data);
         $this->assertSame('monthly', $data['graph']['period']);
         $this->assertSame('monthly', $data['graph']['active']);
-        $this->assertCount(12, $data['graph']['labels']); // 12 months of current year (Jan to Dec)
-        $this->assertCount(12, $data['graph']['series'][0]['data']);
-        $this->assertCount(12, $data['graph']['series'][1]['data']);
+        $this->assertCount(12, $data['graph']['monthly']);
+        $this->assertArrayHasKey('label', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('views', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('likes', $data['graph']['monthly'][0]);
+        $this->assertCount(7, $data['graph']['weekly']);
     }
 
     public function test_logged_views_and_likes_are_counted_in_graph(): void
@@ -248,8 +252,8 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
         $this->assertSame(1, $data['cards']['total_likes']['total']);
 
         // In weekly graph, sum of views and likes should be 1
-        $totalWeeklyViews = array_sum($data['graph']['series'][0]['data']);
-        $totalWeeklyLikes = array_sum($data['graph']['series'][1]['data']);
+        $totalWeeklyViews = array_sum(array_column($data['graph']['weekly'], 'views'));
+        $totalWeeklyLikes = array_sum(array_column($data['graph']['weekly'], 'likes'));
         $this->assertSame(1, $totalWeeklyViews);
         $this->assertSame(1, $totalWeeklyLikes);
     }
@@ -319,9 +323,9 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
 
         // Meanwhile, only the graph adapts to the filter:
         $this->assertSame('weekly', $weeklyData['graph']['active']);
-        $this->assertCount(7, $weeklyData['graph']['labels']);
+        $this->assertCount(7, $weeklyData['graph']['weekly']);
 
         $this->assertSame('monthly', $monthlyData['graph']['active']);
-        $this->assertCount(12, $monthlyData['graph']['labels']);
+        $this->assertCount(12, $monthlyData['graph']['monthly']);
     }
 }

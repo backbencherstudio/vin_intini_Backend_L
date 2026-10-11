@@ -129,13 +129,11 @@ class IndustryJobOverviewAnalyticsTest extends TestCase
                         'subtitle',
                         'period',
                         'active',
-                        'labels',
-                        'series' => [
-                            '*' => ['name', 'key', 'data'],
+                        'weekly' => [
+                            '*' => ['label', 'total_applicants', 'job_views', 'active_positions'],
                         ],
-                        'ranges' => [
-                            'weekly' => ['labels', 'series', 'total_applicants', 'total_views', 'total_positions'],
-                            'monthly' => ['labels', 'series', 'total_applicants', 'total_views', 'total_positions'],
+                        'monthly' => [
+                            '*' => ['label', 'total_applicants', 'job_views', 'active_positions'],
                         ],
                     ],
                 ],
@@ -148,11 +146,16 @@ class IndustryJobOverviewAnalyticsTest extends TestCase
         $this->assertSame(1, $data['cards']['active_positions']['total']);
         $this->assertSame(125, $data['cards']['job_views']['total']);
         $this->assertSame(0, $data['cards']['total_applicants']['total']);
-        $this->assertCount(7, $data['graph']['labels']);
-        $this->assertCount(3, $data['graph']['series']);
-        $this->assertSame('Total Applicant', $data['graph']['series'][0]['name']);
-        $this->assertSame('Job Views', $data['graph']['series'][1]['name']);
-        $this->assertSame('Active Positions', $data['graph']['series'][2]['name']);
+        $this->assertCount(7, $data['graph']['weekly']);
+        $this->assertArrayHasKey('label', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('total_applicants', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('job_views', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('active_positions', $data['graph']['weekly'][0]);
+        $this->assertCount(12, $data['graph']['monthly']);
+        $this->assertArrayHasKey('label', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('total_applicants', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('job_views', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('active_positions', $data['graph']['monthly'][0]);
     }
 
     public function test_user_can_filter_graph_by_monthly(): void
@@ -166,10 +169,12 @@ class IndustryJobOverviewAnalyticsTest extends TestCase
         $this->assertArrayNotHasKey('period', $data);
         $this->assertSame('monthly', $data['graph']['period']);
         $this->assertSame('monthly', $data['graph']['active']);
-        $this->assertCount(12, $data['graph']['labels']);
-        $this->assertCount(12, $data['graph']['series'][0]['data']);
-        $this->assertCount(12, $data['graph']['series'][1]['data']);
-        $this->assertCount(12, $data['graph']['series'][2]['data']);
+        $this->assertCount(12, $data['graph']['monthly']);
+        $this->assertArrayHasKey('label', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('total_applicants', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('job_views', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('active_positions', $data['graph']['monthly'][0]);
+        $this->assertCount(7, $data['graph']['weekly']);
     }
 
     public function test_logged_views_and_applications_are_counted_in_graph(): void
@@ -216,9 +221,9 @@ class IndustryJobOverviewAnalyticsTest extends TestCase
         $this->assertSame(1, $data['cards']['active_positions']['total']);
 
         // In weekly graph, sums should be 1
-        $totalWeeklyApplicants = array_sum($data['graph']['series'][0]['data']);
-        $totalWeeklyViews = array_sum($data['graph']['series'][1]['data']);
-        $totalWeeklyPositions = array_sum($data['graph']['series'][2]['data']);
+        $totalWeeklyApplicants = array_sum(array_column($data['graph']['weekly'], 'total_applicants'));
+        $totalWeeklyViews = array_sum(array_column($data['graph']['weekly'], 'job_views'));
+        $totalWeeklyPositions = array_sum(array_column($data['graph']['weekly'], 'active_positions'));
         $this->assertSame(1, $totalWeeklyApplicants);
         $this->assertSame(1, $totalWeeklyViews);
         $this->assertSame(1, $totalWeeklyPositions);
@@ -276,9 +281,9 @@ class IndustryJobOverviewAnalyticsTest extends TestCase
 
         // Meanwhile, only graph adapts
         $this->assertSame('weekly', $weeklyData['graph']['active']);
-        $this->assertCount(7, $weeklyData['graph']['labels']);
+        $this->assertCount(7, $weeklyData['graph']['weekly']);
 
         $this->assertSame('monthly', $monthlyData['graph']['active']);
-        $this->assertCount(12, $monthlyData['graph']['labels']);
+        $this->assertCount(12, $monthlyData['graph']['monthly']);
     }
 }

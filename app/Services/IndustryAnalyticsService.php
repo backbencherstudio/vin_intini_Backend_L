@@ -176,18 +176,18 @@ class IndustryAnalyticsService
             ->pluck('count', 'period_key')
             ->toArray();
 
-        $weeklyLabels = [];
-        $weeklyApplicantsSeries = [];
-        $weeklyViewsSeries = [];
-        $weeklyPositionsSeries = [];
+        $weeklyChartData = [];
 
         for ($d = 0; $d < 7; $d++) {
             $dayCarbon = $startOfWeek->copy()->addDays($d);
             $key = $dayCarbon->format('Y-m-d');
-            $weeklyLabels[] = $dayCarbon->format('D'); // Mon, Tue, Wed, Thu, Fri, Sat, Sun
-            $weeklyApplicantsSeries[] = (int) ($weeklyApplicantsData[$key] ?? 0);
-            $weeklyViewsSeries[] = (int) ($weeklyViewsData[$key] ?? 0);
-            $weeklyPositionsSeries[] = (int) ($weeklyPositionsData[$key] ?? 0);
+
+            $weeklyChartData[] = [
+                'label' => $dayCarbon->format('D'), // Mon, Tue, Wed, Thu, Fri, Sat, Sun
+                'total_applicants' => (int) ($weeklyApplicantsData[$key] ?? 0),
+                'job_views' => (int) ($weeklyViewsData[$key] ?? 0),
+                'active_positions' => (int) ($weeklyPositionsData[$key] ?? 0),
+            ];
         }
 
         // 2. Monthly Chart (Current year: Jan to Dec 12 months)
@@ -226,69 +226,20 @@ class IndustryAnalyticsService
             ->pluck('count', 'period_key')
             ->toArray();
 
-        $monthlyLabels = [];
-        $monthlyApplicantsSeries = [];
-        $monthlyViewsSeries = [];
-        $monthlyPositionsSeries = [];
+        $monthlyChartData = [];
 
         $currentYearNum = Carbon::now()->year;
         for ($m = 1; $m <= 12; $m++) {
             $monthCarbon = Carbon::create($currentYearNum, $m, 1);
             $key = $monthCarbon->format('Y-m');
-            $monthlyLabels[] = $monthCarbon->format('M'); // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
-            $monthlyApplicantsSeries[] = (int) ($monthlyApplicantsData[$key] ?? 0);
-            $monthlyViewsSeries[] = (int) ($monthlyViewsData[$key] ?? 0);
-            $monthlyPositionsSeries[] = (int) ($monthlyPositionsData[$key] ?? 0);
-        }
 
-        $allRanges = [
-            'weekly' => [
-                'labels' => $weeklyLabels,
-                'series' => [
-                    [
-                        'name' => 'Total Applicant',
-                        'key' => 'total_applicants',
-                        'data' => $weeklyApplicantsSeries,
-                    ],
-                    [
-                        'name' => 'Job Views',
-                        'key' => 'job_views',
-                        'data' => $weeklyViewsSeries,
-                    ],
-                    [
-                        'name' => 'Active Positions',
-                        'key' => 'active_positions',
-                        'data' => $weeklyPositionsSeries,
-                    ],
-                ],
-                'total_applicants' => array_sum($weeklyApplicantsSeries),
-                'total_views' => array_sum($weeklyViewsSeries),
-                'total_positions' => array_sum($weeklyPositionsSeries),
-            ],
-            'monthly' => [
-                'labels' => $monthlyLabels,
-                'series' => [
-                    [
-                        'name' => 'Total Applicant',
-                        'key' => 'total_applicants',
-                        'data' => $monthlyApplicantsSeries,
-                    ],
-                    [
-                        'name' => 'Job Views',
-                        'key' => 'job_views',
-                        'data' => $monthlyViewsSeries,
-                    ],
-                    [
-                        'name' => 'Active Positions',
-                        'key' => 'active_positions',
-                        'data' => $monthlyPositionsSeries,
-                    ],
-                ],
-                'total_applicants' => array_sum($monthlyApplicantsSeries),
-                'total_views' => array_sum($monthlyViewsSeries),
-                'total_positions' => array_sum($monthlyPositionsSeries),
-            ],
-        ];
+            $monthlyChartData[] = [
+                'label' => $monthCarbon->format('M'), // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+                'total_applicants' => (int) ($monthlyApplicantsData[$key] ?? 0),
+                'job_views' => (int) ($monthlyViewsData[$key] ?? 0),
+                'active_positions' => (int) ($monthlyPositionsData[$key] ?? 0),
+            ];
+        }
 
         // Active range selection (default: weekly)
         $activeRange = match ($period) {
@@ -296,17 +247,13 @@ class IndustryAnalyticsService
             default => 'weekly',
         };
 
-        $activeLabels = $allRanges[$activeRange]['labels'];
-        $activeSeries = $allRanges[$activeRange]['series'];
-
         return [
             'title' => 'Jobs Overview Graph',
             'subtitle' => 'Applications Over Time',
             'period' => $activeRange,
             'active' => $activeRange,
-            'labels' => $activeLabels,
-            'series' => $activeSeries,
-            'ranges' => $allRanges,
+            'weekly' => $weeklyChartData,
+            'monthly' => $monthlyChartData,
         ];
     }
 
@@ -486,16 +433,17 @@ class IndustryAnalyticsService
             ->pluck('count', 'period_key')
             ->toArray();
 
-        $weeklyLabels = [];
-        $weeklyViewsSeries = [];
-        $weeklyLikesSeries = [];
+        $weeklyChartData = [];
 
         for ($d = 0; $d < 7; $d++) {
             $dayCarbon = $startOfWeek->copy()->addDays($d);
             $key = $dayCarbon->format('Y-m-d');
-            $weeklyLabels[] = $dayCarbon->format('D'); // Mon, Tue, Wed, Thu, Fri, Sat, Sun
-            $weeklyViewsSeries[] = (int) ($weeklyViewsData[$key] ?? 0);
-            $weeklyLikesSeries[] = (int) ($weeklyLikesData[$key] ?? 0);
+
+            $weeklyChartData[] = [
+                'label' => $dayCarbon->format('D'), // Mon, Tue, Wed, Thu, Fri, Sat, Sun
+                'views' => (int) ($weeklyViewsData[$key] ?? 0),
+                'likes' => (int) ($weeklyLikesData[$key] ?? 0),
+            ];
         }
 
         // 2. Monthly Chart (Current year: Jan to Dec 12 months)
@@ -522,55 +470,19 @@ class IndustryAnalyticsService
             ->pluck('count', 'period_key')
             ->toArray();
 
-        $monthlyLabels = [];
-        $monthlyViewsSeries = [];
-        $monthlyLikesSeries = [];
+        $monthlyChartData = [];
 
         $currentYearNum = Carbon::now()->year;
         for ($m = 1; $m <= 12; $m++) {
             $monthCarbon = Carbon::create($currentYearNum, $m, 1);
             $key = $monthCarbon->format('Y-m');
-            $monthlyLabels[] = $monthCarbon->format('M'); // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
-            $monthlyViewsSeries[] = (int) ($monthlyViewsData[$key] ?? 0);
-            $monthlyLikesSeries[] = (int) ($monthlyLikesData[$key] ?? 0);
-        }
 
-        $allRanges = [
-            'weekly' => [
-                'labels' => $weeklyLabels,
-                'series' => [
-                    [
-                        'name' => 'Views',
-                        'key' => 'views',
-                        'data' => $weeklyViewsSeries,
-                    ],
-                    [
-                        'name' => 'Like',
-                        'key' => 'likes',
-                        'data' => $weeklyLikesSeries,
-                    ],
-                ],
-                'total_views' => array_sum($weeklyViewsSeries),
-                'total_likes' => array_sum($weeklyLikesSeries),
-            ],
-            'monthly' => [
-                'labels' => $monthlyLabels,
-                'series' => [
-                    [
-                        'name' => 'Views',
-                        'key' => 'views',
-                        'data' => $monthlyViewsSeries,
-                    ],
-                    [
-                        'name' => 'Like',
-                        'key' => 'likes',
-                        'data' => $monthlyLikesSeries,
-                    ],
-                ],
-                'total_views' => array_sum($monthlyViewsSeries),
-                'total_likes' => array_sum($monthlyLikesSeries),
-            ],
-        ];
+            $monthlyChartData[] = [
+                'label' => $monthCarbon->format('M'), // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+                'views' => (int) ($monthlyViewsData[$key] ?? 0),
+                'likes' => (int) ($monthlyLikesData[$key] ?? 0),
+            ];
+        }
 
         // Active range selection (default: weekly)
         $activeRange = match ($period) {
@@ -578,17 +490,13 @@ class IndustryAnalyticsService
             default => 'weekly',
         };
 
-        $activeLabels = $allRanges[$activeRange]['labels'];
-        $activeSeries = $allRanges[$activeRange]['series'];
-
         return [
             'title' => 'Advertisement Performance',
             'subtitle' => 'Views vs Like',
             'period' => $activeRange,
             'active' => $activeRange,
-            'labels' => $activeLabels,
-            'series' => $activeSeries,
-            'ranges' => $allRanges,
+            'weekly' => $weeklyChartData,
+            'monthly' => $monthlyChartData,
         ];
     }
 
