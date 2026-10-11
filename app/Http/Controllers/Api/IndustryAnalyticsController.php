@@ -116,20 +116,35 @@ class IndustryAnalyticsController extends Controller
         }
 
         $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+
+        $validated = $request->validate([
+            'filter' => ['nullable', 'string'],
+            'period' => ['nullable', 'string'],
+            'range' => ['nullable', 'string'],
+            'industry_id' => ['nullable', 'integer', 'exists:industries,id'],
+        ]);
+
         $industryId = $user->industry?->id ?? $user->company_id;
 
-        if ($isAdmin && $request->filled('industry_id')) {
-            $industryId = (int) $request->input('industry_id');
+        if ($isAdmin && ! empty($validated['industry_id'])) {
+            $industryId = (int) $validated['industry_id'];
         }
 
         if (! $industryId) {
             return response()->json([
                 'success' => false,
-                'message' => 'Your account is not associated with any company profile.',
+                'message' => 'Your account is not associated with any company profile. Please create a company profile first.',
             ], 422);
         }
 
-        $period = $request->query('filter', $request->query('period', 'last_6_months'));
+        $rawFilter = $validated['filter'] ?? $validated['period'] ?? $validated['range'] ?? $request->query('filter', $request->query('period', $request->query('range', 'monthly')));
+
+        $period = match (strtolower(trim((string) $rawFilter))) {
+            'yearly', 'year', 'this_year', 'this-year' => 'yearly',
+            'weekly', 'week' => 'weekly',
+            default => 'monthly',
+        };
+
         $data = $this->analyticsService->getProfileInsightsAnalytics((int) $industryId, $period);
 
         return response()->json([
