@@ -6,6 +6,7 @@ use App\Enums\IndustryJobPostStatus;
 use App\Http\Resources\IndustryJobCardResource;
 use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
+use App\Models\IndustryJobPostView;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -43,19 +44,19 @@ class IndustryDashboardService
 
         $recentJobsFormatted = IndustryJobCardResource::collection($recentJobs)->resolve();
 
-        // 4. Applicants Added (Graph / Trend Chart: Daily, Weekly, Monthly)
-        $chartData = $this->calculateApplicantsChart($jobPostIds, $chartRange);
+        // 4. Applicants Added / Trend Graph (weekly & monthly like analytics)
+        $chartData = $this->calculateApplicantsChart($industryId, $jobPostIds, $chartRange);
 
         // 5. Activity Feed (Latest 3 notifications)
         $activityFeed = $this->getActivityFeed($user, $industryId);
 
-        // 6. Applicant Overview (Latest 5 candidates)
-        $recentApplicants = $this->getRecentApplicants($jobPostIds);
+        // 6. Applicant Overview (Latest 10 candidates)
+        $recentApplicants = $this->getRecentApplicants($jobPostIds, 10);
 
         return [
             'cards' => $cards,
             'recent_jobs' => $recentJobsFormatted,
-            'applicants_chart' => $chartData,
+            'graph' => $chartData,
             'activity_feed' => $activityFeed,
             'recent_applicants' => $recentApplicants,
         ];
@@ -152,120 +153,127 @@ class IndustryDashboardService
     }
 
     /**
-     * Calculate applicants graph across weekly (current week 7 days), monthly (current month 1-31 date-wise), and yearly (current year Jan-Dec).
+     * Calculate trend graph (weekly Mon-Sun 7 days, and monthly Jan-Dec 12 months)
+     * matching job overview and advertisements analytics structure.
      */
-    private function calculateApplicantsChart($jobPostIds, string $chartRange = 'weekly'): array
+    private function calculateApplicantsChart(int $industryId, $jobPostIds, string $chartRange = 'weekly'): array
     {
         $driver = DB::connection()->getDriverName();
 
-        // --- 1. Weekly (Current week: 7 days Mon to Sun) ---
+        // 1. Weekly Chart (Monday to Sunday, 7 days)
         $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
         $endOfWeek = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
-        $weekDateFormat = match ($driver) {
+        $dayDateFormat = match ($driver) {
             'sqlite' => "strftime('%Y-%m-%d', created_at)",
             'pgsql' => "to_char(created_at, 'YYYY-MM-DD')",
             default => "DATE_FORMAT(created_at, '%Y-%m-%d')",
         };
 
-        $weeklyCounts = IndustryJobApplication::whereIn('job_id', $jobPostIds)
+        $weeklyViewsData = IndustryJobPostView::whereIn('industry_job_post_id', $jobPostIds)
             ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->selectRaw("{$weekDateFormat} as period_key, COUNT(*) as count")
+            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
             ->groupBy('period_key')
             ->pluck('count', 'period_key')
             ->toArray();
 
-        $weeklyLabels = [];
-        $weeklySeries = [];
+        $weeklyApplicantsData = IndustryJobApplication::whereIn('job_id', $jobPostIds)
+            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $weeklyPositionsData = IndustryJobPost::where('industry_id', $industryId)
+            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->whereNotIn('status', [
+                IndustryJobPostStatus::DRAFT->value,
+                IndustryJobPostStatus::REJECTED->value,
+                IndustryJobPostStatus::PENDING->value,
+            ])
+            ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $weeklyChartData = [];
+
         for ($d = 0; $d < 7; $d++) {
             $dayCarbon = $startOfWeek->copy()->addDays($d);
             $key = $dayCarbon->format('Y-m-d');
-            $weeklyLabels[] = $dayCarbon->format('D'); // e.g. Mon, Tue, Wed, Thu, Fri, Sat, Sun
-            $weeklySeries[] = (int) ($weeklyCounts[$key] ?? 0);
+
+            $weeklyChartData[] = [
+                'label' => $dayCarbon->format('D'), // Mon, Tue, Wed, Thu, Fri, Sat, Sun
+                'total_applicants' => (int) ($weeklyApplicantsData[$key] ?? 0),
+                'job_views' => (int) ($weeklyViewsData[$key] ?? 0),
+                'active_positions' => (int) ($weeklyPositionsData[$key] ?? 0),
+            ];
         }
 
-        // --- 2. Monthly (Current month: 1 to 28/29/30/31 date-wise) ---
-        $startOfMonth = Carbon::now()->startOfMonth()->startOfDay();
-        $endOfMonth = Carbon::now()->endOfMonth()->endOfDay();
-        $daysInMonth = (int) Carbon::now()->daysInMonth;
-
-        $monthDayFormat = match ($driver) {
-            'sqlite' => "CAST(strftime('%d', created_at) AS INTEGER)",
-            'pgsql' => 'EXTRACT(DAY FROM created_at)::INTEGER',
-            default => "CAST(DATE_FORMAT(created_at, '%e') AS UNSIGNED)",
+        // 2. Monthly Chart (Current year: Jan to Dec 12 months)
+        $monthDateFormat = match ($driver) {
+            'sqlite' => "strftime('%Y-%m', created_at)",
+            'pgsql' => "to_char(created_at, 'YYYY-MM')",
+            default => "DATE_FORMAT(created_at, '%Y-%m')",
         };
 
-        $monthlyCounts = IndustryJobApplication::whereIn('job_id', $jobPostIds)
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->selectRaw("{$monthDayFormat} as day_num, COUNT(*) as count")
-            ->groupBy('day_num')
-            ->pluck('count', 'day_num')
+        $startOfCurrentYear = Carbon::now()->startOfYear()->startOfDay();
+        $endOfCurrentYear = Carbon::now()->endOfYear()->endOfDay();
+
+        $monthlyViewsData = IndustryJobPostView::whereIn('industry_job_post_id', $jobPostIds)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
             ->toArray();
 
-        $monthlyLabels = [];
-        $monthlySeries = [];
-        for ($day = 1; $day <= $daysInMonth; $day++) {
-            $monthlyLabels[] = (string) $day; // e.g. "1", "2", ... "31"
-            $monthlySeries[] = (int) ($monthlyCounts[$day] ?? 0);
-        }
-
-        // --- 3. Yearly (Current year: Jan to Dec 12 months) ---
-        $startOfYear = Carbon::now()->startOfYear()->startOfDay();
-        $endOfYear = Carbon::now()->endOfYear()->endOfDay();
-
-        $yearMonthFormat = match ($driver) {
-            'sqlite' => "CAST(strftime('%m', created_at) AS INTEGER)",
-            'pgsql' => 'EXTRACT(MONTH FROM created_at)::INTEGER',
-            default => 'MONTH(created_at)',
-        };
-
-        $yearlyCounts = IndustryJobApplication::whereIn('job_id', $jobPostIds)
-            ->whereBetween('created_at', [$startOfYear, $endOfYear])
-            ->selectRaw("{$yearMonthFormat} as month_num, COUNT(*) as count")
-            ->groupBy('month_num')
-            ->pluck('count', 'month_num')
+        $monthlyApplicantsData = IndustryJobApplication::whereIn('job_id', $jobPostIds)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
             ->toArray();
 
-        $yearlyLabels = [];
-        $yearlySeries = [];
+        $monthlyPositionsData = IndustryJobPost::where('industry_id', $industryId)
+            ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
+            ->whereNotIn('status', [
+                IndustryJobPostStatus::DRAFT->value,
+                IndustryJobPostStatus::REJECTED->value,
+                IndustryJobPostStatus::PENDING->value,
+            ])
+            ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
+            ->groupBy('period_key')
+            ->pluck('count', 'period_key')
+            ->toArray();
+
+        $monthlyChartData = [];
+
+        $currentYearNum = Carbon::now()->year;
         for ($m = 1; $m <= 12; $m++) {
-            $yearlyLabels[] = Carbon::create(null, $m, 1)->format('M'); // Jan, Feb, Mar...
-            $yearlySeries[] = (int) ($yearlyCounts[$m] ?? 0);
+            $monthCarbon = Carbon::create($currentYearNum, $m, 1);
+            $key = $monthCarbon->format('Y-m');
+
+            $monthlyChartData[] = [
+                'label' => $monthCarbon->format('M'), // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+                'total_applicants' => (int) ($monthlyApplicantsData[$key] ?? 0),
+                'job_views' => (int) ($monthlyViewsData[$key] ?? 0),
+                'active_positions' => (int) ($monthlyPositionsData[$key] ?? 0),
+            ];
         }
 
-        $allCharts = [
-            'weekly' => [
-                'labels' => $weeklyLabels,
-                'series' => $weeklySeries,
-                'total' => array_sum($weeklySeries),
-            ],
-            'monthly' => [
-                'labels' => $monthlyLabels,
-                'series' => $monthlySeries,
-                'total' => array_sum($monthlySeries),
-            ],
-            'yearly' => [
-                'labels' => $yearlyLabels,
-                'series' => $yearlySeries,
-                'total' => array_sum($yearlySeries),
-            ],
-        ];
-
-        // Keep 'daily' as alias to weekly for backward compatibility if any client requested daily
-        $allCharts['daily'] = $allCharts['weekly'];
-
-        $rangeKey = match (strtolower(trim($chartRange))) {
-            'monthly', 'month' => 'monthly',
-            'yearly', 'year', '12months', '12_months' => 'yearly',
-            default => 'weekly', // default: weekly
+        // Active range selection (default: weekly)
+        $activeRange = match (strtolower(trim($chartRange))) {
+            'monthly', 'month', 'yearly', 'year' => 'monthly',
+            default => 'weekly',
         };
 
         return [
-            'active' => $rangeKey,
-            'active_range' => $rangeKey,
-            'labels' => $allCharts[$rangeKey]['labels'],
-            'series' => $allCharts[$rangeKey]['series'],
-            'ranges' => $allCharts,
+            'title' => 'Jobs Overview Graph',
+            'subtitle' => 'Applications Over Time',
+            'period' => $activeRange,
+            'active' => $activeRange,
+            'weekly' => $weeklyChartData,
+            'monthly' => $monthlyChartData,
         ];
     }
 
@@ -308,9 +316,9 @@ class IndustryDashboardService
     }
 
     /**
-     * Fetch recent candidate applicants (limit 5).
+     * Fetch recent candidate applicants (limit 10).
      */
-    private function getRecentApplicants($jobPostIds): array
+    private function getRecentApplicants($jobPostIds, int $limit = 10): array
     {
         return IndustryJobApplication::whereIn('job_id', $jobPostIds)
             ->with([
@@ -318,7 +326,7 @@ class IndustryDashboardService
                 'job:id,job_id,job_title,position,network_type',
             ])
             ->latest('id')
-            ->take(5)
+            ->take($limit)
             ->get()
             ->map(function (IndustryJobApplication $app) {
                 $applicant = $app->applicant;
@@ -331,10 +339,14 @@ class IndustryDashboardService
                     }
                 }
 
+                $rawJobId = (string) ($job?->job_id ?? $job?->id ?? '');
+                $formattedJobId = $rawJobId !== '' ? (str_starts_with($rawJobId, '#') ? $rawJobId : '#'.$rawJobId) : null;
+
                 return [
                     'id' => $app->id,
-                    'application_id' => $app->application_id,
-                    'job_id' => $job ? '#'.$job->job_id : null,
+                    'application_id' => (string) ($app->application_id ?: $app->id),
+                    'job_post_id' => $job?->id,
+                    'job_id' => $formattedJobId,
                     'job_title' => $job?->job_title,
                     'position' => $job?->position ?? $job?->job_title ?? 'N/A',
                     'applicant_name' => $app->full_name ?: trim(($applicant?->first_name ?? '').' '.($applicant?->last_name ?? '')),

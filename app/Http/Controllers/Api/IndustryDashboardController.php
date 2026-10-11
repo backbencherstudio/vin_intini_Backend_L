@@ -42,7 +42,7 @@ class IndustryDashboardController extends Controller
             ], 422);
         }
 
-        $chartRange = $request->query('chart_range', $request->query('range', 'weekly'));
+        $chartRange = $request->query('period', $request->query('filter', $request->query('chart_range', $request->query('range', 'weekly'))));
 
         $data = $this->dashboardService->getRecruiterDashboard($user, (int) $industryId, (string) $chartRange);
 
