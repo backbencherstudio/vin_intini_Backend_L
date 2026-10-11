@@ -105,6 +105,7 @@ class JobsFeedSearchTest extends TestCase
                         'job_title',
                         'slug',
                         'position',
+                        'status',
                         'work_mode',
                         'employment_type',
                         'location',
@@ -143,7 +144,8 @@ class JobsFeedSearchTest extends TestCase
                     'prev_cursor',
                     'has_more_pages',
                 ],
-            ]);
+            ])
+            ->assertJsonPath('data.0.status', 'published');
     }
 
     public function test_jobsfeed_supports_multi_city_and_wizard_filters(): void
@@ -467,6 +469,7 @@ class JobsFeedSearchTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('total_jobs', 1)
             ->assertJsonPath('data.0.id', $job1->id)
+            ->assertJsonPath('data.0.status', 'published')
             ->assertJsonPath('filters.state_id', $state1->id)
             ->assertJsonPath('filters.employment_offering', 'private')
             ->assertJsonStructure([

@@ -441,12 +441,21 @@ class JobsFeedController extends Controller
         ]);
         $locationText = ! empty($locationParts) ? implode(', ', $locationParts) : null;
 
+        $status = $job->status instanceof \BackedEnum
+            ? $job->status->value
+            : ($job->status !== null ? (string) $job->status : null);
+
+        if ($status === IndustryJobPostStatus::PUBLISHED->value && $job->isExpired()) {
+            $status = IndustryJobPostStatus::EXPIRED->value;
+        }
+
         return [
             'id' => $job->id,
             'job_id' => $job->job_id,
             'job_title' => $job->job_title,
             'slug' => $job->slug,
             'position' => $job->position,
+            'status' => $status,
 
             'work_mode' => $job->work_mode,
             'employment_type' => $job->employment_type,
