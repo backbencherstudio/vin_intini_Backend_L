@@ -16,7 +16,7 @@ class PostMedia extends Model
         'order',
     ];
 
-    protected $appends = ['url'];
+    protected $appends = ['url', 'sort_order'];
 
     public function post()
     {
@@ -26,5 +26,10 @@ class PostMedia extends Model
     public function getUrlAttribute()
     {
         return asset('storage/'.ltrim($this->file_path, '/'));
+    }
+
+    public function getSortOrderAttribute()
+    {
+        return $this->order;
     }
 }

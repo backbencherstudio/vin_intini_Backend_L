@@ -1351,6 +1351,81 @@ class IndustryCompanyPostTest extends TestCase
         ]);
     }
 
+    public function test_industry_post_response_matches_newsfeed_structure(): void
+    {
+        $owner = $this->makeUser();
+        $industry = $this->makeIndustry($owner);
+        $viewer = $this->makeUser();
+
+        $createResponse = $this->actingAs($owner, 'api')->postJson('/api/industry/post/create', [
+            'content' => 'First industry post',
+            'visibility' => 'public',
+        ]);
+
+        $createResponse
+            ->assertCreated()
+            ->assertJsonStructure([
+                'success',
+                'message',
+                'data' => [
+                    'id',
+                    'user' => ['id', 'username', 'first_name', 'last_name'],
+                    'description',
+                    'visibility',
+                    'who_can_comment',
+                    'total_like',
+                    'total_comment',
+                    'liked_by_me',
+                    'relationship_status',
+                    'media',
+                    'group',
+                    'industry' => ['id', 'name', 'slug', 'tagline', 'logo', 'is_following'],
+                    'created_at',
+                    'can_edit',
+                    'can_delete',
+                ],
+            ])
+            ->assertJsonPath('data.description', 'First industry post')
+            ->assertJsonPath('data.industry.id', $industry->id)
+            ->assertJsonPath('data.can_edit', true)
+            ->assertJsonPath('data.can_delete', true)
+            ->assertJsonPath('data.relationship_status', 'connected');
+
+        $viewResponse = $this->actingAs($viewer, 'api')
+            ->getJson("/api/industry/post/view/{$industry->id}");
+
+        $viewResponse
+            ->assertOk()
+            ->assertJsonStructure([
+                'success',
+                'message',
+                'data' => [
+                    '*' => [
+                        'id',
+                        'user' => ['id', 'username', 'first_name', 'last_name'],
+                        'description',
+                        'visibility',
+                        'who_can_comment',
+                        'total_like',
+                        'total_comment',
+                        'liked_by_me',
+                        'relationship_status',
+                        'media',
+                        'group',
+                        'industry' => ['id', 'name', 'slug', 'tagline', 'logo', 'is_following'],
+                        'created_at',
+                        'can_edit',
+                        'can_delete',
+                    ],
+                ],
+                'pagination',
+            ])
+            ->assertJsonPath('data.0.can_edit', false)
+            ->assertJsonPath('data.0.can_delete', false)
+            ->assertJsonPath('data.0.relationship_status', 'not_connected')
+            ->assertJsonPath('data.0.industry.is_following', false);
+    }
+
     private function subscribe(User $user, array $overrides = []): Subscription
     {
         $existing = Subscription::where('user_id', $user->id)->latest('id')->first();
