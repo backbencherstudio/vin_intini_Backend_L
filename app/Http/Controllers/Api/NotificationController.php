@@ -200,8 +200,21 @@ class NotificationController extends Controller
             }
         }
 
-        // 2. Normalization for industry / company notifications
-        if (! empty($data['industry_id']) || ! empty($data['industry_name'])) {
+        // 2. Normalization based on notification type
+        if ($type === 'JobApplicationReceivedNotification') {
+            // Sender is the applicant (User), not the industry
+            if (! empty($data['applicant_name'])) {
+                $data['sender_name'] = $data['applicant_name'];
+            }
+            if (! empty($data['applicant_username'])) {
+                $data['sender_username'] = $data['applicant_username'];
+            }
+            if (! empty($data['applicant_profile_url'])) {
+                $data['sender_profile_image_url'] = $data['applicant_profile_url'];
+                $data['profile_image_url'] = $data['applicant_profile_url'];
+            }
+        } elseif ($type === 'JobApplicationStatusUpdatedNotification' || (! empty($data['industry_id']) && empty($data['sender_name']))) {
+            // Sender is the industry / company
             $industryId = $data['industry_id'] ?? null;
             $industry = ($industryId && $preloadedIndustries) ? $preloadedIndustries->get($industryId) : null;
 
