@@ -52,6 +52,9 @@ class NewsfeedController extends Controller
             ->pluck('industry_id')
             ->flip();
 
+        $perPage = (int) ($request->input('per_page') ?? $request->input('limit') ?? 20);
+        $perPage = $perPage > 0 ? $perPage : 20;
+
         $posts = Post::query()
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->with([
@@ -130,7 +133,7 @@ class NewsfeedController extends Controller
                     });
             })
             ->orderByDesc('id')
-            ->paginate($request->get('per_page', 10));
+            ->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
 
         return response()->json([
             'success' => true,
@@ -194,10 +197,10 @@ class NewsfeedController extends Controller
                 ];
             })->filter()->values(),
             'pagination' => [
-                'current_page' => $posts->currentPage(),
                 'per_page' => $posts->perPage(),
-                'total' => $posts->total(),
-                'last_page' => $posts->lastPage(),
+                'next_cursor' => $posts->nextCursor()?->encode(),
+                'prev_cursor' => $posts->previousCursor()?->encode(),
+                'has_more_pages' => $posts->hasMorePages(),
             ],
         ]);
     }
