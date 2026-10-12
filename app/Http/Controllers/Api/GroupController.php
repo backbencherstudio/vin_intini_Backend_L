@@ -8,6 +8,7 @@ use App\Models\Group;
 use App\Models\GroupInvitation;
 use App\Models\GroupUser;
 use App\Models\User;
+use App\Notifications\GroupInvitationAcceptedNotification;
 use App\Notifications\GroupInvitationNotification;
 use App\Services\OptimizedImageUploadService;
 use App\Services\ProfileImageService;
@@ -676,9 +677,19 @@ class GroupController extends Controller
             'status' => 'active',
         ]);
 
-        GroupInvitation::where('group_id', $group->id)
+        $existingInvitation = GroupInvitation::with('inviter')
+            ->where('group_id', $group->id)
             ->where('invited_user_id', $userId)
-            ->delete();
+            ->first();
+
+        if ($existingInvitation) {
+            $inviter = $existingInvitation->inviter;
+            $existingInvitation->delete();
+
+            if ($inviter && (int) $inviter->id !== (int) $user->id) {
+                $inviter->notify(new GroupInvitationAcceptedNotification($group, $user, $inviter));
+            }
+        }
 
         $this->deleteGroupInvitationNotification($user, $group->id);
 
@@ -733,7 +744,7 @@ class GroupController extends Controller
     public function acceptInvitation(Request $request, int $invitationId)
     {
         $invitation = GroupInvitation::query()
-            ->with('group')
+            ->with(['group', 'inviter'])
             ->where('id', $invitationId)
             ->where('invited_user_id', $request->user()->id)
             ->first();
@@ -747,6 +758,8 @@ class GroupController extends Controller
 
         $group = $invitation->group;
         $currentUserId = $request->user()->id;
+        $inviter = $invitation->inviter;
+        $acceptor = $request->user();
 
         if (! $group->members()->where('user_id', $currentUserId)->exists()) {
             $group->members()->attach($currentUserId, ['role' => 'member']);
@@ -754,7 +767,11 @@ class GroupController extends Controller
 
         $invitation->delete();
 
-        $this->deleteGroupInvitationNotification($request->user(), $group->id);
+        $this->deleteGroupInvitationNotification($acceptor, $group->id);
+
+        if ($inviter && (int) $inviter->id !== (int) $acceptor->id) {
+            $inviter->notify(new GroupInvitationAcceptedNotification($group, $acceptor, $inviter));
+        }
 
         return response()->json([
             'status' => 'success',

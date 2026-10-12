@@ -286,7 +286,7 @@ class NotificationController extends Controller
         }
 
         // Remove irrelevant cross-domain keys if this is NOT that type of notification
-        if (! in_array($type, ['ConnectionRequestAcceptedNotification', 'ConnectionRequestReceivedNotification'])) {
+        if (! in_array($type, ['ConnectionRequestAcceptedNotification', 'ConnectionRequestReceivedNotification', 'GroupInvitationAcceptedNotification'])) {
             unset($data['acceptor_username'], $data['acceptor_name'], $data['acceptor_profile_image_url'], $data['acceptor_profile_image']);
         }
         if ($type !== 'GroupInvitationNotification') {

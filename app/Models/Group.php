@@ -5,10 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Group extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::creating(function (Group $group) {
+            if (empty($group->slug)) {
+                $baseSlug = Str::slug($group->name) ?: 'group';
+                $finalSlug = $baseSlug;
+                $counter = 1;
+                while (static::where('slug', $finalSlug)->exists()) {
+                    $finalSlug = $baseSlug.'-'.$counter;
+                    $counter++;
+                }
+                $group->slug = $finalSlug;
+            }
+        });
+    }
 
     protected $appends = [
         'logo_url',

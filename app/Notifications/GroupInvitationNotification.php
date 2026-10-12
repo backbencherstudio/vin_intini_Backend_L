@@ -10,6 +10,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\Fcm\FcmChannel;
+use NotificationChannels\Fcm\FcmMessage;
+use NotificationChannels\Fcm\Resources\Notification as FcmNotification;
 
 class GroupInvitationNotification extends Notification implements ShouldQueue
 {
@@ -27,6 +30,10 @@ class GroupInvitationNotification extends Notification implements ShouldQueue
 
         if ($this->hasValidPusherBroadcastConfig()) {
             $channels[] = 'broadcast';
+        }
+
+        if (method_exists($notifiable, 'routeNotificationForFcm') && $notifiable->routeNotificationForFcm($this) !== []) {
+            $channels[] = FcmChannel::class;
         }
 
         return $channels;
@@ -77,9 +84,38 @@ class GroupInvitationNotification extends Notification implements ShouldQueue
 
     public function broadcastOn(): array
     {
+        $targetUserId = $this->invitation->invited_user_id ?? $this->invitation->user_id;
+
         return [
-            new PrivateChannel('App.Models.User.'.$this->invitation->user_id),
+            new PrivateChannel('App.Models.User.'.$targetUserId),
         ];
+    }
+
+    public function toFcm(object $notifiable): FcmMessage
+    {
+        $inviterName = trim(
+            ($this->inviter->first_name ?? '').' '.
+            ($this->inviter->last_name ?? '')
+        );
+
+        return FcmMessage::create()
+            ->notification(
+                FcmNotification::create()
+                    ->title($inviterName)
+                    ->body('invited you to join '.$this->group->name)
+            )
+            ->data([
+                'invitation_id' => (string) $this->invitation->id,
+                'group_id' => (string) $this->group->id,
+                'group_slug' => (string) $this->group->slug,
+                'group_name' => (string) $this->group->name,
+                'sender_id' => (string) $this->inviter->id,
+                'sender_username' => (string) $this->inviter->username,
+                'sender_name' => $inviterName,
+                'sender_image' => $this->inviter->notificationImageUrl(),
+                'type' => class_basename(self::class),
+                'sent_at' => now()->toIso8601String(),
+            ]);
     }
 
     private function hasValidPusherBroadcastConfig(): bool
