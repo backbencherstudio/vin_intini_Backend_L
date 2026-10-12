@@ -126,7 +126,7 @@ class JobsFeedSearchTest extends TestCase
                         'salary_max',
                         'state_id',
                         'city_id',
-                        'company' => [
+                        'industry' => [
                             'id',
                             'name',
                             'slug',
@@ -492,5 +492,47 @@ class JobsFeedSearchTest extends TestCase
         $resFlorida->assertOk()
             ->assertJsonPath('total_jobs', 1)
             ->assertJsonPath('data.0.id', $job3->id);
+    }
+
+    public function test_jobsfeed_identifies_own_industry_jobs(): void
+    {
+        $user = $this->createAuthenticatedUser();
+
+        // Own industry
+        $ownIndustry = Industry::create([
+            'created_by' => $user->id,
+            'name' => 'My Own Tech Company',
+            'slug' => 'my-own-tech-company-'.uniqid(),
+            'status' => 'approved',
+        ]);
+
+        $ownJob = $this->createJob([
+            'created_by' => $user->id,
+            'industry_id' => $ownIndustry->id,
+            'job_title' => 'Own Company Developer',
+        ]);
+
+        // Other industry
+        $otherJob = $this->createJob([
+            'job_title' => 'Other Company Designer',
+        ]);
+
+        // Authenticated request
+        $response = $this->actingAs($user, 'api')->getJson('/api/industry/jobsfeed');
+        $response->assertOk();
+
+        $data = collect($response->json('data'));
+        $ownJobData = $data->firstWhere('id', $ownJob->id);
+        $otherJobData = $data->firstWhere('id', $otherJob->id);
+
+        $this->assertNotNull($ownJobData);
+        $this->assertArrayNotHasKey('is_own_industry', $ownJobData);
+        $this->assertTrue($ownJobData['industry']['is_own_industry']);
+        $this->assertArrayNotHasKey('own_industry', $ownJobData);
+        $this->assertArrayNotHasKey('own_industry', $ownJobData['industry']);
+
+        $this->assertNotNull($otherJobData);
+        $this->assertArrayNotHasKey('is_own_industry', $otherJobData);
+        $this->assertFalse($otherJobData['industry']['is_own_industry']);
     }
 }

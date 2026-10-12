@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\IndustryJobPostStatus;
 use App\Http\Controllers\Controller;
 use App\Models\City;
+use App\Models\Industry;
 use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
 use App\Models\IndustryJobPostLike;
@@ -242,7 +243,7 @@ class JobsFeedController extends Controller
 
         // Paginate results with lightweight relationships
         $paginated = $query->with([
-            'industry:id,name,slug,logo,website',
+            'industry:id,name,slug,logo,website,created_by',
             'state:id,name',
             'city:id,name',
         ])
@@ -358,7 +359,7 @@ class JobsFeedController extends Controller
         $totalJobsCount = (clone $query)->count();
 
         $paginated = $query->with([
-            'industry:id,name,slug,logo,website',
+            'industry:id,name,slug,logo,website,created_by',
             'state:id,name',
             'city:id,name',
         ])
@@ -402,6 +403,10 @@ class JobsFeedController extends Controller
 
         $jobIds = $jobs->pluck('id')->all();
 
+        $userIndustryIds = ($currentUser)
+            ? Industry::where('created_by', $currentUser->id)->pluck('id')->flip()->all()
+            : [];
+
         $likedJobIds = ($currentUser && ! empty($jobIds))
             ? IndustryJobPostLike::where('user_id', $currentUser->id)
                 ->whereIn('industry_job_post_id', $jobIds)
@@ -425,16 +430,22 @@ class JobsFeedController extends Controller
                 ->all()
             : [];
 
-        return $jobs->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $currentUser) {
-            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $currentUser);
+        return $jobs->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser) {
+            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser);
         })->values()->all();
     }
 
     /**
      * Lightweight job post data format
      */
-    private function formatJobPost(IndustryJobPost $job, array $likedJobIds = [], array $savedJobIds = [], array $appliedJobs = [], $currentUser = null): array
-    {
+    private function formatJobPost(
+        IndustryJobPost $job,
+        array $likedJobIds = [],
+        array $savedJobIds = [],
+        array $appliedJobs = [],
+        array $userIndustryIds = [],
+        $currentUser = null
+    ): array {
         $locationParts = array_filter([
             $job->city?->name,
             $job->state?->name,
@@ -448,6 +459,14 @@ class JobsFeedController extends Controller
         if ($status === IndustryJobPostStatus::PUBLISHED->value && $job->isExpired()) {
             $status = IndustryJobPostStatus::EXPIRED->value;
         }
+
+        $isOwnIndustry = (bool) (
+            $currentUser && (
+                ((int) $job->created_by === (int) $currentUser->id) ||
+                ($job->industry_id && isset($userIndustryIds[$job->industry_id])) ||
+                ($job->industry && (int) $job->industry->created_by === (int) $currentUser->id)
+            )
+        );
 
         return [
             'id' => $job->id,
@@ -480,12 +499,13 @@ class JobsFeedController extends Controller
             'state_id' => $job->state_id,
             'city_id' => $job->city_id,
 
-            'company' => [
+            'industry' => [
                 'id' => $job->industry?->id,
                 'name' => $job->industry?->name,
                 'slug' => $job->industry?->slug,
                 'logo' => $job->industry?->logo,
                 'website' => $job->industry?->website ?? $job->website,
+                'is_own_industry' => $isOwnIndustry,
             ],
         ];
     }

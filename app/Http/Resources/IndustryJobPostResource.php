@@ -70,6 +70,14 @@ class IndustryJobPostResource extends JsonResource
             }
         }
 
+        $isOwnIndustry = (bool) (
+            $currentUser && (
+                ((int) $this->created_by === (int) $currentUser->id) ||
+                ($this->industry && (int) $this->industry->created_by === (int) $currentUser->id) ||
+                ($this->industry_id && $currentUser->industry && (int) $this->industry_id === (int) $currentUser->industry->id)
+            )
+        );
+
         return [
             'id' => $this->id,
             'job_id' => $this->job_id,
@@ -119,6 +127,7 @@ class IndustryJobPostResource extends JsonResource
                 'name' => $this->industry->name ?? null,
                 'slug' => $this->industry->slug ?? null,
                 'logo' => $logo,
+                'is_own_industry' => $isOwnIndustry,
             ] : null,
             'creator' => $this->creator ? [
                 'id' => $this->creator->id,

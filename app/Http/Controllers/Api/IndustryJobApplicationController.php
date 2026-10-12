@@ -59,12 +59,14 @@ class IndustryJobApplicationController extends Controller
         ];
 
         // 2. Query applications of the authenticated user
+        $userIndustryId = $user->industry?->id;
+
         $query = IndustryJobApplication::query()
             ->where('applicant_id', $user->id)
             ->with([
                 'job' => function ($q) {
-                    $q->select('id', 'job_id', 'slug', 'job_title', 'position', 'work_mode', 'employment_type', 'salary_min', 'salary_max', 'industry_id', 'state_id', 'city_id')
-                        ->with(['industry:id,name,slug,logo', 'state:id,name', 'city:id,name']);
+                    $q->select('id', 'job_id', 'slug', 'job_title', 'position', 'work_mode', 'employment_type', 'salary_min', 'salary_max', 'industry_id', 'state_id', 'city_id', 'created_by')
+                        ->with(['industry:id,name,slug,logo,created_by', 'state:id,name', 'city:id,name']);
                 },
             ])
             ->latest('id');
@@ -75,8 +77,16 @@ class IndustryJobApplicationController extends Controller
 
         $paginated = $query->cursorPaginate($limit);
 
-        $formattedData = $paginated->getCollection()->map(function (IndustryJobApplication $application) {
+        $formattedData = $paginated->getCollection()->map(function (IndustryJobApplication $application) use ($user, $userIndustryId) {
             $job = $application->job;
+
+            $isOwnIndustry = (bool) (
+                $job && (
+                    ((int) $job->created_by === (int) $user->id) ||
+                    ($job->industry && (int) $job->industry->created_by === (int) $user->id) ||
+                    ($userIndustryId && (int) $job->industry_id === (int) $userIndustryId)
+                )
+            );
 
             return [
                 'id' => $application->id,
@@ -101,6 +111,7 @@ class IndustryJobApplicationController extends Controller
                         'name' => $job->industry->name,
                         'slug' => $job->industry->slug,
                         'logo' => $job->industry->logo,
+                        'is_own_industry' => $isOwnIndustry,
                     ] : null,
                     'state' => $job->state?->name,
                     'city' => $job->city?->name,

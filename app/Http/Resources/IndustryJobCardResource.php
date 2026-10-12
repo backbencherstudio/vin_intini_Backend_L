@@ -36,6 +36,15 @@ class IndustryJobCardResource extends JsonResource
             $status = IndustryJobPostStatus::EXPIRED->value;
         }
 
+        $currentUser = auth('api')->user();
+        $isOwnIndustry = (bool) (
+            $currentUser && (
+                ((int) $this->created_by === (int) $currentUser->id) ||
+                ($this->industry && (int) $this->industry->created_by === (int) $currentUser->id) ||
+                ($this->industry_id && $currentUser->industry && (int) $this->industry_id === (int) $currentUser->industry->id)
+            )
+        );
+
         return [
             'id' => $this->id,
             'job_id' => $this->job_id,
@@ -44,6 +53,7 @@ class IndustryJobCardResource extends JsonResource
             'industry_name' => $this->industry?->name,
             'industry_logo' => $logo,
             'status' => $status,
+            'is_own_industry' => $isOwnIndustry,
             'badges' => array_values(array_filter([
                 $this->employment_type,
                 $this->work_mode,
