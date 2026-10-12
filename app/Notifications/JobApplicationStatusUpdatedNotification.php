@@ -66,6 +66,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             // Company & Post identifiers
             'industry_id' => $this->jobPost->industry_id,
             'industry_name' => $companyName,
+            'industry_slug' => $industry?->slug ?? '',
             'industry_logo' => $rawLogo,
             'industry_logo_url' => $industryLogoUrl, // Full image URL
             'job_id' => $this->jobPost->id,
@@ -77,12 +78,18 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             'application_unique_id' => $this->application->application_id,
             'status' => $this->newStatus,
 
+            // Standard sender fields for frontend compatibility
+            'sender_id' => $this->jobPost->industry_id,
+            'sender_name' => $companyName,
+            'sender_username' => $industry?->slug ?? '',
+            'sender_profile_image_url' => $industryLogoUrl,
+
             // Sender/Updater info
             'updater_id' => $this->updater?->id,
             'updater_name' => $this->updater ? trim(($this->updater->first_name ?? '').' '.($this->updater->last_name ?? '')) : null,
 
             // Notification Meta
-            'message' => "Your application for {$this->jobPost->job_title} has been updated to {$formattedStatus}",
+            'message' => "updated your application for {$this->jobPost->job_title} to {$formattedStatus}",
             'type' => class_basename(self::class),
             'updated_at' => now()->toIso8601String(),
             'unread_count' => $unreadCount + 1,
