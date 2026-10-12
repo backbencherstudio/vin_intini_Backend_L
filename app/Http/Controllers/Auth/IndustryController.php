@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\CommentLike;
+use App\Models\Connection;
 use App\Models\Industry;
 use App\Models\IndustryFollow;
 use App\Models\IndustryProfileView;
@@ -470,12 +471,17 @@ class IndustryController extends Controller
 
             DB::commit();
 
-            $post->load('media');
+            $post->load([
+                'user:id,username,first_name,last_name,profile_image,title',
+                'media',
+                'groups:id,name,logo',
+                'industryLink.industry',
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Company post created successfully.',
-                'data' => $this->postResource($post, false),
+                'data' => $this->postResource($post, false, $userId),
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -594,12 +600,17 @@ class IndustryController extends Controller
 
             DB::commit();
 
-            $post->load('media');
+            $post->load([
+                'user:id,username,first_name,last_name,profile_image,title',
+                'media',
+                'groups:id,name,logo',
+                'industryLink.industry',
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Company post updated successfully.',
-                'data' => $this->postResource($post, false),
+                'data' => $this->postResource($post, false, $userId),
             ], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -686,7 +697,13 @@ class IndustryController extends Controller
         $userId = auth()->id();
 
         $posts = Post::query()
-            ->with(['media', 'industryLink.industry'])
+            ->with([
+                'user:id,username,first_name,last_name,profile_image,title',
+                'media',
+                'groups:id,name,logo',
+                'industryLink.industry',
+                'likes' => fn ($query) => $query->where('user_id', $userId),
+            ])
             ->whereHas('industryLink', fn ($query) => $query->where('industry_id', $industry->id))
             ->where(fn ($query) => $this->visibleCompanyPostsQuery($query, $userId))
             ->withExists([
@@ -696,11 +713,16 @@ class IndustryController extends Controller
             ->orderByDesc('posts.id')
             ->paginate($perPage);
 
+        $relationshipMap = $this->buildRelationshipMap($userId, $posts->pluck('user_id')->unique()->all());
+        $isFollowing = IndustryFollow::where('industry_id', $industry->id)
+            ->where('user_id', $userId)
+            ->exists();
+
         return response()->json([
             'success' => true,
             'message' => 'Company posts fetched successfully.',
             'data' => collect($posts->items())
-                ->map(fn ($post) => $this->postResource($post, true))
+                ->map(fn ($post) => $this->postResource($post, true, $userId, $relationshipMap, $isFollowing))
                 ->values(),
             'pagination' => $this->pagination($posts),
         ], 200);
@@ -720,7 +742,13 @@ class IndustryController extends Controller
         }
 
         $posts = Post::query()
-            ->with(['media', 'industryLink.industry'])
+            ->with([
+                'user:id,username,first_name,last_name,profile_image,title',
+                'media',
+                'groups:id,name,logo',
+                'industryLink.industry',
+                'likes' => fn ($query) => $query->where('user_id', $userId),
+            ])
             ->whereHas('industryLink', fn ($query) => $query->where('industry_id', $industry->id))
             ->withExists([
                 'likes as is_liked' => fn ($query) => $query->where('user_id', $userId),
@@ -730,11 +758,13 @@ class IndustryController extends Controller
             ->limit(5)
             ->get();
 
+        $relationshipMap = $this->buildRelationshipMap($userId, $posts->pluck('user_id')->unique()->all());
+
         return response()->json([
             'success' => true,
             'message' => 'Latest company posts fetched successfully.',
             'data' => $posts
-                ->map(fn ($post) => $this->postResource($post, true))
+                ->map(fn ($post) => $this->postResource($post, true, $userId, $relationshipMap, false))
                 ->values(),
         ], 200);
     }
@@ -1446,7 +1476,12 @@ class IndustryController extends Controller
     private function findCompanyPost($postId): ?Post
     {
         return Post::query()
-            ->with('industryLink.industry')
+            ->with([
+                'industryLink.industry',
+                'user:id,username,first_name,last_name,profile_image,title',
+                'media',
+                'groups:id,name,logo',
+            ])
             ->whereHas('industryLink')
             ->find($postId);
     }
@@ -1703,51 +1738,160 @@ class IndustryController extends Controller
         }
     }
 
-    private function postResource(Post $post, bool $withEngagement): array
-    {
+    private function postResource(
+        Post $post,
+        bool $withEngagement = true,
+        ?int $viewerId = null,
+        ?array $relationshipMap = null,
+        ?bool $isFollowing = null
+    ): array {
+        $viewerId = $viewerId ?? auth('api')->id() ?? auth()->id();
+
+        if (! $post->relationLoaded('user') && $post->user_id) {
+            $post->load('user:id,username,first_name,last_name,profile_image,title');
+        }
+
+        if (! $post->relationLoaded('media')) {
+            $post->load('media');
+        }
+
+        if (! $post->relationLoaded('groups')) {
+            $post->load('groups:id,name,logo');
+        }
+
         $industryLink = $post->relationLoaded('industryLink')
             ? $post->industryLink
             : $post->industryLink()->first();
 
         $industry = $industryLink?->industry;
 
+        if ($viewerId && $industry && $isFollowing === null) {
+            $isFollowing = IndustryFollow::where('industry_id', $industry->id)
+                ->where('user_id', $viewerId)
+                ->exists();
+        }
+
+        if ($viewerId && $post->user_id) {
+            if ((int) $post->user_id === (int) $viewerId) {
+                $relationshipStatus = 'connected';
+            } elseif ($relationshipMap !== null) {
+                $status = $relationshipMap[$post->user_id] ?? null;
+                $relationshipStatus = match ($status) {
+                    Connection::STATUS_ACCEPTED => 'connected',
+                    Connection::STATUS_PENDING => 'pending',
+                    default => 'not_connected',
+                };
+            } else {
+                $connection = Connection::where(function ($q) use ($viewerId, $post) {
+                    $q->where('sender_id', $viewerId)->where('receiver_id', $post->user_id);
+                })->orWhere(function ($q) use ($viewerId, $post) {
+                    $q->where('sender_id', $post->user_id)->where('receiver_id', $viewerId);
+                })->first();
+
+                $relationshipStatus = match ($connection?->status) {
+                    Connection::STATUS_ACCEPTED => 'connected',
+                    Connection::STATUS_PENDING => 'pending',
+                    default => 'not_connected',
+                };
+            }
+        } else {
+            $relationshipStatus = 'not_connected';
+        }
+
+        $likedByMe = $post->relationLoaded('likes')
+            ? $post->likes->isNotEmpty()
+            : (bool) ($post->is_liked ?? ($viewerId ? $post->likes()->where('user_id', $viewerId)->exists() : false));
+
+        $canEdit = $viewerId ? ((int) $post->user_id === (int) $viewerId) : false;
+        $canDelete = $canEdit;
+
+        $industryData = null;
+        if ($industry) {
+            $industryData = [
+                'id' => $industry->id,
+                'name' => $industry->name,
+                'slug' => $industry->slug,
+                'tagline' => $industry->tagline,
+                'logo' => $industry->logo,
+                'is_following' => (bool) $isFollowing,
+            ];
+        }
+
         $data = [
+            'id' => $post->id,
+            'user' => $post->user,
+            'description' => $post->description,
+            'visibility' => $post->visibility,
+            'who_can_comment' => $post->who_can_comment ?? 'anyone',
+            'total_like' => (int) ($post->total_like ?? 0),
+            'total_comment' => (int) ($post->total_comment ?? 0),
+            'liked_by_me' => $likedByMe,
+            'relationship_status' => $relationshipStatus,
+            'media' => $post->media,
+            'group' => $post->groups?->first() ?? null,
+            'industry' => $industryData,
+            'created_at' => $post->created_at,
+            'can_edit' => $canEdit,
+            'can_delete' => $canDelete,
+
+            // Legacy compatibility fields
             'post_id' => $post->id,
             'company_id' => $industryLink?->industry_id,
             'created_by' => $post->user_id,
             'content' => $post->description,
-            'visibility' => $post->visibility,
-            'media' => $post->media
-                ->map(fn ($media) => [
-                    'id' => $media->id,
-                    'type' => $media->type,
-                    'url' => $this->publicUrl($media->file_path),
-                    'sort_order' => $media->order,
-                ])
-                ->values(),
-            'created_at' => $post->created_at,
             'updated_at' => $post->updated_at,
         ];
 
         if ($industry) {
-            $data = array_merge([
+            $data = array_merge($data, [
                 'company_name' => $industry->name,
                 'tagline' => $industry->tagline,
-                'logo' => $this->publicUrl($industry->getRawOriginal('logo')),
-            ], $data);
+                'logo' => $industry->logo,
+            ]);
         }
 
         if ($withEngagement) {
             $data['time_ago'] = $post->created_at
                 ? $post->created_at->diffForHumans()
                 : null;
-
-            $data['likes_count'] = (int) $post->total_like;
-            $data['comments_count'] = (int) $post->total_comment;
-            $data['is_liked'] = (bool) $post->is_liked;
+            $data['likes_count'] = (int) ($post->total_like ?? 0);
+            $data['comments_count'] = (int) ($post->total_comment ?? 0);
+            $data['is_liked'] = $likedByMe;
         }
 
         return $data;
+    }
+
+    private function buildRelationshipMap(?int $userId, array $otherUserIds): array
+    {
+        if (! $userId || empty($otherUserIds)) {
+            return [];
+        }
+
+        $otherUserIds = array_filter(array_unique($otherUserIds), fn ($id) => (int) $id !== (int) $userId);
+
+        if (empty($otherUserIds)) {
+            return [];
+        }
+
+        $relationships = Connection::where(function ($q) use ($userId, $otherUserIds) {
+            $q->where('sender_id', $userId)->whereIn('receiver_id', $otherUserIds);
+        })->orWhere(function ($q) use ($userId, $otherUserIds) {
+            $q->where('receiver_id', $userId)->whereIn('sender_id', $otherUserIds);
+        })
+            ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
+            ->get();
+
+        $map = [];
+        foreach ($relationships as $connection) {
+            $other = (int) $connection->sender_id === (int) $userId
+                ? $connection->receiver_id
+                : $connection->sender_id;
+            $map[$other] = $connection->status;
+        }
+
+        return $map;
     }
 
     private function commentResource(Comment $comment): array
