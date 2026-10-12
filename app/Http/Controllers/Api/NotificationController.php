@@ -40,8 +40,8 @@ class NotificationController extends Controller
         if ($search !== '') {
             $query = $query->where(function ($notificationQuery) use ($search) {
                 $notificationQuery
-                    ->where('type', 'like', '%' . $search . '%')
-                    ->orWhere('data', 'like', '%' . $search . '%');
+                    ->where('type', 'like', '%'.$search.'%')
+                    ->orWhere('data', 'like', '%'.$search.'%');
             });
         }
 
@@ -57,7 +57,7 @@ class NotificationController extends Controller
         $notifications = $query->orderByDesc('created_at')->paginate($perPage, page: $page);
 
         $formattedNotifications = collect($notifications->items())
-            ->map(fn($n) => $this->formatNotification($n))
+            ->map(fn ($n) => $this->formatNotification($n))
             ->filter()
             ->values();
 
@@ -65,19 +65,19 @@ class NotificationController extends Controller
             'success' => true,
             'message' => 'Notifications retrieved successfully',
             'stats' => [
-                'total_notifications'  => $statsQuery->count(),
+                'total_notifications' => $statsQuery->count(),
                 'unread_notifications' => $unreadCount,
             ],
-            'data'         => $formattedNotifications,
-            'total'        => $notifications->total(),
-            'limit'        => $notifications->perPage(),
+            'data' => $formattedNotifications,
+            'total' => $notifications->total(),
+            'limit' => $notifications->perPage(),
             'current_page' => $notifications->currentPage(),
-            'total_page'   => $notifications->lastPage(),
-            'last_page'    => $notifications->lastPage(),
-            'filters'      => [
+            'total_page' => $notifications->lastPage(),
+            'last_page' => $notifications->lastPage(),
+            'filters' => [
                 'unread_only' => $unreadOnly,
                 'is_industry' => $isIndustry,
-                'search'      => $search !== '' ? $search : null,
+                'search' => $search !== '' ? $search : null,
             ],
         ], 200);
     }
@@ -218,23 +218,28 @@ class NotificationController extends Controller
             $data['username'] = $user->username;
             $data['acceptor_username'] = $user->username;
             $data['inviter_username'] = $user->username;
-            $data['sender_name'] = $user->first_name . ' ' . $user->last_name;
-            $data['applicant_name'] = $user->first_name . ' ' . $user->last_name;
+            $data['sender_name'] = $user->first_name.' '.$user->last_name;
+            $data['applicant_name'] = $user->first_name.' '.$user->last_name;
             $data['profile_image_url'] = $user->profile_image_url;
+            $data['sender_profile_image_url'] = $user->profile_image_url;
+
+            if (isset($data['applicant_id'])) {
+                $data['applicant_profile_url'] = $user->profile_image_url;
+            }
         }
 
-        if (!empty($data['industry_name'])) {
+        if (! empty($data['industry_name'])) {
             $data['sender_name'] = $data['industry_name'];
         }
 
-        if (!empty($data['industry_logo_url'])) {
+        if (! empty($data['industry_logo_url'])) {
             $logoUrl = $data['industry_logo_url'];
 
-            $data['profile_image_url']        = $logoUrl;
+            $data['profile_image_url'] = $logoUrl;
             $data['sender_profile_image_url'] = $logoUrl;
-            $data['sender_profile_image']     = $logoUrl;
-            $data['avatar']                   = $logoUrl;
-            $data['image']                    = $logoUrl;
+            $data['sender_profile_image'] = $logoUrl;
+            $data['avatar'] = $logoUrl;
+            $data['image'] = $logoUrl;
         }
 
         return [
