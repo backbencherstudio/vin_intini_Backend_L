@@ -65,8 +65,6 @@ class JobApplicationReceivedNotification extends Notification implements ShouldQ
             'applicant_id' => $this->applicant->id,
             'applicant_username' => $this->applicant->username,
             'applicant_name' => $applicantName,
-            'applicant_profile_image' => $this->applicant->profile_image,
-            'applicant_profile_url' => $this->applicant->profile_image_url,
 
             // Sender details for notification avatar
             'sender_id' => $this->applicant->id,

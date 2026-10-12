@@ -209,9 +209,10 @@ class NotificationController extends Controller
             if (! empty($data['applicant_username'])) {
                 $data['sender_username'] = $data['applicant_username'];
             }
-            if (! empty($data['applicant_profile_url'])) {
-                $data['sender_profile_image_url'] = $data['applicant_profile_url'];
-                $data['profile_image_url'] = $data['applicant_profile_url'];
+            $applicantPhoto = $data['sender_profile_image_url'] ?? $data['applicant_profile_url'] ?? null;
+            if (! empty($applicantPhoto)) {
+                $data['sender_profile_image_url'] = $applicantPhoto;
+                $data['profile_image_url'] = $applicantPhoto;
             }
         } elseif ($type === 'JobApplicationStatusUpdatedNotification' || (! empty($data['industry_id']) && empty($data['sender_name']))) {
             // Sender is the industry / company
@@ -221,15 +222,15 @@ class NotificationController extends Controller
             if ($industry) {
                 $data['industry_name'] = $data['industry_name'] ?? $industry->name;
                 $data['industry_slug'] = $data['industry_slug'] ?? $industry->slug;
-                $data['industry_logo_url'] = $data['industry_logo_url'] ?? $industry->logo;
             }
+
+            $logoUrl = $data['sender_profile_image_url'] ?? $data['industry_logo_url'] ?? $data['industry_logo'] ?? $industry?->logo;
 
             if (! empty($data['industry_name'])) {
                 $data['sender_name'] = $data['industry_name'];
             }
-            if (! empty($data['industry_logo_url'])) {
-                $data['sender_profile_image_url'] = $data['industry_logo_url'];
-                $data['profile_image_url'] = $data['industry_logo_url'];
+            if (! empty($logoUrl)) {
+                $data['sender_profile_image_url'] = $logoUrl;
             }
             if (empty($data['sender_username'])) {
                 $data['sender_username'] = $data['industry_slug'] ?? ($industry?->slug ?? '');
@@ -272,8 +273,17 @@ class NotificationController extends Controller
             $data['unread_count'],
             $data['avatar'],
             $data['image'],
-            $data['sender_profile_image']
+            $data['sender_profile_image'],
+            $data['applicant_profile_image'],
+            $data['applicant_profile_url'],
+            $data['industry_logo'],
+            $data['industry_logo_url']
         );
+
+        // For industry notifications, sender is an industry so remove user-specific profile_image_url and username
+        if ($type === 'JobApplicationStatusUpdatedNotification') {
+            unset($data['profile_image_url'], $data['username']);
+        }
 
         // Remove irrelevant cross-domain keys if this is NOT that type of notification
         if (! in_array($type, ['ConnectionRequestAcceptedNotification', 'ConnectionRequestReceivedNotification'])) {

@@ -67,8 +67,6 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             'industry_id' => $this->jobPost->industry_id,
             'industry_name' => $companyName,
             'industry_slug' => $industry?->slug ?? '',
-            'industry_logo' => $rawLogo,
-            'industry_logo_url' => $industryLogoUrl, // Full image URL
             'job_id' => $this->jobPost->id,
             'job_unique_id' => $this->jobPost->job_id,
             'job_title' => $this->jobPost->job_title,
