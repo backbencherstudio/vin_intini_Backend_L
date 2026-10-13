@@ -13,6 +13,9 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
     // User Management.....
     Route::prefix('user-manage')->group(function () {
+        Route::get('users', [UserManagementController::class, 'index']);
+        Route::get('users/{id}', [UserManagementController::class, 'show']);
+        Route::post('users/{id}/toggle-suspend', [UserManagementController::class, 'toggleSuspend']);
         Route::get('leave-request', [UserManagementController::class, 'getDeletedAccountLogs']);
     });
 
