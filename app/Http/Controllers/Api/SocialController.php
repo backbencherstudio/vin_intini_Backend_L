@@ -248,6 +248,13 @@ class SocialController extends Controller
             ], 200);
         }
 
+        if ($user->is_suspended) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been suspended. Please contact support.',
+            ], 403);
+        }
+
         // Register the device FCM token, mirroring the email/password login flow.
         if ($fcmToken) {
             FcmToken::assignTo($user, $fcmToken);

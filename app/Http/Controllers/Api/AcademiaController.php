@@ -80,7 +80,7 @@ class AcademiaController extends Controller
         $query = $state->universities();
 
         if ($search !== '') {
-            $query->where('academia_universities.name', 'like', '%' . $search . '%');
+            $query->where('academia_universities.name', 'like', '%'.$search.'%');
         }
 
         if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
@@ -144,7 +144,7 @@ class AcademiaController extends Controller
         $query = $state->residencies();
 
         if ($search !== '') {
-            $query->where('academia_medical_residencies.program_name', 'like', '%' . $search . '%');
+            $query->where('academia_medical_residencies.program_name', 'like', '%'.$search.'%');
         }
 
         if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
@@ -209,7 +209,7 @@ class AcademiaController extends Controller
         });
 
         $query->when($search !== '', function ($q) use ($search) {
-            return $q->where('academia_facilities.name', 'like', '%' . $search . '%');
+            return $q->where('academia_facilities.name', 'like', '%'.$search.'%');
         });
 
         // alphabetical order
@@ -322,7 +322,7 @@ class AcademiaController extends Controller
 
         $cities = $state->cities()
             ->when($request->filled('search'), function ($query) use ($request) {
-                $query->where('name', 'LIKE', '%' . $request->input('search') . '%');
+                $query->where('name', 'LIKE', '%'.$request->input('search').'%');
             })
             ->orderBy('name')
             ->get(['id', 'name']);

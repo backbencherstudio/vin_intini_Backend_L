@@ -45,6 +45,8 @@ class User extends Authenticatable implements JWTSubject
         'two_factor_recovery_codes',
         'recovery_email',
         'recovery_email_verified_at',
+        'is_suspended',
+        'suspended_at',
     ];
 
     protected $hidden = [
@@ -71,6 +73,8 @@ class User extends Authenticatable implements JWTSubject
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'recovery_email_verified_at' => 'datetime',
+            'is_suspended' => 'boolean',
+            'suspended_at' => 'datetime',
         ];
     }
 
@@ -180,6 +184,24 @@ class User extends Authenticatable implements JWTSubject
         }
 
         return asset('storage/'.ltrim($value, '/'));
+    }
+
+    public function getStatusAttribute(): string
+    {
+        return $this->is_suspended ? 'suspended' : 'active';
+    }
+
+    public function getTierAttribute(): string
+    {
+        if ($this->industry()->exists() || $this->hasActiveSubscription(PlanType::INDUSTRY)) {
+            return 'pro_industry';
+        }
+
+        if ($this->hasActiveSubscription(PlanType::PREMIUM)) {
+            return 'premium';
+        }
+
+        return 'basic';
     }
 
     public function posts()
