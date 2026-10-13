@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\IndustryDashboardController;
 use App\Http\Controllers\Api\IndustryJobApplicationController;
 use App\Http\Controllers\Api\IndustryJobPostController;
 use App\Http\Controllers\Api\IndustryProductController;
+use App\Http\Controllers\Api\IndustryProfileController;
 use App\Http\Controllers\Api\JobsFeedController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SecuritySettingsController;
@@ -187,4 +188,11 @@ Route::prefix('industry')->group(function () {
         Route::match(['patch', 'post'], '{id}/status', [IndustryProductController::class, 'updateStatus']);
         Route::delete('{id}/delete', [IndustryProductController::class, 'destroy']);
     });
+});
+
+// Industry Profile Tab Routes (Job Posts, Products Advertisement, Publications with Cursor Pagination)
+Route::prefix('industry')->group(function () {
+    Route::get('{identifier}/jobs', [IndustryProfileController::class, 'jobs']);
+    Route::get('{identifier}/products', [IndustryProfileController::class, 'products']);
+    Route::get('{identifier}/publications', [IndustryProfileController::class, 'publications']);
 });
