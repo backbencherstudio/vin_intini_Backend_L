@@ -19,6 +19,7 @@ use App\Models\PublicationLike;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Cursor;
 
 class IndustryProfileController extends Controller
 {
@@ -308,6 +309,134 @@ class IndustryProfileController extends Controller
                 'next_cursor' => $paginated->nextCursor()?->encode(),
                 'prev_cursor' => $paginated->previousCursor()?->encode(),
                 'has_more_pages' => $paginated->hasMorePages(),
+            ],
+        ]);
+    }
+
+    /**
+     * Get cursor-paginated related industries for the visited industry profile,
+     * matching the visited industry's industry category, ordered randomly,
+     * and excluding any industries the current user already follows.
+     */
+    public function relatedIndustries(Request $request, string|int $identifier): JsonResponse
+    {
+        $industry = $this->findIndustry($identifier);
+
+        if (! $industry) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Industry not found.',
+            ], 404);
+        }
+
+        $currentUser = auth('api')->user() ?? auth()->user();
+
+        $query = Industry::query()
+            ->where('id', '!=', $industry->id);
+
+        if (! empty($industry->industry)) {
+            $query->where('industry', $industry->industry);
+        }
+
+        if ($currentUser) {
+            $query->whereDoesntHave('follows', function ($q) use ($currentUser) {
+                $q->where('user_id', $currentUser->id);
+            });
+        }
+
+        // Optional search by name or tagline
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('tagline', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $cursor = null;
+        if ($request->filled('cursor')) {
+            try {
+                $cursor = Cursor::fromEncoded($request->input('cursor'));
+            } catch (\Throwable) {
+                $cursor = null;
+            }
+        }
+
+        $seed = $cursor ? (int) ($cursor->parameter('seed') ?? 0) : 0;
+        if ($seed <= 0) {
+            $seed = $request->integer('seed', 0);
+            if ($seed <= 0) {
+                $seed = random_int(100000, 999999);
+            }
+        }
+
+        $offset = $cursor ? (int) ($cursor->parameter('offset') ?? 0) : 0;
+        $offset = max(0, $offset);
+        $perPage = min(max($request->integer('per_page', $request->integer('limit', 10)), 1), 100);
+
+        $allIds = (clone $query)->pluck('id')->all();
+        $total = count($allIds);
+
+        // Deterministic pseudo-random sorting based on seed
+        usort($allIds, function ($a, $b) use ($seed) {
+            return strcmp(md5($seed.'_'.$a), md5($seed.'_'.$b));
+        });
+
+        $slice = array_slice($allIds, $offset, $perPage);
+        $hasMorePages = ($offset + count($slice)) < $total;
+
+        $nextCursor = $hasMorePages
+            ? (new Cursor(['offset' => $offset + count($slice), 'seed' => $seed]))->encode()
+            : null;
+
+        $prevCursor = $offset > 0
+            ? (new Cursor(['offset' => max(0, $offset - $perPage), 'seed' => $seed]))->encode()
+            : null;
+
+        $industries = ! empty($slice)
+            ? Industry::whereIn('id', $slice)
+                ->withCount('followers')
+                ->get()
+                ->keyBy('id')
+            : collect();
+
+        $data = collect($slice)
+            ->map(fn ($id) => $industries->get($id))
+            ->filter()
+            ->values()
+            ->map(function (Industry $ind) {
+                return [
+                    'id' => $ind->id,
+                    'name' => $ind->name,
+                    'slug' => $ind->slug,
+                    'industry' => $ind->industry,
+                    'tagline' => $ind->tagline,
+                    'address' => $ind->address,
+                    'website' => $ind->website,
+                    'company_size' => $ind->company_size,
+                    'logo' => $ind->logo,
+                    'cover_image' => $ind->cover_image,
+                    'followers_count' => (int) ($ind->followers_count ?? 0),
+                    'is_following' => false,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Related industries retrieved successfully.',
+            'industry' => [
+                'id' => $industry->id,
+                'name' => $industry->name,
+                'slug' => $industry->slug,
+                'industry' => $industry->industry,
+            ],
+            'data' => $data,
+            'total' => $total,
+            'pagination' => [
+                'per_page' => $perPage,
+                'next_cursor' => $nextCursor,
+                'prev_cursor' => $prevCursor,
+                'has_more_pages' => $hasMorePages,
             ],
         ]);
     }

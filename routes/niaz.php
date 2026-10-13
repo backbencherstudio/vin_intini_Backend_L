@@ -195,4 +195,5 @@ Route::prefix('industry')->group(function () {
     Route::get('{identifier}/jobs', [IndustryProfileController::class, 'jobs']);
     Route::get('{identifier}/products', [IndustryProfileController::class, 'products']);
     Route::get('{identifier}/publications', [IndustryProfileController::class, 'publications']);
+    Route::get('{identifier}/related', [IndustryProfileController::class, 'relatedIndustries']);
 });

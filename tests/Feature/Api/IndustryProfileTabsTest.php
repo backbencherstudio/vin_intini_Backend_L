@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Enums\IndustryJobPostStatus;
 use App\Models\Industry;
 use App\Models\IndustryCategory;
+use App\Models\IndustryFollow;
 use App\Models\IndustryJobPost;
 use App\Models\IndustryProduct;
 use App\Models\IndustryProductLike;
@@ -237,6 +238,126 @@ class IndustryProfileTabsTest extends TestCase
         $this->assertTrue($response->json('pagination.has_more_pages'));
     }
 
+    public function test_can_fetch_related_industries_excluding_visited_and_followed_industries(): void
+    {
+        // Visited industry has industry = 'biotechnology' (set in setUp as $this->industry)
+
+        // Related industry 1 (same industry, unfollowed)
+        $rel1 = Industry::create([
+            'created_by' => User::factory()->create()->id,
+            'name' => 'BioTech Alpha',
+            'slug' => 'biotech-alpha',
+            'industry' => 'biotechnology',
+            'tagline' => 'Next-gen biotech solutions',
+        ]);
+
+        // Related industry 2 (same industry, unfollowed)
+        $rel2 = Industry::create([
+            'created_by' => User::factory()->create()->id,
+            'name' => 'BioTech Beta',
+            'slug' => 'biotech-beta',
+            'industry' => 'biotechnology',
+            'tagline' => 'Advanced biology',
+        ]);
+
+        // Related industry 3 (same industry, but authUser ALREADY FOLLOWS it)
+        $relFollowed = Industry::create([
+            'created_by' => User::factory()->create()->id,
+            'name' => 'BioTech Followed',
+            'slug' => 'biotech-followed',
+            'industry' => 'biotechnology',
+            'tagline' => 'Already followed company',
+        ]);
+        IndustryFollow::create([
+            'industry_id' => $relFollowed->id,
+            'user_id' => $this->authUser->id,
+        ]);
+
+        // Unrelated industry (different industry: 'fintech')
+        Industry::create([
+            'created_by' => User::factory()->create()->id,
+            'name' => 'Fintech Prime',
+            'slug' => 'fintech-prime',
+            'industry' => 'fintech',
+            'tagline' => 'Financial services',
+        ]);
+
+        // Fetch related industries for visited industry
+        $response = $this->actingAs($this->authUser, 'api')
+            ->getJson("/api/industry/{$this->industry->slug}/related");
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'message' => 'Related industries retrieved successfully.',
+            'industry' => [
+                'id' => $this->industry->id,
+                'slug' => 'walton-group',
+                'industry' => 'biotechnology',
+            ],
+            'total' => 2,
+        ]);
+
+        $data = $response->json('data');
+        $this->assertCount(2, $data);
+
+        $returnedSlugs = collect($data)->pluck('slug')->all();
+        // Visited industry itself MUST NOT be in the results
+        $this->assertNotContains('walton-group', $returnedSlugs);
+        // Followed industry MUST NOT be in the results
+        $this->assertNotContains('biotech-followed', $returnedSlugs);
+        // Different industry category MUST NOT be in the results
+        $this->assertNotContains('fintech-prime', $returnedSlugs);
+        // The two unfollowed biotech industries MUST be in the results
+        $this->assertContains('biotech-alpha', $returnedSlugs);
+        $this->assertContains('biotech-beta', $returnedSlugs);
+
+        // All returned items must have is_following = false
+        foreach ($data as $item) {
+            $this->assertFalse($item['is_following']);
+        }
+    }
+
+    public function test_can_paginate_related_industries_with_cursor(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            Industry::create([
+                'created_by' => User::factory()->create()->id,
+                'name' => "Related Biotech {$i}",
+                'slug' => "related-biotech-{$i}",
+                'industry' => 'biotechnology',
+                'tagline' => "Tagline {$i}",
+            ]);
+        }
+
+        // Request page 1 with per_page = 2
+        $response1 = $this->actingAs($this->authUser, 'api')
+            ->getJson("/api/industry/{$this->industry->id}/related?per_page=2");
+
+        $response1->assertStatus(200);
+        $response1->assertJson([
+            'success' => true,
+            'total' => 5,
+        ]);
+
+        $this->assertCount(2, $response1->json('data'));
+        $this->assertTrue($response1->json('pagination.has_more_pages'));
+        $nextCursor = $response1->json('pagination.next_cursor');
+        $this->assertNotNull($nextCursor);
+
+        // Request page 2 using the next_cursor
+        $response2 = $this->actingAs($this->authUser, 'api')
+            ->getJson("/api/industry/{$this->industry->id}/related?per_page=2&cursor={$nextCursor}");
+
+        $response2->assertStatus(200);
+        $this->assertCount(2, $response2->json('data'));
+
+        // Ensure page 1 and page 2 items are disjoint (no duplicate items across cursor pages)
+        $page1Ids = collect($response1->json('data'))->pluck('id')->all();
+        $page2Ids = collect($response2->json('data'))->pluck('id')->all();
+        $this->assertEmpty(array_intersect($page1Ids, $page2Ids));
+    }
+
     public function test_returns_404_for_non_existent_industry(): void
     {
         $response = $this->actingAs($this->authUser, 'api')
@@ -244,6 +365,15 @@ class IndustryProfileTabsTest extends TestCase
 
         $response->assertStatus(404);
         $response->assertJson([
+            'success' => false,
+            'message' => 'Industry not found.',
+        ]);
+
+        $relatedResponse = $this->actingAs($this->authUser, 'api')
+            ->getJson('/api/industry/99999/related');
+
+        $relatedResponse->assertStatus(404);
+        $relatedResponse->assertJson([
             'success' => false,
             'message' => 'Industry not found.',
         ]);
