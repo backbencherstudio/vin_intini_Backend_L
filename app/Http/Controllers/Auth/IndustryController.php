@@ -61,7 +61,7 @@ class IndustryController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'alpha_dash', 'unique:industries,slug'],
-            'industry' => ['required', 'string', 'max:255'],
+            'industry' => ['required', 'string', Rule::in(['psychotropics', 'biotechnology'])],
             'website' => ['nullable', 'url', 'max:255'],
             'address' => ['nullable', 'string', 'max:2000'],
             'company_size' => ['nullable', 'string', 'max:100'],
@@ -231,7 +231,7 @@ class IndustryController extends Controller
                 'alpha_dash',
                 Rule::unique('industries', 'slug')->ignore($industry->id),
             ],
-            'industry' => ['sometimes', 'string', 'max:255'],
+            'industry' => ['sometimes', 'string', Rule::in(['psychotropics', 'biotechnology'])],
             'website' => ['sometimes', 'nullable', 'url', 'max:255'],
             'address' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'company_size' => ['sometimes', 'nullable', 'string', 'max:100'],
