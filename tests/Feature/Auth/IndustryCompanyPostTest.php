@@ -1336,7 +1336,7 @@ class IndustryCompanyPostTest extends TestCase
 
         $response = $this->actingAs($owner, 'api')->postJson('/api/industry/create', [
             'name' => 'Bright Labs',
-            'industry' => 'Software',
+            'industry' => 'biotechnology',
             'authorization_confirmed' => true,
         ]);
 
