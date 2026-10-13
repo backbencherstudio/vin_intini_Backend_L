@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\IndustryJobPostStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\IndustryJobPostResource;
 use App\Http\Resources\IndustryProductResource;
 use App\Http\Resources\PublicationResource;
 use App\Models\Industry;
@@ -20,6 +19,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Cursor;
+use Illuminate\Support\Str;
 
 class IndustryProfileController extends Controller
 {
@@ -36,9 +36,6 @@ class IndustryProfileController extends Controller
                 'message' => 'Industry not found.',
             ], 404);
         }
-
-        $currentUser = auth('api')->user() ?? auth()->user();
-        $isOwner = $currentUser && ((int) $industry->created_by === (int) $currentUser->id);
 
         $today = Carbon::today()->toDateString();
 
@@ -80,16 +77,15 @@ class IndustryProfileController extends Controller
         $totalJobs = (clone $query)->count();
 
         $paginated = $query->with([
-            'industry:id,name,slug,logo,website,created_by',
             'state:id,name',
             'city:id,name',
-            'creator:id,first_name,last_name,username,profile_image',
         ])
             ->withCount('applications')
             ->latest('id')
             ->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
 
-        // Batch load user interactions (likes, saves, applications) to eliminate N+1
+        $currentUser = auth('api')->user() ?? auth()->user();
+
         $jobIds = $paginated->pluck('id')->all();
         $likedJobIds = [];
         $savedJobIds = [];
@@ -112,14 +108,34 @@ class IndustryProfileController extends Controller
                 ->all();
         }
 
-        $data = $paginated->getCollection()->map(function ($job) use ($likedJobIds, $savedJobIds, $appliedJobs, $currentUser) {
-            return (new IndustryJobPostResource(
-                $job,
-                $likedJobIds,
-                $savedJobIds,
-                $appliedJobs,
-                $currentUser
-            ))->resolve();
+        $data = $paginated->getCollection()->map(function ($job) use ($likedJobIds, $savedJobIds, $appliedJobs) {
+            $isApplied = isset($appliedJobs[$job->id]);
+            $applicationStatus = null;
+            if ($isApplied) {
+                $rawStatus = $appliedJobs[$job->id];
+                $applicationStatus = $rawStatus instanceof \BackedEnum ? $rawStatus->value : (string) $rawStatus;
+            }
+
+            return [
+                'id' => $job->id,
+                'job_id' => $job->job_id,
+                'slug' => $job->slug,
+                'job_title' => $job->job_title,
+                'work_mode' => $job->work_mode,
+                'employment_type' => $job->employment_type,
+                'network_type' => $job->network_type,
+                'location' => [
+                    'state' => $job->state?->name,
+                    'city' => $job->city?->name,
+                ],
+                'applications_count' => (int) ($job->applications_count ?? 0),
+                'views_count' => (int) ($job->views_count ?? 0),
+                'job_description' => Str::limit(strip_tags((string) $job->job_description), 150),
+                'is_liked' => isset($likedJobIds[$job->id]),
+                'is_saved' => isset($savedJobIds[$job->id]),
+                'is_applied' => $isApplied,
+                'application_status' => $applicationStatus,
+            ];
         });
 
         return response()->json([

@@ -91,6 +91,29 @@ class IndustryProfileTabsTest extends TestCase
         ]);
 
         $this->assertCount(2, $response->json('data'));
+        $firstItem = $response->json('data.0');
+        $this->assertArrayHasKey('id', $firstItem);
+        $this->assertArrayHasKey('job_id', $firstItem);
+        $this->assertArrayHasKey('slug', $firstItem);
+        $this->assertArrayHasKey('job_title', $firstItem);
+        $this->assertArrayHasKey('work_mode', $firstItem);
+        $this->assertArrayHasKey('employment_type', $firstItem);
+        $this->assertArrayHasKey('network_type', $firstItem);
+        $this->assertArrayHasKey('location', $firstItem);
+        $this->assertArrayHasKey('state', $firstItem['location']);
+        $this->assertArrayHasKey('city', $firstItem['location']);
+        $this->assertArrayHasKey('applications_count', $firstItem);
+        $this->assertArrayHasKey('views_count', $firstItem);
+        $this->assertArrayHasKey('job_description', $firstItem);
+        $this->assertArrayHasKey('is_liked', $firstItem);
+        $this->assertArrayHasKey('is_saved', $firstItem);
+        $this->assertArrayHasKey('is_applied', $firstItem);
+        $this->assertArrayHasKey('application_status', $firstItem);
+
+        $this->assertArrayNotHasKey('creator', $firstItem);
+        $this->assertArrayNotHasKey('salary_min', $firstItem);
+        $this->assertArrayNotHasKey('email', $firstItem);
+
         $this->assertTrue($response->json('pagination.has_more_pages'));
         $this->assertNotNull($response->json('pagination.next_cursor'));
 
