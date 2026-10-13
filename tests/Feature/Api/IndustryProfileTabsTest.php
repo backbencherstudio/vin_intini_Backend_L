@@ -216,6 +216,23 @@ class IndustryProfileTabsTest extends TestCase
         ]);
 
         $this->assertCount(2, $response->json('data'));
+        $firstItem = $response->json('data.0');
+        $this->assertArrayHasKey('id', $firstItem);
+        $this->assertArrayHasKey('product_id', $firstItem);
+        $this->assertArrayHasKey('product_name', $firstItem);
+        $this->assertArrayHasKey('slug', $firstItem);
+        $this->assertArrayHasKey('views_count', $firstItem);
+        $this->assertArrayHasKey('likes_count', $firstItem);
+        $this->assertArrayHasKey('is_liked', $firstItem);
+        $this->assertArrayHasKey('image_url', $firstItem);
+        $this->assertArrayHasKey('network_type', $firstItem);
+        $this->assertArrayHasKey('industry_type', $firstItem);
+        $this->assertArrayHasKey('description', $firstItem);
+
+        $this->assertArrayNotHasKey('creator', $firstItem);
+        $this->assertArrayNotHasKey('section', $firstItem);
+        $this->assertArrayNotHasKey('category', $firstItem);
+
         $this->assertTrue($response->json('pagination.has_more_pages'));
         $this->assertNotNull($response->json('pagination.next_cursor'));
     }

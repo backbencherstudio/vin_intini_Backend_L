@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\IndustryJobPostStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\IndustryProductResource;
 use App\Http\Resources\PublicationResource;
 use App\Models\Industry;
 use App\Models\IndustryJobApplication;
@@ -172,7 +171,6 @@ class IndustryProfileController extends Controller
         }
 
         $currentUser = auth('api')->user() ?? auth()->user();
-        $isOwner = $currentUser && ((int) $industry->created_by === (int) $currentUser->id);
 
         $query = IndustryProduct::query()
             ->where('industry_id', $industry->id)
@@ -206,13 +204,7 @@ class IndustryProfileController extends Controller
         $perPage = min(max($request->integer('per_page', $request->integer('limit', 12)), 1), 100);
         $totalProducts = (clone $query)->count();
 
-        $paginated = $query->with([
-            'creator:id,first_name,last_name,username,profile_image',
-            'industry:id,name,slug,logo,website,created_by',
-            'section:id,name,network_type,industry_type',
-            'category:id,section_id,category_name',
-        ])
-            ->latest('id')
+        $paginated = $query->latest('id')
             ->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
 
         // Batch load liked status for current user
@@ -226,7 +218,26 @@ class IndustryProfileController extends Controller
         }
 
         $data = $paginated->getCollection()->map(function ($product) use ($likedProductIds) {
-            return (new IndustryProductResource($product, $likedProductIds))->resolve();
+            $imageUrl = null;
+            if ($product->image) {
+                $imageUrl = str_starts_with($product->image, 'http')
+                    ? $product->image
+                    : asset('storage/'.ltrim($product->image, '/'));
+            }
+
+            return [
+                'id' => $product->id,
+                'product_id' => $product->product_id,
+                'product_name' => $product->product_name,
+                'slug' => $product->slug,
+                'views_count' => (int) ($product->views_count ?? 0),
+                'likes_count' => (int) ($product->likes_count ?? 0),
+                'is_liked' => isset($likedProductIds[$product->id]),
+                'image_url' => $imageUrl,
+                'network_type' => $product->network_type,
+                'industry_type' => $product->industry_type,
+                'description' => Str::limit(strip_tags((string) $product->description), 150),
+            ];
         });
 
         return response()->json([
