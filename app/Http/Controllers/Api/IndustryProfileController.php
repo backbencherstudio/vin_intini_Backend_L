@@ -107,7 +107,16 @@ class IndustryProfileController extends Controller
                 ->all();
         }
 
-        $data = $paginated->getCollection()->map(function ($job) use ($likedJobIds, $savedJobIds, $appliedJobs) {
+        $isOwnIndustry = (bool) ($currentUser && (int) $industry->created_by === (int) $currentUser->id);
+        $industryInfo = [
+            'id' => $industry->id,
+            'name' => $industry->name,
+            'slug' => $industry->slug,
+            'logo' => $industry->logo,
+            'is_own_industry' => $isOwnIndustry,
+        ];
+
+        $data = $paginated->getCollection()->map(function ($job) use ($likedJobIds, $savedJobIds, $appliedJobs, $industryInfo) {
             $isApplied = isset($appliedJobs[$job->id]);
             $applicationStatus = null;
             if ($isApplied) {
@@ -141,17 +150,14 @@ class IndustryProfileController extends Controller
                 'is_saved' => isset($savedJobIds[$job->id]),
                 'is_applied' => $isApplied,
                 'application_status' => $applicationStatus,
+                'industry' => $industryInfo,
             ];
         });
 
         return response()->json([
             'success' => true,
             'message' => 'Industry job posts retrieved successfully.',
-            'industry' => [
-                'id' => $industry->id,
-                'name' => $industry->name,
-                'slug' => $industry->slug,
-            ],
+            'industry' => $industryInfo,
             'data' => $data,
             'total' => $totalJobs,
             'pagination' => [
@@ -224,7 +230,16 @@ class IndustryProfileController extends Controller
                 ->all();
         }
 
-        $data = $paginated->getCollection()->map(function ($product) use ($likedProductIds) {
+        $isOwnIndustry = (bool) ($currentUser && (int) $industry->created_by === (int) $currentUser->id);
+        $industryInfo = [
+            'id' => $industry->id,
+            'name' => $industry->name,
+            'slug' => $industry->slug,
+            'logo' => $industry->logo,
+            'is_own_industry' => $isOwnIndustry,
+        ];
+
+        $data = $paginated->getCollection()->map(function ($product) use ($likedProductIds, $industryInfo) {
             $imageUrl = null;
             if ($product->image) {
                 $imageUrl = str_starts_with($product->image, 'http')
@@ -244,17 +259,14 @@ class IndustryProfileController extends Controller
                 'network_type' => $product->network_type,
                 'industry_type' => $product->industry_type,
                 'description' => Str::limit(strip_tags((string) $product->description), 150),
+                'industry' => $industryInfo,
             ];
         });
 
         return response()->json([
             'success' => true,
             'message' => 'Industry products retrieved successfully.',
-            'industry' => [
-                'id' => $industry->id,
-                'name' => $industry->name,
-                'slug' => $industry->slug,
-            ],
+            'industry' => $industryInfo,
             'data' => $data,
             'total' => $totalProducts,
             'pagination' => [

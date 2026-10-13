@@ -50,6 +50,7 @@ class IndustryProfileTabsTest extends TestCase
             'slug' => 'walton-group',
             'industry' => 'biotechnology',
             'status' => 'approved',
+            'logo' => 'https://cdn.example.com/walton.png',
         ]);
     }
 
@@ -86,6 +87,8 @@ class IndustryProfileTabsTest extends TestCase
             'industry' => [
                 'id' => $this->industry->id,
                 'slug' => 'walton-group',
+                'logo' => 'https://cdn.example.com/walton.png',
+                'is_own_industry' => true,
             ],
             'total' => 5,
         ]);
@@ -99,6 +102,7 @@ class IndustryProfileTabsTest extends TestCase
         $this->assertArrayHasKey('work_mode', $firstItem);
         $this->assertArrayHasKey('employment_type', $firstItem);
         $this->assertArrayHasKey('network_type', $firstItem);
+        $this->assertArrayNotHasKey('image_url', $firstItem);
         $this->assertArrayHasKey('state', $firstItem);
         $this->assertArrayHasKey('city', $firstItem);
         $this->assertArrayNotHasKey('location', $firstItem);
@@ -112,6 +116,10 @@ class IndustryProfileTabsTest extends TestCase
         $this->assertArrayHasKey('is_saved', $firstItem);
         $this->assertArrayHasKey('is_applied', $firstItem);
         $this->assertArrayHasKey('application_status', $firstItem);
+        $this->assertArrayHasKey('industry', $firstItem);
+        $this->assertSame($this->industry->id, $firstItem['industry']['id']);
+        $this->assertSame('https://cdn.example.com/walton.png', $firstItem['industry']['logo']);
+        $this->assertTrue($firstItem['industry']['is_own_industry']);
 
         $this->assertArrayNotHasKey('creator', $firstItem);
         $this->assertArrayNotHasKey('email', $firstItem);
@@ -164,6 +172,7 @@ class IndustryProfileTabsTest extends TestCase
             ->getJson("/api/industry/{$this->industry->slug}/jobs");
 
         $response->assertStatus(200);
+        $this->assertFalse($response->json('industry.is_own_industry'));
         $this->assertCount(1, $response->json('data'));
         $this->assertEquals('WALT-PUB', $response->json('data.0.job_id'));
     }
@@ -230,6 +239,10 @@ class IndustryProfileTabsTest extends TestCase
         $this->assertArrayHasKey('network_type', $firstItem);
         $this->assertArrayHasKey('industry_type', $firstItem);
         $this->assertArrayHasKey('description', $firstItem);
+        $this->assertArrayHasKey('industry', $firstItem);
+        $this->assertSame($this->industry->id, $firstItem['industry']['id']);
+        $this->assertSame('https://cdn.example.com/walton.png', $firstItem['industry']['logo']);
+        $this->assertTrue($firstItem['industry']['is_own_industry']);
 
         $this->assertArrayNotHasKey('creator', $firstItem);
         $this->assertArrayNotHasKey('section', $firstItem);
