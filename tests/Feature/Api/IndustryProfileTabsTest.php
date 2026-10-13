@@ -99,9 +99,12 @@ class IndustryProfileTabsTest extends TestCase
         $this->assertArrayHasKey('work_mode', $firstItem);
         $this->assertArrayHasKey('employment_type', $firstItem);
         $this->assertArrayHasKey('network_type', $firstItem);
-        $this->assertArrayHasKey('location', $firstItem);
-        $this->assertArrayHasKey('state', $firstItem['location']);
-        $this->assertArrayHasKey('city', $firstItem['location']);
+        $this->assertArrayHasKey('state', $firstItem);
+        $this->assertArrayHasKey('city', $firstItem);
+        $this->assertArrayNotHasKey('location', $firstItem);
+        $this->assertArrayHasKey('salary_min', $firstItem);
+        $this->assertArrayHasKey('salary_max', $firstItem);
+        $this->assertArrayHasKey('salary_type', $firstItem);
         $this->assertArrayHasKey('applications_count', $firstItem);
         $this->assertArrayHasKey('views_count', $firstItem);
         $this->assertArrayHasKey('job_description', $firstItem);
@@ -111,7 +114,6 @@ class IndustryProfileTabsTest extends TestCase
         $this->assertArrayHasKey('application_status', $firstItem);
 
         $this->assertArrayNotHasKey('creator', $firstItem);
-        $this->assertArrayNotHasKey('salary_min', $firstItem);
         $this->assertArrayNotHasKey('email', $firstItem);
 
         $this->assertTrue($response->json('pagination.has_more_pages'));

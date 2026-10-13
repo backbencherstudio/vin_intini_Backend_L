@@ -123,10 +123,17 @@ class IndustryProfileController extends Controller
                 'work_mode' => $job->work_mode,
                 'employment_type' => $job->employment_type,
                 'network_type' => $job->network_type,
-                'location' => [
-                    'state' => $job->state?->name,
-                    'city' => $job->city?->name,
-                ],
+                'state' => $job->state ? [
+                    'id' => $job->state->id,
+                    'name' => $job->state->name,
+                ] : null,
+                'city' => $job->city ? [
+                    'id' => $job->city->id,
+                    'name' => $job->city->name,
+                ] : null,
+                'salary_min' => $job->salary_min !== null ? (string) $job->salary_min : null,
+                'salary_max' => $job->salary_max !== null ? (string) $job->salary_max : null,
+                'salary_type' => $job->salary_type,
                 'applications_count' => (int) ($job->applications_count ?? 0),
                 'views_count' => (int) ($job->views_count ?? 0),
                 'job_description' => Str::limit(strip_tags((string) $job->job_description), 150),
