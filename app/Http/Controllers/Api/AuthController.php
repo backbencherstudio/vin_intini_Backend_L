@@ -79,6 +79,13 @@ class AuthController extends Controller
             ], 200);
         }
 
+        if ($user->is_suspended) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been suspended. Please contact support.',
+            ], 403);
+        }
+
         // Save the FCM token before the 2FA check so it persists even when
         // authentication pauses for the two-factor code.
         if (! empty($credentials['fcm_token'])) {
