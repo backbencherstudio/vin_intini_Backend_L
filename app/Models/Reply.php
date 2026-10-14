@@ -14,6 +14,7 @@ class Reply extends Model
         'post_id',
         'comment_id',
         'user_id',
+        'industry_id',
         'reply',
         'like_count',
         'image',
@@ -37,6 +38,16 @@ class Reply extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function industry()
+    {
+        return $this->belongsTo(Industry::class);
+    }
+
+    public function isCompanyReply(): bool
+    {
+        return $this->industry_id !== null;
     }
 
     public function likes()

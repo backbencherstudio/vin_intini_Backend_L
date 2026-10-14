@@ -894,6 +894,8 @@ class IndustryController extends Controller
         $validated = $request->validate([
             'comment' => ['nullable', 'string', 'max:5000'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'as_company' => ['nullable', 'boolean'],
+            'industry_id' => ['nullable', 'integer'],
         ]);
 
         if (blank($validated['comment'] ?? null) && ! $request->hasFile('image')) {
@@ -907,6 +909,15 @@ class IndustryController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'You are not allowed to comment on this post.',
+            ], 403);
+        }
+
+        $actingIndustryId = $this->resolveActingIndustryId($post, $request, (int) auth()->id());
+
+        if ($actingIndustryId === false) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to comment on behalf of this company.',
             ], 403);
         }
 
@@ -925,12 +936,18 @@ class IndustryController extends Controller
             $comment = Comment::create([
                 'post_id' => $post->id,
                 'user_id' => auth()->id(),
+                'industry_id' => $actingIndustryId,
                 'comment' => $validated['comment'] ?? null,
                 'image' => $imagePath,
             ]);
 
             $post->increment('total_comment');
             $post->refresh();
+
+            $comment->load([
+                'user:id,username,first_name,last_name,title,profile_image',
+                'industry:id,name,slug,tagline,logo',
+            ]);
 
             DB::commit();
 
@@ -978,6 +995,7 @@ class IndustryController extends Controller
 
         $comments = Comment::with([
             'user:id,username,first_name,last_name,title,profile_image',
+            'industry:id,name,slug,tagline,logo',
         ])
             ->withExists([
                 'likes as is_liked' => fn ($query) => $query->where('user_id', $userId),
@@ -1199,6 +1217,8 @@ class IndustryController extends Controller
         $validated = $request->validate([
             'comment' => ['nullable', 'string', 'max:5000'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'as_company' => ['nullable', 'boolean'],
+            'industry_id' => ['nullable', 'integer'],
         ]);
 
         if (blank($validated['comment'] ?? null) && ! $request->hasFile('image')) {
@@ -1214,6 +1234,15 @@ class IndustryController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'You are not allowed to reply to this comment.',
+            ], 403);
+        }
+
+        $actingIndustryId = $this->resolveActingIndustryId($post, $request, (int) auth()->id());
+
+        if ($actingIndustryId === false) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to reply on behalf of this company.',
             ], 403);
         }
 
@@ -1233,6 +1262,7 @@ class IndustryController extends Controller
                 'post_id' => $post->id,
                 'comment_id' => $parentComment->id,
                 'user_id' => auth()->id(),
+                'industry_id' => $actingIndustryId,
                 'reply' => $validated['comment'] ?? null,
                 'image' => $imagePath,
             ]);
@@ -1242,6 +1272,11 @@ class IndustryController extends Controller
 
             $parentComment->refresh();
             $post->refresh();
+
+            $reply->load([
+                'user:id,username,first_name,last_name,title,profile_image',
+                'industry:id,name,slug,tagline,logo',
+            ]);
 
             DB::commit();
 
@@ -1287,6 +1322,7 @@ class IndustryController extends Controller
 
         $replies = Reply::with([
             'user:id,username,first_name,last_name,title,profile_image',
+            'industry:id,name,slug,tagline,logo',
         ])
             ->withExists([
                 'likes as is_liked' => fn ($query) => $query->where('user_id', auth()->id()),
@@ -1564,6 +1600,7 @@ class IndustryController extends Controller
                         'post_id',
                         'comment_id',
                         'user_id',
+                        'industry_id',
                         'reply',
                         'image',
                         'like_count',
@@ -1587,6 +1624,7 @@ class IndustryController extends Controller
 
         return Reply::with([
             'user:id,username,first_name,last_name,title,profile_image',
+            'industry:id,name,slug,tagline,logo',
         ])
             ->withExists([
                 'likes as is_liked' => fn ($query) => $query->where('user_id', $userId),
@@ -1894,13 +1932,64 @@ class IndustryController extends Controller
         return $map;
     }
 
+    /**
+     * Determine whether the action should be performed on behalf of the company page.
+     * Returns the company ID if acting as company, null if acting as individual user,
+     * or false if an unauthorized attempt to act as company was made.
+     */
+    private function resolveActingIndustryId(Post $post, Request $request, int $userId): int|false|null
+    {
+        $post->loadMissing('industryLink.industry');
+        $company = $post->industryLink?->industry;
+        $isPostCompanyOwner = $company && (int) $company->created_by === $userId;
+
+        if ($request->filled('industry_id')) {
+            $targetCompanyId = (int) $request->input('industry_id');
+            if ($company && (int) $company->id === $targetCompanyId && $isPostCompanyOwner) {
+                return $targetCompanyId;
+            }
+
+            $userCompany = Industry::where('id', $targetCompanyId)
+                ->where('created_by', $userId)
+                ->first();
+
+            return $userCompany ? (int) $userCompany->id : false;
+        }
+
+        if ($request->boolean('as_company')) {
+            if (! $isPostCompanyOwner) {
+                return false;
+            }
+
+            return (int) $company->id;
+        }
+
+        // Default is always 'user' (personal profile)
+        return null;
+    }
+
     private function commentResource(Comment $comment): array
     {
+        $isCompany = (bool) $comment->industry_id;
+        $industry = $isCompany
+            ? ($comment->relationLoaded('industry') ? $comment->industry : $comment->industry()->first())
+            : null;
+
         return [
             'id' => $comment->id,
             'post_id' => $comment->post_id,
             'user_id' => $comment->user_id,
+            'industry_id' => $comment->industry_id,
+            'is_company_comment' => $isCompany,
             'user' => $this->commentAuthorResource($comment),
+            'industry' => $industry ? [
+                'id' => $industry->id,
+                'name' => $industry->name,
+                'slug' => $industry->slug,
+                'tagline' => $industry->tagline,
+                'logo' => $industry->logo,
+            ] : null,
+            'author' => $this->resolvedAuthorResource($comment),
             'comment' => $comment->comment,
             'image' => $this->publicUrl($comment->image),
             'likes_count' => (int) $comment->like_count,
@@ -1915,12 +2004,27 @@ class IndustryController extends Controller
 
     private function replyResource(Reply $reply): array
     {
+        $isCompany = (bool) $reply->industry_id;
+        $industry = $isCompany
+            ? ($reply->relationLoaded('industry') ? $reply->industry : $reply->industry()->first())
+            : null;
+
         return [
             'id' => $reply->id,
             'post_id' => $reply->post_id,
             'comment_id' => $reply->comment_id,
             'user_id' => $reply->user_id,
+            'industry_id' => $reply->industry_id,
+            'is_company_reply' => $isCompany,
             'user' => $this->commentAuthorResource($reply),
+            'industry' => $industry ? [
+                'id' => $industry->id,
+                'name' => $industry->name,
+                'slug' => $industry->slug,
+                'tagline' => $industry->tagline,
+                'logo' => $industry->logo,
+            ] : null,
+            'author' => $this->resolvedAuthorResource($reply),
             'comment' => $reply->reply,
             'image' => $this->publicUrl($reply->image),
             'likes_count' => (int) $reply->like_count,
@@ -1934,6 +2038,23 @@ class IndustryController extends Controller
 
     private function commentAuthorResource($model): ?array
     {
+        if ($model->industry_id) {
+            $industry = $model->relationLoaded('industry')
+                ? $model->industry
+                : $model->industry()->first();
+
+            if ($industry) {
+                return [
+                    'id' => $industry->id,
+                    'username' => $industry->slug,
+                    'name' => $industry->name,
+                    'title' => $industry->tagline,
+                    'profile_image' => $industry->logo,
+                    'is_company' => true,
+                ];
+            }
+        }
+
         if (! $model->relationLoaded('user') || ! $model->user) {
             return null;
         }
@@ -1946,6 +2067,49 @@ class IndustryController extends Controller
             ),
             'title' => $model->user->title,
             'profile_image' => $model->user->profile_image_url,
+            'is_company' => false,
+        ];
+    }
+
+    private function resolvedAuthorResource($model): ?array
+    {
+        if ($model->industry_id) {
+            $industry = $model->relationLoaded('industry')
+                ? $model->industry
+                : $model->industry()->first();
+
+            if ($industry) {
+                return [
+                    'type' => 'company',
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'username' => $industry->slug,
+                    'title' => $industry->tagline,
+                    'profile_image' => $industry->logo,
+                    'is_company' => true,
+                    'posted_by' => $model->relationLoaded('user') && $model->user ? [
+                        'id' => $model->user->id,
+                        'name' => trim(($model->user->first_name ?? '').' '.($model->user->last_name ?? '')),
+                    ] : null,
+                ];
+            }
+        }
+
+        if (! $model->relationLoaded('user') || ! $model->user) {
+            return null;
+        }
+
+        return [
+            'type' => 'user',
+            'id' => $model->user->id,
+            'username' => $model->user->username,
+            'name' => trim(
+                ($model->user->first_name ?? '').' '.($model->user->last_name ?? '')
+            ),
+            'title' => $model->user->title,
+            'profile_image' => $model->user->profile_image_url,
+            'is_company' => false,
+            'posted_by' => null,
         ];
     }
 
