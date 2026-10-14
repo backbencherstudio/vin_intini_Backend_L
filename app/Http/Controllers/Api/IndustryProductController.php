@@ -469,14 +469,14 @@ class IndustryProductController extends Controller
 
         $stats = IndustryProduct::query()
             ->where('industry_id', $industry->id)
-            ->selectRaw("COUNT(*) as total_advertisements, COUNT(CASE WHEN status = 'active' THEN 1 END) as total_active_products, COALESCE(SUM(likes_count), 0) as total_likes, COALESCE(SUM(views_count), 0) as total_views")
+            ->selectRaw("COUNT(*) as total_products, COUNT(CASE WHEN status = 'active' THEN 1 END) as total_active_products, COALESCE(SUM(likes_count), 0) as total_likes, COALESCE(SUM(views_count), 0) as total_views")
             ->first();
 
         return response()->json([
             'success' => true,
-            'message' => 'Advertisement dashboard statistics retrieved successfully.',
+            'message' => 'Product dashboard statistics retrieved successfully.',
             'data' => [
-                'total_advertisements' => (int) ($stats->total_advertisements ?? 0),
+                'total_products' => (int) ($stats->total_products ?? 0),
                 'total_active_products' => (int) ($stats->total_active_products ?? 0),
                 'total_likes' => (int) ($stats->total_likes ?? 0),
                 'total_views' => (int) ($stats->total_views ?? 0),
@@ -519,7 +519,7 @@ class IndustryProductController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Advertisements retrieved successfully.',
+            'message' => 'Products retrieved successfully.',
             'data' => IndustryProductResource::collection($paginated),
             'pagination' => [
                 'current_page' => $paginated->currentPage(),
@@ -583,7 +583,7 @@ class IndustryProductController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Product advertisement created successfully.',
+            'message' => 'Product created successfully.',
             'data' => (new IndustryProductResource($product))->resolve(),
         ], 201);
     }
@@ -838,7 +838,7 @@ class IndustryProductController extends Controller
         if (! $user->hasActiveSubscription(PlanType::INDUSTRY)) {
             return response()->json([
                 'success' => false,
-                'message' => 'You must have an active Pro Industry subscription plan to add or manage product advertisements.',
+                'message' => 'You must have an active Pro Industry subscription plan to add or manage product.',
             ], 403);
         }
 
