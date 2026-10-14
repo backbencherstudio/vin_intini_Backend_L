@@ -99,7 +99,7 @@ class IndustryProductTest extends TestCase
         UserProfile::create(['user_id' => $nonSubscriber->id]);
 
         $response = $this->actingAs($nonSubscriber, 'api')
-            ->postJson('/api/industry/advertisements/create', [
+            ->postJson('/api/industry/products/create', [
                 'product_name' => 'Test Product',
                 'network_type' => 'psychology',
                 'industry_type' => 'biotechnology',
@@ -131,7 +131,7 @@ class IndustryProductTest extends TestCase
         ];
 
         $response = $this->actingAs($this->creator, 'api')
-            ->postJson('/api/industry/advertisements/create', $payload);
+            ->postJson('/api/industry/products/create', $payload);
 
         $response->assertStatus(201)
             ->assertJsonPath('success', true)
@@ -156,7 +156,7 @@ class IndustryProductTest extends TestCase
         $payloadWithoutUrl['image'] = UploadedFile::fake()->image('nourl.jpg');
 
         $responseNoUrl = $this->actingAs($this->creator, 'api')
-            ->postJson('/api/industry/advertisements/create', $payloadWithoutUrl);
+            ->postJson('/api/industry/products/create', $payloadWithoutUrl);
 
         $responseNoUrl->assertStatus(201)
             ->assertJsonPath('data.product_url', null);
@@ -354,17 +354,17 @@ class IndustryProductTest extends TestCase
         ]);
 
         $dashResponse = $this->actingAs($this->creator, 'api')
-            ->getJson('/api/industry/advertisements/dashboard');
+            ->getJson('/api/industry/products/dashboard');
 
         $dashResponse->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.total_advertisements', 2)
+            ->assertJsonPath('data.total_products', 2)
             ->assertJsonPath('data.total_active_products', 2)
             ->assertJsonPath('data.total_likes', 60)
             ->assertJsonPath('data.total_views', 200);
 
         $listingsResponse = $this->actingAs($this->creator, 'api')
-            ->getJson('/api/industry/advertisements/my-listings');
+            ->getJson('/api/industry/products/my-listings');
 
         $listingsResponse->assertOk()
             ->assertJsonPath('success', true)
@@ -388,9 +388,9 @@ class IndustryProductTest extends TestCase
         ]);
 
         $this->actingAs($this->creator, 'api')
-            ->getJson('/api/industry/advertisements/dashboard')
+            ->getJson('/api/industry/products/dashboard')
             ->assertOk()
-            ->assertJsonPath('data.total_advertisements', 3)
+            ->assertJsonPath('data.total_products', 3)
             ->assertJsonPath('data.total_active_products', 2);
     }
 
@@ -426,7 +426,7 @@ class IndustryProductTest extends TestCase
         $admin->assignRole(['admin', 'user']);
 
         $this->actingAs($admin, 'api')
-            ->postJson("/api/industry/advertisements/{$product->id}/update", [
+            ->postJson("/api/industry/products/{$product->id}/update", [
                 'product_name' => 'Persistent Product Updated by Admin',
             ])
             ->assertOk()
@@ -458,7 +458,7 @@ class IndustryProductTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists($imagePath));
 
         $response = $this->actingAs($this->creator, 'api')
-            ->deleteJson("/api/industry/advertisements/{$product->id}/delete");
+            ->deleteJson("/api/industry/products/{$product->id}/delete");
 
         $response->assertOk()
             ->assertJsonPath('success', true);
@@ -476,7 +476,7 @@ class IndustryProductTest extends TestCase
 
         // 1. Create product via API
         $createResponse = $this->actingAs($this->creator, 'api')
-            ->postJson('/api/industry/advertisements/create', [
+            ->postJson('/api/industry/products/create', [
                 'network_type' => 'psychology',
                 'industry_type' => 'biotechnology',
                 'section_id' => $this->section->id,
@@ -533,7 +533,7 @@ class IndustryProductTest extends TestCase
 
         // 1. Create with POC fields
         $createResponse = $this->actingAs($this->creator, 'api')
-            ->postJson('/api/industry/advertisements/create', [
+            ->postJson('/api/industry/products/create', [
                 'network_type' => 'psychology',
                 'industry_type' => 'biotechnology',
                 'section_id' => $this->section->id,
@@ -571,7 +571,7 @@ class IndustryProductTest extends TestCase
 
         // 3. Update POC fields
         $updateResponse = $this->actingAs($this->creator, 'api')
-            ->postJson("/api/industry/advertisements/{$productId}/update", [
+            ->postJson("/api/industry/products/{$productId}/update", [
                 'poc_name' => 'Updated Contact Person',
                 'poc_email' => 'updated@company.com',
                 'poc_phone' => '+880 1712 345678',
@@ -594,7 +594,7 @@ class IndustryProductTest extends TestCase
     {
         // 1. Get plain sections list
         $sectionsResponse = $this->actingAs($this->creator, 'api')
-            ->getJson('/api/industry/advertisements/sections?network_type=psychology&industry_type=biotechnology');
+            ->getJson('/api/industry/products/sections?network_type=psychology&industry_type=biotechnology');
 
         $sectionsResponse->assertOk()
             ->assertJsonPath('success', true)
@@ -605,14 +605,14 @@ class IndustryProductTest extends TestCase
 
         // 2. Reject publications as industry_type
         $invalidTypeResponse = $this->actingAs($this->creator, 'api')
-            ->getJson('/api/industry/advertisements/sections?network_type=psychology&industry_type=publications');
+            ->getJson('/api/industry/products/sections?network_type=psychology&industry_type=publications');
 
         $invalidTypeResponse->assertUnprocessable()
             ->assertJsonValidationErrors(['industry_type']);
 
         // 3. Get categories for a specific section
         $sectionCatResponse = $this->actingAs($this->creator, 'api')
-            ->getJson("/api/industry/advertisements/sections/{$this->section->id}/categories");
+            ->getJson("/api/industry/products/sections/{$this->section->id}/categories");
 
         $sectionCatResponse->assertOk()
             ->assertJsonPath('success', true)
@@ -638,7 +638,7 @@ class IndustryProductTest extends TestCase
 
         // 1. Set draft status via advertisements prefix (PATCH)
         $draftResponse = $this->actingAs($this->creator, 'api')
-            ->patchJson("/api/industry/advertisements/{$product->id}/status", [
+            ->patchJson("/api/industry/products/{$product->id}/status", [
                 'status' => 'draft',
             ]);
 
@@ -650,7 +650,7 @@ class IndustryProductTest extends TestCase
 
         // 2. Set inactive via advertisements prefix using unique product_id (POST)
         $inactiveResponse = $this->actingAs($this->creator, 'api')
-            ->postJson("/api/industry/advertisements/{$product->product_id}/status", [
+            ->postJson("/api/industry/products/{$product->product_id}/status", [
                 'status' => 'inactive',
             ]);
 
@@ -662,7 +662,7 @@ class IndustryProductTest extends TestCase
 
         // 3. Reactivate back to active
         $activeResponse = $this->actingAs($this->creator, 'api')
-            ->patchJson("/api/industry/advertisements/{$product->id}/status", [
+            ->patchJson("/api/industry/products/{$product->id}/status", [
                 'status' => 'active',
             ]);
 
@@ -674,7 +674,7 @@ class IndustryProductTest extends TestCase
 
         // 4. Reject paused or invalid status
         $invalidResponse = $this->actingAs($this->creator, 'api')
-            ->patchJson("/api/industry/advertisements/{$product->id}/status", [
+            ->patchJson("/api/industry/products/{$product->id}/status", [
                 'status' => 'paused',
             ]);
 
@@ -684,7 +684,7 @@ class IndustryProductTest extends TestCase
         // 5. Unauthorized user from another company
         $otherCreator = User::factory()->create(['is_verified' => true]);
         $unauthorizedResponse = $this->actingAs($otherCreator, 'api')
-            ->patchJson("/api/industry/advertisements/{$product->id}/status", [
+            ->patchJson("/api/industry/products/{$product->id}/status", [
                 'status' => 'inactive',
             ]);
 
@@ -692,7 +692,7 @@ class IndustryProductTest extends TestCase
 
         // 6. Non-existing product returns 404
         $notFoundResponse = $this->actingAs($this->creator, 'api')
-            ->patchJson('/api/industry/advertisements/999999/status', [
+            ->patchJson('/api/industry/products/999999/status', [
                 'status' => 'inactive',
             ]);
 

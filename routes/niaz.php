@@ -167,17 +167,17 @@ Route::prefix('industry/analytics')->group(function () {
     Route::get('/publications-insights', [IndustryAnalyticsController::class, 'publicationsInsights']);
 });
 
-// Pro Industry Products & Advertisements
+// Pro Industry Products 
 Route::prefix('industry')->group(function () {
-    // Public / User Feed & Interactions (Screenshots 1 & 2)
+    // Public / User Feed & Interactions
     Route::get('product-feed', [IndustryProductController::class, 'productFeed']);
     Route::get('feed', [IndustryProductController::class, 'productFeed']);
     Route::get('products/feed', [IndustryProductController::class, 'productFeed']);
     Route::get('products/{id}/details', [IndustryProductController::class, 'show']);
     Route::post('products/{id}/like', [IndustryProductController::class, 'toggleLike']);
 
-    // Pro Industry Advertisement Dashboard & Management (Screenshot 3)
-    Route::prefix('advertisements')->group(function () {
+    // Pro Industry Products Dashboard & Management 
+    Route::prefix('products')->group(function () {
         Route::get('dashboard', [IndustryProductController::class, 'dashboard']);
         Route::get('my-listings', [IndustryProductController::class, 'myListings']);
         Route::get('sections', [IndustryProductController::class, 'dropdownSections']);
