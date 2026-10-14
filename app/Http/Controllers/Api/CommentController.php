@@ -65,6 +65,22 @@ class CommentController extends Controller
             }
         }
 
+        $post->loadMissing('industryLink.industry');
+        $company = $post->industryLink?->industry;
+        $isPostCompanyOwner = $company && (int) $company->created_by === $user->id;
+
+        $actingIndustryId = null;
+        if ($request->boolean('as_company')) {
+            if (! $isPostCompanyOwner) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not authorized to comment on behalf of this company.',
+                ], 403);
+            }
+
+            $actingIndustryId = $company->id;
+        }
+
         DB::beginTransaction();
         try {
             $imagePath = null;
@@ -76,6 +92,7 @@ class CommentController extends Controller
                 $comment = Comment::create([
                     'post_id' => $post->id,
                     'user_id' => $user->id,
+                    'industry_id' => $actingIndustryId,
                     'comment' => $request->comment ?? null,
                     'image' => $imagePath,
                 ]);
@@ -110,6 +127,7 @@ class CommentController extends Controller
                 'post_id' => $post->id,
                 'comment_id' => $parentComment->id,
                 'user_id' => $user->id,
+                'industry_id' => $actingIndustryId,
                 'reply' => $request->comment ?? null,
                 'image' => $imagePath,
             ]);
@@ -150,7 +168,11 @@ class CommentController extends Controller
             ], 403);
         }
 
-        $comments = Comment::with(['user:id,username,title,first_name,last_name,profile_image', 'post'])
+        $comments = Comment::with([
+            'user:id,username,title,first_name,last_name,profile_image',
+            'industry:id,name,slug,tagline,logo',
+            'post',
+        ])
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->withExists(['likes as liked_by_me' => fn ($q) => $q->where('user_id', $user->id)])
             ->where('post_id', $postId)
@@ -163,17 +185,35 @@ class CommentController extends Controller
             }
 
             $canDelete = ($comment->user_id === $user->id || $comment->post->user_id === $user->id);
+            $isCompany = (bool) $comment->industry_id;
+            $industry = $isCompany ? $comment->industry : null;
 
             return [
                 'id' => $comment->id,
                 'comment' => $comment->comment ?? null,
                 'image_url' => $comment->image_url ?? null,
-                'user' => [
+                'industry_id' => $comment->industry_id,
+                'is_company_comment' => $isCompany,
+                'user' => $isCompany && $industry ? [
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'title' => $industry->tagline,
+                    'profile_image' => $industry->logo,
+                    'is_company' => true,
+                ] : [
                     'id' => $comment->user->id,
                     'name' => trim($comment->user->first_name.' '.$comment->user->last_name),
                     'title' => $comment->user->title,
                     'profile_image' => $comment->user->profile_image_url,
+                    'is_company' => false,
                 ],
+                'industry' => $industry ? [
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'slug' => $industry->slug,
+                    'tagline' => $industry->tagline,
+                    'logo' => $industry->logo,
+                ] : null,
                 'like_count' => (int) $comment->like_count,
                 'liked_by_me' => (bool) $comment->liked_by_me,
                 'replies_count' => (int) $comment->reply_count,
@@ -204,7 +244,11 @@ class CommentController extends Controller
             return $error;
         }
 
-        $replies = Reply::with(['user:id,username,title,first_name,last_name,profile_image', 'comment.post'])
+        $replies = Reply::with([
+            'user:id,username,title,first_name,last_name,profile_image',
+            'industry:id,name,slug,tagline,logo',
+            'comment.post',
+        ])
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->withExists(['likes as liked_by_me' => fn ($q) => $q->where('user_id', $user->id)])
             ->where('comment_id', $commentId)
@@ -217,17 +261,35 @@ class CommentController extends Controller
             }
 
             $canDelete = ($reply->user_id === $user->id || $reply->comment->user_id === $user->id || $reply->comment->post->user_id === $user->id);
+            $isCompany = (bool) $reply->industry_id;
+            $industry = $isCompany ? $reply->industry : null;
 
             return [
                 'id' => $reply->id,
                 'reply' => $reply->reply ?? null,
                 'image_url' => $reply->image_url ?? null,
-                'user' => [
+                'industry_id' => $reply->industry_id,
+                'is_company_reply' => $isCompany,
+                'user' => $isCompany && $industry ? [
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'title' => $industry->tagline,
+                    'profile_image' => $industry->logo,
+                    'is_company' => true,
+                ] : [
                     'id' => $reply->user->id,
                     'name' => trim($reply->user->first_name.' '.$reply->user->last_name),
                     'title' => $reply->user->title,
                     'profile_image' => $reply->user->profile_image_url,
+                    'is_company' => false,
                 ],
+                'industry' => $industry ? [
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'slug' => $industry->slug,
+                    'tagline' => $industry->tagline,
+                    'logo' => $industry->logo,
+                ] : null,
                 'like_count' => (int) $reply->like_count,
                 'liked_by_me' => (bool) $reply->liked_by_me,
                 'reply_time' => $reply->created_at,

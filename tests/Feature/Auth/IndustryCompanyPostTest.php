@@ -1426,6 +1426,263 @@ class IndustryCompanyPostTest extends TestCase
             ->assertJsonPath('data.0.industry.is_following', false);
     }
 
+    public function test_company_owner_reply_defaults_to_personal_user_reply_on_company_post(): void
+    {
+        $owner = $this->makeUser('John', 'Doe');
+        $industry = $this->makeIndustry($owner);
+        $commenter = $this->makeUser();
+
+        $postId = $this->createPost($owner, 'Company announcement', 'public');
+        $commentId = $this->createComment($commenter, $postId, 'Great product!');
+
+        $response = $this->actingAs($owner, 'api')
+            ->postJson("/api/industry/post/comment/reply/{$commentId}", [
+                'comment' => 'Replying as myself by default',
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.comment', 'Replying as myself by default')
+            ->assertJsonPath('data.is_company_reply', false)
+            ->assertJsonPath('data.industry_id', null)
+            ->assertJsonPath('data.user.name', 'John Doe')
+            ->assertJsonPath('data.user.is_company', false)
+            ->assertJsonPath('data.author.type', 'user');
+
+        $reply = Reply::latest('id')->first();
+        $this->assertNotNull($reply);
+        $this->assertNull($reply->industry_id);
+        $this->assertSame((int) $owner->id, (int) $reply->user_id);
+        $this->assertFalse($reply->isCompanyReply());
+    }
+
+    public function test_company_owner_can_explicitly_reply_as_company(): void
+    {
+        $owner = $this->makeUser('Jane', 'Doe');
+        $industry = $this->makeIndustry($owner);
+        $commenter = $this->makeUser();
+
+        $postId = $this->createPost($owner, 'Company update', 'public');
+        $commentId = $this->createComment($commenter, $postId, 'Nice post');
+
+        $response = $this->actingAs($owner, 'api')
+            ->postJson("/api/industry/post/comment/reply/{$commentId}", [
+                'comment' => 'Official company response',
+                'as_company' => true,
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.comment', 'Official company response')
+            ->assertJsonPath('data.is_company_reply', true)
+            ->assertJsonPath('data.industry_id', $industry->id)
+            ->assertJsonPath('data.user.name', $industry->name)
+            ->assertJsonPath('data.user.is_company', true)
+            ->assertJsonPath('data.industry.name', $industry->name)
+            ->assertJsonPath('data.author.type', 'company');
+
+        $reply = Reply::latest('id')->first();
+        $this->assertSame((int) $industry->id, (int) $reply->industry_id);
+        $this->assertTrue($reply->isCompanyReply());
+    }
+
+    public function test_third_party_user_reply_defaults_to_personal_user_reply(): void
+    {
+        $owner = $this->makeUser();
+        $industry = $this->makeIndustry($owner);
+        $commenter = $this->makeUser();
+        $thirdParty = $this->makeUser('Bob', 'Smith');
+
+        $postId = $this->createPost($owner, 'Company discussion', 'public');
+        $commentId = $this->createComment($commenter, $postId, 'Interesting topic');
+
+        $response = $this->actingAs($thirdParty, 'api')
+            ->postJson("/api/industry/post/comment/reply/{$commentId}", [
+                'comment' => 'Third party reply',
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.is_company_reply', false)
+            ->assertJsonPath('data.industry_id', null)
+            ->assertJsonPath('data.user.name', 'Bob Smith')
+            ->assertJsonPath('data.user.is_company', false);
+
+        $reply = Reply::latest('id')->first();
+        $this->assertNull($reply->industry_id);
+    }
+
+    public function test_third_party_user_cannot_reply_on_behalf_of_company(): void
+    {
+        $owner = $this->makeUser();
+        $this->makeIndustry($owner);
+        $commenter = $this->makeUser();
+        $thirdParty = $this->makeUser();
+
+        $postId = $this->createPost($owner, 'Announcement', 'public');
+        $commentId = $this->createComment($commenter, $postId, 'Any updates?');
+
+        $response = $this->actingAs($thirdParty, 'api')
+            ->postJson("/api/industry/post/comment/reply/{$commentId}", [
+                'comment' => 'Unauthorized company reply attempt',
+                'as_company' => true,
+            ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'You are not authorized to reply on behalf of this company.');
+
+        $this->assertSame(0, Reply::count());
+    }
+
+    public function test_reply_list_and_comment_list_display_company_profile_for_company_replies(): void
+    {
+        $owner = $this->makeUser();
+        $industry = $this->makeIndustry($owner);
+        $commenter = $this->makeUser();
+
+        $postId = $this->createPost($owner, 'Open thread', 'public');
+        $commentId = $this->createComment($commenter, $postId, 'What is new?');
+
+        $this->actingAs($owner, 'api')
+            ->postJson("/api/industry/post/comment/reply/{$commentId}", [
+                'comment' => 'Official company response',
+                'as_company' => true,
+            ])
+            ->assertCreated();
+
+        // 1. Check reply list endpoint
+        $replyListResponse = $this->actingAs($commenter, 'api')
+            ->getJson("/api/industry/post/comment/replies/{$commentId}");
+
+        $replyListResponse->assertOk()
+            ->assertJsonPath('data.0.comment', 'Official company response')
+            ->assertJsonPath('data.0.is_company_reply', true)
+            ->assertJsonPath('data.0.user.name', $industry->name)
+            ->assertJsonPath('data.0.user.is_company', true)
+            ->assertJsonPath('data.0.industry.id', $industry->id);
+
+        // 2. Check comment list endpoint (which embeds latest replies)
+        $commentListResponse = $this->actingAs($commenter, 'api')
+            ->getJson("/api/industry/post/comments/{$postId}");
+
+        $commentListResponse->assertOk()
+            ->assertJsonPath('data.0.replies.0.comment', 'Official company response')
+            ->assertJsonPath('data.0.replies.0.is_company_reply', true)
+            ->assertJsonPath('data.0.replies.0.user.name', $industry->name)
+            ->assertJsonPath('data.0.replies.0.user.is_company', true)
+            ->assertJsonPath('data.0.replies.0.industry.id', $industry->id);
+    }
+
+    public function test_company_owner_can_comment_as_company_on_post(): void
+    {
+        $owner = $this->makeUser();
+        $industry = $this->makeIndustry($owner);
+
+        $postId = $this->createPost($owner, 'Company announcement', 'public');
+
+        $response = $this->actingAs($owner, 'api')
+            ->postJson("/api/industry/post/comment/{$postId}", [
+                'comment' => 'Official pin comment from company',
+                'as_company' => true,
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.comment', 'Official pin comment from company')
+            ->assertJsonPath('data.is_company_comment', true)
+            ->assertJsonPath('data.industry_id', $industry->id)
+            ->assertJsonPath('data.user.name', $industry->name)
+            ->assertJsonPath('data.user.is_company', true)
+            ->assertJsonPath('data.industry.name', $industry->name)
+            ->assertJsonPath('data.author.type', 'company');
+
+        $comment = Comment::latest('id')->first();
+        $this->assertNotNull($comment);
+        $this->assertSame((int) $industry->id, (int) $comment->industry_id);
+        $this->assertSame((int) $owner->id, (int) $comment->user_id);
+        $this->assertTrue($comment->isCompanyComment());
+    }
+
+    public function test_company_owner_comment_defaults_to_personal_user_comment(): void
+    {
+        $owner = $this->makeUser('Jane', 'Doe');
+        $industry = $this->makeIndustry($owner);
+
+        $postId = $this->createPost($owner, 'Company announcement', 'public');
+
+        $response = $this->actingAs($owner, 'api')
+            ->postJson("/api/industry/post/comment/{$postId}", [
+                'comment' => 'Personal thoughts from Jane',
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.comment', 'Personal thoughts from Jane')
+            ->assertJsonPath('data.is_company_comment', false)
+            ->assertJsonPath('data.industry_id', null)
+            ->assertJsonPath('data.user.name', 'Jane Doe')
+            ->assertJsonPath('data.user.is_company', false)
+            ->assertJsonPath('data.author.type', 'user');
+
+        $comment = Comment::latest('id')->first();
+        $this->assertNotNull($comment);
+        $this->assertNull($comment->industry_id);
+        $this->assertFalse($comment->isCompanyComment());
+    }
+
+    public function test_third_party_cannot_comment_as_company(): void
+    {
+        $owner = $this->makeUser();
+        $this->makeIndustry($owner);
+        $thirdParty = $this->makeUser();
+
+        $postId = $this->createPost($owner, 'Company announcement', 'public');
+
+        $response = $this->actingAs($thirdParty, 'api')
+            ->postJson("/api/industry/post/comment/{$postId}", [
+                'comment' => 'Malicious impersonation',
+                'as_company' => true,
+            ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'You are not authorized to comment on behalf of this company.');
+
+        $this->assertSame(0, Comment::count());
+    }
+
+    public function test_comment_list_displays_company_profile_for_company_comments(): void
+    {
+        $owner = $this->makeUser();
+        $industry = $this->makeIndustry($owner);
+        $viewer = $this->makeUser();
+
+        $postId = $this->createPost($owner, 'Company post', 'public');
+
+        $this->actingAs($owner, 'api')
+            ->postJson("/api/industry/post/comment/{$postId}", [
+                'comment' => 'Official company update note',
+                'as_company' => true,
+            ])
+            ->assertCreated();
+
+        // Check via industry comment list
+        $response = $this->actingAs($viewer, 'api')
+            ->getJson("/api/industry/post/comments/{$postId}");
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.comment', 'Official company update note')
+            ->assertJsonPath('data.0.is_company_comment', true)
+            ->assertJsonPath('data.0.user.name', $industry->name)
+            ->assertJsonPath('data.0.user.is_company', true)
+            ->assertJsonPath('data.0.industry.id', $industry->id);
+
+        // Check via generic comment list
+        $genericResponse = $this->actingAs($viewer, 'api')
+            ->getJson("/api/comment-list/{$postId}");
+
+        $genericResponse->assertOk()
+            ->assertJsonPath('data.0.comment', 'Official company update note')
+            ->assertJsonPath('data.0.is_company_comment', true)
+            ->assertJsonPath('data.0.user.name', $industry->name)
+            ->assertJsonPath('data.0.user.is_company', true)
+            ->assertJsonPath('data.0.industry.id', $industry->id);
+    }
+
     private function subscribe(User $user, array $overrides = []): Subscription
     {
         $existing = Subscription::where('user_id', $user->id)->latest('id')->first();
