@@ -447,6 +447,7 @@ class JobsFeedSearchTest extends TestCase
 
         // Job 1: Texas + private
         $job1 = $this->createJob([
+            'job_title' => 'Texas Neuro Scientist',
             'state_id' => $state1->id,
             'employment_offering' => 'private',
         ]);
@@ -501,6 +502,19 @@ class JobsFeedSearchTest extends TestCase
             ->assertJsonPath('private_jobs_count', 1)
             ->assertJsonPath('state_jobs_count', 0)
             ->assertJsonPath('data.0.id', $job3->id);
+
+        // 4. Search by title in state
+        $resSearchTitle = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state1->id}&search={$job1->job_title}");
+        $resSearchTitle->assertOk()
+            ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('data.0.id', $job1->id)
+            ->assertJsonPath('filters.search', $job1->job_title);
+
+        // 5. Search by job_id string
+        $resSearchJobId = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state1->id}&search={$job2->job_id}");
+        $resSearchJobId->assertOk()
+            ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('data.0.id', $job2->id);
     }
 
     public function test_jobsfeed_identifies_own_industry_jobs(): void

@@ -347,12 +347,25 @@ class JobsFeedController extends Controller
             }
         }
 
-        // Aggregate counts by employment offering (and state total) before applying employment_offering filter
+        // Search filter by job_title, job_id, position, or numeric id
+        $search = trim((string) $request->input('search', $request->input('query', $request->input('q', ''))));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('job_title', 'LIKE', "%{$search}%")
+                    ->orWhere('job_id', 'LIKE', "%{$search}%")
+                    ->orWhere('position', 'LIKE', "%{$search}%");
+
+                if (is_numeric($search)) {
+                    $q->orWhere('id', (int) $search);
+                }
+            });
+        }
+
+        // Aggregate counts by employment offering before applying employment_offering filter
         $statsQuery = clone $query;
         $statsQuery->getQuery()->columns = null;
         $offeringStats = $statsQuery
             ->selectRaw("
-                COUNT(*) as total_state_jobs,
                 COUNT(CASE WHEN LOWER(employment_offering) = 'private' THEN 1 END) as private_jobs_count,
                 COUNT(CASE WHEN LOWER(employment_offering) IN ('state', 'public') THEN 1 END) as state_jobs_count
             ")
@@ -360,7 +373,6 @@ class JobsFeedController extends Controller
 
         $privateJobsCount = (int) ($offeringStats->private_jobs_count ?? 0);
         $stateJobsCount = (int) ($offeringStats->state_jobs_count ?? 0);
-        $totalStateJobs = (int) ($offeringStats->total_state_jobs ?? 0);
 
         // Filter by employment_offering (supports single, array, or comma-separated)
         $rawOfferings = $request->input('employment_offering', $request->input('employment_offerings'));
@@ -427,6 +439,7 @@ class JobsFeedController extends Controller
                 'has_more_pages' => $paginated->hasMorePages(),
             ],
             'filters' => [
+                'search' => $search !== '' ? $search : null,
                 'state_id' => ! empty($stateIds) ? (count($stateIds) === 1 ? reset($stateIds) : array_values($stateIds)) : null,
                 'employment_offering' => ! empty($offerings) ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
             ],
