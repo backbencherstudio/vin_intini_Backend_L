@@ -47,4 +47,22 @@ return [
         'first_reminder_days' => (int) env('BOOST_PAUSE_FIRST_REMINDER_DAYS', 27),
         'final_reminder_days' => (int) env('BOOST_PAUSE_FINAL_REMINDER_DAYS', 29),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Newsfeed Sponsored Ad Injection Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for balancing user experience (anti-fatigue) and advertiser
+    | impression fairness in the main social newsfeed timeline.
+    |
+    */
+    'newsfeed_ads' => [
+        'enabled' => (bool) env('BOOST_NEWSFEED_ADS_ENABLED', true),
+        'min_posts_before_ad' => (int) env('BOOST_NEWSFEED_MIN_POSTS', 4),
+        'first_ad_slot' => (int) env('BOOST_NEWSFEED_FIRST_SLOT', 4),
+        'ad_interval' => (int) env('BOOST_NEWSFEED_INTERVAL', 8),
+        'max_ads_per_page' => (int) env('BOOST_NEWSFEED_MAX_ADS_PER_PAGE', 2),
+        'max_daily_impressions_per_user' => (int) env('BOOST_MAX_USER_DAILY_IMPRESSIONS', 5),
+    ],
 ];

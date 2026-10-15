@@ -42,6 +42,7 @@ class BoostSettingService
 
             $sliderConfig = config('boosting.custom_slider', []);
             $pauseConfig = config('boosting.pause_policy', []);
+            $newsfeedConfig = config('boosting.newsfeed_ads', []);
 
             return [
                 'custom_slider' => [
@@ -84,6 +85,26 @@ class BoostSettingService
                         ? (int) $dbSettings['boost_pause_final_reminder_days']
                         : (int) ($pauseConfig['final_reminder_days'] ?? 29),
                 ],
+                'newsfeed_ads' => [
+                    'enabled' => isset($dbSettings['boost_newsfeed_ads_enabled'])
+                        ? filter_var($dbSettings['boost_newsfeed_ads_enabled'], FILTER_VALIDATE_BOOLEAN)
+                        : (bool) ($newsfeedConfig['enabled'] ?? true),
+                    'min_posts_before_ad' => isset($dbSettings['boost_newsfeed_min_posts'])
+                        ? (int) $dbSettings['boost_newsfeed_min_posts']
+                        : (int) ($newsfeedConfig['min_posts_before_ad'] ?? 4),
+                    'first_ad_slot' => isset($dbSettings['boost_newsfeed_first_slot'])
+                        ? (int) $dbSettings['boost_newsfeed_first_slot']
+                        : (int) ($newsfeedConfig['first_ad_slot'] ?? 4),
+                    'ad_interval' => isset($dbSettings['boost_newsfeed_interval'])
+                        ? (int) $dbSettings['boost_newsfeed_interval']
+                        : (int) ($newsfeedConfig['ad_interval'] ?? 8),
+                    'max_ads_per_page' => isset($dbSettings['boost_newsfeed_max_ads_per_page'])
+                        ? (int) $dbSettings['boost_newsfeed_max_ads_per_page']
+                        : (int) ($newsfeedConfig['max_ads_per_page'] ?? 2),
+                    'max_daily_impressions_per_user' => isset($dbSettings['boost_max_user_daily_impressions'])
+                        ? (int) $dbSettings['boost_max_user_daily_impressions']
+                        : (int) ($newsfeedConfig['max_daily_impressions_per_user'] ?? 5),
+                ],
             ];
         });
     }
@@ -109,6 +130,12 @@ class BoostSettingService
             'pause_max_days' => 'boost_pause_max_days',
             'pause_first_reminder_days' => 'boost_pause_first_reminder_days',
             'pause_final_reminder_days' => 'boost_pause_final_reminder_days',
+            'newsfeed_ads_enabled' => 'boost_newsfeed_ads_enabled',
+            'newsfeed_min_posts' => 'boost_newsfeed_min_posts',
+            'newsfeed_first_slot' => 'boost_newsfeed_first_slot',
+            'newsfeed_interval' => 'boost_newsfeed_interval',
+            'newsfeed_max_ads_per_page' => 'boost_newsfeed_max_ads_per_page',
+            'max_daily_impressions_per_user' => 'boost_max_user_daily_impressions',
 
             // Dot-notation aliases
             'custom_slider.enabled' => 'boost_custom_slider_enabled',
@@ -122,6 +149,12 @@ class BoostSettingService
             'pause_policy.max_days' => 'boost_pause_max_days',
             'pause_policy.first_reminder_days' => 'boost_pause_first_reminder_days',
             'pause_policy.final_reminder_days' => 'boost_pause_final_reminder_days',
+            'newsfeed_ads.enabled' => 'boost_newsfeed_ads_enabled',
+            'newsfeed_ads.min_posts_before_ad' => 'boost_newsfeed_min_posts',
+            'newsfeed_ads.first_ad_slot' => 'boost_newsfeed_first_slot',
+            'newsfeed_ads.ad_interval' => 'boost_newsfeed_interval',
+            'newsfeed_ads.max_ads_per_page' => 'boost_newsfeed_max_ads_per_page',
+            'newsfeed_ads.max_daily_impressions_per_user' => 'boost_max_user_daily_impressions',
         ];
 
         foreach ($flatMapping as $lookupKey => $dbKey) {

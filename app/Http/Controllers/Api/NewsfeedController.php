@@ -7,11 +7,16 @@ use App\Models\Connection;
 use App\Models\IndustryFollow;
 use App\Models\Post;
 use App\Models\UserFollow;
+use App\Services\Advertising\NewsfeedAdInjector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class NewsfeedController extends Controller
 {
+    public function __construct(
+        protected NewsfeedAdInjector $adInjector
+    ) {}
+
     public function newsFeed(Request $request)
     {
         $user = auth('api')->user();
@@ -135,67 +140,81 @@ class NewsfeedController extends Controller
             ->orderByDesc('id')
             ->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
 
+        $feedItems = collect($posts->items())->map(function ($post) use ($user, $relationshipMap, $adminGroupIds, $followedIndustryIds) {
+            if (! $post->user) {
+                return null;
+            }
+            $canEdit = ($post->user_id === $user->id);
+            $canDelete = ($post->user_id === $user->id);
+
+            if (! $canDelete) {
+                foreach ($post->groups as $group) {
+                    if (in_array($group->id, $adminGroupIds)) {
+                        $canDelete = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($post->user_id === $user->id) {
+                $relationshipStatus = 'connected';
+            } else {
+                $status = $relationshipMap[$post->user_id] ?? null;
+                $relationshipStatus = match ($status) {
+                    Connection::STATUS_ACCEPTED => 'connected',
+                    Connection::STATUS_PENDING => 'pending',
+                    default => 'not_connected',
+                };
+            }
+
+            $industry = $post->industryLink?->industry;
+            $industryData = null;
+            if ($industry) {
+                $industryData = [
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'slug' => $industry->slug,
+                    'tagline' => $industry->tagline,
+                    'logo' => $industry->logo,
+                    'is_following' => isset($followedIndustryIds[$industry->id]),
+                ];
+            }
+
+            return [
+                'id' => $post->id,
+                'user' => $post->user,
+                'description' => $post->description,
+                'visibility' => $post->visibility,
+                'who_can_comment' => $post->who_can_comment,
+                'total_like' => $post->total_like ?? 0,
+                'total_comment' => $post->total_comment ?? 0,
+                'liked_by_me' => $post->likes->isNotEmpty(),
+                'relationship_status' => $relationshipStatus,
+                'media' => $post->media,
+                'group' => $post->groups->first(),
+                'industry' => $industryData,
+                'created_at' => $post->created_at,
+                'can_edit' => $canEdit,
+                'can_delete' => $canDelete,
+            ];
+        })->filter()->values();
+
+        $networkType = $request->input('network_type');
+        if ($networkType) {
+            $rawNet = strtolower(str_replace(['_', '-'], '', (string) $networkType));
+            if (str_contains($rawNet, 'neuro')) {
+                $networkType = 'neuroscience';
+            } elseif (str_contains($rawNet, 'psych')) {
+                $networkType = 'psychology';
+            }
+        }
+
+        $finalFeed = $this->adInjector->injectAdsIntoFeed($feedItems, $user, $networkType);
+
         return response()->json([
             'success' => true,
             'message' => 'Feed fetched successfully',
-            'data' => collect($posts->items())->map(function ($post) use ($user, $relationshipMap, $adminGroupIds, $followedIndustryIds) {
-                if (! $post->user) {
-                    return null;
-                }
-                $canEdit = ($post->user_id === $user->id);
-                $canDelete = ($post->user_id === $user->id);
-
-                if (! $canDelete) {
-                    foreach ($post->groups as $group) {
-                        if (in_array($group->id, $adminGroupIds)) {
-                            $canDelete = true;
-                            break;
-                        }
-                    }
-                }
-
-                if ($post->user_id === $user->id) {
-                    $relationshipStatus = 'connected';
-                } else {
-                    $status = $relationshipMap[$post->user_id] ?? null;
-                    $relationshipStatus = match ($status) {
-                        Connection::STATUS_ACCEPTED => 'connected',
-                        Connection::STATUS_PENDING => 'pending',
-                        default => 'not_connected',
-                    };
-                }
-
-                $industry = $post->industryLink?->industry;
-                $industryData = null;
-                if ($industry) {
-                    $industryData = [
-                        'id' => $industry->id,
-                        'name' => $industry->name,
-                        'slug' => $industry->slug,
-                        'tagline' => $industry->tagline,
-                        'logo' => $industry->logo,
-                        'is_following' => isset($followedIndustryIds[$industry->id]),
-                    ];
-                }
-
-                return [
-                    'id' => $post->id,
-                    'user' => $post->user,
-                    'description' => $post->description,
-                    'visibility' => $post->visibility,
-                    'who_can_comment' => $post->who_can_comment,
-                    'total_like' => $post->total_like ?? 0,
-                    'total_comment' => $post->total_comment ?? 0,
-                    'liked_by_me' => $post->likes->isNotEmpty(),
-                    'relationship_status' => $relationshipStatus,
-                    'media' => $post->media,
-                    'group' => $post->groups->first(),
-                    'industry' => $industryData,
-                    'created_at' => $post->created_at,
-                    'can_edit' => $canEdit,
-                    'can_delete' => $canDelete,
-                ];
-            })->filter()->values(),
+            'data' => $finalFeed,
             'pagination' => [
                 'per_page' => $posts->perPage(),
                 'next_cursor' => $posts->nextCursor()?->encode(),
