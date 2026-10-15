@@ -468,4 +468,40 @@ class PublicationTest extends TestCase
         $deleteRes->assertStatus(200);
         $this->assertSoftDeleted('publications', ['id' => $publication->id]);
     }
+
+    public function test_my_listings_returns_cards_and_publications(): void
+    {
+        Publication::create([
+            'creator_id' => $this->industryUser->id,
+            'industry_id' => $this->industry->id,
+            'network_type' => 'psychology',
+            'publication_type' => 'professional',
+            'title' => 'Industry Study Title',
+            'slug' => 'industry-study-title',
+            'abstract' => 'Study abstract.',
+            'website_url' => 'https://example.com/study',
+            'status' => 'active',
+            'views_count' => 150,
+            'likes_count' => 12,
+        ]);
+
+        $res = $this->actingAs($this->industryUser, 'api')->getJson('/api/publications/my-listings');
+
+        $res->assertStatus(200);
+        $res->assertJsonStructure([
+            'success',
+            'message',
+            'cards' => [
+                'all_publications' => ['title', 'total', 'growth', 'growth_percentage', 'is_positive'],
+                'active_publications' => ['title', 'total', 'growth', 'growth_percentage', 'badge', 'is_positive'],
+                'publication_views' => ['title', 'total', 'growth', 'growth_percentage', 'is_positive'],
+                'total_likes' => ['title', 'total', 'growth', 'growth_percentage', 'is_positive'],
+            ],
+            'data',
+            'pagination',
+        ]);
+        $res->assertJsonPath('cards.all_publications.total', 1);
+        $res->assertJsonPath('cards.active_publications.total', 1);
+        $res->assertJsonPath('cards.publication_views.total', 150);
+    }
 }
