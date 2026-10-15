@@ -5,13 +5,41 @@ namespace App\Http\Controllers\Admin\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBoostPackageRequest;
 use App\Http\Requests\UpdateBoostPackageRequest;
+use App\Http\Requests\UpdateBoostSettingsRequest;
 use App\Http\Resources\BoostPackageResource;
 use App\Models\BoostPackage;
+use App\Services\BoostSettingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BoostPackageAdminController extends Controller
 {
+    /**
+     * Get current boost system settings (custom slider, new release hours, pause policy).
+     */
+    public function getSettings(BoostSettingService $settingsService): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Boost system settings retrieved successfully.',
+            'data' => $settingsService->getSettings(),
+        ], 200);
+    }
+
+    /**
+     * Update boost system settings from admin dashboard.
+     */
+    public function updateSettings(UpdateBoostSettingsRequest $request, BoostSettingService $settingsService): JsonResponse
+    {
+        $updated = $settingsService->updateSettings($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Boost system settings updated successfully.',
+            'data' => $updated,
+        ], 200);
+    }
+
     /**
      * Display a listing of boost packages with optional filtering.
      */

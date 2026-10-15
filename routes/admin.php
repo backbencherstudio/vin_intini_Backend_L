@@ -33,6 +33,10 @@ Route::prefix('admin')->group(function () {
     Route::patch('/boost-packages/{boost_package}/status', [BoostPackageAdminController::class, 'toggleStatus']);
     Route::delete('/boost-packages/{boost_package}', [BoostPackageAdminController::class, 'destroy']);
 
+    // boost system settings (custom slider, new release, pause policy)
+    Route::get('/boost-settings', [BoostPackageAdminController::class, 'getSettings']);
+    Route::match(['patch', 'put'], '/boost-settings', [BoostPackageAdminController::class, 'updateSettings']);
+
     // transaction routes
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::get('/transactions/overview', [TransactionController::class, 'overview']);

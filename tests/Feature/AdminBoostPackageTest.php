@@ -370,3 +370,98 @@ test('advertiser can view active boost packages and custom slider configuration'
         ->and($slider['min_days'])->toBe(3)
         ->and($slider['max_days'])->toBe(60);
 });
+
+test('guest cannot access admin boost settings endpoints', function () {
+    $this->getJson('/api/admin/boost-settings')->assertStatus(401);
+    $this->patchJson('/api/admin/boost-settings', ['daily_rate' => 5.00])->assertStatus(401);
+});
+
+test('non-admin user is forbidden from admin boost settings endpoints', function () {
+    $this->actingAs($this->regularUser, 'api')
+        ->getJson('/api/admin/boost-settings')
+        ->assertStatus(403);
+
+    $this->actingAs($this->regularUser, 'api')
+        ->patchJson('/api/admin/boost-settings', ['daily_rate' => 5.00])
+        ->assertStatus(403);
+});
+
+test('admin can view boost system settings', function () {
+    $response = $this->actingAs($this->adminUser, 'api')
+        ->getJson('/api/admin/boost-settings')
+        ->assertStatus(200);
+
+    $response->assertJsonStructure([
+        'success',
+        'message',
+        'data' => [
+            'custom_slider' => [
+                'enabled',
+                'channel',
+                'daily_rate',
+                'currency',
+                'min_days',
+                'max_days',
+                'daily_estimated_impressions_min',
+                'daily_estimated_impressions_max',
+            ],
+            'new_release' => [
+                'hours',
+            ],
+            'pause_policy' => [
+                'max_days',
+                'first_reminder_days',
+                'final_reminder_days',
+            ],
+        ],
+    ]);
+
+    $response->assertJsonPath('data.custom_slider.channel', 'web_only')
+        ->assertJsonPath('data.custom_slider.min_days', 3)
+        ->assertJsonPath('data.custom_slider.max_days', 60);
+
+    expect((float) $response->json('data.custom_slider.daily_rate'))->toEqual(3.0);
+});
+
+test('admin can update daily_rate, min_days, max_days from admin dashboard and changes reflect on advertiser packages API', function () {
+    // 1. Admin updates daily rate to $4.50 and max days to 90
+    $updateResponse = $this->actingAs($this->adminUser, 'api')
+        ->patchJson('/api/admin/boost-settings', [
+            'daily_rate' => 4.50,
+            'min_days' => 5,
+            'max_days' => 90,
+            'new_release_hours' => 48,
+            'pause_max_days' => 45,
+        ])
+        ->assertStatus(200);
+
+    $updateResponse->assertJsonPath('success', true)
+        ->assertJsonPath('data.custom_slider.min_days', 5)
+        ->assertJsonPath('data.custom_slider.max_days', 90)
+        ->assertJsonPath('data.new_release.hours', 48)
+        ->assertJsonPath('data.pause_policy.max_days', 45);
+
+    expect((float) $updateResponse->json('data.custom_slider.daily_rate'))->toEqual(4.5);
+
+    // 2. Database contains updated records
+    $this->assertDatabaseHas('integration_settings', [
+        'key' => 'boost_custom_daily_rate',
+        'value' => '4.5',
+        'section' => 'boosting',
+    ]);
+    $this->assertDatabaseHas('integration_settings', [
+        'key' => 'boost_custom_max_days',
+        'value' => '90',
+        'section' => 'boosting',
+    ]);
+
+    // 3. User packages endpoint immediately serves updated daily rate and max days
+    $userResponse = $this->actingAs($this->regularUser, 'api')
+        ->getJson('/api/industry/boost-packages')
+        ->assertStatus(200);
+
+    $userResponse->assertJsonPath('data.custom_slider.min_days', 5)
+        ->assertJsonPath('data.custom_slider.max_days', 90);
+
+    expect((float) $userResponse->json('data.custom_slider.daily_rate'))->toEqual(4.5);
+});
