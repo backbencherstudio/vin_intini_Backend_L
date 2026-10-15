@@ -624,6 +624,11 @@ PHASE 3: Job Post Boosting ("Featured Urgent Job")
 
 PHASE 4: Social Post Boosting ("Promoted Community Post")
 └── Reusable infrastructure applies instantly to Post model
+
+PHASE 5: Behavioral & Interest-Based Retargeting Engine (Future Enhancement)
+├── 1. Aggregate user engagement from ad_clicks and ad_impressions tables
+├── 2. Build user category interest affinity scoring
+└── 3. Apply Engagement/Affinity Bonus in FairPlayAdRotationService
 ```
 
 ---
