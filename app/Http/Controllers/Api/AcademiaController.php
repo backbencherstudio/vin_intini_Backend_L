@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\IndustryJobPostStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StateResource;
 use App\Models\State;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,11 +14,23 @@ class AcademiaController extends Controller
 {
     public function getStates(Request $request): JsonResponse
     {
+        $today = Carbon::today()->toDateString();
+
         $states = State::withCount([
             'universities',
             'residencies',
             'facilities',
-            'jobs',
+            'industryJobPosts as jobs_count' => function ($query) use ($today) {
+                $query->where('status', IndustryJobPostStatus::PUBLISHED)
+                    ->where(function ($q) use ($today) {
+                        $q->whereNull('announcement_start_date')
+                            ->orWhere('announcement_start_date', '<=', $today);
+                    })
+                    ->where(function ($q) use ($today) {
+                        $q->whereNull('announcement_end_date')
+                            ->orWhere('announcement_end_date', '>=', $today);
+                    });
+            },
         ])
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->input('search');
@@ -34,25 +48,28 @@ class AcademiaController extends Controller
         ]);
     }
 
-    // public function getStates(): JsonResponse
-    // {
-    //     $states = State::withCount([
-    //         'universities',
-    //         'residencies',
-    //         'facilities',
-    //         'jobs',
-    //     ])->get();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'data' => StateResource::collection($states),
-    //     ]);
-    // }
-
     public function getStateDetails($code): JsonResponse
     {
+        $today = Carbon::today()->toDateString();
+
         $state = State::where('code', $code)
-            ->with(['universities', 'residencies', 'facilities', 'jobs'])
+            ->with(['universities', 'residencies', 'facilities'])
+            ->withCount([
+                'universities',
+                'residencies',
+                'facilities',
+                'industryJobPosts as jobs_count' => function ($query) use ($today) {
+                    $query->where('status', IndustryJobPostStatus::PUBLISHED)
+                        ->where(function ($q) use ($today) {
+                            $q->whereNull('announcement_start_date')
+                                ->orWhere('announcement_start_date', '<=', $today);
+                        })
+                        ->where(function ($q) use ($today) {
+                            $q->whereNull('announcement_end_date')
+                                ->orWhere('announcement_end_date', '>=', $today);
+                        });
+                },
+            ])
             ->firstOrFail();
 
         return response()->json([
