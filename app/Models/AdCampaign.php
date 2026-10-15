@@ -32,6 +32,7 @@ class AdCampaign extends Model
         'starts_at',
         'ends_at',
         'paused_at',
+        'paused_reminder_stage',
         'status',
         'total_impressions',
         'total_clicks',
@@ -42,6 +43,7 @@ class AdCampaign extends Model
         'status' => 'pending',
         'total_impressions' => 0,
         'total_clicks' => 0,
+        'paused_reminder_stage' => 0,
     ];
 
     protected function casts(): array
@@ -53,6 +55,7 @@ class AdCampaign extends Model
             'duration_days' => 'integer',
             'total_impressions' => 'integer',
             'total_clicks' => 'integer',
+            'paused_reminder_stage' => 'integer',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'paused_at' => 'datetime',
@@ -113,6 +116,7 @@ class AdCampaign extends Model
         $this->update([
             'status' => AdCampaignStatus::PAUSED,
             'paused_at' => now(),
+            'paused_reminder_stage' => 0,
         ]);
 
         if ($this->boostable && method_exists($this->boostable, 'update')) {
@@ -138,6 +142,7 @@ class AdCampaign extends Model
             'status' => AdCampaignStatus::ACTIVE,
             'ends_at' => $newEndsAt,
             'paused_at' => null,
+            'paused_reminder_stage' => 0,
         ]);
 
         if ($this->boostable && method_exists($this->boostable, 'update')) {

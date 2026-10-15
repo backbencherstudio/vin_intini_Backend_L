@@ -199,6 +199,10 @@ Route::prefix('industry')->group(function () {
         Route::post('{id}/boost/confirm', [ProductBoostController::class, 'confirmPayment']);
         Route::get('{id}/boost/campaigns', [ProductBoostController::class, 'campaigns']);
     });
+
+    // Boost Campaign Pause & Resume Controls (Clock-Freeze)
+    Route::post('boost/campaigns/{id}/pause', [ProductBoostController::class, 'pauseCampaign']);
+    Route::post('boost/campaigns/{id}/resume', [ProductBoostController::class, 'resumeCampaign']);
 });
 
 // Industry Profile Tab Routes (Job Posts, Products Advertisement, Publications with Cursor Pagination)

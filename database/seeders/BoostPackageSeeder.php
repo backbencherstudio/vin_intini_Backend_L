@@ -30,6 +30,9 @@ class BoostPackageSeeder extends Seeder
                 ],
                 'priority_weight' => 1,
                 'status' => 'active',
+                'revenuecat_store_identifier_ios' => 'boost_product_7d',
+                'revenuecat_store_identifier_android' => 'boost_product_7d_gp',
+                'revenuecat_entitlement_identifier' => 'product_boost_7d',
             ],
             [
                 'name' => '14-Day Growth Boost',
@@ -48,6 +51,9 @@ class BoostPackageSeeder extends Seeder
                 ],
                 'priority_weight' => 2,
                 'status' => 'active',
+                'revenuecat_store_identifier_ios' => 'boost_product_14d',
+                'revenuecat_store_identifier_android' => 'boost_product_14d_gp',
+                'revenuecat_entitlement_identifier' => 'product_boost_14d',
             ],
             [
                 'name' => '30-Day Pro Boost',
@@ -66,6 +72,9 @@ class BoostPackageSeeder extends Seeder
                 ],
                 'priority_weight' => 3,
                 'status' => 'active',
+                'revenuecat_store_identifier_ios' => 'boost_product_30d',
+                'revenuecat_store_identifier_android' => 'boost_product_30d_gp',
+                'revenuecat_entitlement_identifier' => 'product_boost_30d',
             ],
         ];
 
