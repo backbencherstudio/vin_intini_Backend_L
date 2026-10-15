@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\IndustryJobPostStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StateResource;
 use App\Models\State;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,11 +14,23 @@ class AcademiaController extends Controller
 {
     public function getStates(Request $request): JsonResponse
     {
+        $today = Carbon::today()->toDateString();
+
         $states = State::withCount([
             'universities',
             'residencies',
             'facilities',
-            'jobs',
+            'industryJobPosts as jobs_count' => function ($query) use ($today) {
+                $query->where('status', IndustryJobPostStatus::PUBLISHED)
+                    ->where(function ($q) use ($today) {
+                        $q->whereNull('announcement_start_date')
+                            ->orWhere('announcement_start_date', '<=', $today);
+                    })
+                    ->where(function ($q) use ($today) {
+                        $q->whereNull('announcement_end_date')
+                            ->orWhere('announcement_end_date', '>=', $today);
+                    });
+            },
         ])
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->input('search');
@@ -34,25 +48,28 @@ class AcademiaController extends Controller
         ]);
     }
 
-    // public function getStates(): JsonResponse
-    // {
-    //     $states = State::withCount([
-    //         'universities',
-    //         'residencies',
-    //         'facilities',
-    //         'jobs',
-    //     ])->get();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'data' => StateResource::collection($states),
-    //     ]);
-    // }
-
     public function getStateDetails($code): JsonResponse
     {
+        $today = Carbon::today()->toDateString();
+
         $state = State::where('code', $code)
-            ->with(['universities', 'residencies', 'facilities', 'jobs'])
+            ->with(['universities', 'residencies', 'facilities'])
+            ->withCount([
+                'universities',
+                'residencies',
+                'facilities',
+                'industryJobPosts as jobs_count' => function ($query) use ($today) {
+                    $query->where('status', IndustryJobPostStatus::PUBLISHED)
+                        ->where(function ($q) use ($today) {
+                            $q->whereNull('announcement_start_date')
+                                ->orWhere('announcement_start_date', '<=', $today);
+                        })
+                        ->where(function ($q) use ($today) {
+                            $q->whereNull('announcement_end_date')
+                                ->orWhere('announcement_end_date', '>=', $today);
+                        });
+                },
+            ])
             ->firstOrFail();
 
         return response()->json([
@@ -80,7 +97,7 @@ class AcademiaController extends Controller
         $query = $state->universities();
 
         if ($search !== '') {
-            $query->where('academia_universities.name', 'like', '%' . $search . '%');
+            $query->where('academia_universities.name', 'like', '%'.$search.'%');
         }
 
         if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
@@ -144,7 +161,7 @@ class AcademiaController extends Controller
         $query = $state->residencies();
 
         if ($search !== '') {
-            $query->where('academia_medical_residencies.program_name', 'like', '%' . $search . '%');
+            $query->where('academia_medical_residencies.program_name', 'like', '%'.$search.'%');
         }
 
         if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
@@ -209,7 +226,7 @@ class AcademiaController extends Controller
         });
 
         $query->when($search !== '', function ($q) use ($search) {
-            return $q->where('academia_facilities.name', 'like', '%' . $search . '%');
+            return $q->where('academia_facilities.name', 'like', '%'.$search.'%');
         });
 
         // alphabetical order
@@ -322,7 +339,7 @@ class AcademiaController extends Controller
 
         $cities = $state->cities()
             ->when($request->filled('search'), function ($query) use ($request) {
-                $query->where('name', 'LIKE', '%' . $request->input('search') . '%');
+                $query->where('name', 'LIKE', '%'.$request->input('search').'%');
             })
             ->orderBy('name')
             ->get(['id', 'name']);

@@ -13,6 +13,7 @@ class Comment extends Model
     protected $fillable = [
         'post_id',
         'user_id',
+        'industry_id',
         'comment',
         'image',
         'like_count',
@@ -32,6 +33,16 @@ class Comment extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function industry()
+    {
+        return $this->belongsTo(Industry::class);
+    }
+
+    public function isCompanyComment(): bool
+    {
+        return $this->industry_id !== null;
     }
 
     public function replies()

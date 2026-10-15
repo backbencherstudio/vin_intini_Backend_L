@@ -25,6 +25,9 @@ class LoginActivity extends Model
 
     protected $casts = [
         'login_at' => 'datetime',
+        'is_active' => 'boolean',
+        'is_resolved' => 'boolean',
+        'is_trusted' => 'boolean',
     ];
 
     public function user()

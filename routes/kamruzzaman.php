@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
 use App\Http\Controllers\Admin\Api\InstitutionReportController;
 use App\Http\Controllers\Admin\Api\PageController;
+use App\Http\Controllers\Admin\Api\PublicationManagementController;
 use App\Http\Controllers\Admin\Api\UserManagementController;
 use App\Http\Controllers\Api\IndustryController;
 use Illuminate\Support\Facades\Route;
@@ -13,7 +14,18 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
 
     // User Management.....
     Route::prefix('user-manage')->group(function () {
+        Route::get('users', [UserManagementController::class, 'index']);
+        Route::get('users/{id}', [UserManagementController::class, 'show']);
+        Route::post('users/{id}/toggle-suspend', [UserManagementController::class, 'toggleSuspend']);
         Route::get('leave-request', [UserManagementController::class, 'getDeletedAccountLogs']);
+    });
+
+    // Publications Management.....
+    Route::prefix('publications')->group(function () {
+        Route::get('/', [PublicationManagementController::class, 'index']);
+        Route::get('{id}', [PublicationManagementController::class, 'show']);
+        Route::post('{id}/toggle-status', [PublicationManagementController::class, 'toggleStatus']);
+        Route::delete('{id}', [PublicationManagementController::class, 'destroy']);
     });
 
     // Academia.....

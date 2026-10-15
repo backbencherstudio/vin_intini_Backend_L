@@ -14,6 +14,11 @@ class State extends Model
         return $this->hasMany(City::class);
     }
 
+    public function industryJobPosts(): HasMany
+    {
+        return $this->hasMany(IndustryJobPost::class);
+    }
+
     public function universities()
     {
         return $this->hasMany(AcademiaUniversity::class);

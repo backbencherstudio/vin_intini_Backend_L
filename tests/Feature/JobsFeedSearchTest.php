@@ -447,6 +447,7 @@ class JobsFeedSearchTest extends TestCase
 
         // Job 1: Texas + private
         $job1 = $this->createJob([
+            'job_title' => 'Texas Neuro Scientist',
             'state_id' => $state1->id,
             'employment_offering' => 'private',
         ]);
@@ -468,6 +469,11 @@ class JobsFeedSearchTest extends TestCase
         $res->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('private_jobs_count', 1)
+            ->assertJsonPath('state_jobs_count', 1)
+            ->assertJsonPath('state.id', $state1->id)
+            ->assertJsonPath('state.name', 'Texas')
+            ->assertJsonPath('state.code', 'TX')
             ->assertJsonPath('data.0.id', $job1->id)
             ->assertJsonPath('data.0.status', 'published')
             ->assertJsonPath('filters.state_id', $state1->id)
@@ -485,13 +491,30 @@ class JobsFeedSearchTest extends TestCase
         // 2. Filter by Texas only
         $resTexas = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state1->id}");
         $resTexas->assertOk()
-            ->assertJsonPath('total_jobs', 2);
+            ->assertJsonPath('total_jobs', 2)
+            ->assertJsonPath('private_jobs_count', 1)
+            ->assertJsonPath('state_jobs_count', 1);
 
         // 3. Filter by Florida and private
         $resFlorida = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state2->id}&employment_offering=private");
         $resFlorida->assertOk()
             ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('private_jobs_count', 1)
+            ->assertJsonPath('state_jobs_count', 0)
             ->assertJsonPath('data.0.id', $job3->id);
+
+        // 4. Search by title in state
+        $resSearchTitle = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state1->id}&search={$job1->job_title}");
+        $resSearchTitle->assertOk()
+            ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('data.0.id', $job1->id)
+            ->assertJsonPath('filters.search', $job1->job_title);
+
+        // 5. Search by job_id string
+        $resSearchJobId = $this->actingAs($user, 'api')->getJson("/api/industry/jobs-by-state-offering?state_id={$state1->id}&search={$job2->job_id}");
+        $resSearchJobId->assertOk()
+            ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('data.0.id', $job2->id);
     }
 
     public function test_jobsfeed_identifies_own_industry_jobs(): void
@@ -534,5 +557,96 @@ class JobsFeedSearchTest extends TestCase
         $this->assertNotNull($otherJobData);
         $this->assertArrayNotHasKey('is_own_industry', $otherJobData);
         $this->assertFalse($otherJobData['industry']['is_own_industry']);
+    }
+
+    public function test_active_jobs_count_by_state_filtered_by_network_type(): void
+    {
+        $user = $this->createAuthenticatedUser();
+
+        $state1 = State::firstOrCreate(['name' => 'California'], ['code' => 'CA', 'slug' => 'california']);
+        $state2 = State::firstOrCreate(['name' => 'Texas'], ['code' => 'TX', 'slug' => 'texas']);
+        $state3 = State::firstOrCreate(['name' => 'Florida'], ['code' => 'FL', 'slug' => 'florida']); // State with 0 jobs
+
+        // State 1: 2 psychology jobs, 1 engineering job
+        $this->createJob([
+            'state_id' => $state1->id,
+            'network_type' => 'psychology',
+            'status' => IndustryJobPostStatus::PUBLISHED,
+        ]);
+        $this->createJob([
+            'state_id' => $state1->id,
+            'network_type' => 'psychology',
+            'status' => IndustryJobPostStatus::PUBLISHED,
+        ]);
+        $this->createJob([
+            'state_id' => $state1->id,
+            'network_type' => 'engineering',
+            'status' => IndustryJobPostStatus::PUBLISHED,
+        ]);
+
+        // State 2: 1 psychology job, 1 expired psychology job (should not be counted)
+        $this->createJob([
+            'state_id' => $state2->id,
+            'network_type' => 'psychology',
+            'status' => IndustryJobPostStatus::PUBLISHED,
+        ]);
+        $this->createJob([
+            'state_id' => $state2->id,
+            'network_type' => 'psychology',
+            'status' => IndustryJobPostStatus::EXPIRED,
+        ]);
+
+        // 1. Get counts filtered by network_type=psychology (returns all states by default)
+        $res = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-count-by-state?network_type=psychology');
+        $res->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('total_active_jobs', 3)
+            ->assertJsonPath('summary.total_states_with_jobs', 2);
+
+        $data = collect($res->json('data'));
+        $caState = $data->firstWhere('state_id', $state1->id);
+        $txState = $data->firstWhere('state_id', $state2->id);
+        $flState = $data->firstWhere('state_id', $state3->id);
+
+        $this->assertEquals(2, $caState['active_jobs_count']);
+        $this->assertEquals('CA', $caState['state_code']);
+        $this->assertEquals(2, $caState['network_types_breakdown']['psychology']);
+
+        $this->assertEquals(1, $txState['active_jobs_count']);
+        $this->assertEquals('TX', $txState['state_code']);
+
+        // Florida has 0 active jobs but is still present in the response
+        $this->assertNotNull($flState);
+        $this->assertEquals(0, $flState['active_jobs_count']);
+        $this->assertEquals('FL', $flState['state_code']);
+
+        // 2. Get counts filtered by network_type=engineering
+        $resEng = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-count-by-state?network_type=engineering');
+        $resEng->assertOk()
+            ->assertJsonPath('total_active_jobs', 1)
+            ->assertJsonPath('summary.total_states_with_jobs', 1);
+
+        $engData = collect($resEng->json('data'));
+        $this->assertEquals(1, $engData->firstWhere('state_id', $state1->id)['active_jobs_count']);
+        $this->assertEquals(0, $engData->firstWhere('state_id', $state2->id)['active_jobs_count']);
+
+        // 3. Test request without filter (all network types)
+        $resAll = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-count-by-state');
+        $resAll->assertOk()
+            ->assertJsonPath('total_active_jobs', 4)
+            ->assertJsonPath('summary.network_types.psychology', 3)
+            ->assertJsonPath('summary.network_types.engineering', 1);
+
+        // 4. Test only_with_jobs=true filter (excludes states with 0 jobs)
+        $resOnlyActive = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-count-by-state?only_with_jobs=1');
+        $resOnlyActive->assertOk()
+            ->assertJsonPath('total_states', 2);
+        $this->assertNull(collect($resOnlyActive->json('data'))->firstWhere('state_id', $state3->id));
+
+        // 5. Test sorting by count descending
+        $resSort = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-count-by-state?sort=count');
+        $resSort->assertOk();
+        $sortedData = $resSort->json('data');
+        $this->assertGreaterThanOrEqual($sortedData[1]['active_jobs_count'], $sortedData[0]['active_jobs_count']);
     }
 }
