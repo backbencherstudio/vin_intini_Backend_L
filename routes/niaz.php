@@ -131,6 +131,7 @@ Route::post('/account/delete-request', [SecuritySettingsController::class, 'requ
 Route::prefix('industry')->group(function () {
     Route::get('jobsfeed', [JobsFeedController::class, 'jobsFeed']); // global route
     Route::get('jobs-by-state-offering', [JobsFeedController::class, 'jobsByStateAndOffering']); // jobs filtered by state_id & employment_offering
+    Route::get('jobs-count-by-state', [JobsFeedController::class, 'jobsCountByState']); // active jobs count by state (filterable by network_type)
     Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']); // global show route
 
     // recruiter dashboard
@@ -167,7 +168,7 @@ Route::prefix('industry/analytics')->group(function () {
     Route::get('/publications-insights', [IndustryAnalyticsController::class, 'publicationsInsights']);
 });
 
-// Pro Industry Products 
+// Pro Industry Products
 Route::prefix('industry')->group(function () {
     // Public / User Feed & Interactions
     Route::get('product-feed', [IndustryProductController::class, 'productFeed']);
@@ -176,7 +177,7 @@ Route::prefix('industry')->group(function () {
     Route::get('products/{id}/details', [IndustryProductController::class, 'show']);
     Route::post('products/{id}/like', [IndustryProductController::class, 'toggleLike']);
 
-    // Pro Industry Products Dashboard & Management 
+    // Pro Industry Products Dashboard & Management
     Route::prefix('products')->group(function () {
         Route::get('dashboard', [IndustryProductController::class, 'dashboard']);
         Route::get('my-listings', [IndustryProductController::class, 'myListings']);

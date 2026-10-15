@@ -10,6 +10,7 @@ use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
 use App\Models\IndustryJobPostLike;
 use App\Models\IndustryJobPostSave;
+use App\Models\State;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -389,6 +390,148 @@ class JobsFeedController extends Controller
                 'state_id' => ! empty($stateIds) ? (count($stateIds) === 1 ? reset($stateIds) : array_values($stateIds)) : null,
                 'employment_offering' => ! empty($offerings) ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
             ],
+        ], 200);
+    }
+
+    /**
+     * Get active jobs count grouped by state with optional network_type and related filters.
+     */
+    public function jobsCountByState(Request $request): JsonResponse
+    {
+        $today = Carbon::today()->toDateString();
+
+        // JIT auto-sync: Automatically update past-deadline published jobs to expired
+        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today) {
+            IndustryJobPost::where('status', IndustryJobPostStatus::PUBLISHED)
+                ->whereNotNull('announcement_end_date')
+                ->where('announcement_end_date', '<', $today)
+                ->update(['status' => IndustryJobPostStatus::EXPIRED]);
+
+            return true;
+        });
+
+        // Base query: Published active jobs with assigned state
+        $query = IndustryJobPost::query()
+            ->where('status', IndustryJobPostStatus::PUBLISHED)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('announcement_start_date')
+                    ->orWhere('announcement_start_date', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('announcement_end_date')
+                    ->orWhere('announcement_end_date', '>=', $today);
+            })
+            ->whereNotNull('state_id');
+
+        // Filter by network_type (supports single string, comma-separated, or array)
+        $rawNetworkType = $request->input('network_type');
+        $networkTypes = $this->normalizeArrayInput($rawNetworkType);
+        if (! empty($networkTypes)) {
+            $query->whereIn('network_type', $networkTypes);
+        }
+
+        // Optional filter by employment_offering
+        $rawOfferings = $request->input('employment_offering', $request->input('employment_offerings'));
+        $offerings = $this->normalizeArrayInput($rawOfferings);
+        if (! empty($offerings)) {
+            $query->whereIn('employment_offering', $offerings);
+        }
+
+        // Optional filter by work_mode
+        $rawWorkModes = $request->input('work_mode');
+        $workModes = $this->normalizeArrayInput($rawWorkModes);
+        if (! empty($workModes)) {
+            $query->whereIn('work_mode', $workModes);
+        }
+
+        // Optional filter by category
+        $rawCategories = $request->input('category');
+        $categories = $this->normalizeArrayInput($rawCategories);
+        if (! empty($categories)) {
+            $query->whereIn('category', $categories);
+        }
+
+        // Optional filter by state_id / state_ids
+        $rawStateIds = $request->input('state_ids', $request->input('state_id'));
+        $stateIds = array_filter(array_map('intval', $this->normalizeArrayInput($rawStateIds)));
+        if (! empty($stateIds)) {
+            $query->whereIn('state_id', $stateIds);
+        }
+
+        // Aggregate counts grouped by state_id and network_type
+        $aggregatedRows = (clone $query)
+            ->selectRaw('state_id, network_type, COUNT(*) as count')
+            ->groupBy('state_id', 'network_type')
+            ->get();
+
+        $stateActiveCounts = [];
+        $stateBreakdowns = [];
+        $networkTypeTotals = [];
+        $totalJobs = 0;
+
+        foreach ($aggregatedRows as $row) {
+            $sId = (int) $row->state_id;
+            $nType = (string) ($row->network_type ?? 'unspecified');
+            $c = (int) $row->count;
+
+            $stateActiveCounts[$sId] = ($stateActiveCounts[$sId] ?? 0) + $c;
+            $stateBreakdowns[$sId][$nType] = ($stateBreakdowns[$sId][$nType] ?? 0) + $c;
+            $networkTypeTotals[$nType] = ($networkTypeTotals[$nType] ?? 0) + $c;
+            $totalJobs += $c;
+        }
+
+        // Fetch states (all states by default, or filtered if specific state_ids provided)
+        $statesQuery = State::query()->select(['id', 'name', 'code', 'slug']);
+        if (! empty($stateIds)) {
+            $statesQuery->whereIn('id', $stateIds);
+        }
+        $states = $statesQuery->orderBy('name')->get();
+
+        $onlyWithJobs = $request->boolean('only_with_jobs') || $request->boolean('only_active');
+        $result = [];
+
+        foreach ($states as $state) {
+            $count = (int) ($stateActiveCounts[$state->id] ?? 0);
+
+            if (! $onlyWithJobs || $count > 0) {
+                $result[] = [
+                    'state_id' => $state->id,
+                    'state_name' => $state->name,
+                    'state_code' => $state->code,
+                    'state_slug' => $state->slug,
+                    'active_jobs_count' => $count,
+                    'network_types_breakdown' => $stateBreakdowns[$state->id] ?? [],
+                ];
+            }
+        }
+
+        // Optional sorting: if sort=count or order_by=count, sort by active_jobs_count descending
+        $sortBy = strtolower((string) $request->input('sort', $request->input('order_by', 'name')));
+        if (in_array($sortBy, ['count', 'jobs_count', 'active_jobs_count'], true)) {
+            usort($result, fn ($a, $b) => $b['active_jobs_count'] <=> $a['active_jobs_count']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'message' => 'Active jobs count by state retrieved successfully.',
+            'total_active_jobs' => $totalJobs,
+            'total_states' => count($result),
+            'summary' => [
+                'total_active_jobs' => $totalJobs,
+                'total_states_with_jobs' => count($stateActiveCounts),
+                'total_states_count' => $states->count(),
+                'network_types' => $networkTypeTotals,
+            ],
+            'filters' => [
+                'network_type' => ! empty($networkTypes) ? (count($networkTypes) === 1 ? reset($networkTypes) : array_values($networkTypes)) : null,
+                'employment_offering' => ! empty($offerings) ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
+                'work_mode' => ! empty($workModes) ? (count($workModes) === 1 ? reset($workModes) : array_values($workModes)) : null,
+                'category' => ! empty($categories) ? (count($categories) === 1 ? reset($categories) : array_values($categories)) : null,
+                'state_id' => ! empty($stateIds) ? (count($stateIds) === 1 ? reset($stateIds) : array_values($stateIds)) : null,
+                'only_with_jobs' => $onlyWithJobs,
+            ],
+            'data' => $result,
         ], 200);
     }
 
