@@ -8,10 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BoostPackageResource;
 use App\Http\Resources\IndustryProductResource;
 use App\Mail\BoostOtpMail;
+use App\Models\AdCampaign;
 use App\Models\BoostPackage;
 use App\Models\IndustryProduct;
 use App\Models\Otp;
 use App\Models\User;
+use App\Services\BoostSettingService;
 use App\Services\ProductBoostPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,6 +25,7 @@ class ProductBoostController extends Controller
 {
     public function __construct(
         private readonly ProductBoostPaymentService $boostPaymentService,
+        private readonly BoostSettingService $boostSettings,
     ) {}
 
     /**
@@ -39,16 +42,7 @@ class ProductBoostController extends Controller
             ->orderBy('price')
             ->get();
 
-        // Custom duration slider configuration from config
-        $customSliderConfig = config('boosting.custom_slider', [
-            'enabled' => true,
-            'daily_rate' => 3.00,
-            'currency' => 'USD',
-            'min_days' => 3,
-            'max_days' => 60,
-            'daily_estimated_impressions_min' => 700,
-            'daily_estimated_impressions_max' => 1400,
-        ]);
+        $customSliderConfig = $this->boostSettings->getSliderConfig();
 
         return response()->json([
             'success' => true,
@@ -96,14 +90,17 @@ class ProductBoostController extends Controller
     {
         $validated = $request->validate([
             'checkout_type' => ['required', 'string', 'in:stripe,revenuecat'],
-            'boost_package_id' => ['nullable', 'integer', 'exists:boost_packages,id'],
-            'custom_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'boost_package_id' => ['required_if:checkout_type,revenuecat', 'nullable', 'integer', 'exists:boost_packages,id'],
+            'custom_days' => ['prohibited_if:checkout_type,revenuecat', 'nullable', 'integer', 'min:1', 'max:365'],
             'otp' => ['required_if:checkout_type,stripe', 'nullable', 'digits:4'],
             'payment_method' => ['required_if:checkout_type,stripe', 'string'],
             'revenuecat_transaction_id' => ['required_if:checkout_type,revenuecat', 'string'],
             'network_type' => ['nullable', 'string', 'in:psychology,neuroscience,both'],
             'placements' => ['nullable', 'array'],
             'placements.*' => ['string'],
+        ], [
+            'custom_days.prohibited_if' => 'Custom duration boosting is only available for web checkout via Stripe. Mobile app purchases must select a preset boost package.',
+            'boost_package_id.required_if' => 'Please select a preset boost package for mobile app purchases.',
         ]);
 
         $product = IndustryProduct::findOrFail($id);
@@ -257,6 +254,85 @@ class ProductBoostController extends Controller
                 'campaigns' => $campaigns,
             ],
         ], 200);
+    }
+
+    /**
+     * Pause an active boost campaign and freeze remaining time.
+     */
+    public function pauseCampaign(Request $request, int|string $id): JsonResponse
+    {
+        $campaign = AdCampaign::findOrFail($id);
+        $user = $request->user();
+
+        if ($authError = $this->authorizeCampaignAction($user, $campaign)) {
+            return $authError;
+        }
+
+        if (! $campaign->pause()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only active campaigns can be paused.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Campaign paused successfully. Remaining time has been frozen.',
+            'data' => [
+                'campaign' => $campaign->fresh(),
+            ],
+        ], 200);
+    }
+
+    /**
+     * Resume a paused boost campaign and extend expiration date by the exact paused duration.
+     */
+    public function resumeCampaign(Request $request, int|string $id): JsonResponse
+    {
+        $campaign = AdCampaign::findOrFail($id);
+        $user = $request->user();
+
+        if ($authError = $this->authorizeCampaignAction($user, $campaign)) {
+            return $authError;
+        }
+
+        if (! $campaign->resume()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only paused campaigns can be resumed.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Campaign resumed successfully. Expiration date extended by paused duration.',
+            'data' => [
+                'campaign' => $campaign->fresh(),
+            ],
+        ], 200);
+    }
+
+    /**
+     * Check if user is authorized to manage a specific campaign.
+     */
+    private function authorizeCampaignAction(User $user, AdCampaign $campaign): ?JsonResponse
+    {
+        if (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'))) {
+            return null;
+        }
+
+        if ($campaign->user_id && $campaign->user_id === $user->id) {
+            return null;
+        }
+
+        if ($user->industry && $user->industry->id === $campaign->industry_id) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'You are not authorized to manage this campaign.',
+        ], 403);
     }
 
     /**

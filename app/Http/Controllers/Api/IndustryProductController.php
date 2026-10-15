@@ -12,6 +12,7 @@ use App\Models\IndustryProductLike;
 use App\Models\IndustryProductView;
 use App\Models\IndustrySections;
 use App\Models\User;
+use App\Services\BoostSettingService;
 use App\Services\OptimizedImageUploadService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -567,7 +568,7 @@ class IndustryProductController extends Controller
         $baseSlug = Str::slug($validated['product_name']);
         $uniqueSlug = $baseSlug.'-'.Str::lower(Str::random(6));
 
-        $newReleaseHours = (int) config('boosting.new_release_hours', 24);
+        $newReleaseHours = app(BoostSettingService::class)->getNewReleaseHours();
 
         $product = IndustryProduct::create([
             'creator_id' => $user->id,

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Confirm Your Boost Campaign - MindUnite</title>
+    <title>Confirm Your Boost Campaign - Mind Unite</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -59,32 +59,64 @@
             margin-bottom: 30px;
         }
 
+        .expiry {
+            color: #ff4d4f;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
         .footer {
-            background-color: #f9fbfb;
+            background-color: #f9fafb;
             padding: 20px;
             text-align: center;
             font-size: 12px;
-            color: #888888;
+            color: #999999;
             border-top: 1px solid #eeeeee;
+        }
+
+        .footer strong {
+            color: #00c2cb;
+        }
+
+        @media only screen and (max-width: 600px) {
+            .responsive-logo {
+                width: 300px !important;
+                max-width: 300px !important;
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="header">
-            <h1>MindUnite</h1>
+        <!-- Header with Logo -->
+        <div class="header" style="text-align: center; padding: 20px;">
+            <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
+                <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
+                    style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
+            </a>
         </div>
+
+        <!-- Content Section -->
         <div class="content">
             <h2>Confirm Your Boost Campaign</h2>
-            <p>Please enter the following 4-digit verification code to confirm and activate your product advertisement boost campaign:</p>
+            <p>We received a request to boost your product on Mind Unite. Please use the following One-Time Password (OTP) to confirm and complete your payment.</p>
+
             <div class="otp-box">
                 {{ $otp }}
             </div>
-            <p style="font-size: 14px; color: #777777;">This code is valid for 3 minutes. If you did not request this boost, please ignore this email or contact support.</p>
+
+            <p class="expiry">This code will expire in 3 minutes.</p>
+
+            <p style="font-size: 14px; color: #777777;">If you didn't request this boost, you can safely ignore this email.</p>
         </div>
+
+        <!-- Footer Section -->
         <div class="footer">
-            &copy; {{ date('Y') }} MindUnite. All rights reserved.
+            &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
+                style="text-decoration: none; color: #00c2cb; font-weight: bold;">Mind Unite</a>. All rights
+            reserved.<br>
+            Psychology and Neuroscience Community.
         </div>
     </div>
 </body>

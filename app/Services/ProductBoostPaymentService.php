@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Enums\AdCampaignStatus;
+use App\Mail\CampaignActivatedMail;
 use App\Models\AdCampaign;
 use App\Models\BoostPackage;
 use App\Models\IndustryProduct;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
 
@@ -16,6 +18,7 @@ class ProductBoostPaymentService
 {
     public function __construct(
         private readonly StripeService $stripe,
+        private readonly BoostSettingService $boostSettings,
     ) {}
 
     /**
@@ -108,7 +111,7 @@ class ProductBoostPaymentService
             ]);
         }
 
-        return DB::transaction(function () use ($user, $product, $package, $durationDays, $amount, $networkType, $placements, $paymentIntent, $priorityWeight): array {
+        $result = DB::transaction(function () use ($user, $product, $package, $durationDays, $amount, $networkType, $placements, $paymentIntent, $priorityWeight): array {
             $baseDate = ($product->is_boosted && $product->boost_expires_at?->isFuture())
                 ? $product->boost_expires_at
                 : now();
@@ -157,10 +160,14 @@ class ProductBoostPaymentService
                 'requires_action' => false,
                 'client_secret' => null,
                 'payment_status' => 'succeeded',
-                'campaign' => $campaign,
+                'campaign' => $campaign->load(['boostable', 'boostPackage', 'user']),
                 'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
             ];
         });
+
+        Mail::to($user->email)->queue(new CampaignActivatedMail($result['campaign']));
+
+        return $result;
     }
 
     /**
@@ -205,7 +212,7 @@ class ProductBoostPaymentService
             ];
         }
 
-        return DB::transaction(function () use ($campaign, $product, $paymentIntent): array {
+        $result = DB::transaction(function () use ($campaign, $product, $paymentIntent): array {
             $baseDate = ($product->is_boosted && $product->boost_expires_at?->isFuture())
                 ? $product->boost_expires_at
                 : now();
@@ -244,10 +251,14 @@ class ProductBoostPaymentService
             return [
                 'success' => true,
                 'message' => 'Payment confirmed and boost campaign activated successfully.',
-                'campaign' => $campaign->fresh(),
+                'campaign' => $campaign->fresh(['boostable', 'boostPackage', 'user']),
                 'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
             ];
         });
+
+        Mail::to($user->email)->queue(new CampaignActivatedMail($result['campaign']));
+
+        return $result;
     }
 
     /**
@@ -272,6 +283,12 @@ class ProductBoostPaymentService
     {
         $packageId = $params['boost_package_id'] ?? null;
         $transactionId = $params['revenuecat_transaction_id'] ?? null;
+
+        if (! empty($params['custom_days'])) {
+            throw ValidationException::withMessages([
+                'custom_days' => ['Custom duration boosting is only available for web checkout via Stripe. Mobile app purchases must select a preset boost package.'],
+            ]);
+        }
 
         if (! $packageId || ! $transactionId) {
             throw ValidationException::withMessages([
@@ -303,7 +320,7 @@ class ProductBoostPaymentService
         $amount = (float) $package->price;
         $priorityWeight = $package->priority_weight;
 
-        return DB::transaction(function () use ($user, $product, $package, $transactionId, $durationDays, $amount, $networkType, $placements, $priorityWeight): array {
+        $result = DB::transaction(function () use ($user, $product, $package, $transactionId, $durationDays, $amount, $networkType, $placements, $priorityWeight): array {
             $baseDate = ($product->is_boosted && $product->boost_expires_at?->isFuture())
                 ? $product->boost_expires_at
                 : now();
@@ -349,10 +366,14 @@ class ProductBoostPaymentService
             return [
                 'success' => true,
                 'message' => 'Boost campaign activated successfully via mobile store purchase.',
-                'campaign' => $campaign,
+                'campaign' => $campaign->load(['boostable', 'boostPackage', 'user']),
                 'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
             ];
         });
+
+        Mail::to($user->email)->queue(new CampaignActivatedMail($result['campaign']));
+
+        return $result;
     }
 
     /**
@@ -386,7 +407,7 @@ class ProductBoostPaymentService
 
         if (! empty($params['custom_days'])) {
             $customDays = (int) $params['custom_days'];
-            $sliderConfig = config('boosting.custom_slider', []);
+            $sliderConfig = $this->boostSettings->getSliderConfig();
 
             $minDays = (int) ($sliderConfig['min_days'] ?? 3);
             $maxDays = (int) ($sliderConfig['max_days'] ?? 60);
