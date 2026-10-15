@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Contracts\BoostableInterface;
+use App\Traits\HasBoostableCampaigns;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,9 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class IndustryProduct extends Model
+class IndustryProduct extends Model implements BoostableInterface
 {
-    use HasFactory, SoftDeletes;
+    use HasBoostableCampaigns, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'product_id',
@@ -32,7 +34,15 @@ class IndustryProduct extends Model
         'poc_phone',
         'information_confirmed',
         'status',
+        'is_new_release',
+        'new_release_expires_at',
+        'is_boosted',
+        'boosted_at',
+        'boost_expires_at',
+        'boost_score',
         'views_count',
+        'impressions_count',
+        'clicks_count',
         'likes_count',
     ];
 
@@ -69,7 +79,15 @@ class IndustryProduct extends Model
     protected $casts = [
         'tags' => 'array',
         'information_confirmed' => 'boolean',
+        'is_new_release' => 'boolean',
+        'new_release_expires_at' => 'datetime',
+        'is_boosted' => 'boolean',
+        'boosted_at' => 'datetime',
+        'boost_expires_at' => 'datetime',
+        'boost_score' => 'integer',
         'views_count' => 'integer',
+        'impressions_count' => 'integer',
+        'clicks_count' => 'integer',
         'likes_count' => 'integer',
     ];
 
@@ -117,5 +135,35 @@ class IndustryProduct extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function getAdTitle(): string
+    {
+        return (string) $this->product_name;
+    }
+
+    public function getAdDescription(): ?string
+    {
+        return $this->description;
+    }
+
+    public function getAdImageUrl(): ?string
+    {
+        return $this->image_url;
+    }
+
+    public function getAdDestinationUrl(): ?string
+    {
+        return $this->product_url;
+    }
+
+    public function getAdNetworkType(): string
+    {
+        return (string) $this->network_type;
+    }
+
+    public function getAdType(): string
+    {
+        return 'product';
     }
 }
