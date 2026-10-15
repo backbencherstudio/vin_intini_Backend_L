@@ -46,6 +46,11 @@ class BoostPackage extends Model
         return $this->hasMany(AdCampaign::class);
     }
 
+    public function activeCampaigns(): HasMany
+    {
+        return $this->hasMany(AdCampaign::class)->where('status', 'active');
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';

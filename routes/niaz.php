@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\IndustryProductController;
 use App\Http\Controllers\Api\IndustryProfileController;
 use App\Http\Controllers\Api\JobsFeedController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProductBoostController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
@@ -176,6 +177,9 @@ Route::prefix('industry')->group(function () {
     Route::get('products/feed', [IndustryProductController::class, 'productFeed']);
     Route::get('products/{id}/details', [IndustryProductController::class, 'show']);
     Route::post('products/{id}/like', [IndustryProductController::class, 'toggleLike']);
+
+    // Boost Packages for Advertisers (Modal & Campaign Builder)
+    Route::get('boost-packages', [ProductBoostController::class, 'packages']);
 
     // Pro Industry Products Dashboard & Management
     Route::prefix('products')->group(function () {
