@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\GroupController;
+use App\Http\Controllers\Api\ProductBoostController;
 use App\Http\Controllers\Api\RevenueCatWebhookController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\SocialController;
@@ -51,6 +52,10 @@ Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 // RevenueCat webhook (must be public, no auth, signature verified)
 Route::post('/webhooks/revenuecat', [RevenueCatWebhookController::class, 'handle'])
     ->middleware('verify_revenuecat_webhook');
+
+// Universal Ad Tracking (Client-side verified IAB viewable impressions & click recording)
+Route::post('/advertisements/impressions', [ProductBoostController::class, 'recordImpressions']);
+Route::post('/advertisements/{id}/click', [ProductBoostController::class, 'recordClick']);
 
 Route::prefix('2fa')->group(function () {
     // 2FA Verification during Login

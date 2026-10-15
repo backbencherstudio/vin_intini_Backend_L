@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AdCampaignStatus;
 use App\Enums\BoostTargetEntity;
 use App\Enums\OtpType;
 use App\Http\Controllers\Controller;
@@ -9,6 +10,8 @@ use App\Http\Resources\BoostPackageResource;
 use App\Http\Resources\IndustryProductResource;
 use App\Mail\BoostOtpMail;
 use App\Models\AdCampaign;
+use App\Models\AdClick;
+use App\Models\AdImpression;
 use App\Models\BoostPackage;
 use App\Models\IndustryProduct;
 use App\Models\Otp;
@@ -436,5 +439,102 @@ class ProductBoostController extends Controller
             'success' => false,
             'message' => 'You are not authorized to boost this product.',
         ], 403);
+    }
+
+    /**
+     * Batch log verified IAB viewable impressions from client viewport detection.
+     */
+    public function recordImpressions(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'campaign_ids' => ['required', 'array', 'min:1'],
+            'campaign_ids.*' => ['integer', 'exists:ad_campaigns,id'],
+            'placement' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $user = auth('api')->user() ?? $request->user();
+        $placement = $validated['placement'] ?? 'newsfeed';
+        $ip = $request->ip();
+        $today = today();
+
+        $campaigns = AdCampaign::whereIn('id', $validated['campaign_ids'])
+            ->where('status', AdCampaignStatus::ACTIVE)
+            ->with('boostable')
+            ->get();
+
+        $count = 0;
+        foreach ($campaigns as $campaign) {
+            AdImpression::create([
+                'ad_campaign_id' => $campaign->id,
+                'boostable_type' => $campaign->boostable_type,
+                'boostable_id' => $campaign->boostable_id,
+                'user_id' => $user?->id,
+                'placement' => $placement,
+                'ip_address' => $ip,
+                'viewed_date' => $today,
+            ]);
+
+            $campaign->increment('total_impressions');
+
+            if ($campaign->boostable && method_exists($campaign->boostable, 'increment')) {
+                $campaign->boostable->increment('impressions_count');
+            }
+
+            $count++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Impressions recorded successfully.',
+            'recorded_count' => $count,
+        ]);
+    }
+
+    /**
+     * Record a verified click on an ad campaign and return destination details.
+     */
+    public function recordClick(Request $request, int|string $id): JsonResponse
+    {
+        $campaign = AdCampaign::with('boostable')->find($id);
+
+        if (! $campaign) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ad campaign not found.',
+            ], 404);
+        }
+
+        $user = auth('api')->user() ?? $request->user();
+        $placement = $request->input('placement', 'newsfeed');
+        $ip = $request->ip();
+
+        AdClick::create([
+            'ad_campaign_id' => $campaign->id,
+            'boostable_type' => $campaign->boostable_type,
+            'boostable_id' => $campaign->boostable_id,
+            'user_id' => $user?->id,
+            'placement' => $placement,
+            'ip_address' => $ip,
+        ]);
+
+        $campaign->increment('total_clicks');
+
+        if ($campaign->boostable && method_exists($campaign->boostable, 'increment')) {
+            $campaign->boostable->increment('clicks_count');
+        }
+
+        $destinationUrl = method_exists($campaign->boostable, 'getAdDestinationUrl')
+            ? $campaign->boostable->getAdDestinationUrl()
+            : ($campaign->boostable->product_url ?? null);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Click recorded successfully.',
+            'data' => [
+                'ad_campaign_id' => $campaign->id,
+                'total_clicks' => $campaign->fresh()->total_clicks,
+                'destination_url' => $destinationUrl,
+            ],
+        ]);
     }
 }

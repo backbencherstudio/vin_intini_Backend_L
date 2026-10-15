@@ -203,6 +203,10 @@ Route::prefix('industry')->group(function () {
     // Boost Campaign Pause & Resume Controls (Clock-Freeze)
     Route::post('boost/campaigns/{id}/pause', [ProductBoostController::class, 'pauseCampaign']);
     Route::post('boost/campaigns/{id}/resume', [ProductBoostController::class, 'resumeCampaign']);
+
+    // Universal Ad Tracking (Client-side verified IAB viewable impressions & click recording)
+    Route::post('advertisements/impressions', [ProductBoostController::class, 'recordImpressions']);
+    Route::post('advertisements/{id}/click', [ProductBoostController::class, 'recordClick']);
 });
 
 // Industry Profile Tab Routes (Job Posts, Products Advertisement, Publications with Cursor Pagination)
