@@ -219,3 +219,69 @@ test('impressions and clicks can be logged for an ad campaign', function () {
     expect($campaign->impressions()->count())->toBe(1)
         ->and($campaign->clicks()->count())->toBe(1);
 });
+
+test('ad campaign history is preserved under industry even if creator user account is deleted', function () {
+    $user = User::factory()->create();
+    $industry = Industry::create([
+        'name' => 'Legacy Health Corp',
+        'slug' => 'legacy-health-corp',
+        'created_by' => $user->id,
+    ]);
+    $section = IndustrySections::create([
+        'network_type' => 'psychology',
+        'industry_type' => 'biotechnology',
+        'name' => 'Hardware',
+    ]);
+    $category = IndustryCategory::create([
+        'section_id' => $section->id,
+        'category_name' => 'Sensors',
+    ]);
+
+    $product = IndustryProduct::create([
+        'creator_id' => $user->id,
+        'industry_id' => $industry->id,
+        'section_id' => $section->id,
+        'category_id' => $category->id,
+        'network_type' => 'psychology',
+        'industry_type' => 'biotechnology',
+        'product_name' => 'Health Sensor X',
+        'slug' => 'health-sensor-x',
+        'description' => 'Advanced sensor.',
+        'status' => 'active',
+    ]);
+
+    $campaign = AdCampaign::create([
+        'boostable_type' => IndustryProduct::class,
+        'boostable_id' => $product->id,
+        'user_id' => $user->id,
+        'industry_id' => $industry->id,
+        'ad_type' => 'product',
+        'network_type' => 'psychology',
+        'amount_paid' => 49.99,
+        'duration_days' => 14,
+        'starts_at' => now(),
+        'ends_at' => now()->addDays(14),
+        'status' => AdCampaignStatus::ACTIVE,
+    ]);
+
+    // 1. When creator user soft-deletes their account:
+    $user->delete();
+
+    $freshCampaign = AdCampaign::find($campaign->id);
+    expect($freshCampaign)->not->toBeNull()
+        ->and($freshCampaign->industry_id)->toBe($industry->id)
+        ->and($freshCampaign->user)->not->toBeNull()
+        ->and($freshCampaign->user->trashed())->toBeTrue();
+
+    // 2. When creator user account is permanently hard-deleted (force deleted / GDPR purged):
+    $user->forceDelete();
+
+    $freshCampaign = AdCampaign::find($campaign->id);
+    expect($freshCampaign)->not->toBeNull()
+        ->and($freshCampaign->user_id)->toBeNull()
+        ->and($freshCampaign->industry_id)->toBe($industry->id)
+        ->and((float) $freshCampaign->amount_paid)->toBe(49.99);
+
+    // Verify industry still retains full historical campaigns
+    expect(AdCampaign::where('industry_id', $industry->id)->count())->toBe(1);
+});

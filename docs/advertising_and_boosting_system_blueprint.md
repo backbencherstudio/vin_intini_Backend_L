@@ -137,8 +137,8 @@ return new class extends Migration {
             $table->string('boostable_type')->index();                  // App\Models\IndustryProduct, etc.
             $table->unsignedBigInteger('boostable_id')->index();
 
-            // Ownership
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            // Ownership (Preserved under industry even if creator user account is deleted)
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('industry_id')->nullable()->constrained('industries')->nullOnDelete();
             $table->foreignId('boost_package_id')->nullable()->constrained('boost_packages')->nullOnDelete();
 

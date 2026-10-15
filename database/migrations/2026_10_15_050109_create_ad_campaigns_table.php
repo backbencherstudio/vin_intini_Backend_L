@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('boostable_type');
             $table->unsignedBigInteger('boostable_id');
 
-            // Ownership & Relations
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            // Ownership & Relations (Preserved under industry even if creator user account is deleted)
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('industry_id')->nullable()->constrained('industries')->nullOnDelete();
             $table->foreignId('boost_package_id')->nullable()->constrained('boost_packages')->nullOnDelete();
 
