@@ -86,8 +86,14 @@ class IndustryProductResource extends JsonResource
             'views_count' => (int) ($this->views_count ?? 0),
             'likes_count' => (int) ($this->likes_count ?? 0),
             'is_liked' => $isLiked,
+            'is_boosted' => $this->isBoosted(),
+            'boost_expires_at' => $this->boost_expires_at?->toISOString(),
+            'is_new_release' => $this->isNewRelease(),
+            'new_release_expires_at' => $this->new_release_expires_at?->toISOString(),
+            'badge' => $this->getAdBadge(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
+
     }
 }

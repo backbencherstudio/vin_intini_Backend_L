@@ -164,7 +164,7 @@ class IndustryProductController extends Controller
                 ->where('network_type', $request->input('network_type'))
                 ->where('industry_type', $request->input('industry_type'))
                 ->with(['creator', 'industry', 'section', 'category'])
-                ->latest('id');
+                ->feedOrder();
 
             // If specific section is chosen
             if ($request->filled('section_id')) {
@@ -321,7 +321,17 @@ class IndustryProductController extends Controller
             $placeholders = implode(',', array_fill(0, count($sectionIds), '?'));
             $rankedSql = "
                 SELECT id FROM (
-                    SELECT id, section_id, ROW_NUMBER() OVER (PARTITION BY section_id ORDER BY id DESC) as rn
+                    SELECT id, section_id, ROW_NUMBER() OVER (
+                        PARTITION BY section_id 
+                        ORDER BY 
+                            CASE 
+                                WHEN is_boosted = 1 AND (boost_expires_at IS NULL OR boost_expires_at > NOW()) THEN 2
+                                WHEN is_new_release = 1 AND (new_release_expires_at IS NULL OR new_release_expires_at > NOW()) THEN 1
+                                ELSE 0
+                            END DESC,
+                            boost_score DESC,
+                            id DESC
+                    ) as rn
                     FROM industry_products
                     WHERE network_type = ?
                       AND industry_type = ?
@@ -339,7 +349,7 @@ class IndustryProductController extends Controller
                 $products = IndustryProduct::query()
                     ->whereIn('id', $topProductIds)
                     ->with(['creator', 'industry', 'section', 'category'])
-                    ->latest('id')
+                    ->feedOrder()
                     ->get();
 
                 if ($currentUser) {
@@ -557,6 +567,8 @@ class IndustryProductController extends Controller
         $baseSlug = Str::slug($validated['product_name']);
         $uniqueSlug = $baseSlug.'-'.Str::lower(Str::random(6));
 
+        $newReleaseHours = (int) config('boosting.new_release_hours', 24);
+
         $product = IndustryProduct::create([
             'creator_id' => $user->id,
             'industry_id' => $industry->id,
@@ -575,6 +587,8 @@ class IndustryProductController extends Controller
             'poc_phone' => $validated['poc_phone'] ?? null,
             'information_confirmed' => (bool) $request->boolean('information_confirmed', true),
             'status' => $validated['status'] ?? 'active',
+            'is_new_release' => $newReleaseHours > 0,
+            'new_release_expires_at' => $newReleaseHours > 0 ? now()->addHours($newReleaseHours) : null,
             'views_count' => 0,
             'likes_count' => 0,
         ]);

@@ -25,8 +25,8 @@ class ProductBoostController extends Controller
             ->orderBy('price')
             ->get();
 
-        // Custom duration slider configuration ($3.00/day base rate)
-        $customSliderConfig = [
+        // Custom duration slider configuration from config
+        $customSliderConfig = config('boosting.custom_slider', [
             'enabled' => true,
             'daily_rate' => 3.00,
             'currency' => 'USD',
@@ -34,7 +34,7 @@ class ProductBoostController extends Controller
             'max_days' => 60,
             'daily_estimated_impressions_min' => 700,
             'daily_estimated_impressions_max' => 1400,
-        ];
+        ]);
 
         return response()->json([
             'success' => true,

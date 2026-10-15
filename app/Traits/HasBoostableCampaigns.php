@@ -37,4 +37,33 @@ trait HasBoostableCampaigns
         return $query->where('is_new_release', true)
             ->where('new_release_expires_at', '>', now());
     }
+
+    public function isNewRelease(): bool
+    {
+        return (bool) $this->is_new_release && ($this->new_release_expires_at === null || $this->new_release_expires_at->isFuture());
+    }
+
+    public function getAdBadge(): ?string
+    {
+        if ($this->isBoosted()) {
+            return 'Sponsored';
+        }
+
+        if ($this->isNewRelease()) {
+            return 'New Release';
+        }
+
+        return null;
+    }
+
+    public function scopeFeedOrder(Builder $query): Builder
+    {
+        return $query->orderByRaw('
+            CASE 
+                WHEN is_boosted = 1 AND (boost_expires_at IS NULL OR boost_expires_at > NOW()) THEN 2
+                WHEN is_new_release = 1 AND (new_release_expires_at IS NULL OR new_release_expires_at > NOW()) THEN 1
+                ELSE 0
+            END DESC
+        ')->orderByDesc('boost_score')->orderByDesc('id');
+    }
 }
