@@ -339,19 +339,38 @@ class JobsFeedController extends Controller
             $query->whereIn('state_id', $stateIds);
         }
 
-        // Filter by employment_offering (supports single, array, or comma-separated)
-        $rawOfferings = $request->input('employment_offering', $request->input('employment_offerings'));
-        $offerings = $this->normalizeArrayInput($rawOfferings);
-        if (! empty($offerings)) {
-            $query->whereIn('employment_offering', $offerings);
-        }
-
         // Optional network_type filter
         if ($request->filled('network_type')) {
             $networkTypes = $this->normalizeArrayInput($request->input('network_type'));
             if (! empty($networkTypes)) {
                 $query->whereIn('network_type', $networkTypes);
             }
+        }
+
+        // Aggregate counts by employment offering (and state total) before applying employment_offering filter
+        $statsQuery = clone $query;
+        $statsQuery->getQuery()->columns = null;
+        $offeringStats = $statsQuery
+            ->selectRaw("
+                COUNT(*) as total_state_jobs,
+                COUNT(CASE WHEN LOWER(employment_offering) = 'private' THEN 1 END) as private_jobs_count,
+                COUNT(CASE WHEN LOWER(employment_offering) IN ('state', 'public') THEN 1 END) as state_jobs_count
+            ")
+            ->first();
+
+        $privateJobsCount = (int) ($offeringStats->private_jobs_count ?? 0);
+        $stateJobsCount = (int) ($offeringStats->state_jobs_count ?? 0);
+        $totalStateJobs = (int) ($offeringStats->total_state_jobs ?? 0);
+
+        // Filter by employment_offering (supports single, array, or comma-separated)
+        $rawOfferings = $request->input('employment_offering', $request->input('employment_offerings'));
+        $offerings = $this->normalizeArrayInput($rawOfferings);
+        if (! empty($offerings)) {
+            $effectiveOfferings = $offerings;
+            if (in_array('state', $offerings, true) && ! in_array('public', $offerings, true)) {
+                $effectiveOfferings[] = 'public';
+            }
+            $query->whereIn('employment_offering', $effectiveOfferings);
         }
 
         $limit = min($request->integer('limit', $request->integer('per_page', 10)), 100);
@@ -370,15 +389,36 @@ class JobsFeedController extends Controller
 
         $formattedData = $this->formatJobCollection($paginated->getCollection(), $currentUser);
 
+        $stateData = null;
+        if (! empty($stateIds)) {
+            $statesQuery = State::query()->select(['id', 'name', 'code', 'slug'])->whereIn('id', $stateIds)->get();
+            if (count($stateIds) === 1) {
+                $first = $statesQuery->first();
+                $stateData = $first ? [
+                    'id' => $first->id,
+                    'name' => $first->name,
+                    'code' => $first->code,
+                    'slug' => $first->slug,
+                ] : null;
+            } else {
+                $stateData = $statesQuery->map(fn ($s) => [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'code' => $s->code,
+                    'slug' => $s->slug,
+                ])->values()->all();
+            }
+        }
+
         return response()->json([
             'success' => true,
             'status' => 'success',
             'message' => 'Jobs filtered by state and employment offering retrieved successfully.',
+            'state' => $stateData,
             'data' => $formattedData,
             'total_jobs' => $totalJobsCount,
-            'stats' => [
-                'total_jobs' => $totalJobsCount,
-            ],
+            'private_jobs_count' => $privateJobsCount,
+            'state_jobs_count' => $stateJobsCount,
             'pagination' => [
                 'limit' => $paginated->perPage(),
                 'per_page' => $paginated->perPage(),

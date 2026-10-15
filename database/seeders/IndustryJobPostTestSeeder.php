@@ -120,7 +120,7 @@ class IndustryJobPostTestSeeder extends Seeder
                 'category' => 'Healthcare',
                 'sub_category' => 'Therapist',
                 'network_type' => 'psychology',
-                'employment_offering' => 'public',
+                'employment_offering' => 'state',
                 'work_mode' => 'remote',
                 'employment_type' => 'short_term',
                 'level' => 'Entry-level',
