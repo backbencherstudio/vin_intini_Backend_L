@@ -26,6 +26,8 @@ class AdCampaign extends Model
         'currency',
         'stripe_payment_intent_id',
         'stripe_checkout_session_id',
+        'revenuecat_transaction_id',
+        'payment_platform',
         'duration_days',
         'starts_at',
         'ends_at',

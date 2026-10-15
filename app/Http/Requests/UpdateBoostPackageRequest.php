@@ -35,6 +35,9 @@ class UpdateBoostPackageRequest extends FormRequest
             'features.*' => ['string', 'max:255'],
             'priority_weight' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'status' => ['sometimes', 'required', Rule::in(['active', 'inactive'])],
+            'revenuecat_store_identifier_ios' => ['nullable', 'string', 'max:255'],
+            'revenuecat_store_identifier_android' => ['nullable', 'string', 'max:255'],
+            'revenuecat_entitlement_identifier' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -22,6 +22,9 @@ class BoostPackage extends Model
         'features',
         'priority_weight',
         'status',
+        'revenuecat_store_identifier_ios',
+        'revenuecat_store_identifier_android',
+        'revenuecat_entitlement_identifier',
     ];
 
     protected $attributes = [
@@ -54,5 +57,11 @@ class BoostPackage extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function isRevenueCat(): bool
+    {
+        return ! empty($this->revenuecat_store_identifier_ios)
+            || ! empty($this->revenuecat_store_identifier_android);
     }
 }

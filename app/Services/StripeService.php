@@ -195,6 +195,29 @@ class StripeService
             : null;
     }
 
+    public function createPaymentIntent(
+        int $amountInCents,
+        string $currency,
+        string $customerId,
+        string $paymentMethodId,
+        array $metadata = [],
+        bool $confirm = true,
+    ): PaymentIntent {
+        return $this->client()->paymentIntents->create([
+            'amount' => $amountInCents,
+            'currency' => strtolower($currency),
+            'customer' => $customerId,
+            'payment_method' => $paymentMethodId,
+            'confirm' => $confirm,
+            'automatic_payment_methods' => [
+                'enabled' => true,
+                'allow_redirects' => 'never',
+            ],
+            'metadata' => $metadata,
+            'expand' => ['payment_method'],
+        ]);
+    }
+
     public function retrievePaymentIntent(string $paymentIntentId): PaymentIntent
     {
         return $this->client()->paymentIntents->retrieve($paymentIntentId, [

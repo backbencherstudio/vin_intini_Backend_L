@@ -192,6 +192,12 @@ Route::prefix('industry')->group(function () {
         Route::match(['put', 'post'], '{id}/update', [IndustryProductController::class, 'update']);
         Route::match(['patch', 'post'], '{id}/status', [IndustryProductController::class, 'updateStatus']);
         Route::delete('{id}/delete', [IndustryProductController::class, 'destroy']);
+
+        // Product Boosting (Stripe Elements direct card payment & RevenueCat IAP)
+        Route::post('{id}/boost/send-otp', [ProductBoostController::class, 'sendOtp']);
+        Route::post('{id}/boost/purchase', [ProductBoostController::class, 'purchase']);
+        Route::post('{id}/boost/confirm', [ProductBoostController::class, 'confirmPayment']);
+        Route::get('{id}/boost/campaigns', [ProductBoostController::class, 'campaigns']);
     });
 });
 

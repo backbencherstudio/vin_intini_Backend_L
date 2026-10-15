@@ -9,6 +9,7 @@ enum OtpType: string
     case SUBSCRIPTION = 'subscription';
     case RECOVERY = 'recovery';
     case RECOVERY_EMAIL = 'recovery_email';
+    case BOOST = 'boost';
 
     public static function values(): array
     {

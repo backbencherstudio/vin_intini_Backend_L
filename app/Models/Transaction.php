@@ -13,6 +13,7 @@ class Transaction extends Model
         'user_id',
         'plan_id',
         'subscription_id',
+        'ad_campaign_id',
         'amount',
         'currency',
         'card_brand',
@@ -43,5 +44,10 @@ class Transaction extends Model
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class);
+    }
+
+    public function adCampaign(): BelongsTo
+    {
+        return $this->belongsTo(AdCampaign::class);
     }
 }
