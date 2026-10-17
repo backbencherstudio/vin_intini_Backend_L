@@ -21,7 +21,6 @@ class AdCampaignResource extends JsonResource
         $totalClicks = (int) $this->total_clicks;
         $ctr = $totalImpressions > 0 ? round(($totalClicks / $totalImpressions) * 100, 2) : 0.0;
         $amountPaid = (float) $this->amount_paid;
-        $costPerClick = $totalClicks > 0 ? round($amountPaid / $totalClicks, 2) : 0.0;
 
         // Status flags
         $statusValue = $this->status instanceof AdCampaignStatus ? $this->status->value : (string) $this->status;
@@ -93,8 +92,6 @@ class AdCampaignResource extends JsonResource
             'total_clicks' => $totalClicks,
             'ctr' => $ctr,
             'ctr_formatted' => $ctr.'%',
-            'cost_per_click' => $costPerClick,
-            'cost_per_click_formatted' => '$'.number_format($costPerClick, 2),
             'boost_package' => $this->whenLoaded('boostPackage', fn () => new BoostPackageResource($this->boostPackage)),
             'boostable' => $this->whenLoaded('boostable', function () {
                 if ($this->boostable instanceof IndustryProduct) {
