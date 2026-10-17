@@ -821,7 +821,8 @@ test('industry advertiser can list all their boost campaigns with aggregate metr
         ->assertJsonPath('data.metrics.total_impressions', 2000)
         ->assertJsonPath('data.metrics.total_clicks', 100)
         ->assertJsonPath('data.metrics.average_ctr', 5)
-        ->assertJsonPath('data.metrics.total_spend', 80);
+        ->assertJsonPath('data.metrics.total_spend', 80)
+        ->assertJsonPath('data.metrics.total_spend_formatted', '$80.00');
 
     // Filter by active
     $activeResponse = $this->actingAs($this->user, 'api')

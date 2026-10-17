@@ -400,7 +400,16 @@
       <div id="subtab-view-history" class="space-y-6">
 
         <!-- Metrics Overview KPI Strip -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          <!-- Total Ad Investment Highlight Card -->
+          <div class="p-3 rounded-2xl bg-gradient-to-br from-[#043940] via-slate-950 to-cyan-950 border-2 border-[#00c2cb] text-center shadow-lg shadow-cyan-500/15 col-span-2 sm:col-span-2 lg:col-span-1">
+            <p class="text-[10px] font-bold text-[#00c2cb] uppercase tracking-wider mb-0.5 flex items-center justify-center gap-1">
+              <span>💰</span> Total Invested
+            </p>
+            <p class="text-lg font-extrabold text-white" id="metric-total-invested">$420.00</p>
+            <span class="json-tag text-[9px]">metrics.total_spend</span>
+          </div>
+
           <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center">
             <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Campaigns</p>
             <p class="text-lg font-extrabold text-white">8</p>
@@ -769,8 +778,24 @@
           </div>
         </div>
 
-        <!-- 4 KPI Metrics Growth Cards (from API: cards) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- 5 KPI Metrics Growth Cards (from API: cards) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <!-- Total Ad Investment -->
+          <div class="p-5 rounded-3xl bg-gradient-to-br from-[#043940] via-slate-950 to-cyan-950 border-2 border-[#00c2cb] shadow-xl relative overflow-hidden group hover:border-cyan-300 transition-all col-span-1 sm:col-span-2 lg:col-span-1">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-[#00c2cb] uppercase tracking-wider">Total Ad Investment</span>
+              <span class="text-lg">💰</span>
+            </div>
+            <div class="text-2xl font-extrabold text-white mb-2" id="kpi-total-spend">$420.00</div>
+            <div class="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+              <span>↗ +14.5%</span>
+              <span class="text-slate-500 font-normal">from last month</span>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-900">
+              <span class="json-tag text-[9px]">cards.total_spend.formatted</span>
+            </div>
+          </div>
+
           <!-- Total Products -->
           <div class="p-5 rounded-3xl bg-slate-950 border border-slate-800 shadow-xl relative overflow-hidden group hover:border-[#00c2cb]/40 transition-all">
             <div class="flex justify-between items-start mb-2">

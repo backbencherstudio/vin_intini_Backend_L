@@ -323,6 +323,7 @@ class ProductBoostController extends Controller
             'total_clicks' => $totalClicks,
             'average_ctr' => $avgCtr,
             'total_spend' => (float) $allCampaigns->sum('amount_paid'),
+            'total_spend_formatted' => '$'.number_format((float) $allCampaigns->sum('amount_paid'), 2),
         ];
 
         return response()->json([

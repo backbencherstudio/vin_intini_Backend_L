@@ -158,97 +158,99 @@ This document provides visual wireframe templates and field-by-field UI/UX mappi
 
 #### Visual ASCII Wireframe:
 ```text
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ [ 🕒 Ad Campaigns History & Controls (8) ]   [ 📊 Ad Performance Analytics ]            [ + Boost New Product 🚀 ]│
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────┐ │
-│ │ Campaigns    │ │ Active Ads   │ │ Paused (Frz) │ │ Completed    │ │ Impressions  │ │ Total Clicks │ │ Avg CTR  │ │
-│ │ 8            │ │ 3 🟢         │ │ 1 ⏱️         │ │ 4            │ │ 28,450       │ │ 1,820        │ │ 6.40%    │ │
-│ │ (total_camp) │ │ (active_camp)│ │ (paused_camp)│ │ (compl_camp) │ │ (total_imp)  │ │ (total_click)│ │ (avg_ctr)│ │
-│ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────┘ │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Filter: [ All (8) ] [ Active (3) ] [ Paused (1) ] [ Completed (4) ]     🔍 [ Search product name...            ] │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ │
-│ │ [🧠] BioPac MP170 Smart EEG Monitor (boostable.product_name)                  $112.00 Paid      🟢 Active Ad │ │
-│ │      Campaign #108 • Growth Surge (14 Days) • Priority: 5 (boost_package.name)   (amount_paid)  (item.status)│ │
-│ │ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐          │ │
-│ │ │ Impressions: 14,250  │ │ Clicks: 920          │ │ CTR: 6.46%           │ │ Cost/Click: $0.12    │          │ │
-│ │ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘          │ │
-│ │ Timeline: Started: Oct 10, 2026      ⚡ 7 Days Remaining (50% Complete)        Ends: Oct 24, 2026             │ │
-│ │ [████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]     │ │
-│ │ ❄️ Clock-Freeze Policy: Pause anytime without losing your 7 days.        [ 👁️ In Feed ]  [ ⏸️ Pause Ad ]     │ │
-│ │                                                                                           (POST .../pause)   │ │
-│ └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ │
-│ ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ │
-│ │ [📡] NeuroEcho Wireless EMG Sensor                                            $56.00 Paid   ⏱️ Paused (Frozen)│ │
-│ │      Campaign #95 • Starter Spark (7 Days) • Priority: 3                                        (item.status)│ │
-│ │ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐          │ │
-│ │ │ Impressions: 6,480   │ │ Clicks: 415          │ │ CTR: 6.40%           │ │ Cost/Click: $0.13    │          │ │
-│ │ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘          │ │
-│ │ Timeline: Started: Oct 11, 2026      ⏱️ 4 Days 12h Remaining (Frozen)          Ends: Frozen Expiration        │ │
-│ │ [████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]     │ │
-│ │ ⚠️ Auto-Expiry: 26 days left before paused campaign auto-expires.        [ ✏️ Edit ]     [ ▶️ Resume Ad ]    │ │
-│ │                                                                                           (POST .../resume)  │ │
-│ └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [ 🕒 Ad Campaigns History & Controls (8) ]       [ 📊 Ad Performance Analytics ]                      [ + Boost New Product 🚀 ]│
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ┌────────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
+│ │ Total Invested │ │ Campaigns    │ │ Active Ads   │ │ Paused (Frz) │ │ Completed    │ │ Impressions  │ │ Avg CTR          │ │
+│ │ $420.00 💰     │ │ 8            │ │ 3 🟢         │ │ 1 ⏱️         │ │ 4            │ │ 28,450       │ │ 6.40%            │ │
+│ │ (total_spend)  │ │ (total_camp) │ │ (active_camp)│ │ (paused_camp)│ │ (compl_camp) │ │ (total_imp)  │ │ (average_ctr)    │ │
+│ └────────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘ │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Filter: [ All (8) ] [ Active (3) ] [ Paused (1) ] [ Completed (4) ]                   🔍 [ Search product name...            ] │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ [🧠] BioPac MP170 Smart EEG Monitor (boostable.product_name)                                $112.00 Paid      🟢 Active Ad │ │
+│ │      Campaign #108 • Growth Surge (14 Days) • Priority: 5 (boost_package.name)                 (amount_paid)  (item.status)│ │
+│ │ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐                        │ │
+│ │ │ Impressions: 14,250  │ │ Clicks: 920          │ │ CTR: 6.46%           │ │ Cost/Click: $0.12    │                        │ │
+│ │ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘                        │ │
+│ │ Timeline: Started: Oct 10, 2026      ⚡ 7 Days Remaining (50% Complete)        Ends: Oct 24, 2026                           │ │
+│ │ [████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]                   │ │
+│ │ ❄️ Clock-Freeze Policy: Pause anytime without losing your 7 days.                      [ 👁️ In Feed ]  [ ⏸️ Pause Ad ]   │ │
+│ │                                                                                                         (POST .../pause) │ │
+│ └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ │
+│ ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ [📡] NeuroEcho Wireless EMG Sensor                                                          $56.00 Paid ⏱️ Paused (Frozen) │ │
+│ │      Campaign #95 • Starter Spark (7 Days) • Priority: 3                                                      (item.status)│ │
+│ │ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐                        │ │
+│ │ │ Impressions: 6,480   │ │ Clicks: 415          │ │ CTR: 6.40%           │ │ Cost/Click: $0.13    │                        │ │
+│ │ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘                        │ │
+│ │ Timeline: Started: Oct 11, 2026      ⏱️ 4 Days 12h Remaining (Frozen)          Ends: Frozen Expiration                      │ │
+│ │ [████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]                   │ │
+│ │ ⚠️ Auto-Expiry: 26 days left before paused campaign auto-expires.                      [ ✏️ Edit ]     [ ▶️ Resume Ad ]  │ │
+│ │                                                                                                         (POST .../resume)│ │
+│ └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 #### Exact Response Field to UI Component Mapping (Screen 4A):
-1. `data.metrics.total_campaigns`: Total number of campaigns ever created by this industry.
-2. `data.metrics.active_campaigns`: Number of currently running ad campaigns (with pulsing emerald indicator).
-3. `data.metrics.paused_campaigns`: Number of paused campaigns with clock frozen.
-4. `data.metrics.completed_campaigns`: Number of campaigns that reached scheduled end date.
-5. `data.metrics.total_impressions`: Sum of all viewable IAB impressions delivered.
-6. `data.metrics.total_clicks`: Sum of all verified clicks recorded.
-7. `data.metrics.average_ctr`: Aggregate CTR percentage: `(total_clicks / total_impressions) * 100`.
-8. `data.metrics.total_spend`: Cumulative budget invested in boosting across all campaigns.
-9. `item.boostable.product_name`: Title of the boosted product.
-10. `item.boost_package.name`: Title of boost package applied (or "Custom Duration").
-11. `item.status`:
+1. `data.metrics.total_spend`: Cumulative budget invested in boosting across all campaigns (e.g. `420.00`).
+2. `data.metrics.total_spend_formatted`: Formatted currency string for direct display (e.g. `"$420.00"`).
+3. `data.metrics.total_campaigns`: Total number of campaigns ever created by this industry.
+4. `data.metrics.active_campaigns`: Number of currently running ad campaigns (with pulsing emerald indicator).
+5. `data.metrics.paused_campaigns`: Number of paused campaigns with clock frozen.
+6. `data.metrics.completed_campaigns`: Number of campaigns that reached scheduled end date.
+7. `data.metrics.total_impressions`: Sum of all viewable IAB impressions delivered.
+8. `data.metrics.total_clicks`: Sum of all verified clicks recorded.
+9. `data.metrics.average_ctr`: Aggregate CTR percentage: `(total_clicks / total_impressions) * 100`.
+10. `item.boostable.product_name`: Title of the boosted product.
+11. `item.boost_package.name`: Title of boost package applied (or "Custom Duration").
+12. `item.status`:
     - `active`: Emerald pill with pulsing dot + `[ ⏸️ Pause Ad ]` button.
     - `paused`: Amber pill with clock icon + `[ ▶️ Resume Ad ]` button.
     - `completed`: Slate gray pill + `[ 🚀 Boost Again ]` button.
-12. `item.starts_at` & `item.ends_at`: Formatted dates flanking the timeline progress bar.
-13. `item.total_impressions` & `item.total_clicks`: Real-time KPI tiles for each individual campaign.
+13. `item.starts_at` & `item.ends_at`: Formatted dates flanking the timeline progress bar.
+14. `item.total_impressions` & `item.total_clicks`: Real-time KPI tiles for each individual campaign.
 
 ---
 
 ### 📊 SCREEN 4B: Industry Ad Performance Analytics & Insights
 * **Analytics API:** `GET /api/industry/analytics/advertisements` (QueryParams: `period=weekly|monthly`)
-* **Purpose:** High-level executive performance summary showing growth comparisons, top-performing product rankings, and a views-versus-engagements trend chart.
+* **Purpose:** High-level executive performance summary showing total investment, growth comparisons, top-performing product rankings, and a views-versus-engagements trend chart.
 
 #### Visual ASCII Wireframe:
 ```text
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Timeframe: [ Weekly (Last 7 Days) ] [ Monthly (2026) ]                                  [ 📥 Export CSV Report ] │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌────────────────────────┐ ┌────────────────────────┐ ┌────────────────────────┐ ┌────────────────────────────┐ │
-│ │ 📦 Total Products      │ │ ⚡ Active Boosted Ads   │ │ 👁️ Product Ad Views   │ │ ❤️ Likes & Engagements     │ │
-│ │ 24                     │ │ 8                      │ │ 18,450                 │ │ 1,280                      │ │
-│ │ ↗ +12% from last month │ │ ↗ +33.3% from last mon │ │ ↗ +28.5% from last mon │ │ ↗ +18.2% from last month   │ │
-│ │ (cards.total_products) │ │ (cards.active_products)│ │ (cards.product_views)  │ │ (cards.total_likes)        │ │
-│ └────────────────────────┘ └────────────────────────┘ └────────────────────────┘ └────────────────────────────┘ │
-├──────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────┤
-│ 🏆 Top Performing Products (top_performing_products)    │ 📈 Views vs. Engagements Chart (data.graph)           │
-│ ┌──────────────────────────────────┬───────┬───────────┐ │ Legend: [■ Cyan = Views]  [● Amber = Likes/Clicks]   │
-│ │ Rank & Product                   │ Views │ Likes/Clk │ │                                                       │
-│ ├──────────────────────────────────┼───────┼───────────┤ │  3.5k ──┐                     ┌─┐ (Peak: Thu)         │
-│ │ 🥇 1. BioPac MP170 EEG Monitor   │ 7,420 │    512    │ │         │         ┌─┐         │█│                     │
-│ │ 🥈 2. OptiScan Portable MRI      │ 5,310 │    384    │ │  2.5k ──┤ ┌─┐     │█│ ┌─┐     │█│ ┌─┐ ┌─┐ ┌─┐         │
-│ │ 🥉 3. NeuroEcho EMG Sensor       │ 3,240 │    215    │ │         │ │█│ ●   │█│ │█│ ●   │█│ │█│ │█│ │█│         │
-│ │    4. SynapsePro Interface       │ 1,680 │    108    │ │  1.0k ──┤ │█│ │   │█│ │█│ │   │█│ │█│ │█│ │█│         │
-│ │    5. CorticalStrap Headset V2   │   800 │     61    │ │         │ │█│ │   │█│ │█│ │   │█│ │█│ │█│ │█│         │
-│ └──────────────────────────────────┴───────┴───────────┘ │         └─┴─┴─┴───┴─┴─┴─┴─┴───┴─┴─┴─┴─┴─┴─┴─┴─────────┘ │
-│                                                          │           Mon   Tue   Wed   Thu   Fri   Sat   Sun         │
-└──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Timeframe: [ Weekly (Last 7 Days) ] [ Monthly (2026) ]                                                  [ 📥 Export CSV Report ] │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────────┐ │
+│ │ 💰 Total Invested    │ │ 📦 Total Products    │ │ ⚡ Active Boosted Ads │ │ 👁️ Product Ad Views │ │ ❤️ Likes & Engagements   │ │
+│ │ $420.00              │ │ 24                   │ │ 8                    │ │ 18,450               │ │ 1,280                    │ │
+│ │ ↗ +14.5% from last m │ │ ↗ +12% from last mon │ │ ↗ +33.3% from last m │ │ ↗ +28.5% from last m │ │ ↗ +18.2% from last month │ │
+│ │ (cards.total_spend)  │ │ (cards.total_products│ │ (active_products)    │ │ (cards.product_views)│ │ (cards.total_likes)      │ │
+│ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘ └──────────────────────────┘ │
+├────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────┤
+│ 🏆 Top Performing Products (top_performing_products)      │ 📈 Views vs. Engagements Chart (data.graph)                         │
+│ ┌──────────────────────────────────┬───────┬─────────────┐ │ Legend: [■ Cyan = Views]  [● Amber = Likes/Clicks]                 │
+│ │ Rank & Product                   │ Views │ Likes/Clicks│ │                                                                     │
+│ ├──────────────────────────────────┼───────┼─────────────┤ │  3.5k ──┐                     ┌─┐ (Peak: Thu)                       │
+│ │ 🥇 1. BioPac MP170 EEG Monitor   │ 7,420 │      512    │ │         │         ┌─┐         │█│                                   │
+│ │ 🥈 2. OptiScan Portable MRI      │ 5,310 │      384    │ │  2.5k ──┤ ┌─┐     │█│ ┌─┐     │█│ ┌─┐ ┌─┐ ┌─┐                       │
+│ │ 🥉 3. NeuroEcho EMG Sensor       │ 3,240 │      215    │ │         │ │█│ ●   │█│ │█│ ●   │█│ │█│ │█│ │█│                       │
+│ │    4. SynapsePro Interface       │ 1,680 │      108    │ │  1.0k ──┤ │█│ │   │█│ │█│ │   │█│ │█│ │█│ │█│                       │
+│ │    5. CorticalStrap Headset V2   │   800 │       61    │ │         │ │█│ │   │█│ │█│ │   │█│ │█│ │█│ │█│                       │
+│ └──────────────────────────────────┴───────┴─────────────┘ │         └─┴─┴─┴───┴─┴─┴─┴─┴───┴─┴─┴─┴─┴─┴─┴─┴───────────────────────┘ │
+│                                                            │           Mon   Tue   Wed   Thu   Fri   Sat   Sun                       │
+└────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────┘
 ```
 
 #### Exact Response Field to UI Component Mapping (Screen 4B):
-1. `data.cards.total_products`: Total product count (`total`, `growth` formatted as `+12% from last month`, `is_positive`).
-2. `data.cards.active_products`: Active promoted products count with growth metric.
-3. `data.cards.product_views`: Cumulative ad views count across current month with percentage change.
-4. `data.cards.total_likes`: Total like/save interactions with percentage growth.
+1. `data.cards.total_spend`: Total money invested in ad campaigns (`total`, `formatted` as `"$420.00"`, `growth`, `is_positive`).
+2. `data.cards.total_products`: Total product count (`total`, `growth` formatted as `+12% from last month`, `is_positive`).
+3. `data.cards.active_products`: Active promoted products count with growth metric.
+4. `data.cards.product_views`: Cumulative ad views count across current month with percentage change.
+5. `data.cards.total_likes`: Total like/save interactions with percentage growth.
 5. `data.top_performing_products[]`: Left ranking table:
    - `id` & `product_id`: Unique identifier badge.
    - `product_name`: Truncated product label.

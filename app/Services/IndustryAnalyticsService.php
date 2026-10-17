@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\AdCampaignStatus;
 use App\Enums\IndustryJobPostStatus;
+use App\Models\AdCampaign;
 use App\Models\Comment;
 use App\Models\Industry;
 use App\Models\IndustryFollow;
@@ -358,7 +360,31 @@ class IndustryAnalyticsService
             ->count();
         $likesGrowth = $this->calculatePercentageChange($currentMonthLikes, $lastMonthLikes);
 
+        // Total Ad Spend / Investment
+        $totalSpend = (float) AdCampaign::where('industry_id', $industryId)
+            ->whereIn('status', [AdCampaignStatus::ACTIVE, AdCampaignStatus::PAUSED, AdCampaignStatus::COMPLETED])
+            ->sum('amount_paid');
+
+        $currentMonthSpend = (float) AdCampaign::where('industry_id', $industryId)
+            ->whereIn('status', [AdCampaignStatus::ACTIVE, AdCampaignStatus::PAUSED, AdCampaignStatus::COMPLETED])
+            ->whereBetween('created_at', [$startCurrent, $endCurrent])
+            ->sum('amount_paid');
+
+        $lastMonthSpend = (float) AdCampaign::where('industry_id', $industryId)
+            ->whereIn('status', [AdCampaignStatus::ACTIVE, AdCampaignStatus::PAUSED, AdCampaignStatus::COMPLETED])
+            ->whereBetween('created_at', [$startLast, $endLast])
+            ->sum('amount_paid');
+
+        $spendGrowth = $this->calculatePercentageChange($currentMonthSpend, $lastMonthSpend);
+
         return [
+            'total_spend' => [
+                'total' => (float) round($totalSpend, 2),
+                'formatted' => '$'.number_format($totalSpend, 2),
+                'growth_percentage' => $spendGrowth,
+                'growth' => ($spendGrowth >= 0 ? "+{$spendGrowth}%" : "{$spendGrowth}%").' from last month',
+                'is_positive' => $spendGrowth >= 0,
+            ],
             'total_products' => [
                 'total' => (int) $totalProducts,
                 'growth_percentage' => $productsGrowth,
