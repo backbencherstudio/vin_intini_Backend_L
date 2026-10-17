@@ -183,21 +183,80 @@ This document provides visual wireframe templates and field-by-field UI/UX mappi
 
 ---
 
-## 🛡️ SCREEN 5: Unified Admin Boost Packages, Revenue KPI & Settings Center
-* **List Packages & Overview API:** `GET /api/admin/boost-packages`
-* **Toggle Status API:** `PATCH /api/admin/boost-packages/{id}/status`
+## 🛡️ SCREEN 5: Global Boost & Ad Algorithm Settings Center
 * **Get Settings API:** `GET /api/admin/boost-settings`
+* **Get Revenue & Overview API:** `GET /api/admin/boost-packages/overview`
 * **Update Settings API:** `PATCH /api/admin/boost-settings`
-* **Trigger:** Admin Navigation: `Monetization & Ads > Boost Packages & Settings`.
+* **Trigger:** Admin Navigation: `Monetization & Ads > Boost Settings & Algorithms`.
 
-### Visual ASCII Wireframe:
+### Visual ASCII Wireframe (Overview KPIs + 4 Display Cards + Edit Modal):
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ 💰 Total Ad Revenue    │ 🟢 Live Active Ads     │ 📦 Boost Packages     │ 👁️ Impressions        │
 │ $104.98                │ 2 Running              │ 3 Active / 3 Total    │ 1,420 Delivered        │
 │ (overview.total_ad_rev)│ (overview.live_count)  │ (overview.active_pkg) │ (overview.total_imp)   │
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Package Management Table                                               [ + Create New Package ]│
+│ ⚙️ Global Boost & Ad Algorithm Settings (GET /api/admin/boost-settings)  [ ✏️ Edit All Settings ]│
+│                                                                                                │
+│ ┌──────────────────────────────────────────┐  ┌──────────────────────────────────────────┐     │
+│ │ 📢 Newsfeed Ad Insertion     [ ✏️ Edit ] │  │ 🎚️ Web Custom Slider Rate  [ ✏️ Edit ] │     │
+│ ├──────────────────────────────────────────┤  ├──────────────────────────────────────────┤     │
+│ │ First Slot: Slot 4                       │  │ Daily Rate: $3.00 / Day                  │     │
+│ │ Ad Interval: Every 8 Posts               │  │ Min Duration: 3 Days                     │     │
+│ │ Anti-Fatigue: Max 5 / Day                │  │ Max Duration: 60 Days                    │     │
+│ └──────────────────────────────────────────┘  └──────────────────────────────────────────┘     │
+│ ┌──────────────────────────────────────────┐  ┌──────────────────────────────────────────┐     │
+│ │ 🎁 Free New Release Window   [ ✏️ Edit ] │  │ ⏸️ Enterprise Pause Policy   [ ✏️ Edit ] │     │
+│ ├──────────────────────────────────────────┤  ├──────────────────────────────────────────┤     │
+│ │ Free Boost Window: 24 Hours              │  │ Max Freeze: 30 Days                      │     │
+│ │ Top Placement + New Release Badge        │  │ 1st Reminder: Day 27                     │     │
+│ │                                          │  │ Final Warning: Day 29                    │     │
+│ └──────────────────────────────────────────┘  └──────────────────────────────────────────┘     │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ⚙️ Edit Global Advertising & Boost Settings (Modal)                      [ ✕ Close ]           │
+│                                                                                                │
+│ 1. Newsfeed Ad Injection:                                                                      │
+│    First Ad Slot: [ 4 ]      Ad Interval: [ 8 ]      Max Daily Views/User: [ 5 ]               │
+│                                                                                                │
+│ 2. Web Custom Duration Slider Rate:                                                            │
+│    Daily Rate ($ USD): [ 3.00 ]     Min Days: [ 3 ]     Max Days: [ 60 ]                       │
+│                                                                                                │
+│ 3. Free New Release Promotion Window:                                                          │
+│    Free Boost Window (Hours): [ 24 ]                                                           │
+│                                                                                                │
+│ 4. Enterprise Pause Policy:                                                                    │
+│    Max Pause Days: [ 30 ]    1st Reminder Day: [ 27 ]    Final Warning Day: [ 29 ]             │
+│                                                                                                │
+│                                           [ Cancel ]  [ 💾 Save & Apply Settings (PATCH) ]    │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Exact Response Field to UI Component Mapping:
+1. `overview.total_ad_revenue`: Top Card 1 (Total platform boost earnings).
+2. `overview.live_campaigns_count`: Top Card 2 (Active campaigns currently in circulation).
+3. `overview.active_packages`: Top Card 3 (Count of published tiers available to sellers).
+4. `overview.total_impressions_delivered`: Top Card 4 (Cumulative view impressions tracked).
+5. `newsfeed_ads.first_ad_slot`, `ad_interval`, `max_daily_impressions_per_user`: Display Card 1 values and Modal Section 1 inputs.
+6. `custom_slider.daily_rate`, `min_days`, `max_days`: Display Card 2 values and Modal Section 2 inputs.
+7. `new_release.hours`: Display Card 3 value and Modal Section 3 input.
+8. `pause_policy.max_days`, `first_reminder_days`, `final_reminder_days`: Display Card 4 values and Modal Section 4 inputs.
+9. Modal Save button triggers `PATCH /api/admin/boost-settings` and dynamically updates all card values in real-time.
+
+---
+
+## 📦 SCREEN 6: Admin Boost Packages Management Table
+* **List Packages API:** `GET /api/admin/boost-packages`
+* **Toggle Status API:** `PATCH /api/admin/boost-packages/{id}/status`
+* **Delete Package API:** `DELETE /api/admin/boost-packages/{id}`
+* **Trigger:** Admin Navigation: `Monetization & Ads > Boost Packages Table`.
+
+### Visual ASCII Wireframe:
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Screen 6: Admin Boost Packages Management Table                        [ + Create New Package ]│
+│ Sellers purchase these boost tiers on mobile and web. Toggle package status or edit tier.      │
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Package Name & Badge  Duration  Price   Est. Reach       Priority  Active Ads  Status  Actions │
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -209,36 +268,22 @@ This document provides visual wireframe templates and field-by-field UI/UX mappi
 │                                                                                                │
 │ 30-Day Pro Boost      30 Days   $69.99  40,000 – 60,000  3         1 Live      [ON]    ✏️   🗑️  │
 │ [Best Value]                                                                                   │
-├────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ⚙️ Global Boost & Ad Algorithm Settings (GET /api/admin/boost-settings)  [ 💾 Save Config ]    │
-│ ┌──────────────────────────────────────────┐  ┌──────────────────────────────────────────┐     │
-│ │ 📢 Newsfeed Ad Insertion           [ON]  │  │ 🎚️ Web Custom Slider Rate          [ON]  │     │
-│ │ First Slot: [4]    Interval: [8] posts   │  │ Daily Rate: [ $3.00/day ]                │     │
-│ │ Anti-Fatigue Cap: [5] views/day          │  │ Min: [3] days    Max: [60] days          │     │
-│ └──────────────────────────────────────────┘  └──────────────────────────────────────────┘     │
-│ ┌──────────────────────────────────────────┐  ┌──────────────────────────────────────────┐     │
-│ │ 🎁 Free New Release Window               │  │ ⏸️ Enterprise Pause Policy              │     │
-│ │ Duration: [24] hours free boost          │  │ Max Pause: [30] days   Reminder: Day 27  │     │
-│ └──────────────────────────────────────────┘  └──────────────────────────────────────────┘     │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Exact Response Field to UI Component Mapping:
-1. `overview.total_ad_revenue`: Large dollar amount in Top Card 1 (Total platform boost earnings).
-2. `overview.live_campaigns_count`: Top Card 2 running campaigns in circulation.
-3. `overview.active_packages`: Top Card 3 count of published tiers available to sellers.
-4. `overview.total_impressions_delivered`: Top Card 4 cumulative view impressions tracked.
-5. `data[i].name` & `badge`: Data table title and cyan badge pill.
-6. `data[i].duration_days`, `price`, `estimated_impressions`: Table metrics columns.
-7. `data[i].is_active`: Instant interactive toggle switch (`PATCH .../status`).
-8. `newsfeed_ads.*`, `custom_slider.*`, `pause_policy.*`: Editable configuration inputs saved via `PATCH /api/admin/boost-settings`.
+1. `data[i].name` & `badge`: Data table title and cyan badge pill.
+2. `data[i].duration_days`, `price`, `estimated_impressions`: Table metrics columns.
+3. `data[i].priority_weight`: Priority sorting column.
+4. `data[i].is_active`: Instant interactive toggle switch (`PATCH .../status`).
+5. Action Buttons: `✏️` switches to Screen 7 (Edit Package), `🗑️` triggers delete confirmation (`DELETE .../{id}`).
 
 ---
 
-## 📝 SCREEN 6: Admin Create & Edit Package Modal Form
+## 📝 SCREEN 7: Admin Create & Edit Package Modal Form
 * **Create API:** `POST /api/admin/boost-packages`
 * **Update API:** `PATCH /api/admin/boost-packages/{id}`
-* **Trigger:** Click `+ Create New Package` or `✏️ Edit` icon.
+* **Trigger:** Click `+ Create New Package` or `✏️ Edit` icon from Screen 6.
 
 ### Visual ASCII Wireframe (2-Column Architecture):
 ```text
@@ -264,30 +309,3 @@ This document provides visual wireframe templates and field-by-field UI/UX mappi
 └──────────────────────────────────────────────────────────┴────────────────────────┘
 ```
 
----
-
-## ⚙️ SCREEN 7: Admin Global Advertising & Boosting Settings
-* **Get Settings API:** `GET /api/admin/boost-settings`
-* **Update Settings API:** `PATCH /api/admin/boost-settings`
-* **Trigger:** Admin Navigation: `Monetization & Ads > Ad & Boost Settings`.
-
-### Visual ASCII Wireframe (4-Card Grid):
-```text
-┌──────────────────────────────────────────┐  ┌──────────────────────────────────────────┐
-│ 📢 Newsfeed Ad Injection           [ON]  │  │ 🎚️ Web Custom Slider Rate          [ON]  │
-├──────────────────────────────────────────┤  ├──────────────────────────────────────────┤
-│ First Ad Slot: [ 4 ]                     │  │ Daily Rate ($ USD): [ 3.00 ]             │
-│ Ad Interval (posts): [ 8 ]               │  │ Min Days: [ 3 ]     Max Days: [ 60 ]     │
-│ Anti-Fatigue Cap (views/day): [ 5 ]      │  │ Daily Est. Reach: [ 700 - 1400 ]         │
-└──────────────────────────────────────────┘  └──────────────────────────────────────────┘
-
-┌──────────────────────────────────────────┐  ┌──────────────────────────────────────────┐
-│ 🎁 Free New Release Promotion            │  │ ⏸️ Enterprise Pause Policy              │
-├──────────────────────────────────────────┤  ├──────────────────────────────────────────┤
-│ Free Boost Duration (Hours): [ 24 ]      │  │ Max Pause Duration (Days): [ 30 ]        │
-│                                          │  │ 1st Reminder Day: [ 27 ]                 │
-│ (New products auto-get 24h boost free)   │  │ Final Warning Day: [ 29 ]                │
-└──────────────────────────────────────────┘  └──────────────────────────────────────────┘
-
-                                             [ 💾 Save Configurations ]
-```

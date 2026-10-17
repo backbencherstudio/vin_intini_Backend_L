@@ -36,13 +36,13 @@
 
     <!-- Screen Tabs Switcher -->
     <div class="flex flex-wrap gap-2 text-xs font-semibold">
-      <button onclick="showTab('tab-newsfeed')" id="btn-tab-newsfeed" class="tab-btn px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950">1. Newsfeed Ad Card</button>
+      <button onclick="showTab('tab-newsfeed')" id="btn-tab-newsfeed" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">1. Newsfeed Ad Card</button>
       <button onclick="showTab('tab-paywall')" id="btn-tab-paywall" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">2. Boost Paywall Modal</button>
       <button onclick="showTab('tab-otp')" id="btn-tab-otp" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">3. OTP Challenge</button>
       <button onclick="showTab('tab-campaigns')" id="btn-tab-campaigns" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. My Boost Campaigns</button>
-      <button onclick="showTab('tab-admin-packages')" id="btn-tab-admin-packages" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">5. Admin Boost & Settings Center</button>
-      <button onclick="showTab('tab-admin-create')" id="btn-tab-admin-create" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Admin Create Package</button>
-      <button onclick="showTab('tab-admin-settings')" id="btn-tab-admin-settings" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Settings Only View</button>
+      <button onclick="showTab('tab-admin-settings')" id="btn-tab-admin-settings" class="tab-btn px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950 font-bold">5. Admin Boost Settings & Revenue</button>
+      <button onclick="showTab('tab-admin-packages')" id="btn-tab-admin-packages" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Boost Packages Table</button>
+      <button onclick="showTab('tab-admin-create')" id="btn-tab-admin-create" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Create Package Form</button>
     </div>
   </header>
 
@@ -51,7 +51,7 @@
     <!-- ==========================================
          TAB 1: NEWSFEED SPONSORED AD CARD
          ========================================== -->
-    <div id="tab-newsfeed" class="tab-content block">
+    <div id="tab-newsfeed" class="tab-content hidden">
       <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
         <div>
           <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/newsfeed</span>
@@ -431,21 +431,22 @@
 
 
     <!-- ==========================================
-         TAB 5: ADMIN PACKAGE TABLE
+         TAB 5: ADMIN GLOBAL BOOST & AD SETTINGS CENTER
          ========================================== -->
-    <div id="tab-admin-packages" class="tab-content hidden">
+    <div id="tab-admin-settings" class="tab-content block">
       <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
         <div>
-          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/admin/boost-packages</span>
+          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/admin/boost-settings</span>
           <span class="mx-2 text-slate-500">|</span>
-          <span class="px-2 py-1 rounded bg-cyan-500/10 text-[#00c2cb] text-xs font-mono font-bold">GET /api/admin/boost-settings</span>
+          <span class="px-2 py-1 rounded bg-cyan-500/10 text-[#00c2cb] text-xs font-mono font-bold">GET /api/admin/boost-packages/overview</span>
           <span class="mx-2 text-slate-500">|</span>
           <span class="px-2 py-1 rounded bg-purple-500/10 text-purple-400 text-xs font-mono font-bold">PATCH /api/admin/boost-settings</span>
-          <h2 class="text-base font-bold text-white mt-1">Screen 5: Unified Admin Boost Packages, Revenue KPI & Settings Center</h2>
-          <p class="text-xs text-slate-400">Complete dashboard: Top KPI cards (revenue, active packages, sales) + Package management table + Global ad settings below.</p>
+          <h2 class="text-base font-bold text-white mt-1">Screen 5: Global Boost & Ad Algorithm Settings Center</h2>
+          <p class="text-xs text-slate-400">Live platform revenue overview + 4 algorithm rule display cards. Click "Edit" on any card to update via modal.</p>
         </div>
-        <button class="px-4 py-2 rounded-xl bg-[#00c2cb] hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md flex items-center gap-1.5 transition-all transform hover:scale-105">
-          <span>+ Create New Package</span>
+        <button onclick="openSettingsModal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00c2cb] to-cyan-400 hover:from-cyan-400 hover:to-[#00c2cb] text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/25 flex items-center gap-2 transition-all transform hover:scale-105">
+          <span>✏️ Edit All Settings</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-950/20 font-mono font-bold">PATCH</span>
         </button>
       </div>
 
@@ -501,224 +502,291 @@
       </div>
 
       <!-- ==============================================
-           SECTION 1: PACKAGE MANAGEMENT DATA TABLE
+           MAIN SECTION: 4 SETTINGS DISPLAY CARDS (WITH EDIT BUTTONS)
            ============================================== -->
       <div class="mb-8">
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <span>📦 Package Management Table</span>
-            <span class="text-xs font-normal text-slate-400">(Sellers purchase these tiers)</span>
-          </h3>
-          <span class="json-tag">GET /api/admin/boost-packages (data[])</span>
-        </div>
-
-        <div class="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
-              <tr>
-                <th class="p-4">Package Name & Badge</th>
-                <th class="p-4">Duration</th>
-                <th class="p-4">Price</th>
-                <th class="p-4">Est. Impressions</th>
-                <th class="p-4">Priority</th>
-                <th class="p-4">Active Campaigns</th>
-                <th class="p-4">Status Toggle</th>
-                <th class="p-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-800/60 text-slate-200">
-              <!-- Row 1 -->
-              <tr class="hover:bg-slate-900/40">
-                <td class="p-4">
-                  <div class="font-bold text-white">7-Day Starter Boost</div>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold">Starter</span>
-                  <span class="json-tag ml-1">item.name, item.badge</span>
-                </td>
-                <td class="p-4 font-semibold text-slate-300">7 Days <span class="json-tag">item.duration_days</span></td>
-                <td class="p-4 font-bold text-white">$19.99 <span class="json-tag">item.price</span></td>
-                <td class="p-4 text-cyan-400 font-semibold">5,000 – 10,000 <span class="json-tag">item.estimated_impressions</span></td>
-                <td class="p-4 font-mono">1 <span class="json-tag">item.priority_weight</span></td>
-                <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-bold">0 Live</span></td>
-                <td class="p-4">
-                  <!-- Toggle switch -->
-                  <div class="w-10 h-5 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
-                    <div class="w-4 h-4 bg-slate-950 rounded-full shadow"></div>
-                  </div>
-                  <span class="json-tag mt-1 inline-block">PATCH .../status</span>
-                </td>
-                <td class="p-4 text-right space-x-2">
-                  <button class="text-slate-400 hover:text-white" title="Edit">✏️</button>
-                  <button class="text-rose-400 hover:text-rose-300" title="Delete">🗑️</button>
-                </td>
-              </tr>
-
-              <!-- Row 2 -->
-              <tr class="hover:bg-slate-900/40">
-                <td class="p-4">
-                  <div class="font-bold text-white">14-Day Growth Boost</div>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#00c2cb]/20 text-[#00c2cb] font-semibold border border-[#00c2cb]/30">Most Popular</span>
-                </td>
-                <td class="p-4 font-semibold text-slate-300">14 Days</td>
-                <td class="p-4 font-bold text-white">$34.99</td>
-                <td class="p-4 text-cyan-400 font-semibold">15,000 – 25,000</td>
-                <td class="p-4 font-mono">2</td>
-                <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">1 Live</span></td>
-                <td class="p-4">
-                  <div class="w-10 h-5 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
-                    <div class="w-4 h-4 bg-slate-950 rounded-full shadow"></div>
-                  </div>
-                </td>
-                <td class="p-4 text-right space-x-2">
-                  <button class="text-slate-400 hover:text-white" title="Edit">✏️</button>
-                  <button class="text-rose-400 hover:text-rose-300" title="Delete">🗑️</button>
-                </td>
-              </tr>
-
-              <!-- Row 3 -->
-              <tr class="hover:bg-slate-900/40">
-                <td class="p-4">
-                  <div class="font-bold text-white">30-Day Pro Boost</div>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">Best Value</span>
-                </td>
-                <td class="p-4 font-semibold text-slate-300">30 Days</td>
-                <td class="p-4 font-bold text-white">$69.99</td>
-                <td class="p-4 text-cyan-400 font-semibold">40,000 – 60,000</td>
-                <td class="p-4 font-mono">3</td>
-                <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">1 Live</span></td>
-                <td class="p-4">
-                  <div class="w-10 h-5 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
-                    <div class="w-4 h-4 bg-slate-950 rounded-full shadow"></div>
-                  </div>
-                </td>
-                <td class="p-4 text-right space-x-2">
-                  <button class="text-slate-400 hover:text-white" title="Edit">✏️</button>
-                  <button class="text-rose-400 hover:text-rose-300" title="Delete">🗑️</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ==============================================
-           SECTION 2: GLOBAL BOOST & AD SETTINGS (INLINE)
-           ============================================== -->
-      <div class="border-t border-slate-800 pt-6">
         <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
           <div>
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
               <span>⚙️ Global Boost & Ad Algorithm Settings</span>
-              <span class="px-2 py-0.5 rounded-full bg-cyan-950 text-[#00c2cb] text-[10px] border border-cyan-800">Platform Rules</span>
+              <span class="px-2 py-0.5 rounded-full bg-cyan-950 text-[#00c2cb] text-[10px] border border-cyan-800">Fetched via GET /api/admin/boost-settings</span>
             </h3>
-            <p class="text-xs text-slate-400">Configure newsfeed insertion slots, anti-fatigue view limits, and custom rate.</p>
+            <p class="text-xs text-slate-400">Current platform configurations shown in read-only cards. Click the "Edit" button on any card to update via popup modal.</p>
           </div>
-          <div class="flex items-center gap-3">
-            <span class="json-tag">PATCH /api/admin/boost-settings</span>
-            <button class="px-5 py-2.5 rounded-xl bg-[#00c2cb] hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-1.5 transition-all">
-              <span>💾 Save Configurations</span>
-            </button>
-          </div>
+          <button onclick="openSettingsModal()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#00c2cb] border border-[#00c2cb]/40 font-bold text-xs flex items-center gap-1.5 transition-all">
+            <span>✏️ Edit Configurations</span>
+          </button>
         </div>
 
-        <!-- 4 Configuration Cards Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Card 1: Newsfeed Ad Injection -->
-          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-              <h4 class="text-xs font-bold text-white flex items-center gap-2">📢 Newsfeed Ad Insertion & Anti-Fatigue</h4>
-              <div class="w-8 h-4 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
-                <div class="w-3 h-3 bg-slate-950 rounded-full"></div>
+        <!-- 4 Clean Display Cards Grid (Fetched via GET /api/admin/boost-settings) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Card 1: Newsfeed Ad Injection (View Card) -->
+          <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all">
+            <div>
+              <div class="flex justify-between items-center border-b border-slate-800/80 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="p-1.5 rounded-lg bg-cyan-500/10 text-[#00c2cb] text-sm">📢</span>
+                  <h4 class="text-xs font-bold text-white">Newsfeed Ad Insertion</h4>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Active</span>
+                  <button onclick="openSettingsModal('newsfeed')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-[#00c2cb] hover:text-slate-950 text-[#00c2cb] text-xs font-bold flex items-center gap-1 border border-slate-700 transition-colors shadow">
+                    <span>✏️ Edit</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">First Slot</span>
+                  <span id="card-val-first-slot" class="text-sm font-extrabold text-white">Slot 4</span>
+                  <span class="json-tag block mt-1">first_ad_slot</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">Ad Interval</span>
+                  <span id="card-val-ad-interval" class="text-sm font-extrabold text-white">Every 8</span>
+                  <span class="json-tag block mt-1">ad_interval</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">Anti-Fatigue</span>
+                  <span id="card-val-fatigue-cap" class="text-sm font-extrabold text-cyan-400">Max 5 / Day</span>
+                  <span class="json-tag block mt-1">daily_views</span>
+                </div>
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <div class="flex justify-between text-xs mb-1">
-                  <span class="text-slate-300">First Ad Slot</span>
-                  <span class="json-tag">first_ad_slot</span>
+            <p class="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800/60 pt-2">
+              <span>Fair-play round robin enabled</span>
+              <span class="text-slate-500">Max 2 ads per page</span>
+            </p>
+          </div>
+
+          <!-- Card 2: Custom Slider (View Card) -->
+          <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all">
+            <div>
+              <div class="flex justify-between items-center border-b border-slate-800/80 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="p-1.5 rounded-lg bg-cyan-500/10 text-[#00c2cb] text-sm">🎚️</span>
+                  <h4 class="text-xs font-bold text-white">Web Custom Slider Rate</h4>
                 </div>
-                <input type="number" value="4" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-              </div>
-              <div>
-                <div class="flex justify-between text-xs mb-1">
-                  <span class="text-slate-300">Ad Interval (Posts)</span>
-                  <span class="json-tag">ad_interval</span>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">Web Only</span>
+                  <button onclick="openSettingsModal('slider')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-[#00c2cb] hover:text-slate-950 text-[#00c2cb] text-xs font-bold flex items-center gap-1 border border-slate-700 transition-colors shadow">
+                    <span>✏️ Edit</span>
+                  </button>
                 </div>
-                <input type="number" value="8" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
               </div>
+
+              <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">Daily Rate</span>
+                  <span id="card-val-daily-rate" class="text-sm font-extrabold text-emerald-400">$3.00 / Day</span>
+                  <span class="json-tag block mt-1">daily_rate</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">Min Days</span>
+                  <span id="card-val-min-days" class="text-sm font-extrabold text-white">3 Days</span>
+                  <span class="json-tag block mt-1">min_days</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">Max Days</span>
+                  <span id="card-val-max-days" class="text-sm font-extrabold text-white">60 Days</span>
+                  <span class="json-tag block mt-1">max_days</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800/60 pt-2">
+              <span>Dynamic price calculation on paywall</span>
+              <span class="text-slate-500">700 – 1400 views/day</span>
+            </p>
+          </div>
+
+          <!-- Card 3: Free New Release (View Card) -->
+          <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all">
+            <div>
+              <div class="flex justify-between items-center border-b border-slate-800/80 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="p-1.5 rounded-lg bg-cyan-500/10 text-[#00c2cb] text-sm">🎁</span>
+                  <h4 class="text-xs font-bold text-white">Free New Release Promotion</h4>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Active</span>
+                  <button onclick="openSettingsModal('free_release')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-[#00c2cb] hover:text-slate-950 text-[#00c2cb] text-xs font-bold flex items-center gap-1 border border-slate-700 transition-colors shadow">
+                    <span>✏️ Edit</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-4 p-3 rounded-xl bg-slate-900 border border-slate-800/60 mb-2">
+                <div id="card-val-free-hours-badge" class="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#043940] to-[#00c2cb] flex items-center justify-center font-bold text-white text-base">
+                  24h
+                </div>
+                <div>
+                  <span id="card-val-free-hours" class="text-xs font-bold text-white">Free Boost Window: 24 Hours</span>
+                  <p class="text-[11px] text-slate-400">Newly added products automatically get top placement & New Release badge.</p>
+                  <span class="json-tag mt-1 inline-block">new_release.hours</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-500 border-t border-slate-800/60 pt-2">
+              Expires automatically after 24h unless merchant boosts.
+            </p>
+          </div>
+
+          <!-- Card 4: Pause Policy (View Card) -->
+          <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all">
+            <div>
+              <div class="flex justify-between items-center border-b border-slate-800/80 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="p-1.5 rounded-lg bg-cyan-500/10 text-[#00c2cb] text-sm">⏸️</span>
+                  <h4 class="text-xs font-bold text-white">Enterprise Pause Policy</h4>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">Clock Freeze</span>
+                  <button onclick="openSettingsModal('pause')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-[#00c2cb] hover:text-slate-950 text-[#00c2cb] text-xs font-bold flex items-center gap-1 border border-slate-700 transition-colors shadow">
+                    <span>✏️ Edit</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">Max Freeze</span>
+                  <span id="card-val-pause-max" class="text-sm font-extrabold text-white">30 Days</span>
+                  <span class="json-tag block mt-1">max_days</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">1st Reminder</span>
+                  <span id="card-val-reminder-1" class="text-sm font-extrabold text-amber-400">Day 27</span>
+                  <span class="json-tag block mt-1">first_reminder</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/60">
+                  <span class="text-[10px] text-slate-400 block mb-0.5">Final Warning</span>
+                  <span id="card-val-reminder-2" class="text-sm font-extrabold text-rose-400">Day 29</span>
+                  <span class="json-tag block mt-1">final_reminder</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800/60 pt-2">
+              <span>Auto-expires on Day 30 if un-resumed</span>
+              <span class="text-slate-500">Cron: hourly</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==============================================
+           POPUP EDIT SETTINGS MODAL (CLICK [✏️ Edit] TO OPEN)
+           ============================================== -->
+      <div id="modal-edit-settings" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="max-w-2xl w-full rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+          <!-- Close button -->
+          <button onclick="closeSettingsModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">✕</button>
+
+          <!-- Modal Header -->
+          <div class="flex items-center gap-3 mb-6 border-b border-slate-800 pb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#043940] to-[#00c2cb] flex items-center justify-center font-bold text-white text-lg shadow-lg">
+              ⚙️
             </div>
             <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-300">Anti-Fatigue Cap (Max Daily Views per User)</span>
-                <span class="json-tag">max_daily_impressions_per_user</span>
-              </div>
-              <input type="number" value="5" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+              <h3 class="text-base font-bold text-white">Edit Global Advertising & Boost Settings</h3>
+              <p class="text-xs text-slate-400">Save changes below to dispatch a <span class="text-[#00c2cb] font-mono font-bold">PATCH /api/admin/boost-settings</span> request.</p>
             </div>
           </div>
 
-          <!-- Card 2: Custom Slider -->
-          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-              <h4 class="text-xs font-bold text-white flex items-center gap-2">🎚️ Web Custom Slider Rate</h4>
-              <div class="w-8 h-4 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
-                <div class="w-3 h-3 bg-slate-950 rounded-full"></div>
+          <!-- Modal Form -->
+          <div class="space-y-5 text-xs">
+            <!-- 1. Newsfeed Ad Insertion -->
+            <div id="modal-sec-newsfeed" class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3 transition-all">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-white text-xs">1. Newsfeed Ad Injection & Anti-Fatigue</span>
+                <span class="json-tag">newsfeed_ads</span>
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="text-slate-300 block mb-1">First Ad Slot</label>
+                  <input id="modal-input-first-slot" type="number" value="4" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-bold focus:border-[#00c2cb]">
+                </div>
+                <div>
+                  <label class="text-slate-300 block mb-1">Ad Interval (Posts)</label>
+                  <input id="modal-input-ad-interval" type="number" value="8" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-bold focus:border-[#00c2cb]">
+                </div>
+                <div>
+                  <label class="text-slate-300 block mb-1">Max Daily Views/User</label>
+                  <input id="modal-input-fatigue-cap" type="number" value="5" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 font-bold focus:border-[#00c2cb]">
+                </div>
               </div>
             </div>
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-300">Daily Rate ($ USD / Day)</span>
-                <span class="json-tag">custom_slider.daily_rate</span>
-              </div>
-              <input type="text" value="3.00" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <span class="text-xs text-slate-300 block mb-1">Min Days</span>
-                <input type="number" value="3" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-              </div>
-              <div>
-                <span class="text-xs text-slate-300 block mb-1">Max Days</span>
-                <input type="number" value="60" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-              </div>
-            </div>
-          </div>
 
-          <!-- Card 3: Free New Release -->
-          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-              <h4 class="text-xs font-bold text-white flex items-center gap-2">🎁 Free New Release Promotion</h4>
+            <!-- 2. Custom Duration Slider -->
+            <div id="modal-sec-slider" class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3 transition-all">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-white text-xs">2. Web Custom Duration Slider Rate</span>
+                <span class="json-tag">custom_slider</span>
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="text-slate-300 block mb-1">Daily Rate ($ USD)</label>
+                  <input id="modal-input-daily-rate" type="text" value="3.00" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-emerald-400 font-bold focus:border-[#00c2cb]">
+                </div>
+                <div>
+                  <label class="text-slate-300 block mb-1">Min Days</label>
+                  <input id="modal-input-min-days" type="number" value="3" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white focus:border-[#00c2cb]">
+                </div>
+                <div>
+                  <label class="text-slate-300 block mb-1">Max Days</label>
+                  <input id="modal-input-max-days" type="number" value="60" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white focus:border-[#00c2cb]">
+                </div>
+              </div>
             </div>
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-300">Free Boost Window (Hours)</span>
+
+            <!-- 3. Free New Release -->
+            <div id="modal-sec-free_release" class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3 transition-all">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-white text-xs">3. Free New Release Promotion Window</span>
                 <span class="json-tag">new_release.hours</span>
               </div>
-              <input type="number" value="24" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+              <div class="flex items-center gap-3">
+                <div class="w-1/2">
+                  <label class="text-slate-300 block mb-1">Free Boost Window (Hours)</label>
+                  <input id="modal-input-free-hours" type="number" value="24" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 font-bold focus:border-[#00c2cb]">
+                </div>
+                <div class="w-1/2 pt-4">
+                  <p class="text-[11px] text-slate-400">Newly added products automatically get top placement & New Release badge for this window.</p>
+                </div>
+              </div>
             </div>
-            <p class="text-[10px] text-slate-500">Every newly created product automatically gets 24h free boost and New Release badge.</p>
+
+            <!-- 4. Pause Policy -->
+            <div id="modal-sec-pause" class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3 transition-all">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-white text-xs">4. Enterprise Pause Policy</span>
+                <span class="json-tag">pause_policy</span>
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="text-slate-300 block mb-1">Max Pause Days</label>
+                  <input id="modal-input-pause-max" type="number" value="30" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-bold focus:border-[#00c2cb]">
+                </div>
+                <div>
+                  <label class="text-slate-300 block mb-1">1st Reminder Day</label>
+                  <input id="modal-input-reminder-1" type="number" value="27" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white focus:border-[#00c2cb]">
+                </div>
+                <div>
+                  <label class="text-slate-300 block mb-1">Final Warning Day</label>
+                  <input id="modal-input-reminder-2" type="number" value="29" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-rose-300 font-bold focus:border-[#00c2cb]">
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- Card 4: Pause Policy -->
-          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-              <h4 class="text-xs font-bold text-white flex items-center gap-2">⏸️ Enterprise Pause Policy</h4>
-            </div>
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-300">Max Allowed Pause Duration (Days)</span>
-                <span class="json-tag">pause_policy.max_days</span>
-              </div>
-              <input type="number" value="30" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-            </div>
-            <div class="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <span class="text-slate-400 block mb-1">1st Reminder Day</span>
-                <input type="number" value="27" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-              </div>
-              <div>
-                <span class="text-slate-400 block mb-1">Final Warning Day</span>
-                <input type="number" value="29" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-              </div>
-            </div>
+          <!-- Modal Actions Footer -->
+          <div class="pt-6 border-t border-slate-800 flex justify-end items-center gap-3 mt-6">
+            <button onclick="closeSettingsModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">
+              Cancel
+            </button>
+            <button onclick="saveSettingsModal()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00c2cb] to-cyan-400 hover:from-cyan-400 hover:to-[#00c2cb] text-slate-950 text-xs font-bold shadow-lg shadow-cyan-500/25 flex items-center gap-1.5 transition-all">
+              <span>💾 Save & Apply Settings (PATCH)</span>
+            </button>
           </div>
         </div>
       </div>
@@ -726,7 +794,116 @@
 
 
     <!-- ==========================================
-         TAB 6: ADMIN CREATE PACKAGE MODAL
+         TAB 6: ADMIN BOOST PACKAGES MANAGEMENT TABLE
+         ========================================== -->
+    <div id="tab-admin-packages" class="tab-content hidden">
+      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/admin/boost-packages</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-cyan-500/10 text-[#00c2cb] text-xs font-mono font-bold">PATCH /api/admin/boost-packages/{id}/status</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-rose-500/10 text-rose-400 text-xs font-mono font-bold">DELETE /api/admin/boost-packages/{id}</span>
+          <h2 class="text-base font-bold text-white mt-1">Screen 6: Admin Boost Packages Management Table</h2>
+          <p class="text-xs text-slate-400">Sellers purchase these boost tiers on mobile and web. Toggle package status or edit tier details.</p>
+        </div>
+        <button onclick="showTab('tab-admin-create')" class="px-4 py-2 rounded-xl bg-[#00c2cb] hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md flex items-center gap-1.5 transition-all transform hover:scale-105">
+          <span>+ Create New Package</span>
+        </button>
+      </div>
+
+      <!-- Package Management Data Table -->
+      <div class="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
+            <tr>
+              <th class="p-4">Package Name & Badge</th>
+              <th class="p-4">Duration</th>
+              <th class="p-4">Price</th>
+              <th class="p-4">Est. Impressions</th>
+              <th class="p-4">Priority</th>
+              <th class="p-4">Active Campaigns</th>
+              <th class="p-4">Status Toggle</th>
+              <th class="p-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 text-slate-200">
+            <!-- Row 1 -->
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-4">
+                <div class="font-bold text-white">7-Day Starter Boost</div>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold">Starter</span>
+                <span class="json-tag ml-1">item.name, item.badge</span>
+              </td>
+              <td class="p-4 font-semibold text-slate-300">7 Days <span class="json-tag">item.duration_days</span></td>
+              <td class="p-4 font-bold text-white">$19.99 <span class="json-tag">item.price</span></td>
+              <td class="p-4 text-cyan-400 font-semibold">5,000 – 10,000 <span class="json-tag">item.estimated_impressions</span></td>
+              <td class="p-4 font-mono">1 <span class="json-tag">item.priority_weight</span></td>
+              <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-bold">0 Live</span></td>
+              <td class="p-4">
+                <!-- Toggle switch -->
+                <div class="w-10 h-5 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+                  <div class="w-4 h-4 bg-slate-950 rounded-full shadow"></div>
+                </div>
+                <span class="json-tag mt-1 inline-block">PATCH .../status</span>
+              </td>
+              <td class="p-4 text-right space-x-2">
+                <button onclick="showTab('tab-admin-create')" class="text-slate-400 hover:text-white" title="Edit">✏️</button>
+                <button class="text-rose-400 hover:text-rose-300" title="Delete">🗑️</button>
+              </td>
+            </tr>
+
+            <!-- Row 2 -->
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-4">
+                <div class="font-bold text-white">14-Day Growth Boost</div>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#00c2cb]/20 text-[#00c2cb] font-semibold border border-[#00c2cb]/30">Most Popular</span>
+              </td>
+              <td class="p-4 font-semibold text-slate-300">14 Days</td>
+              <td class="p-4 font-bold text-white">$34.99</td>
+              <td class="p-4 text-cyan-400 font-semibold">15,000 – 25,000</td>
+              <td class="p-4 font-mono">2</td>
+              <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">1 Live</span></td>
+              <td class="p-4">
+                <div class="w-10 h-5 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+                  <div class="w-4 h-4 bg-slate-950 rounded-full shadow"></div>
+                </div>
+              </td>
+              <td class="p-4 text-right space-x-2">
+                <button onclick="showTab('tab-admin-create')" class="text-slate-400 hover:text-white" title="Edit">✏️</button>
+                <button class="text-rose-400 hover:text-rose-300" title="Delete">🗑️</button>
+              </td>
+            </tr>
+
+            <!-- Row 3 -->
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-4">
+                <div class="font-bold text-white">30-Day Pro Boost</div>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">Best Value</span>
+              </td>
+              <td class="p-4 font-semibold text-slate-300">30 Days</td>
+              <td class="p-4 font-bold text-white">$69.99</td>
+              <td class="p-4 text-cyan-400 font-semibold">40,000 – 60,000</td>
+              <td class="p-4 font-mono">3</td>
+              <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">1 Live</span></td>
+              <td class="p-4">
+                <div class="w-10 h-5 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+                  <div class="w-4 h-4 bg-slate-950 rounded-full shadow"></div>
+                </div>
+              </td>
+              <td class="p-4 text-right space-x-2">
+                <button onclick="showTab('tab-admin-create')" class="text-slate-400 hover:text-white" title="Edit">✏️</button>
+                <button class="text-rose-400 hover:text-rose-300" title="Delete">🗑️</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         TAB 7: ADMIN CREATE PACKAGE MODAL
          ========================================== -->
     <div id="tab-admin-create" class="tab-content hidden">
       <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
@@ -734,7 +911,7 @@
           <span class="px-2 py-1 rounded bg-purple-500/10 text-purple-400 text-xs font-mono font-bold">POST /api/admin/boost-packages</span>
           <span class="mx-2 text-slate-500">|</span>
           <span class="px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-xs font-mono font-bold">PATCH /api/admin/boost-packages/{id}</span>
-          <h2 class="text-base font-bold text-white mt-1">Screen 6: Admin Create & Edit Package Modal Form</h2>
+          <h2 class="text-base font-bold text-white mt-1">Screen 7: Admin Create & Edit Package Modal Form</h2>
           <p class="text-xs text-slate-400">Shows all input fields and how they map to the <code>StoreBoostPackageRequest</code> payload.</p>
         </div>
       </div>
@@ -838,125 +1015,10 @@
     </div>
 
 
-    <!-- ==========================================
-         TAB 7: ADMIN GLOBAL SETTINGS
-         ========================================== -->
-    <div id="tab-admin-settings" class="tab-content hidden">
-      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
-        <div>
-          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/admin/boost-settings</span>
-          <span class="mx-2 text-slate-500">|</span>
-          <span class="px-2 py-1 rounded bg-cyan-500/10 text-[#00c2cb] text-xs font-mono font-bold">PATCH /api/admin/boost-settings</span>
-          <h2 class="text-base font-bold text-white mt-1">Screen 7: Admin Global Boosting & Ad Settings Panel</h2>
-          <p class="text-xs text-slate-400">4 configuration cards controlling newsfeed algorithm, anti-fatigue limits, and custom rate.</p>
-        </div>
-        <button class="px-5 py-2.5 rounded-xl bg-[#00c2cb] hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-1.5">
-          <span>💾 Save Configurations</span>
-        </button>
-      </div>
-
-      <!-- 4 Configuration Cards Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-        <!-- Card 1: Newsfeed Ad Injection -->
-        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <h4 class="text-xs font-bold text-white flex items-center gap-2">📢 Newsfeed Ad Injection</h4>
-            <div class="w-8 h-4 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
-              <div class="w-3 h-3 bg-slate-950 rounded-full"></div>
-            </div>
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300">First Ad Slot</span>
-              <span class="json-tag">newsfeed_ads.first_ad_slot</span>
-            </div>
-            <input type="number" value="4" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300">Ad Interval (Posts between ads)</span>
-              <span class="json-tag">newsfeed_ads.ad_interval</span>
-            </div>
-            <input type="number" value="8" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300">Anti-Fatigue Cap (Max daily views/user)</span>
-              <span class="json-tag">newsfeed_ads.max_daily_impressions_per_user</span>
-            </div>
-            <input type="number" value="5" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-          </div>
-        </div>
-
-        <!-- Card 2: Custom Slider -->
-        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <h4 class="text-xs font-bold text-white flex items-center gap-2">🎚️ Web Custom Slider Rate</h4>
-            <div class="w-8 h-4 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
-              <div class="w-3 h-3 bg-slate-950 rounded-full"></div>
-            </div>
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300">Daily Rate ($ USD / Day)</span>
-              <span class="json-tag">custom_slider.daily_rate</span>
-            </div>
-            <input type="text" value="3.00" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <span class="text-xs text-slate-300 block mb-1">Min Days</span>
-              <input type="number" value="3" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-            </div>
-            <div>
-              <span class="text-xs text-slate-300 block mb-1">Max Days</span>
-              <input type="number" value="60" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 3: Free New Release -->
-        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <h4 class="text-xs font-bold text-white flex items-center gap-2">🎁 Free New Release Promotion</h4>
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300">Free Boost Window (Hours)</span>
-              <span class="json-tag">new_release.hours</span>
-            </div>
-            <input type="number" value="24" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-          </div>
-          <p class="text-[10px] text-slate-500">Every newly created product automatically gets 24h free boost and New Release badge.</p>
-        </div>
-
-        <!-- Card 4: Pause Policy -->
-        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <h4 class="text-xs font-bold text-white flex items-center gap-2">⏸️ Enterprise Pause Policy</h4>
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300">Max Allowed Pause Duration (Days)</span>
-              <span class="json-tag">pause_policy.max_days</span>
-            </div>
-            <input type="number" value="30" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-          </div>
-          <div class="grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <span class="text-slate-400 block mb-1">1st Reminder Day</span>
-              <input type="number" value="27" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-            </div>
-            <div>
-              <span class="text-slate-400 block mb-1">Final Warning Day</span>
-              <input type="number" value="29" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <script>
     function showTab(tabId) {
@@ -972,6 +1034,76 @@
         activeBtn.classList.add('bg-[#00c2cb]', 'text-slate-950');
       }
     }
+
+    function openSettingsModal(targetSection) {
+      const modal = document.getElementById('modal-edit-settings');
+      if (modal) {
+        modal.classList.remove('hidden');
+        if (targetSection) {
+          const sectionEl = document.getElementById('modal-sec-' + targetSection);
+          if (sectionEl) {
+            sectionEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            sectionEl.classList.add('ring-2', 'ring-[#00c2cb]');
+            setTimeout(() => {
+              sectionEl.classList.remove('ring-2', 'ring-[#00c2cb]');
+            }, 2000);
+          }
+        }
+      }
+    }
+
+    function closeSettingsModal() {
+      const modal = document.getElementById('modal-edit-settings');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function saveSettingsModal() {
+      const firstSlot = document.getElementById('modal-input-first-slot')?.value || '4';
+      const adInterval = document.getElementById('modal-input-ad-interval')?.value || '8';
+      const fatigueCap = document.getElementById('modal-input-fatigue-cap')?.value || '5';
+      const dailyRate = document.getElementById('modal-input-daily-rate')?.value || '3.00';
+      const minDays = document.getElementById('modal-input-min-days')?.value || '3';
+      const maxDays = document.getElementById('modal-input-max-days')?.value || '60';
+      const freeHours = document.getElementById('modal-input-free-hours')?.value || '24';
+      const pauseMax = document.getElementById('modal-input-pause-max')?.value || '30';
+      const reminder1 = document.getElementById('modal-input-reminder-1')?.value || '27';
+      const reminder2 = document.getElementById('modal-input-reminder-2')?.value || '29';
+
+      // Live update display cards
+      if (document.getElementById('card-val-first-slot')) document.getElementById('card-val-first-slot').innerText = 'Slot ' + firstSlot;
+      if (document.getElementById('card-val-ad-interval')) document.getElementById('card-val-ad-interval').innerText = 'Every ' + adInterval;
+      if (document.getElementById('card-val-fatigue-cap')) document.getElementById('card-val-fatigue-cap').innerText = 'Max ' + fatigueCap + ' / Day';
+      if (document.getElementById('card-val-daily-rate')) document.getElementById('card-val-daily-rate').innerText = '$' + Number(dailyRate).toFixed(2) + ' / Day';
+      if (document.getElementById('card-val-min-days')) document.getElementById('card-val-min-days').innerText = minDays + ' Days';
+      if (document.getElementById('card-val-max-days')) document.getElementById('card-val-max-days').innerText = maxDays + ' Days';
+      if (document.getElementById('card-val-free-hours')) document.getElementById('card-val-free-hours').innerText = 'Free Boost Window: ' + freeHours + ' Hours';
+      if (document.getElementById('card-val-free-hours-badge')) document.getElementById('card-val-free-hours-badge').innerText = freeHours + 'h';
+      if (document.getElementById('card-val-pause-max')) document.getElementById('card-val-pause-max').innerText = pauseMax + ' Days';
+      if (document.getElementById('card-val-reminder-1')) document.getElementById('card-val-reminder-1').innerText = 'Day ' + reminder1;
+      if (document.getElementById('card-val-reminder-2')) document.getElementById('card-val-reminder-2').innerText = 'Day ' + reminder2;
+
+      closeSettingsModal();
+      showNotificationToast('✅ Boost settings updated successfully via PATCH /api/admin/boost-settings');
+    }
+
+    function showNotificationToast(msg) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'px-5 py-3.5 rounded-2xl bg-slate-900 border-2 border-[#00c2cb] text-white text-xs font-bold shadow-2xl flex items-center gap-3 transition-all transform translate-y-4 opacity-0 pointer-events-auto';
+      toast.innerHTML = `<span class="text-base text-[#00c2cb]">✓</span><span>${msg}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      }, 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 400);
+      }, 3500);
+    }
   </script>
 </body>
 </html>
+
