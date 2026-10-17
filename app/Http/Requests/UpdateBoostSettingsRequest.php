@@ -52,6 +52,17 @@ class UpdateBoostSettingsRequest extends FormRequest
             'pause_policy.max_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'pause_policy.first_reminder_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'pause_policy.final_reminder_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+
+            // Newsfeed ad injection parameters
+            'newsfeed_ads_enabled' => ['nullable', 'boolean'],
+            'newsfeed_first_slot' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'newsfeed_interval' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'max_daily_impressions_per_user' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'newsfeed_ads' => ['nullable', 'array'],
+            'newsfeed_ads.enabled' => ['nullable', 'boolean'],
+            'newsfeed_ads.first_ad_slot' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'newsfeed_ads.ad_interval' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'newsfeed_ads.max_daily_impressions_per_user' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
 }

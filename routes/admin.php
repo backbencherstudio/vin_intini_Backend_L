@@ -28,7 +28,7 @@ Route::prefix('admin')->group(function () {
     // boost package routes
     Route::get('/boost-packages', [BoostPackageAdminController::class, 'index']);
     Route::get('/boost-packages/{boost_package}', [BoostPackageAdminController::class, 'show']);
-    Route::post('/boost-packages', [BoostPackageAdminController::class, 'store']);
+    Route::post('/boost-packages/store', [BoostPackageAdminController::class, 'store']);
     Route::patch('/boost-packages/{boost_package}', [BoostPackageAdminController::class, 'update']);
     Route::patch('/boost-packages/{boost_package}/status', [BoostPackageAdminController::class, 'toggleStatus']);
     Route::delete('/boost-packages/{boost_package}', [BoostPackageAdminController::class, 'destroy']);
