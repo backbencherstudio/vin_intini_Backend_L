@@ -28,12 +28,30 @@ class Industry extends Model
         'authorization_confirmed',
         'authorization_confirmed_at',
         'created_by',
+        'status',
+        'paused_at',
     ];
 
     protected $casts = [
         'authorization_confirmed' => 'boolean',
         'authorization_confirmed_at' => 'datetime',
+        'paused_at' => 'datetime',
     ];
+
+    public function isPaused(): bool
+    {
+        return $this->status === 'paused';
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    public function scopePaused($query)
+    {
+        return $query->where('status', 'paused');
+    }
 
     protected function logo(): Attribute
     {
