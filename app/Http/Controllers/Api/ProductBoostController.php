@@ -6,6 +6,7 @@ use App\Enums\AdCampaignStatus;
 use App\Enums\BoostTargetEntity;
 use App\Enums\OtpType;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AdCampaignResource;
 use App\Http\Resources\BoostPackageResource;
 use App\Http\Resources\IndustryProductResource;
 use App\Mail\BoostOtpMail;
@@ -254,7 +255,7 @@ class ProductBoostController extends Controller
             'success' => true,
             'data' => [
                 'metrics' => $metrics,
-                'campaigns' => $campaigns,
+                'campaigns' => AdCampaignResource::collection($campaigns),
             ],
         ], 200);
     }
@@ -330,7 +331,7 @@ class ProductBoostController extends Controller
             'success' => true,
             'data' => [
                 'metrics' => $metrics,
-                'campaigns' => $campaigns,
+                'campaigns' => AdCampaignResource::collection($campaigns)->response()->getData(true),
             ],
         ], 200);
     }
@@ -358,7 +359,7 @@ class ProductBoostController extends Controller
             'success' => true,
             'message' => 'Campaign paused successfully. Remaining time has been frozen.',
             'data' => [
-                'campaign' => $campaign->fresh(),
+                'campaign' => new AdCampaignResource($campaign->fresh(['boostable', 'boostPackage'])),
             ],
         ], 200);
     }
@@ -386,7 +387,7 @@ class ProductBoostController extends Controller
             'success' => true,
             'message' => 'Campaign resumed successfully. Expiration date extended by paused duration.',
             'data' => [
-                'campaign' => $campaign->fresh(),
+                'campaign' => new AdCampaignResource($campaign->fresh(['boostable', 'boostPackage'])),
             ],
         ], 200);
     }
