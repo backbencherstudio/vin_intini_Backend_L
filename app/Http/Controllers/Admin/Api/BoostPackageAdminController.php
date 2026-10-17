@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin\Api;
 
+use App\Enums\AdCampaignStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBoostPackageRequest;
 use App\Http\Requests\UpdateBoostPackageRequest;
 use App\Http\Requests\UpdateBoostSettingsRequest;
 use App\Http\Resources\BoostPackageResource;
+use App\Models\AdCampaign;
 use App\Models\BoostPackage;
 use App\Services\BoostSettingService;
 use Illuminate\Http\JsonResponse;
@@ -67,8 +69,20 @@ class BoostPackageAdminController extends Controller
             ->orderBy('id')
             ->get();
 
+        $overview = [
+            'total_packages' => BoostPackage::count(),
+            'active_packages' => BoostPackage::where('status', 'active')->count(),
+            'total_ad_revenue' => (float) AdCampaign::sum('amount_paid'),
+            'live_campaigns_count' => AdCampaign::where('status', AdCampaignStatus::ACTIVE)
+                ->where('ends_at', '>', now())
+                ->count(),
+            'total_impressions_delivered' => (int) AdCampaign::sum('total_impressions'),
+            'total_clicks_recorded' => (int) AdCampaign::sum('total_clicks'),
+        ];
+
         return response()->json([
             'success' => true,
+            'overview' => $overview,
             'data' => BoostPackageResource::collection($packages),
         ], 200);
     }

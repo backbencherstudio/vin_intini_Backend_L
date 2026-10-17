@@ -183,16 +183,21 @@ This document provides visual wireframe templates and field-by-field UI/UX mappi
 
 ---
 
-## 🛡️ SCREEN 5: Admin Boost Package Management Table
-* **List API:** `GET /api/admin/boost-packages`
+## 🛡️ SCREEN 5: Unified Admin Boost Packages, Revenue KPI & Settings Center
+* **List Packages & Overview API:** `GET /api/admin/boost-packages`
 * **Toggle Status API:** `PATCH /api/admin/boost-packages/{id}/status`
-* **Delete API:** `DELETE /api/admin/boost-packages/{id}`
-* **Trigger:** Admin Navigation: `Monetization & Ads > Boost Packages`.
+* **Get Settings API:** `GET /api/admin/boost-settings`
+* **Update Settings API:** `PATCH /api/admin/boost-settings`
+* **Trigger:** Admin Navigation: `Monetization & Ads > Boost Packages & Settings`.
 
 ### Visual ASCII Wireframe:
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Package Management                                                     [ + Create New Package ]│
+│ 💰 Total Ad Revenue    │ 🟢 Live Active Ads     │ 📦 Boost Packages     │ 👁️ Impressions        │
+│ $104.98                │ 2 Running              │ 3 Active / 3 Total    │ 1,420 Delivered        │
+│ (overview.total_ad_rev)│ (overview.live_count)  │ (overview.active_pkg) │ (overview.total_imp)   │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Package Management Table                                               [ + Create New Package ]│
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Package Name & Badge  Duration  Price   Est. Reach       Priority  Active Ads  Status  Actions │
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -204,18 +209,29 @@ This document provides visual wireframe templates and field-by-field UI/UX mappi
 │                                                                                                │
 │ 30-Day Pro Boost      30 Days   $69.99  40,000 – 60,000  3         1 Live      [ON]    ✏️   🗑️  │
 │ [Best Value]                                                                                   │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ⚙️ Global Boost & Ad Algorithm Settings (GET /api/admin/boost-settings)  [ 💾 Save Config ]    │
+│ ┌──────────────────────────────────────────┐  ┌──────────────────────────────────────────┐     │
+│ │ 📢 Newsfeed Ad Insertion           [ON]  │  │ 🎚️ Web Custom Slider Rate          [ON]  │     │
+│ │ First Slot: [4]    Interval: [8] posts   │  │ Daily Rate: [ $3.00/day ]                │     │
+│ │ Anti-Fatigue Cap: [5] views/day          │  │ Min: [3] days    Max: [60] days          │     │
+│ └──────────────────────────────────────────┘  └──────────────────────────────────────────┘     │
+│ ┌──────────────────────────────────────────┐  ┌──────────────────────────────────────────┐     │
+│ │ 🎁 Free New Release Window               │  │ ⏸️ Enterprise Pause Policy              │     │
+│ │ Duration: [24] hours free boost          │  │ Max Pause: [30] days   Reminder: Day 27  │     │
+│ └──────────────────────────────────────────┘  └──────────────────────────────────────────┘     │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Exact Response Field to UI Component Mapping:
-1. `item.name` & `item.badge`: Column 1 package title with badge pill.
-2. `item.duration_days`: Column 2 duration in days.
-3. `item.price`: Column 3 formatted USD price.
-4. `item.estimated_impressions`: Column 4 estimated reach.
-5. `item.priority_weight`: Column 5 algorithm priority score.
-6. `item.active_campaigns_count`: Column 6 count of currently active seller ads.
-7. `item.is_active`: Column 7 interactive switch (toggles via `PATCH .../status`).
-8. `Edit (✏️)` & `Delete (🗑️)`: Action icons triggering edit modal or delete confirmation.
+1. `overview.total_ad_revenue`: Large dollar amount in Top Card 1 (Total platform boost earnings).
+2. `overview.live_campaigns_count`: Top Card 2 running campaigns in circulation.
+3. `overview.active_packages`: Top Card 3 count of published tiers available to sellers.
+4. `overview.total_impressions_delivered`: Top Card 4 cumulative view impressions tracked.
+5. `data[i].name` & `badge`: Data table title and cyan badge pill.
+6. `data[i].duration_days`, `price`, `estimated_impressions`: Table metrics columns.
+7. `data[i].is_active`: Instant interactive toggle switch (`PATCH .../status`).
+8. `newsfeed_ads.*`, `custom_slider.*`, `pause_policy.*`: Editable configuration inputs saved via `PATCH /api/admin/boost-settings`.
 
 ---
 
