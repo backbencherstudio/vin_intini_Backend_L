@@ -260,6 +260,81 @@ class ProductBoostController extends Controller
     }
 
     /**
+     * List all ad campaigns belonging to the authenticated industry user across all products.
+     */
+    public function myCampaigns(Request $request): JsonResponse
+    {
+        $user = auth('api')->user() ?? $request->user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+        }
+
+        $industryId = $user->industry?->id ?? $user->company_id;
+
+        $query = AdCampaign::query()
+            ->with(['boostPackage', 'boostable'])
+            ->latest('id');
+
+        if ($industryId) {
+            $query->where(function ($q) use ($industryId, $user) {
+                $q->where('industry_id', $industryId)
+                    ->orWhere('user_id', $user->id);
+            });
+        } else {
+            $query->where('user_id', $user->id);
+        }
+
+        if ($status = $request->query('status')) {
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($search = $request->query('search')) {
+            $query->whereHasMorph('boostable', [IndustryProduct::class], function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%");
+            });
+        }
+
+        $campaigns = $query->paginate((int) $request->query('per_page', 15));
+
+        // Base overview metrics across all industry campaigns
+        $baseQuery = AdCampaign::query();
+        if ($industryId) {
+            $baseQuery->where(function ($q) use ($industryId, $user) {
+                $q->where('industry_id', $industryId)
+                    ->orWhere('user_id', $user->id);
+            });
+        } else {
+            $baseQuery->where('user_id', $user->id);
+        }
+
+        $allCampaigns = $baseQuery->get();
+        $totalImpressions = (int) $allCampaigns->sum('total_impressions');
+        $totalClicks = (int) $allCampaigns->sum('total_clicks');
+        $avgCtr = $totalImpressions > 0 ? round(($totalClicks / $totalImpressions) * 100, 2) : 0.0;
+
+        $metrics = [
+            'total_campaigns' => $allCampaigns->count(),
+            'active_campaigns' => $allCampaigns->where('status', AdCampaignStatus::ACTIVE->value)->count(),
+            'paused_campaigns' => $allCampaigns->where('status', AdCampaignStatus::PAUSED->value)->count(),
+            'completed_campaigns' => $allCampaigns->where('status', AdCampaignStatus::COMPLETED->value)->count(),
+            'total_impressions' => $totalImpressions,
+            'total_clicks' => $totalClicks,
+            'average_ctr' => $avgCtr,
+            'total_spend' => (float) $allCampaigns->sum('amount_paid'),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'metrics' => $metrics,
+                'campaigns' => $campaigns,
+            ],
+        ], 200);
+    }
+
+    /**
      * Pause an active boost campaign and freeze remaining time.
      */
     public function pauseCampaign(Request $request, int|string $id): JsonResponse

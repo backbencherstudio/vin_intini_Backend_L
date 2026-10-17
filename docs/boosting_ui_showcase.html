@@ -39,7 +39,7 @@
       <button onclick="showTab('tab-newsfeed')" id="btn-tab-newsfeed" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">1. Newsfeed Ad Card</button>
       <button onclick="showTab('tab-paywall')" id="btn-tab-paywall" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">2. Boost Paywall Modal</button>
       <button onclick="showTab('tab-otp')" id="btn-tab-otp" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">3. OTP Challenge</button>
-      <button onclick="showTab('tab-campaigns')" id="btn-tab-campaigns" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. My Boost Campaigns</button>
+      <button onclick="showTab('tab-campaigns')" id="btn-tab-campaigns" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. Industry Advertisements Hub</button>
       <button onclick="showTab('tab-admin-settings')" id="btn-tab-admin-settings" class="tab-btn px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950 font-bold">5. Admin Boost Settings & Revenue</button>
       <button onclick="showTab('tab-admin-packages')" id="btn-tab-admin-packages" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Boost Packages Table</button>
       <button onclick="showTab('tab-admin-create')" id="btn-tab-admin-create" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Create Package Form</button>
@@ -350,81 +350,684 @@
 
 
     <!-- ==========================================
-         TAB 4: MY BOOST CAMPAIGNS
+         TAB 4: INDUSTRY ADVERTISEMENTS HUB (HISTORY & ANALYTICS)
          ========================================== -->
     <div id="tab-campaigns" class="tab-content hidden">
+      <!-- Screen Context & API Mapping Header -->
       <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
         <div>
-          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/industry/products/{id}/boost/campaigns</span>
-          <span class="mx-2 text-slate-500">|</span>
-          <span class="px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-xs font-mono font-bold">POST .../pause</span>
-          <span class="mx-2 text-slate-500">|</span>
-          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">POST .../resume</span>
-          <h2 class="text-base font-bold text-white mt-1">Screen 4: Product Boost History & Pause/Resume Analytics Card</h2>
-          <p class="text-xs text-slate-400">Displays real-time impressions, click-through rates, and freeze-clock pause controls.</p>
+          <div class="flex flex-wrap items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[11px] font-mono font-bold border border-emerald-500/30">GET /api/industry/boost-campaigns</span>
+            <span class="px-2 py-0.5 rounded bg-cyan-500/10 text-[#00c2cb] text-[11px] font-mono font-bold border border-[#00c2cb]/30">GET /api/industry/analytics/advertisements</span>
+            <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[11px] font-mono font-bold border border-amber-500/30">POST .../pause</span>
+            <span class="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[11px] font-mono font-bold border border-purple-500/30">POST .../resume</span>
+          </div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            Screen 4: Industry Portal — "Advertisements" Management & Analytics Hub
+            <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-[#00c2cb] border border-[#00c2cb]/40">Seller Self-Service</span>
+          </h2>
+          <p class="text-xs text-slate-400">Merchant dashboard to track live campaigns, pause/resume clock-freeze, view campaign history, and review views vs. engagements analytics.</p>
+        </div>
+
+        <button onclick="showTab('tab-paywall')" class="px-4 py-2 rounded-xl bg-gradient-to-r from-[#00c2cb] to-cyan-400 hover:from-cyan-400 hover:to-[#00c2cb] text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/25 flex items-center gap-2 transition-all transform hover:scale-105">
+          <span>🚀 Boost A Product</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-950/20 font-mono font-bold">New Ad</span>
+        </button>
+      </div>
+
+      <!-- Sub-Tab Navigation Switcher -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-6">
+        <div class="flex gap-2">
+          <button onclick="switchIndustrySubTab('history')" id="subtab-btn-history" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-[#00c2cb] text-slate-950 shadow-lg shadow-cyan-500/20 flex items-center gap-2">
+            <span>🕒 Ad Campaigns History & Controls</span>
+            <span class="px-2 py-0.5 rounded-full bg-slate-950/20 text-[10px] font-extrabold">8</span>
+          </button>
+          <button onclick="switchIndustrySubTab('analytics')" id="subtab-btn-analytics" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-800/80 text-slate-300 hover:bg-slate-700 flex items-center gap-2">
+            <span>📊 Ad Performance Analytics</span>
+            <span class="px-2 py-0.5 rounded-full bg-cyan-950 text-[#00c2cb] text-[10px] font-bold border border-[#00c2cb]/30">Charts</span>
+          </button>
+        </div>
+
+        <div class="text-xs text-slate-400 hidden sm:flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Live Merchant Sync: <strong>BioPac Inc</strong></span>
         </div>
       </div>
 
-      <!-- Campaign Analytics Card Simulation -->
-      <div class="max-w-2xl mx-auto rounded-3xl bg-slate-950 border border-slate-800 p-6 shadow-2xl space-y-6">
-        <div class="flex justify-between items-center">
+      <!-- ==============================================================
+           SUB-TAB VIEW 1: CAMPAIGNS HISTORY & CONTROLS (GET /api/industry/boost-campaigns)
+           ============================================================== -->
+      <div id="subtab-view-history" class="space-y-6">
+
+        <!-- Metrics Overview KPI Strip -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+            <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Campaigns</p>
+            <p class="text-lg font-extrabold text-white">8</p>
+            <span class="json-tag text-[9px]">metrics.total_campaigns</span>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-slate-950 border border-emerald-500/30 text-center">
+            <p class="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider mb-0.5 flex items-center justify-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Active Ads
+            </p>
+            <p class="text-lg font-extrabold text-emerald-300">3</p>
+            <span class="json-tag text-[9px]">active_campaigns</span>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-slate-950 border border-amber-500/30 text-center">
+            <p class="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Paused (Frozen)</p>
+            <p class="text-lg font-extrabold text-amber-300">1</p>
+            <span class="json-tag text-[9px]">paused_campaigns</span>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+            <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Completed</p>
+            <p class="text-lg font-extrabold text-slate-300">4</p>
+            <span class="json-tag text-[9px]">completed_campaigns</span>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+            <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Impressions</p>
+            <p class="text-lg font-extrabold text-white">28,450</p>
+            <span class="json-tag text-[9px]">total_impressions</span>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+            <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Ad Clicks</p>
+            <p class="text-lg font-extrabold text-white">1,820</p>
+            <span class="json-tag text-[9px]">total_clicks</span>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-gradient-to-br from-[#043940] to-slate-950 border border-[#00c2cb]/40 text-center col-span-2 sm:col-span-1">
+            <p class="text-[10px] font-semibold text-[#00c2cb] uppercase tracking-wider mb-0.5">Avg CTR</p>
+            <p class="text-lg font-extrabold text-[#00c2cb]">6.40%</p>
+            <span class="json-tag text-[9px]">average_ctr</span>
+          </div>
+        </div>
+
+        <!-- Filter Pills & Search Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-slate-950 border border-slate-800">
+          <div class="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+            <button onclick="filterCampaignCards('all')" id="filter-btn-all" class="campaign-filter-btn px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950 font-bold">All (8)</button>
+            <button onclick="filterCampaignCards('active')" id="filter-btn-active" class="campaign-filter-btn px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800">Active (3)</button>
+            <button onclick="filterCampaignCards('paused')" id="filter-btn-paused" class="campaign-filter-btn px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800">Paused (1)</button>
+            <button onclick="filterCampaignCards('completed')" id="filter-btn-completed" class="campaign-filter-btn px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800">Completed (4)</button>
+          </div>
+
+          <div class="relative w-full sm:w-72">
+            <input type="text" oninput="searchCampaignCards(this.value)" placeholder="Search by product name..." class="w-full text-xs rounded-xl bg-slate-900 border border-slate-800 pl-8 pr-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-[#00c2cb]">
+            <span class="absolute left-2.5 top-2 text-slate-500 text-xs">🔍</span>
+          </div>
+        </div>
+
+        <!-- Campaign Cards Stack -->
+        <div id="campaign-cards-container" class="space-y-4">
+
+          <!-- CAMPAIGN CARD 1: ACTIVE -->
+          <div class="campaign-card active-card p-5 rounded-3xl bg-slate-950 border-2 border-emerald-500/30 hover:border-emerald-500/60 shadow-xl space-y-4 transition-all" data-status="active" data-name="biopac mp170 smart eeg monitor">
+            <div class="flex flex-wrap justify-between items-start gap-3">
+              <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#043940] to-emerald-950 border border-emerald-500/40 flex items-center justify-center text-xl shadow-md">
+                  🧠
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-bold text-white">BioPac MP170 Smart EEG Monitor</h3>
+                    <span class="json-tag">boostable.product_name</span>
+                  </div>
+                  <p class="text-xs text-slate-400">
+                    Campaign #108 • Package: <strong class="text-cyan-300">Growth Surge (14 Days)</strong> • Weight: <span class="text-emerald-400 font-bold">5</span>
+                    <span class="json-tag ml-1">boost_package.name</span>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Status Badge & Spend -->
+              <div class="flex items-center gap-3">
+                <div class="text-right">
+                  <span class="text-xs font-bold text-white">$112.00 Paid</span>
+                  <p class="text-[10px] text-slate-500">Stripe Card (•••• 4242)</p>
+                </div>
+                <span id="badge-campaign-1" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Active Ad
+                  <span class="json-tag">item.status</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Performance Metrics Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-400 uppercase">Impressions</p>
+                <p class="text-base font-bold text-white">14,250</p>
+                <span class="json-tag text-[9px]">item.total_impressions</span>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-400 uppercase">Clicks</p>
+                <p class="text-base font-bold text-white">920</p>
+                <span class="json-tag text-[9px]">item.total_clicks</span>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-400 uppercase">CTR</p>
+                <p class="text-base font-bold text-[#00c2cb]">6.46%</p>
+                <span class="json-tag text-[9px]">(clicks/imp)*100</span>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-400 uppercase">Cost Per Click</p>
+                <p class="text-base font-bold text-slate-300">$0.12</p>
+                <span class="json-tag text-[9px]">amount / clicks</span>
+              </div>
+            </div>
+
+            <!-- Timeline Progress Bar -->
+            <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+              <div class="flex justify-between items-center text-xs font-semibold mb-2">
+                <span class="text-slate-400">Started: Oct 10, 2026</span>
+                <span id="timeline-text-1" class="text-emerald-400 flex items-center gap-1">
+                  <span>⚡ 7 Days Remaining</span>
+                  <span class="text-slate-500 font-normal">(50% Completed)</span>
+                </span>
+                <span class="text-slate-400">Ends: Oct 24, 2026</span>
+              </div>
+              <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                <div id="prog-bar-1" class="h-full bg-gradient-to-r from-[#043940] to-emerald-400 transition-all duration-500" style="width: 50%"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                <span>item.starts_at</span>
+                <span>item.ends_at</span>
+              </div>
+            </div>
+
+            <!-- Controls & Freeze Notice -->
+            <div class="flex flex-wrap justify-between items-center gap-3 pt-1 border-t border-slate-900">
+              <div class="flex items-center gap-2 text-xs text-slate-400">
+                <span class="text-cyan-400">❄️ Clock-Freeze Policy:</span>
+                <span>Pause anytime up to 30 days without losing your 7 remaining days.</span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="showNotificationToast('🔗 Redirecting to newsfeed ad view...')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">
+                  👁️ View in Feed
+                </button>
+
+                <button id="btn-toggle-pause-1" onclick="toggleCampaignPause(1)" class="px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md">
+                  <span>⏸️ Pause Ad</span>
+                  <span class="json-tag border-amber-500/60 text-amber-300">POST .../pause</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- CAMPAIGN CARD 2: PAUSED (CLOCK FROZEN) -->
+          <div class="campaign-card paused-card p-5 rounded-3xl bg-slate-950 border-2 border-amber-500/30 hover:border-amber-500/60 shadow-xl space-y-4 transition-all" data-status="paused" data-name="neuroecho wireless emg sensor">
+            <div class="flex flex-wrap justify-between items-start gap-3">
+              <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#043940] to-amber-950 border border-amber-500/40 flex items-center justify-center text-xl shadow-md">
+                  📡
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-bold text-white">NeuroEcho Wireless EMG Sensor</h3>
+                    <span class="json-tag">boostable.product_name</span>
+                  </div>
+                  <p class="text-xs text-slate-400">
+                    Campaign #95 • Package: <strong class="text-cyan-300">Starter Spark (7 Days)</strong> • Weight: <span class="text-amber-400 font-bold">3</span>
+                    <span class="json-tag ml-1">boost_package.name</span>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Status Badge & Spend -->
+              <div class="flex items-center gap-3">
+                <div class="text-right">
+                  <span class="text-xs font-bold text-white">$56.00 Paid</span>
+                  <p class="text-[10px] text-slate-500">Stripe Card (•••• 1029)</p>
+                </div>
+                <span id="badge-campaign-2" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+                  <span>⏸️ Paused (Clock Frozen)</span>
+                  <span class="json-tag">item.status</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Performance Metrics Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-400 uppercase">Impressions</p>
+                <p class="text-base font-bold text-white">6,480</p>
+                <span class="json-tag text-[9px]">item.total_impressions</span>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-400 uppercase">Clicks</p>
+                <p class="text-base font-bold text-white">415</p>
+                <span class="json-tag text-[9px]">item.total_clicks</span>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-400 uppercase">CTR</p>
+                <p class="text-base font-bold text-[#00c2cb]">6.40%</p>
+                <span class="json-tag text-[9px]">(clicks/imp)*100</span>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-400 uppercase">Cost Per Click</p>
+                <p class="text-base font-bold text-slate-300">$0.13</p>
+                <span class="json-tag text-[9px]">amount / clicks</span>
+              </div>
+            </div>
+
+            <!-- Timeline Progress Bar (Frozen State) -->
+            <div class="p-3.5 rounded-2xl bg-amber-950/20 border border-amber-500/30">
+              <div class="flex justify-between items-center text-xs font-semibold mb-2">
+                <span class="text-slate-400">Started: Oct 11, 2026</span>
+                <span id="timeline-text-2" class="text-amber-300 font-bold flex items-center gap-1">
+                  <span>⏱️ 4 Days 12 Hours Frozen</span>
+                  <span class="text-xs text-amber-400/80">(Paused Oct 14)</span>
+                </span>
+                <span class="text-slate-400">Frozen Expiration</span>
+              </div>
+              <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                <div id="prog-bar-2" class="h-full bg-gradient-to-r from-amber-600 to-amber-400" style="width: 42%"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-amber-400/70 mt-1 font-mono">
+                <span>item.paused_at</span>
+                <span>Clock stops until resume</span>
+              </div>
+            </div>
+
+            <!-- Controls & Freeze Notice -->
+            <div class="flex flex-wrap justify-between items-center gap-3 pt-1 border-t border-slate-900">
+              <div class="flex items-center gap-2 text-xs text-amber-300">
+                <span>⚠️ Auto-Expiry Alert:</span>
+                <span class="text-slate-400">You have 26 days left before paused campaign automatically expires.</span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="showNotificationToast('✏️ Opening ad details editor...')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">
+                  ✏️ Edit Links
+                </button>
+
+                <button id="btn-toggle-pause-2" onclick="toggleCampaignResume(2)" class="px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md">
+                  <span>▶️ Resume Ad</span>
+                  <span class="json-tag border-emerald-500/60 text-emerald-300">POST .../resume</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- CAMPAIGN CARD 3: COMPLETED -->
+          <div class="campaign-card completed-card p-5 rounded-3xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 shadow-xl space-y-4 transition-all opacity-85 hover:opacity-100" data-status="completed" data-name="optiscan portable mri visualizer">
+            <div class="flex flex-wrap justify-between items-start gap-3">
+              <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xl text-slate-400 shadow-md">
+                  🔬
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-bold text-slate-200">OptiScan Portable MRI Visualizer</h3>
+                    <span class="json-tag">boostable.product_name</span>
+                  </div>
+                  <p class="text-xs text-slate-500">
+                    Campaign #72 • Package: <strong class="text-slate-400">Market Domination (30 Days)</strong> • Weight: 8
+                  </p>
+                </div>
+              </div>
+
+              <!-- Status Badge & Spend -->
+              <div class="flex items-center gap-3">
+                <div class="text-right">
+                  <span class="text-xs font-bold text-slate-300">$240.00 Total</span>
+                  <p class="text-[10px] text-slate-500">30 Days Delivered</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1.5">
+                  <span>✓ Completed</span>
+                  <span class="json-tag">item.status</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Performance Metrics Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-900/50 border border-slate-800">
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-500 uppercase">Impressions</p>
+                <p class="text-base font-bold text-slate-300">48,920</p>
+                <span class="json-tag text-[9px]">item.total_impressions</span>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-500 uppercase">Clicks</p>
+                <p class="text-base font-bold text-slate-300">3,180</p>
+                <span class="json-tag text-[9px]">item.total_clicks</span>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-500 uppercase">CTR</p>
+                <p class="text-base font-bold text-[#00c2cb]">6.50%</p>
+              </div>
+              <div class="text-center sm:text-left sm:pl-2">
+                <p class="text-[10px] text-slate-500 uppercase">Cost Per Click</p>
+                <p class="text-base font-bold text-slate-400">$0.075</p>
+              </div>
+            </div>
+
+            <!-- Progress Bar (100% Complete) -->
+            <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800">
+              <div class="flex justify-between items-center text-xs font-semibold mb-2 text-slate-400">
+                <span>Started: Sep 01, 2026</span>
+                <span class="text-slate-300 font-bold">100% Completed (All 30 Days Served)</span>
+                <span>Ended: Oct 01, 2026</span>
+              </div>
+              <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                <div class="h-full bg-slate-600" style="width: 100%"></div>
+              </div>
+            </div>
+
+            <!-- Footer Action -->
+            <div class="flex flex-wrap justify-between items-center gap-3 pt-1 border-t border-slate-900">
+              <div class="text-xs text-slate-500">
+                Ended on schedule. Campaign archived in your permanent history.
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="showNotificationToast('📥 Exporting campaign CSV performance breakdown...')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">
+                  📥 Download Report
+                </button>
+                <button onclick="showTab('tab-paywall')" class="px-4 py-2 rounded-xl bg-gradient-to-r from-[#00c2cb] to-cyan-400 hover:from-cyan-400 hover:to-[#00c2cb] text-slate-950 font-bold text-xs shadow-md transition-all">
+                  🚀 Boost Again
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ==============================================================
+           SUB-TAB VIEW 2: AD PERFORMANCE ANALYTICS (GET /api/industry/analytics/advertisements)
+           ============================================================== -->
+      <div id="subtab-view-analytics" class="hidden space-y-6">
+
+        <!-- Header Filter & Period Toggle -->
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-wrap justify-between items-center gap-3">
           <div>
-            <h3 class="text-base font-bold text-white">Active Boost Campaign</h3>
-            <p class="text-xs text-slate-400">Campaign ID #1 • Growth 14-Day Package</p>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              📊 Advertisement Performance Analytics
+              <span class="json-tag text-[10px]">data.cards</span>
+            </h3>
+            <p class="text-xs text-slate-400">Performance insights aggregated across all your advertised products in Mind Unite marketplace.</p>
           </div>
-          <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Active
-            <span class="json-tag">item.status</span>
-          </span>
-        </div>
 
-        <!-- 3 KPI Metric Badges -->
-        <div class="grid grid-cols-3 gap-3">
-          <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
-            <p class="text-[11px] text-slate-400 mb-1">Total Impressions</p>
-            <p class="text-lg font-bold text-white">1,420</p>
-            <span class="json-tag">item.total_impressions</span>
-          </div>
-          <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
-            <p class="text-[11px] text-slate-400 mb-1">Total Clicks</p>
-            <p class="text-lg font-bold text-white">88</p>
-            <span class="json-tag">item.total_clicks</span>
-          </div>
-          <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
-            <p class="text-[11px] text-slate-400 mb-1">Average CTR</p>
-            <p class="text-lg font-bold text-[#00c2cb]">6.2%</p>
-            <span class="json-tag">(clicks / imp) * 100</span>
+          <!-- Period Toggle -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">Timeframe:</span>
+            <div class="flex p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold">
+              <button onclick="setAnalyticsPeriod('weekly')" id="btn-period-weekly" class="px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950 shadow-md">Weekly</button>
+              <button onclick="setAnalyticsPeriod('monthly')" id="btn-period-monthly" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white">Monthly</button>
+            </div>
+            <button onclick="showNotificationToast('📊 Exporting full advertisement analytics dataset...')" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold">
+              📥 Export CSV
+            </button>
           </div>
         </div>
 
-        <!-- Timeline Progress Bar -->
-        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-          <div class="flex justify-between text-xs font-semibold mb-2">
-            <span class="text-slate-300">Starts: Oct 17, 2026</span>
-            <span class="text-cyan-400">12 Days Remaining</span>
-            <span class="text-slate-300">Ends: Oct 31, 2026</span>
+        <!-- 4 KPI Metrics Growth Cards (from API: cards) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Total Products -->
+          <div class="p-5 rounded-3xl bg-slate-950 border border-slate-800 shadow-xl relative overflow-hidden group hover:border-[#00c2cb]/40 transition-all">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Products</span>
+              <span class="text-lg">📦</span>
+            </div>
+            <div class="text-2xl font-extrabold text-white mb-2" id="kpi-total-products">24</div>
+            <div class="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+              <span>↗ +12%</span>
+              <span class="text-slate-500 font-normal">from last month</span>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-900">
+              <span class="json-tag text-[9px]">cards.total_products.total</span>
+            </div>
           </div>
-          <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
-            <div class="h-full bg-gradient-to-r from-[#043940] to-[#00c2cb]" style="width: 25%"></div>
+
+          <!-- Active Products / Ads -->
+          <div class="p-5 rounded-3xl bg-slate-950 border border-emerald-500/30 shadow-xl relative overflow-hidden group hover:border-emerald-500/60 transition-all">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Active Boosted Ads
+              </span>
+              <span class="text-lg">⚡</span>
+            </div>
+            <div class="text-2xl font-extrabold text-emerald-300 mb-2" id="kpi-active-products">8</div>
+            <div class="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+              <span>↗ +33.3%</span>
+              <span class="text-slate-500 font-normal">from last month</span>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-900">
+              <span class="json-tag text-[9px]">cards.active_products.total</span>
+            </div>
           </div>
-          <div class="flex justify-between text-[10px] text-slate-500 mt-1">
-            <span class="json-tag">item.starts_at</span>
-            <span class="json-tag">item.ends_at</span>
+
+          <!-- Product Ad Views -->
+          <div class="p-5 rounded-3xl bg-slate-950 border border-[#00c2cb]/30 shadow-xl relative overflow-hidden group hover:border-[#00c2cb]/60 transition-all">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-[#00c2cb] uppercase tracking-wider">Product Ad Views</span>
+              <span class="text-lg">👁️</span>
+            </div>
+            <div class="text-2xl font-extrabold text-white mb-2" id="kpi-product-views">18,450</div>
+            <div class="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+              <span>↗ +28.5%</span>
+              <span class="text-slate-500 font-normal">from last month</span>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-900">
+              <span class="json-tag text-[9px]">cards.product_views.total</span>
+            </div>
+          </div>
+
+          <!-- Total Likes / Engagements -->
+          <div class="p-5 rounded-3xl bg-slate-950 border border-amber-500/30 shadow-xl relative overflow-hidden group hover:border-amber-500/60 transition-all">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Total Likes & Saves</span>
+              <span class="text-lg">❤️</span>
+            </div>
+            <div class="text-2xl font-extrabold text-white mb-2" id="kpi-total-likes">1,280</div>
+            <div class="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+              <span>↗ +18.2%</span>
+              <span class="text-slate-500 font-normal">from last month</span>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-900">
+              <span class="json-tag text-[9px]">cards.total_likes.total</span>
+            </div>
           </div>
         </div>
 
-        <!-- Pause / Resume Button Controller -->
-        <div class="flex justify-between items-center p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-          <div>
-            <p class="text-xs font-bold text-white">Campaign Clock-Freeze Policy</p>
-            <p class="text-[11px] text-slate-400">Pause your ad anytime up to 30 days without losing remaining time.</p>
+        <!-- 2-Column Split: Top Performing Products (Left) vs Views vs Clicks Chart (Right) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Left Column: Top Performing Products (7 Cols) -->
+          <div class="lg:col-span-5 p-5 rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                  🏆 Top Performing Products
+                  <span class="json-tag text-[9px]">top_performing_products</span>
+                </h4>
+                <p class="text-xs text-slate-400">Ranked by verified views and audience engagements.</p>
+              </div>
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-900 text-slate-400">Limit 5</span>
+            </div>
+
+            <!-- Table of Top Products -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="text-slate-500 border-b border-slate-800/80 pb-2">
+                    <th class="py-2 font-semibold">Rank & Product</th>
+                    <th class="py-2 font-semibold text-right">Views</th>
+                    <th class="py-2 font-semibold text-right">Likes</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-900">
+                  <tr class="hover:bg-slate-900/40">
+                    <td class="py-2.5 flex items-center gap-2">
+                      <span class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px] flex items-center justify-center">1</span>
+                      <div>
+                        <p class="font-bold text-white truncate max-w-[170px]">BioPac MP170 EEG</p>
+                        <p class="text-[10px] text-slate-500">ID: PROD-8821</p>
+                      </div>
+                    </td>
+                    <td class="py-2.5 text-right font-bold text-cyan-300">7,420</td>
+                    <td class="py-2.5 text-right font-bold text-amber-400">512</td>
+                  </tr>
+
+                  <tr class="hover:bg-slate-900/40">
+                    <td class="py-2.5 flex items-center gap-2">
+                      <span class="w-5 h-5 rounded-full bg-slate-700/40 text-slate-300 font-bold text-[10px] flex items-center justify-center">2</span>
+                      <div>
+                        <p class="font-bold text-white truncate max-w-[170px]">OptiScan Portable MRI</p>
+                        <p class="text-[10px] text-slate-500">ID: PROD-4091</p>
+                      </div>
+                    </td>
+                    <td class="py-2.5 text-right font-bold text-cyan-300">5,310</td>
+                    <td class="py-2.5 text-right font-bold text-amber-400">384</td>
+                  </tr>
+
+                  <tr class="hover:bg-slate-900/40">
+                    <td class="py-2.5 flex items-center gap-2">
+                      <span class="w-5 h-5 rounded-full bg-amber-900/30 text-amber-600 font-bold text-[10px] flex items-center justify-center">3</span>
+                      <div>
+                        <p class="font-bold text-white truncate max-w-[170px]">NeuroEcho EMG Sensor</p>
+                        <p class="text-[10px] text-slate-500">ID: PROD-7412</p>
+                      </div>
+                    </td>
+                    <td class="py-2.5 text-right font-bold text-cyan-300">3,240</td>
+                    <td class="py-2.5 text-right font-bold text-amber-400">215</td>
+                  </tr>
+
+                  <tr class="hover:bg-slate-900/40">
+                    <td class="py-2.5 flex items-center gap-2">
+                      <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 font-bold text-[10px] flex items-center justify-center">4</span>
+                      <div>
+                        <p class="font-bold text-white truncate max-w-[170px]">SynapsePro Interface</p>
+                        <p class="text-[10px] text-slate-500">ID: PROD-3105</p>
+                      </div>
+                    </td>
+                    <td class="py-2.5 text-right font-bold text-cyan-300">1,680</td>
+                    <td class="py-2.5 text-right font-bold text-amber-400">108</td>
+                  </tr>
+
+                  <tr class="hover:bg-slate-900/40">
+                    <td class="py-2.5 flex items-center gap-2">
+                      <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 font-bold text-[10px] flex items-center justify-center">5</span>
+                      <div>
+                        <p class="font-bold text-white truncate max-w-[170px]">CorticalStrap Headset</p>
+                        <p class="text-[10px] text-slate-500">ID: PROD-1902</p>
+                      </div>
+                    </td>
+                    <td class="py-2.5 text-right font-bold text-cyan-300">800</td>
+                    <td class="py-2.5 text-right font-bold text-amber-400">61</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pt-2 border-t border-slate-900 flex justify-between items-center text-[10px] text-slate-500">
+              <span>Source: industry_product_views & likes</span>
+              <span class="json-tag text-[9px]">getTopPerformingProducts()</span>
+            </div>
           </div>
-          <!-- Pause Action Button -->
-          <button class="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 transition-all">
-            <span>⏸️ Pause Ad</span>
-            <span class="json-tag border-amber-500 text-amber-400">POST .../pause</span>
-          </button>
+
+          <!-- Right Column: Performance Graph (Views vs. Engagements) (7 Cols) -->
+          <div class="lg:col-span-7 p-5 rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl space-y-4">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                  📈 Performance Graph: Views vs. Engagements
+                  <span class="json-tag text-[9px]">data.graph</span>
+                </h4>
+                <p id="graph-subtitle" class="text-xs text-slate-400">Weekly breakdown across 7 days (Monday to Sunday).</p>
+              </div>
+
+              <!-- Legend -->
+              <div class="flex items-center gap-4 text-xs font-semibold">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-3 h-3 rounded bg-cyan-400 shadow-sm shadow-cyan-500/50"></span>
+                  <span class="text-slate-300">Views</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-3 h-3 rounded-full bg-amber-400 shadow-sm shadow-amber-500/50"></span>
+                  <span class="text-slate-300">Likes / Clicks</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Bar Chart Simulation -->
+            <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+              <div class="h-56 flex items-end justify-between gap-3 pt-6 pb-2 border-b border-slate-800 px-2" id="chart-bars-container">
+
+                <!-- Mon -->
+                <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+                  <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">2.1k</div>
+                  <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 group-hover:from-cyan-500 group-hover:to-cyan-300 transition-all shadow-lg" style="height: 60%"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+                  <span class="text-[11px] text-slate-400 font-semibold mt-1">Mon</span>
+                </div>
+
+                <!-- Tue -->
+                <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+                  <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">2.8k</div>
+                  <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 group-hover:from-cyan-500 group-hover:to-cyan-300 transition-all shadow-lg" style="height: 80%"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+                  <span class="text-[11px] text-slate-400 font-semibold mt-1">Tue</span>
+                </div>
+
+                <!-- Wed -->
+                <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+                  <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">1.9k</div>
+                  <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 group-hover:from-cyan-500 group-hover:to-cyan-300 transition-all shadow-lg" style="height: 54%"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+                  <span class="text-[11px] text-slate-400 font-semibold mt-1">Wed</span>
+                </div>
+
+                <!-- Thu (Peak) -->
+                <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+                  <span class="text-[9px] px-1 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Peak</span>
+                  <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">3.5k</div>
+                  <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-300 group-hover:from-cyan-400 group-hover:to-cyan-200 transition-all shadow-xl shadow-cyan-500/20" style="height: 98%"></div>
+                  <div class="w-3 h-3 rounded-full bg-amber-400 -mt-1.5 border-2 border-slate-900 shadow-md"></div>
+                  <span class="text-[11px] text-[#00c2cb] font-bold mt-1">Thu</span>
+                </div>
+
+                <!-- Fri -->
+                <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+                  <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">3.1k</div>
+                  <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 group-hover:from-cyan-500 group-hover:to-cyan-300 transition-all shadow-lg" style="height: 88%"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+                  <span class="text-[11px] text-slate-400 font-semibold mt-1">Fri</span>
+                </div>
+
+                <!-- Sat -->
+                <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+                  <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">2.6k</div>
+                  <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 group-hover:from-cyan-500 group-hover:to-cyan-300 transition-all shadow-lg" style="height: 74%"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+                  <span class="text-[11px] text-slate-400 font-semibold mt-1">Sat</span>
+                </div>
+
+                <!-- Sun -->
+                <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+                  <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">2.5k</div>
+                  <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 group-hover:from-cyan-500 group-hover:to-cyan-300 transition-all shadow-lg" style="height: 71%"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+                  <span class="text-[11px] text-slate-400 font-semibold mt-1">Sun</span>
+                </div>
+              </div>
+
+              <!-- Footnote -->
+              <div class="flex justify-between items-center text-[10px] text-slate-500 mt-2">
+                <span>Cyan bar = Views count • Amber dot = Engagements count</span>
+                <span class="json-tag text-[9px]">calculateAdvertisementPerformanceGraph()</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1102,6 +1705,228 @@
         toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 400);
       }, 3500);
+    }
+
+    // ==========================================
+    // INDUSTRY ADVERTISEMENTS HUB (SCREEN 4) JS
+    // ==========================================
+    function switchIndustrySubTab(tab) {
+      const historyView = document.getElementById('subtab-view-history');
+      const analyticsView = document.getElementById('subtab-view-analytics');
+      const btnHistory = document.getElementById('subtab-btn-history');
+      const btnAnalytics = document.getElementById('subtab-btn-analytics');
+
+      if (tab === 'history') {
+        if (historyView) historyView.classList.remove('hidden');
+        if (analyticsView) analyticsView.classList.add('hidden');
+        if (btnHistory) btnHistory.className = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-[#00c2cb] text-slate-950 shadow-lg shadow-cyan-500/20 flex items-center gap-2';
+        if (btnAnalytics) btnAnalytics.className = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-800/80 text-slate-300 hover:bg-slate-700 flex items-center gap-2';
+      } else {
+        if (historyView) historyView.classList.add('hidden');
+        if (analyticsView) analyticsView.classList.remove('hidden');
+        if (btnAnalytics) btnAnalytics.className = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-[#00c2cb] text-slate-950 shadow-lg shadow-cyan-500/20 flex items-center gap-2';
+        if (btnHistory) btnHistory.className = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-800/80 text-slate-300 hover:bg-slate-700 flex items-center gap-2';
+      }
+    }
+
+    function filterCampaignCards(status) {
+      document.querySelectorAll('.campaign-filter-btn').forEach(btn => {
+        btn.className = 'campaign-filter-btn px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800';
+      });
+      const activeBtn = document.getElementById('filter-btn-' + status);
+      if (activeBtn) {
+        activeBtn.className = 'campaign-filter-btn px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950 font-bold';
+      }
+
+      document.querySelectorAll('.campaign-card').forEach(card => {
+        const cardStatus = card.getAttribute('data-status');
+        if (status === 'all' || cardStatus === status) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+      showNotificationToast('Filtered campaigns: status=' + status + ' (GET /api/industry/boost-campaigns?status=' + status + ')');
+    }
+
+    function searchCampaignCards(q) {
+      const term = q.trim().toLowerCase();
+      document.querySelectorAll('.campaign-card').forEach(card => {
+        const name = card.getAttribute('data-name') || '';
+        if (!term || name.includes(term)) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    }
+
+    function toggleCampaignPause(id) {
+      const badge = document.getElementById('badge-campaign-' + id);
+      const btn = document.getElementById('btn-toggle-pause-' + id);
+      const timelineText = document.getElementById('timeline-text-' + id);
+      const card = btn?.closest('.campaign-card');
+
+      if (badge && btn) {
+        badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1.5';
+        badge.innerHTML = '<span>⏸️ Paused (Clock Frozen)</span><span class="json-tag">item.status</span>';
+        if (card) {
+          card.setAttribute('data-status', 'paused');
+          card.classList.remove('border-emerald-500/30');
+          card.classList.add('border-amber-500/30');
+        }
+        if (timelineText) {
+          timelineText.className = 'text-amber-300 font-bold flex items-center gap-1';
+          timelineText.innerHTML = '<span>⏱️ 7 Days Frozen</span> <span class="text-xs text-amber-400/80">(Clock stopped)</span>';
+        }
+        btn.className = 'px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md';
+        btn.innerHTML = '<span>▶️ Resume Ad</span><span class="json-tag border-emerald-500/60 text-emerald-300">POST .../resume</span>';
+        btn.setAttribute('onclick', `toggleCampaignResume(${id})`);
+        showNotificationToast('⏸️ Campaign #' + id + ' paused! Remaining 7 days frozen via POST /api/industry/boost/campaigns/' + id + '/pause');
+      }
+    }
+
+    function toggleCampaignResume(id) {
+      const badge = document.getElementById('badge-campaign-' + id);
+      const btn = document.getElementById('btn-toggle-pause-' + id);
+      const timelineText = document.getElementById('timeline-text-' + id);
+      const card = btn?.closest('.campaign-card');
+
+      if (badge && btn) {
+        badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Active Ad<span class="json-tag">item.status</span>';
+        if (card) {
+          card.setAttribute('data-status', 'active');
+          card.classList.remove('border-amber-500/30');
+          card.classList.add('border-emerald-500/30');
+        }
+        if (timelineText) {
+          timelineText.className = 'text-emerald-400 flex items-center gap-1';
+          timelineText.innerHTML = '<span>⚡ Active Running</span> <span class="text-slate-500 font-normal">(Expiration extended)</span>';
+        }
+        btn.className = 'px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md';
+        btn.innerHTML = '<span>⏸️ Pause Ad</span><span class="json-tag border-amber-500/60 text-amber-300">POST .../pause</span>';
+        btn.setAttribute('onclick', `toggleCampaignPause(${id})`);
+        showNotificationToast('▶️ Campaign #' + id + ' resumed! Expiration extended by exact paused duration via POST /api/industry/boost/campaigns/' + id + '/resume');
+      }
+    }
+
+    function setAnalyticsPeriod(period) {
+      const btnWeekly = document.getElementById('btn-period-weekly');
+      const btnMonthly = document.getElementById('btn-period-monthly');
+      const subtitle = document.getElementById('graph-subtitle');
+      const container = document.getElementById('chart-bars-container');
+
+      if (period === 'weekly') {
+        if (btnWeekly) btnWeekly.className = 'px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950 shadow-md';
+        if (btnMonthly) btnMonthly.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white';
+        if (subtitle) subtitle.innerText = 'Weekly breakdown across 7 days (Monday to Sunday).';
+        if (container) {
+          container.innerHTML = `
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+              <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">2.1k</div>
+              <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 shadow-lg" style="height: 60%"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+              <span class="text-[11px] text-slate-400 font-semibold mt-1">Mon</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+              <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">2.8k</div>
+              <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 shadow-lg" style="height: 80%"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+              <span class="text-[11px] text-slate-400 font-semibold mt-1">Tue</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+              <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">1.9k</div>
+              <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 shadow-lg" style="height: 54%"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+              <span class="text-[11px] text-slate-400 font-semibold mt-1">Wed</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+              <span class="text-[9px] px-1 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Peak</span>
+              <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">3.5k</div>
+              <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-300 shadow-xl shadow-cyan-500/20" style="height: 98%"></div>
+              <div class="w-3 h-3 rounded-full bg-amber-400 -mt-1.5 border-2 border-slate-900 shadow-md"></div>
+              <span class="text-[11px] text-[#00c2cb] font-bold mt-1">Thu</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+              <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">3.1k</div>
+              <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 shadow-lg" style="height: 88%"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+              <span class="text-[11px] text-slate-400 font-semibold mt-1">Fri</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+              <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">2.6k</div>
+              <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 shadow-lg" style="height: 74%"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+              <span class="text-[11px] text-slate-400 font-semibold mt-1">Sat</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative cursor-pointer">
+              <div class="text-[10px] font-bold text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">2.5k</div>
+              <div class="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#043940] to-cyan-400 shadow-lg" style="height: 71%"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-400 -mt-1.5 border border-slate-900 shadow"></div>
+              <span class="text-[11px] text-slate-400 font-semibold mt-1">Sun</span>
+            </div>
+          `;
+        }
+        showNotificationToast('GET /api/industry/analytics/advertisements?period=weekly');
+      } else {
+        if (btnMonthly) btnMonthly.className = 'px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950 shadow-md';
+        if (btnWeekly) btnWeekly.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white';
+        if (subtitle) subtitle.innerText = 'Monthly trend comparison across Jan – Dec 2026.';
+        if (container) {
+          container.innerHTML = `
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 45%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">Jan</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 52%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">Feb</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 60%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">Mar</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 58%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">Apr</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 70%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">May</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 65%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">Jun</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 75%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">Jul</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 82%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">Aug</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-400" style="height: 88%"></div>
+              <span class="text-[10px] text-slate-400 mt-1">Sep</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-gradient-to-t from-[#043940] to-cyan-300 shadow-lg shadow-cyan-500/20" style="height: 96%"></div>
+              <span class="text-[10px] text-[#00c2cb] font-bold mt-1">Oct</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-slate-800" style="height: 20%"></div>
+              <span class="text-[10px] text-slate-600 mt-1">Nov</span>
+            </div>
+            <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer">
+              <div class="w-full max-w-[18px] rounded-t-md bg-slate-800" style="height: 20%"></div>
+              <span class="text-[10px] text-slate-600 mt-1">Dec</span>
+            </div>
+          `;
+        }
+        showNotificationToast('GET /api/industry/analytics/advertisements?period=monthly');
+      }
     }
   </script>
 </body>

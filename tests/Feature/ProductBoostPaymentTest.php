@@ -772,3 +772,63 @@ test('all boost email templates share identical header logo, footer, and styling
         ->and($expiredHtml)->toContain('Boost Campaign Expired')
         ->and($expiredHtml)->toContain('Psychology and Neuroscience Community');
 });
+
+test('industry advertiser can list all their boost campaigns with aggregate metrics', function () {
+    $campaign1 = AdCampaign::create([
+        'boostable_type' => IndustryProduct::class,
+        'boostable_id' => $this->product->id,
+        'user_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'boost_package_id' => $this->package->id,
+        'ad_type' => 'product',
+        'network_type' => 'neuroscience',
+        'amount_paid' => 50.00,
+        'currency' => 'USD',
+        'duration_days' => 7,
+        'total_impressions' => 1200,
+        'total_clicks' => 60,
+        'starts_at' => now(),
+        'ends_at' => now()->addDays(7),
+        'status' => AdCampaignStatus::ACTIVE,
+    ]);
+
+    $campaign2 = AdCampaign::create([
+        'boostable_type' => IndustryProduct::class,
+        'boostable_id' => $this->product->id,
+        'user_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'boost_package_id' => $this->package->id,
+        'ad_type' => 'product',
+        'network_type' => 'neuroscience',
+        'amount_paid' => 30.00,
+        'currency' => 'USD',
+        'duration_days' => 5,
+        'total_impressions' => 800,
+        'total_clicks' => 40,
+        'starts_at' => now()->subDays(10),
+        'ends_at' => now()->subDays(5),
+        'status' => AdCampaignStatus::COMPLETED,
+    ]);
+
+    $response = $this->actingAs($this->user, 'api')
+        ->getJson('/api/industry/boost-campaigns')
+        ->assertStatus(200);
+
+    $response->assertJsonPath('success', true)
+        ->assertJsonPath('data.metrics.total_campaigns', 2)
+        ->assertJsonPath('data.metrics.active_campaigns', 1)
+        ->assertJsonPath('data.metrics.completed_campaigns', 1)
+        ->assertJsonPath('data.metrics.total_impressions', 2000)
+        ->assertJsonPath('data.metrics.total_clicks', 100)
+        ->assertJsonPath('data.metrics.average_ctr', 5)
+        ->assertJsonPath('data.metrics.total_spend', 80);
+
+    // Filter by active
+    $activeResponse = $this->actingAs($this->user, 'api')
+        ->getJson('/api/industry/boost-campaigns?status=active')
+        ->assertStatus(200);
+
+    $activeResponse->assertJsonPath('success', true);
+    expect($activeResponse->json('data.campaigns.data'))->toHaveCount(1)
+        ->and($activeResponse->json('data.campaigns.data.0.id'))->toBe($campaign1->id);
+});

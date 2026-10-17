@@ -180,6 +180,7 @@ Route::prefix('industry')->group(function () {
 
     // Boost Packages for Advertisers (Modal & Campaign Builder)
     Route::get('boost-packages', [ProductBoostController::class, 'packages']);
+    Route::get('boost-campaigns', [ProductBoostController::class, 'myCampaigns']);
 
     // Pro Industry Products Dashboard & Management
     Route::prefix('products')->group(function () {

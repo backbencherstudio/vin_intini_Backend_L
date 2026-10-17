@@ -143,43 +143,124 @@ This document provides visual wireframe templates and field-by-field UI/UX mappi
 
 ---
 
-## 📊 SCREEN 4: Product Boost History & Pause/Resume Analytics Card
-* **List API:** `GET /api/industry/products/{id}/boost/campaigns`
-* **Pause API:** `POST /api/industry/boost/campaigns/{id}/pause`
-* **Resume API:** `POST /api/industry/boost/campaigns/{id}/resume`
-* **Trigger:** Accessible on the Merchant's Product Dashboard.
+## 📊 SCREEN 4: Industry Advertiser Portal — "Advertisements" Management & Analytics Hub
 
-### Visual ASCII Wireframe:
+* **Location:** Industry Merchant Portal Navigation: `Marketing & Ads > Advertisements`
+* **Purpose:** A unified self-service portal where industry merchants manage active ad campaigns, pause/resume ads without losing days (Clock-Freeze), monitor campaign history, and review audience engagement analytics.
+
+---
+
+### 🕒 SCREEN 4A: Ad Campaigns History & Clock-Freeze Controls
+* **List Campaigns API:** `GET /api/industry/boost-campaigns` (QueryParams: `status=all|active|paused|completed`, `search={term}`, `page=1`)
+* **Single Product History API:** `GET /api/industry/products/{id}/boost/campaigns`
+* **Pause Ad API:** `POST /api/industry/boost/campaigns/{id}/pause`
+* **Resume Ad API:** `POST /api/industry/boost/campaigns/{id}/resume`
+
+#### Visual ASCII Wireframe:
 ```text
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ Active Boost Campaign                                        🟢 Active       │
-│ Campaign ID #1 • Growth 14-Day Package                       (item.status)   │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ ┌────────────────────────┐ ┌────────────────────────┐ ┌────────────────────┐ │
-│ │ Total Impressions      │ │ Total Clicks           │ │ Click-Through Rate │ │
-│ │ 1,420                  │ │ 88                     │ │ 6.2%               │ │
-│ │ (total_impressions)    │ │ (total_clicks)         │ │ (clicks / imp)     │ │
-│ └────────────────────────┘ └────────────────────────┘ └────────────────────┘ │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ Timeline Progress:                                                           │
-│ Starts: Oct 17, 2026           12 Days Remaining          Ends: Oct 31, 2026 │
-│ [████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] │
-│ (item.starts_at)                                            (item.ends_at)   │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ ⏸️ Campaign Clock-Freeze Policy                                              │
-│ Pause your ad anytime up to 30 days without losing time.     [ ⏸️ Pause Ad ] │
-│                                                              (POST .../pause)│
-└──────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [ 🕒 Ad Campaigns History & Controls (8) ]   [ 📊 Ad Performance Analytics ]            [ + Boost New Product 🚀 ]│
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────┐ │
+│ │ Campaigns    │ │ Active Ads   │ │ Paused (Frz) │ │ Completed    │ │ Impressions  │ │ Total Clicks │ │ Avg CTR  │ │
+│ │ 8            │ │ 3 🟢         │ │ 1 ⏱️         │ │ 4            │ │ 28,450       │ │ 1,820        │ │ 6.40%    │ │
+│ │ (total_camp) │ │ (active_camp)│ │ (paused_camp)│ │ (compl_camp) │ │ (total_imp)  │ │ (total_click)│ │ (avg_ctr)│ │
+│ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────┘ │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Filter: [ All (8) ] [ Active (3) ] [ Paused (1) ] [ Completed (4) ]     🔍 [ Search product name...            ] │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ [🧠] BioPac MP170 Smart EEG Monitor (boostable.product_name)                  $112.00 Paid      🟢 Active Ad │ │
+│ │      Campaign #108 • Growth Surge (14 Days) • Priority: 5 (boost_package.name)   (amount_paid)  (item.status)│ │
+│ │ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐          │ │
+│ │ │ Impressions: 14,250  │ │ Clicks: 920          │ │ CTR: 6.46%           │ │ Cost/Click: $0.12    │          │ │
+│ │ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘          │ │
+│ │ Timeline: Started: Oct 10, 2026      ⚡ 7 Days Remaining (50% Complete)        Ends: Oct 24, 2026             │ │
+│ │ [████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]     │ │
+│ │ ❄️ Clock-Freeze Policy: Pause anytime without losing your 7 days.        [ 👁️ In Feed ]  [ ⏸️ Pause Ad ]     │ │
+│ │                                                                                           (POST .../pause)   │ │
+│ └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ │
+│ ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ [📡] NeuroEcho Wireless EMG Sensor                                            $56.00 Paid   ⏱️ Paused (Frozen)│ │
+│ │      Campaign #95 • Starter Spark (7 Days) • Priority: 3                                        (item.status)│ │
+│ │ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐          │ │
+│ │ │ Impressions: 6,480   │ │ Clicks: 415          │ │ CTR: 6.40%           │ │ Cost/Click: $0.13    │          │ │
+│ │ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘          │ │
+│ │ Timeline: Started: Oct 11, 2026      ⏱️ 4 Days 12h Remaining (Frozen)          Ends: Frozen Expiration        │ │
+│ │ [████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]     │ │
+│ │ ⚠️ Auto-Expiry: 26 days left before paused campaign auto-expires.        [ ✏️ Edit ]     [ ▶️ Resume Ad ]    │ │
+│ │                                                                                           (POST .../resume)  │ │
+│ └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Exact Response Field to UI Component Mapping:
-1. `item.status`: Status badge (`Active` green, `Paused` amber, `Completed` slate).
-2. `item.total_impressions`: Formatted view count.
-3. `item.total_clicks`: Formatted click count.
-4. `item.starts_at` & `item.ends_at`: Progress bar start/end dates and remaining days.
-5. `is_paused`:
-   - If `false`: Renders amber `[ ⏸️ Pause Ad ]` button.
-   - If `true`: Renders emerald `[ ▶️ Resume Ad ]` button.
+#### Exact Response Field to UI Component Mapping (Screen 4A):
+1. `data.metrics.total_campaigns`: Total number of campaigns ever created by this industry.
+2. `data.metrics.active_campaigns`: Number of currently running ad campaigns (with pulsing emerald indicator).
+3. `data.metrics.paused_campaigns`: Number of paused campaigns with clock frozen.
+4. `data.metrics.completed_campaigns`: Number of campaigns that reached scheduled end date.
+5. `data.metrics.total_impressions`: Sum of all viewable IAB impressions delivered.
+6. `data.metrics.total_clicks`: Sum of all verified clicks recorded.
+7. `data.metrics.average_ctr`: Aggregate CTR percentage: `(total_clicks / total_impressions) * 100`.
+8. `data.metrics.total_spend`: Cumulative budget invested in boosting across all campaigns.
+9. `item.boostable.product_name`: Title of the boosted product.
+10. `item.boost_package.name`: Title of boost package applied (or "Custom Duration").
+11. `item.status`:
+    - `active`: Emerald pill with pulsing dot + `[ ⏸️ Pause Ad ]` button.
+    - `paused`: Amber pill with clock icon + `[ ▶️ Resume Ad ]` button.
+    - `completed`: Slate gray pill + `[ 🚀 Boost Again ]` button.
+12. `item.starts_at` & `item.ends_at`: Formatted dates flanking the timeline progress bar.
+13. `item.total_impressions` & `item.total_clicks`: Real-time KPI tiles for each individual campaign.
+
+---
+
+### 📊 SCREEN 4B: Industry Ad Performance Analytics & Insights
+* **Analytics API:** `GET /api/industry/analytics/advertisements` (QueryParams: `period=weekly|monthly`)
+* **Purpose:** High-level executive performance summary showing growth comparisons, top-performing product rankings, and a views-versus-engagements trend chart.
+
+#### Visual ASCII Wireframe:
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Timeframe: [ Weekly (Last 7 Days) ] [ Monthly (2026) ]                                  [ 📥 Export CSV Report ] │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ┌────────────────────────┐ ┌────────────────────────┐ ┌────────────────────────┐ ┌────────────────────────────┐ │
+│ │ 📦 Total Products      │ │ ⚡ Active Boosted Ads   │ │ 👁️ Product Ad Views   │ │ ❤️ Likes & Engagements     │ │
+│ │ 24                     │ │ 8                      │ │ 18,450                 │ │ 1,280                      │ │
+│ │ ↗ +12% from last month │ │ ↗ +33.3% from last mon │ │ ↗ +28.5% from last mon │ │ ↗ +18.2% from last month   │ │
+│ │ (cards.total_products) │ │ (cards.active_products)│ │ (cards.product_views)  │ │ (cards.total_likes)        │ │
+│ └────────────────────────┘ └────────────────────────┘ └────────────────────────┘ └────────────────────────────┘ │
+├──────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────┤
+│ 🏆 Top Performing Products (top_performing_products)    │ 📈 Views vs. Engagements Chart (data.graph)           │
+│ ┌──────────────────────────────────┬───────┬───────────┐ │ Legend: [■ Cyan = Views]  [● Amber = Likes/Clicks]   │
+│ │ Rank & Product                   │ Views │ Likes/Clk │ │                                                       │
+│ ├──────────────────────────────────┼───────┼───────────┤ │  3.5k ──┐                     ┌─┐ (Peak: Thu)         │
+│ │ 🥇 1. BioPac MP170 EEG Monitor   │ 7,420 │    512    │ │         │         ┌─┐         │█│                     │
+│ │ 🥈 2. OptiScan Portable MRI      │ 5,310 │    384    │ │  2.5k ──┤ ┌─┐     │█│ ┌─┐     │█│ ┌─┐ ┌─┐ ┌─┐         │
+│ │ 🥉 3. NeuroEcho EMG Sensor       │ 3,240 │    215    │ │         │ │█│ ●   │█│ │█│ ●   │█│ │█│ │█│ │█│         │
+│ │    4. SynapsePro Interface       │ 1,680 │    108    │ │  1.0k ──┤ │█│ │   │█│ │█│ │   │█│ │█│ │█│ │█│         │
+│ │    5. CorticalStrap Headset V2   │   800 │     61    │ │         │ │█│ │   │█│ │█│ │   │█│ │█│ │█│ │█│         │
+│ └──────────────────────────────────┴───────┴───────────┘ │         └─┴─┴─┴───┴─┴─┴─┴─┴───┴─┴─┴─┴─┴─┴─┴─┴─────────┘ │
+│                                                          │           Mon   Tue   Wed   Thu   Fri   Sat   Sun         │
+└──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
+```
+
+#### Exact Response Field to UI Component Mapping (Screen 4B):
+1. `data.cards.total_products`: Total product count (`total`, `growth` formatted as `+12% from last month`, `is_positive`).
+2. `data.cards.active_products`: Active promoted products count with growth metric.
+3. `data.cards.product_views`: Cumulative ad views count across current month with percentage change.
+4. `data.cards.total_likes`: Total like/save interactions with percentage growth.
+5. `data.top_performing_products[]`: Left ranking table:
+   - `id` & `product_id`: Unique identifier badge.
+   - `product_name`: Truncated product label.
+   - `views_count`: Formatted view count.
+   - `likes_count`: Formatted engagement count.
+6. `data.graph[]`: Right performance trend chart:
+   - `label`: X-axis time label (`Mon` through `Sun` for weekly; `Jan` through `Dec` for monthly).
+   - `views`: Vertical bar height rendered in electric cyan gradient (`#00c2cb`).
+   - `likes`: Highlight dot / trend line point rendered in amber (`#f59e0b`).
+7. Period selector toggle:
+   - When switching to `period=weekly`, queries `GET /api/industry/analytics/advertisements?period=weekly`.
+   - When switching to `period=monthly`, queries `GET /api/industry/analytics/advertisements?period=monthly`.
 
 ---
 
