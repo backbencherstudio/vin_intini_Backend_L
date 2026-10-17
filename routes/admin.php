@@ -27,11 +27,11 @@ Route::prefix('admin')->group(function () {
 
     // boost package routes
     Route::get('/boost-packages', [BoostPackageAdminController::class, 'index']);
-    Route::get('/boost-packages/{boost_package}', [BoostPackageAdminController::class, 'show']);
+    Route::get('/boost-packages/{boost_package}/show', [BoostPackageAdminController::class, 'show']);
     Route::post('/boost-packages/store', [BoostPackageAdminController::class, 'store']);
-    Route::patch('/boost-packages/{boost_package}', [BoostPackageAdminController::class, 'update']);
+    Route::patch('/boost-packages/{boost_package}/update', [BoostPackageAdminController::class, 'update']);
     Route::patch('/boost-packages/{boost_package}/status', [BoostPackageAdminController::class, 'toggleStatus']);
-    Route::delete('/boost-packages/{boost_package}', [BoostPackageAdminController::class, 'destroy']);
+    Route::delete('/boost-packages/{boost_package}/delete', [BoostPackageAdminController::class, 'destroy']);
 
     // boost system settings (custom slider, new release, pause policy)
     Route::get('/boost-settings', [BoostPackageAdminController::class, 'getSettings']);
