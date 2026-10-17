@@ -515,6 +515,33 @@ class JobsFeedSearchTest extends TestCase
         $resSearchJobId->assertOk()
             ->assertJsonPath('total_jobs', 1)
             ->assertJsonPath('data.0.id', $job2->id);
+
+        // 6. Filter by state code (TX)
+        $resCode = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-by-state-offering?code=TX');
+        $resCode->assertOk()
+            ->assertJsonPath('total_jobs', 2)
+            ->assertJsonPath('state.code', 'TX')
+            ->assertJsonPath('filters.state_id', $state1->id)
+            ->assertJsonPath('filters.code', 'TX');
+
+        // 7. Filter by case-insensitive state code (tx) with offering
+        $resCodeOffering = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-by-state-offering?code=tx&employment_offering=private');
+        $resCodeOffering->assertOk()
+            ->assertJsonPath('total_jobs', 1)
+            ->assertJsonPath('data.0.id', $job1->id)
+            ->assertJsonPath('private_jobs_count', 1)
+            ->assertJsonPath('state_jobs_count', 1);
+
+        // 8. Filter by multi codes (TX,FL)
+        $resMultiCodes = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-by-state-offering?codes=TX,FL');
+        $resMultiCodes->assertOk()
+            ->assertJsonPath('total_jobs', 3);
+
+        // 9. Filter by non-existent code returns empty results safely
+        $resInvalid = $this->actingAs($user, 'api')->getJson('/api/industry/jobs-by-state-offering?code=INVALID_CODE');
+        $resInvalid->assertOk()
+            ->assertJsonPath('total_jobs', 0)
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_jobsfeed_identifies_own_industry_jobs(): void
