@@ -72,12 +72,29 @@ class Publication extends Model
 
     protected $appends = [
         'attachment_url',
+        'file_extension',
     ];
 
     protected function attachmentUrl(): Attribute
     {
         return Attribute::make(
             get: fn () => $this->attachment ? asset('storage/'.$this->attachment) : null,
+        );
+    }
+
+    protected function fileExtension(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?string {
+                if (empty($this->attachment)) {
+                    return null;
+                }
+
+                $path = parse_url((string) $this->attachment, PHP_URL_PATH) ?? (string) $this->attachment;
+                $extension = pathinfo($path, PATHINFO_EXTENSION);
+
+                return ! empty($extension) ? strtolower($extension) : null;
+            },
         );
     }
 

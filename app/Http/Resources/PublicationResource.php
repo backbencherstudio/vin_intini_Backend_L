@@ -74,6 +74,7 @@ class PublicationResource extends JsonResource
             'website_url' => $this->website_url,
             'attachment' => $this->attachment,
             'attachment_url' => $this->attachment_url,
+            'file_extension' => $this->file_extension,
             'information_confirmed' => (bool) $this->information_confirmed,
             'status' => $this->status,
             'views_count' => (int) ($this->views_count ?? 0),

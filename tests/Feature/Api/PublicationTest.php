@@ -413,6 +413,28 @@ class PublicationTest extends TestCase
         $this->assertEquals(2, $publication->fresh()->views_count);
     }
 
+    public function test_show_publication_details_returns_file_extensions(): void
+    {
+        $publication = Publication::create([
+            'creator_id' => $this->premiumUser->id,
+            'industry_id' => null,
+            'network_type' => 'psychology',
+            'publication_type' => 'university',
+            'title' => 'File Extension Test',
+            'slug' => 'file-extension-test',
+            'abstract' => 'Checking file extensions.',
+            'attachment' => 'publications/attachments/sample-paper.pdf',
+            'website_url' => 'https://example.com/study',
+            'status' => 'active',
+            'views_count' => 0,
+        ]);
+
+        $this->actingAs($this->premiumUser, 'api')
+            ->getJson("/api/publications/{$publication->id}/details")
+            ->assertStatus(200)
+            ->assertJsonPath('data.file_extension', 'pdf');
+    }
+
     public function test_toggle_like_updates_likes_count(): void
     {
         $publication = Publication::create([
