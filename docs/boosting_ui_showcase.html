@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mind Unite — Boosting & Ad System UI/UX Interactive Showcase</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .brand-teal { background-color: #043940; }
+    .brand-teal-border { border-color: #043940; }
+    .brand-cyan { color: #00c2cb; }
+    .brand-cyan-bg { background-color: #00c2cb; }
+    .brand-cyan-border { border-color: #00c2cb; }
+    .brand-cyan-glow { box-shadow: 0 0 25px rgba(0, 194, 203, 0.25); }
+    .json-tag { font-family: monospace; font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(0, 194, 203, 0.15); color: #008f95; font-weight: 600; border: 1px dashed #00c2cb; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#043940] to-[#00c2cb] flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/20">
+        MU
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-white flex items-center gap-2">
+          Mind Unite <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-[#00c2cb] border border-[#00c2cb]/40">UI/UX Design Templates</span>
+        </h1>
+        <p class="text-xs text-slate-400">Exact 1-to-1 UI mapping for every Backend API response</p>
+      </div>
+    </div>
+
+    <!-- Screen Tabs Switcher -->
+    <div class="flex flex-wrap gap-2 text-xs font-semibold">
+      <button onclick="showTab('tab-newsfeed')" id="btn-tab-newsfeed" class="tab-btn px-3 py-1.5 rounded-lg bg-[#00c2cb] text-slate-950">1. Newsfeed Ad Card</button>
+      <button onclick="showTab('tab-paywall')" id="btn-tab-paywall" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">2. Boost Paywall Modal</button>
+      <button onclick="showTab('tab-otp')" id="btn-tab-otp" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">3. OTP Challenge</button>
+      <button onclick="showTab('tab-campaigns')" id="btn-tab-campaigns" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. My Boost Campaigns</button>
+      <button onclick="showTab('tab-admin-packages')" id="btn-tab-admin-packages" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">5. Admin Package Table</button>
+      <button onclick="showTab('tab-admin-create')" id="btn-tab-admin-create" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Admin Create Package</button>
+      <button onclick="showTab('tab-admin-settings')" id="btn-tab-admin-settings" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Admin Settings</button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-6">
+
+    <!-- ==========================================
+         TAB 1: NEWSFEED SPONSORED AD CARD
+         ========================================== -->
+    <div id="tab-newsfeed" class="tab-content block">
+      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/newsfeed</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-cyan-500/10 text-[#00c2cb] text-xs font-mono font-bold">POST /api/advertisements/impressions</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-cyan-500/10 text-[#00c2cb] text-xs font-mono font-bold">POST /api/advertisements/{id}/click</span>
+          <h2 class="text-base font-bold text-white mt-1">Screen 1: In-Feed Sponsored Product Card (Injected at Slot 4 & 13)</h2>
+          <p class="text-xs text-slate-400">Notice the pink dashed tags showing exactly which API response field fills which UI element!</p>
+        </div>
+      </div>
+
+      <!-- Feed Container Simulation -->
+      <div class="max-w-xl mx-auto space-y-4">
+        <!-- Organic Post Sample -->
+        <div class="p-4 rounded-2xl bg-slate-800/40 border border-slate-800 text-slate-400 text-sm">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-8 h-8 rounded-full bg-slate-700"></div>
+            <div>
+              <p class="text-xs font-semibold text-slate-300">Dr. Sarah Jenkins</p>
+              <p class="text-[10px] text-slate-500">Slot 3 • Organic Research Post</p>
+            </div>
+          </div>
+          <p class="text-xs">Publishing new insights from the European Neuropsychology conference on wearable biosensors...</p>
+        </div>
+
+        <!-- THE SPONSORED AD CARD (SLOT 4) -->
+        <div class="p-5 rounded-2xl bg-[#043940]/90 border-2 border-[#00c2cb]/40 shadow-2xl relative brand-cyan-glow">
+          <!-- API Mapping Tag -->
+          <div class="absolute -top-3 right-4">
+            <span class="json-tag bg-cyan-900/90 text-cyan-200">item.is_sponsored: true</span>
+          </div>
+
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full border border-cyan-500/40 bg-slate-800 overflow-hidden flex items-center justify-center font-bold text-cyan-300">
+                BP
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <h4 class="text-sm font-bold text-white">BioPac Systems Inc</h4>
+                  <span class="json-tag">item.company.name</span>
+                </div>
+                <p class="text-[11px] text-slate-300">Biotechnology • Sponsor</p>
+              </div>
+            </div>
+
+            <!-- Badge -->
+            <div class="flex items-center gap-1">
+              <span class="json-tag">item.badge</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#00c2cb]/20 text-[#00c2cb] border border-[#00c2cb]/50 flex items-center gap-1 shadow-sm">
+                ⚡ Most Popular
+              </span>
+            </div>
+          </div>
+
+          <!-- Media Carousel Box -->
+          <div class="relative w-full h-56 rounded-xl bg-slate-900 overflow-hidden mb-3 border border-slate-700/60 group">
+            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900">
+              <div class="text-center p-4">
+                <svg class="w-16 h-16 mx-auto text-[#00c2cb]/50 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+                <p class="text-xs text-slate-400 font-mono">[High-Res Product Image Showcase]</p>
+                <span class="json-tag mt-2 inline-block">item.image</span>
+              </div>
+            </div>
+
+            <!-- Floating Price Badge -->
+            <div class="absolute bottom-3 left-3 px-3 py-1 rounded-lg bg-slate-950/80 backdrop-blur-md text-white font-bold text-sm border border-slate-700 flex items-center gap-2">
+              <span>$89.00</span>
+              <span class="json-tag">item.price</span>
+            </div>
+          </div>
+
+          <!-- Title & Description -->
+          <div class="mb-4">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <h3 class="text-base font-bold text-white hover:text-[#00c2cb] transition-colors cursor-pointer">
+                BioPac MP170 System
+              </h3>
+              <span class="json-tag">item.title</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              High resolution functional brain imaging with real-time analysis and ambulatory wearable telemetry.
+            </p>
+            <span class="json-tag mt-1 inline-block">item.description</span>
+          </div>
+
+          <!-- Footer Actions & CTA Button -->
+          <div class="flex justify-between items-center pt-3 border-t border-slate-700/60">
+            <div class="text-[11px] text-slate-400 flex items-center gap-2">
+              <span>👁️ Viewable Impression tracked</span>
+              <span class="json-tag">POST /advertisements/impressions</span>
+            </div>
+
+            <!-- CTA Click Button -->
+            <a href="#" class="px-5 py-2 rounded-xl bg-gradient-to-r from-[#00c2cb] to-cyan-400 hover:from-cyan-400 hover:to-[#00c2cb] text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/30 flex items-center gap-1.5 transition-all transform hover:scale-105">
+              <span>View Product</span>
+              <span class="json-tag text-slate-900 border-slate-900">item.cta_text</span>
+              <span>↗</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Organic Post Sample -->
+        <div class="p-4 rounded-2xl bg-slate-800/40 border border-slate-800 text-slate-400 text-sm">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-8 h-8 rounded-full bg-slate-700"></div>
+            <div>
+              <p class="text-xs font-semibold text-slate-300">Dr. Alex Rivers</p>
+              <p class="text-[10px] text-slate-500">Slot 5 • Organic Post</p>
+            </div>
+          </div>
+          <p class="text-xs">Excited to announce our open-access EEG dataset for cognitive load estimation...</p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         TAB 2: BOOST PAYWALL MODAL
+         ========================================== -->
+    <div id="tab-paywall" class="tab-content hidden">
+      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/industry/boost-packages</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-purple-500/10 text-purple-400 text-xs font-mono font-bold">POST /api/industry/products/{id}/boost/purchase</span>
+          <h2 class="text-base font-bold text-white mt-1">Screen 2: Product Boost Selection & Paywall Modal</h2>
+          <p class="text-xs text-slate-400">Shows how <code>preset_packages[]</code> and <code>custom_slider</code> are mapped to UI cards and dynamic pricing slider.</p>
+        </div>
+      </div>
+
+      <!-- Modal Card Simulation -->
+      <div class="max-w-2xl mx-auto rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl p-6 relative">
+        <!-- Close button -->
+        <button class="absolute top-5 right-5 text-slate-400 hover:text-white">✕</button>
+
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#043940] to-[#00c2cb] flex items-center justify-center text-white text-xl">
+            🚀
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">Boost Your Product Visibility</h3>
+            <p class="text-xs text-slate-400">Skyrocket your sales with priority placement in feeds & searches</p>
+          </div>
+        </div>
+
+        <!-- Product Mini Strip -->
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center text-cyan-400 font-bold text-xs">IMG</div>
+            <div>
+              <h4 class="text-xs font-bold text-white">BioPac MP170 System</h4>
+              <p class="text-[11px] text-slate-400">Current Organic Views: 88 views</p>
+            </div>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold">Selected Product</span>
+        </div>
+
+        <!-- Tabs: Preset vs Custom Slider -->
+        <div class="flex border-b border-slate-800 mb-6 gap-6 text-xs font-bold">
+          <button class="pb-2 text-[#00c2cb] border-b-2 border-[#00c2cb]">Preset Packages</button>
+          <button class="pb-2 text-slate-400 hover:text-slate-200">Custom Duration Slider (Web Only)</button>
+          <span class="json-tag self-center">custom_slider.channel</span>
+        </div>
+
+        <!-- Package Tier Cards Grid (3 Cards from preset_packages[]) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <!-- Card 1 -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer">
+            <span class="json-tag mb-1 inline-block">package[0].badge</span>
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Starter</div>
+            <div class="text-xl font-extrabold text-white mb-1">$19.99</div>
+            <span class="json-tag">package[0].price</span>
+            <div class="text-xs text-slate-300 font-semibold mb-3">7 Days</div>
+            <p class="text-[11px] text-cyan-400 mb-3">Est. 5k – 10k Views</p>
+            <ul class="text-[10px] text-slate-400 space-y-1.5 border-t border-slate-800 pt-3">
+              <li>✓ Marketplace Top Placement</li>
+              <li>✓ In-Feed Sponsored Cards</li>
+            </ul>
+          </div>
+
+          <!-- Card 2 (Active Selected - Most Popular) -->
+          <div class="p-4 rounded-2xl bg-[#043940]/40 border-2 border-[#00c2cb] shadow-lg shadow-cyan-500/10 relative cursor-pointer">
+            <div class="absolute -top-3 right-4 px-2.5 py-0.5 rounded-full bg-[#00c2cb] text-slate-950 font-bold text-[10px] uppercase shadow">
+              Most Popular
+            </div>
+            <div class="text-[11px] font-bold text-[#00c2cb] uppercase tracking-wider mb-1">Growth Boost</div>
+            <div class="text-xl font-extrabold text-white mb-1">$34.99</div>
+            <div class="text-xs text-slate-200 font-semibold mb-3">14 Days</div>
+            <p class="text-[11px] text-cyan-300 font-bold mb-3">Est. 15k – 25k Views</p>
+            <ul class="text-[10px] text-slate-300 space-y-1.5 border-t border-cyan-800/40 pt-3">
+              <li>✓ High Frequency In-Feed Cards</li>
+              <li>✓ Pause & Resume Flexibility</li>
+              <li>✓ Priority Rotation Algorithm</li>
+            </ul>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer">
+            <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1">Best Value</div>
+            <div class="text-xl font-extrabold text-white mb-1">$69.99</div>
+            <div class="text-xs text-slate-300 font-semibold mb-3">30 Days</div>
+            <p class="text-[11px] text-cyan-400 mb-3">Est. 40k – 60k Views</p>
+            <ul class="text-[10px] text-slate-400 space-y-1.5 border-t border-slate-800 pt-3">
+              <li>✓ Full Network Dominance</li>
+              <li>✓ Highest Priority In-Feed</li>
+              <li>✓ Full Analytics Suite</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Custom Slider Simulation Preview -->
+        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-xs font-bold text-white">Custom Duration Slider: <span class="text-[#00c2cb]">20 Days</span></span>
+            <span class="json-tag">custom_slider.daily_rate = $3.00/day</span>
+          </div>
+          <input type="range" min="3" max="60" value="20" class="w-full accent-[#00c2cb] mb-2 cursor-pointer">
+          <div class="flex justify-between text-[10px] text-slate-500">
+            <span>Min: 3 Days</span>
+            <span class="text-cyan-400 font-bold text-xs">$3.00 × 20 Days = $60.00 Total</span>
+            <span>Max: 60 Days</span>
+          </div>
+        </div>
+
+        <!-- Stripe Card Element Placeholder -->
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 mb-6">
+          <label class="text-xs font-bold text-slate-300 mb-2 block">Card Details (Stripe Elements)</label>
+          <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-400 font-mono flex items-center justify-between">
+            <span>•••• •••• •••• 4242 &nbsp;|&nbsp; 12/28 &nbsp;|&nbsp; CVC</span>
+            <span class="json-tag">stripe_publishable_key</span>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button class="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00c2cb] to-cyan-400 hover:opacity-95 text-slate-950 font-bold text-sm shadow-xl shadow-cyan-500/20 flex items-center justify-center gap-2">
+          <span>Pay $34.99 & Proceed to Security Verification</span>
+          <span>→</span>
+        </button>
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         TAB 3: 4-DIGIT OTP SECURITY MODAL
+         ========================================== -->
+    <div id="tab-otp" class="tab-content hidden">
+      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <span class="px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-xs font-mono font-bold">POST /api/industry/products/{id}/boost/send-otp</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-purple-500/10 text-purple-400 text-xs font-mono font-bold">POST .../boost/purchase (with { otp: '4821' })</span>
+          <h2 class="text-base font-bold text-white mt-1">Screen 3: 4-Digit Email Security OTP Challenge Modal</h2>
+          <p class="text-xs text-slate-400">Triggered automatically on Web after card input to authenticate buyer identity.</p>
+        </div>
+      </div>
+
+      <!-- OTP Modal Dialog Simulation -->
+      <div class="max-w-md mx-auto rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl p-6 text-center relative">
+        <button class="absolute top-5 right-5 text-slate-400 hover:text-white">✕</button>
+
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-cyan-950/60 border border-[#00c2cb]/40 flex items-center justify-center text-2xl text-[#00c2cb] shadow-lg shadow-cyan-500/20">
+          🛡️
+        </div>
+
+        <h3 class="text-lg font-bold text-white mb-1">Verify Payment Security</h3>
+        <p class="text-xs text-slate-400 mb-1">We sent a 4-digit verification code to your email:</p>
+        <div class="mb-6">
+          <span class="text-xs font-semibold text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800">
+            u***@mindunite.com
+          </span>
+          <span class="json-tag ml-1">response.data.email</span>
+        </div>
+
+        <!-- 4 Separate Inputs -->
+        <div class="flex justify-center gap-3 mb-6">
+          <input type="text" maxlength="1" value="4" class="w-14 h-16 text-2xl font-extrabold text-center rounded-xl bg-slate-900 border-2 border-[#00c2cb] text-white focus:outline-none focus:ring-4 focus:ring-cyan-500/20 shadow-md">
+          <input type="text" maxlength="1" value="8" class="w-14 h-16 text-2xl font-extrabold text-center rounded-xl bg-slate-900 border-2 border-[#00c2cb] text-white focus:outline-none focus:ring-4 focus:ring-cyan-500/20 shadow-md">
+          <input type="text" maxlength="1" value="2" class="w-14 h-16 text-2xl font-extrabold text-center rounded-xl bg-slate-900 border-2 border-[#00c2cb] text-white focus:outline-none focus:ring-4 focus:ring-cyan-500/20 shadow-md">
+          <input type="text" maxlength="1" value="1" class="w-14 h-16 text-2xl font-extrabold text-center rounded-xl bg-slate-900 border-2 border-[#00c2cb] text-white focus:outline-none focus:ring-4 focus:ring-cyan-500/20 shadow-md">
+        </div>
+
+        <div class="text-xs text-slate-400 mb-6 flex justify-center items-center gap-1">
+          <span>Didn't receive code? Resend in</span>
+          <span class="text-[#00c2cb] font-bold">00:45s</span>
+        </div>
+
+        <button class="w-full py-3.5 rounded-xl bg-[#00c2cb] hover:bg-cyan-400 text-slate-950 font-bold text-sm shadow-xl shadow-cyan-500/20 transition-all">
+          Verify & Launch Campaign
+        </button>
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         TAB 4: MY BOOST CAMPAIGNS
+         ========================================== -->
+    <div id="tab-campaigns" class="tab-content hidden">
+      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/industry/products/{id}/boost/campaigns</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-xs font-mono font-bold">POST .../pause</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">POST .../resume</span>
+          <h2 class="text-base font-bold text-white mt-1">Screen 4: Product Boost History & Pause/Resume Analytics Card</h2>
+          <p class="text-xs text-slate-400">Displays real-time impressions, click-through rates, and freeze-clock pause controls.</p>
+        </div>
+      </div>
+
+      <!-- Campaign Analytics Card Simulation -->
+      <div class="max-w-2xl mx-auto rounded-3xl bg-slate-950 border border-slate-800 p-6 shadow-2xl space-y-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-base font-bold text-white">Active Boost Campaign</h3>
+            <p class="text-xs text-slate-400">Campaign ID #1 • Growth 14-Day Package</p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Active
+            <span class="json-tag">item.status</span>
+          </span>
+        </div>
+
+        <!-- 3 KPI Metric Badges -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
+            <p class="text-[11px] text-slate-400 mb-1">Total Impressions</p>
+            <p class="text-lg font-bold text-white">1,420</p>
+            <span class="json-tag">item.total_impressions</span>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
+            <p class="text-[11px] text-slate-400 mb-1">Total Clicks</p>
+            <p class="text-lg font-bold text-white">88</p>
+            <span class="json-tag">item.total_clicks</span>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
+            <p class="text-[11px] text-slate-400 mb-1">Average CTR</p>
+            <p class="text-lg font-bold text-[#00c2cb]">6.2%</p>
+            <span class="json-tag">(clicks / imp) * 100</span>
+          </div>
+        </div>
+
+        <!-- Timeline Progress Bar -->
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <div class="flex justify-between text-xs font-semibold mb-2">
+            <span class="text-slate-300">Starts: Oct 17, 2026</span>
+            <span class="text-cyan-400">12 Days Remaining</span>
+            <span class="text-slate-300">Ends: Oct 31, 2026</span>
+          </div>
+          <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-[#043940] to-[#00c2cb]" style="width: 25%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+            <span class="json-tag">item.starts_at</span>
+            <span class="json-tag">item.ends_at</span>
+          </div>
+        </div>
+
+        <!-- Pause / Resume Button Controller -->
+        <div class="flex justify-between items-center p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div>
+            <p class="text-xs font-bold text-white">Campaign Clock-Freeze Policy</p>
+            <p class="text-[11px] text-slate-400">Pause your ad anytime up to 30 days without losing remaining time.</p>
+          </div>
+          <!-- Pause Action Button -->
+          <button class="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 transition-all">
+            <span>⏸️ Pause Ad</span>
+            <span class="json-tag border-amber-500 text-amber-400">POST .../pause</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         TAB 5: ADMIN PACKAGE TABLE
+         ========================================== -->
+    <div id="tab-admin-packages" class="tab-content hidden">
+      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/admin/boost-packages</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-cyan-500/10 text-[#00c2cb] text-xs font-mono font-bold">PATCH /api/admin/boost-packages/{id}/status</span>
+          <h2 class="text-base font-bold text-white mt-1">Screen 5: Admin Boost Package Management Table</h2>
+          <p class="text-xs text-slate-400">Table listing all created boost tiers with instant toggle switch and live campaign counter.</p>
+        </div>
+        <button class="px-4 py-2 rounded-xl bg-[#00c2cb] hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md flex items-center gap-1.5">
+          <span>+ Create New Package</span>
+        </button>
+      </div>
+
+      <!-- Data Table -->
+      <div class="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
+            <tr>
+              <th class="p-4">Package Name & Badge</th>
+              <th class="p-4">Duration</th>
+              <th class="p-4">Price</th>
+              <th class="p-4">Est. Impressions</th>
+              <th class="p-4">Priority</th>
+              <th class="p-4">Active Campaigns</th>
+              <th class="p-4">Status Toggle</th>
+              <th class="p-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 text-slate-200">
+            <!-- Row 1 -->
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-4">
+                <div class="font-bold text-white">7-Day Starter Boost</div>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold">Starter</span>
+                <span class="json-tag ml-1">item.name, item.badge</span>
+              </td>
+              <td class="p-4 font-semibold text-slate-300">7 Days <span class="json-tag">item.duration_days</span></td>
+              <td class="p-4 font-bold text-white">$19.99 <span class="json-tag">item.price</span></td>
+              <td class="p-4 text-cyan-400 font-semibold">5,000 – 10,000 <span class="json-tag">item.estimated_impressions</span></td>
+              <td class="p-4 font-mono">1 <span class="json-tag">item.priority_weight</span></td>
+              <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-bold">0 Live</span></td>
+              <td class="p-4">
+                <!-- Toggle switch -->
+                <div class="w-10 h-5 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+                  <div class="w-4 h-4 bg-slate-950 rounded-full shadow"></div>
+                </div>
+                <span class="json-tag mt-1 inline-block">PATCH .../status</span>
+              </td>
+              <td class="p-4 text-right space-x-2">
+                <button class="text-slate-400 hover:text-white">✏️</button>
+                <button class="text-rose-400 hover:text-rose-300">🗑️</button>
+              </td>
+            </tr>
+
+            <!-- Row 2 -->
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-4">
+                <div class="font-bold text-white">14-Day Growth Boost</div>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#00c2cb]/20 text-[#00c2cb] font-semibold border border-[#00c2cb]/30">Most Popular</span>
+              </td>
+              <td class="p-4 font-semibold text-slate-300">14 Days</td>
+              <td class="p-4 font-bold text-white">$34.99</td>
+              <td class="p-4 text-cyan-400 font-semibold">15,000 – 25,000</td>
+              <td class="p-4 font-mono">2</td>
+              <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">1 Live</span></td>
+              <td class="p-4">
+                <div class="w-10 h-5 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+                  <div class="w-4 h-4 bg-slate-950 rounded-full shadow"></div>
+                </div>
+              </td>
+              <td class="p-4 text-right space-x-2">
+                <button class="text-slate-400 hover:text-white">✏️</button>
+                <button class="text-rose-400 hover:text-rose-300">🗑️</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         TAB 6: ADMIN CREATE PACKAGE MODAL
+         ========================================== -->
+    <div id="tab-admin-create" class="tab-content hidden">
+      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <span class="px-2 py-1 rounded bg-purple-500/10 text-purple-400 text-xs font-mono font-bold">POST /api/admin/boost-packages</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-xs font-mono font-bold">PATCH /api/admin/boost-packages/{id}</span>
+          <h2 class="text-base font-bold text-white mt-1">Screen 6: Admin Create & Edit Package Modal Form</h2>
+          <p class="text-xs text-slate-400">Shows all input fields and how they map to the <code>StoreBoostPackageRequest</code> payload.</p>
+        </div>
+      </div>
+
+      <!-- 2-Column Create Modal Simulation -->
+      <div class="max-w-4xl mx-auto rounded-3xl bg-slate-950 border border-slate-800 p-6 shadow-2xl grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Left: Form inputs (2 cols) -->
+        <div class="md:col-span-2 space-y-4">
+          <h3 class="text-base font-bold text-white">Create New Boost Package</h3>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-300">Package Name</label>
+              <span class="json-tag">name: string</span>
+            </div>
+            <input type="text" value="14-Day Growth Boost" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:border-[#00c2cb]">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-bold text-slate-300">Duration (Days)</label>
+                <span class="json-tag">duration_days: int</span>
+              </div>
+              <input type="number" value="14" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-bold text-slate-300">Price (USD)</label>
+                <span class="json-tag">price: float</span>
+              </div>
+              <input type="text" value="34.99" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-bold text-slate-300">Highlight Badge</label>
+                <span class="json-tag">badge: string</span>
+              </div>
+              <input type="text" value="Most Popular" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-bold text-slate-300">Estimated Reach</label>
+                <span class="json-tag">estimated_impressions</span>
+              </div>
+              <input type="text" value="15,000 – 25,000 Views" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+            </div>
+          </div>
+
+          <!-- Feature Tags -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-300">Features Checklist (Bullet points for paywall)</label>
+              <span class="json-tag">features: array</span>
+            </div>
+            <div class="flex flex-wrap gap-2 p-2 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+              <span class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 flex items-center gap-1">✓ Top Placement ✕</span>
+              <span class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 flex items-center gap-1">✓ In-Feed Cards ✕</span>
+              <span class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 flex items-center gap-1">✓ Analytics ✕</span>
+              <button class="text-cyan-400 font-bold text-xs px-2 py-1">+ Add</button>
+            </div>
+          </div>
+
+          <!-- RevenueCat ID -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-300">RevenueCat Mobile Product ID</label>
+              <span class="json-tag">revenuecat_store_identifier_ios</span>
+            </div>
+            <input type="text" value="boost_product_14d_3499" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white font-mono">
+          </div>
+
+          <div class="pt-2 flex justify-end gap-3">
+            <button class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Cancel</button>
+            <button class="px-5 py-2 rounded-xl bg-[#00c2cb] hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-lg">Save & Publish Package</button>
+          </div>
+        </div>
+
+        <!-- Right: Live Preview Box (1 col) -->
+        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Live Paywall Card Preview</p>
+            <div class="p-4 rounded-xl bg-[#043940]/40 border-2 border-[#00c2cb] shadow-lg">
+              <div class="text-[10px] font-bold text-[#00c2cb] uppercase mb-1">Most Popular</div>
+              <div class="text-xl font-extrabold text-white">$34.99</div>
+              <div class="text-xs text-slate-300 font-semibold mb-2">14 Days</div>
+              <p class="text-[10px] text-cyan-300 mb-2">Est. 15,000 – 25,000 Views</p>
+              <ul class="text-[10px] text-slate-300 space-y-1">
+                <li>✓ Top Placement</li>
+                <li>✓ In-Feed Cards</li>
+                <li>✓ Analytics</li>
+              </ul>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-500 text-center mt-4">Sellers will see this exact card on the mobile app and website</p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         TAB 7: ADMIN GLOBAL SETTINGS
+         ========================================== -->
+    <div id="tab-admin-settings" class="tab-content hidden">
+      <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">GET /api/admin/boost-settings</span>
+          <span class="mx-2 text-slate-500">|</span>
+          <span class="px-2 py-1 rounded bg-cyan-500/10 text-[#00c2cb] text-xs font-mono font-bold">PATCH /api/admin/boost-settings</span>
+          <h2 class="text-base font-bold text-white mt-1">Screen 7: Admin Global Boosting & Ad Settings Panel</h2>
+          <p class="text-xs text-slate-400">4 configuration cards controlling newsfeed algorithm, anti-fatigue limits, and custom rate.</p>
+        </div>
+        <button class="px-5 py-2.5 rounded-xl bg-[#00c2cb] hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-1.5">
+          <span>💾 Save Configurations</span>
+        </button>
+      </div>
+
+      <!-- 4 Configuration Cards Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <!-- Card 1: Newsfeed Ad Injection -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <h4 class="text-xs font-bold text-white flex items-center gap-2">📢 Newsfeed Ad Injection</h4>
+            <div class="w-8 h-4 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+              <div class="w-3 h-3 bg-slate-950 rounded-full"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">First Ad Slot</span>
+              <span class="json-tag">newsfeed_ads.first_ad_slot</span>
+            </div>
+            <input type="number" value="4" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Ad Interval (Posts between ads)</span>
+              <span class="json-tag">newsfeed_ads.ad_interval</span>
+            </div>
+            <input type="number" value="8" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Anti-Fatigue Cap (Max daily views/user)</span>
+              <span class="json-tag">newsfeed_ads.max_daily_impressions_per_user</span>
+            </div>
+            <input type="number" value="5" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+          </div>
+        </div>
+
+        <!-- Card 2: Custom Slider -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <h4 class="text-xs font-bold text-white flex items-center gap-2">🎚️ Web Custom Slider Rate</h4>
+            <div class="w-8 h-4 bg-[#00c2cb] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+              <div class="w-3 h-3 bg-slate-950 rounded-full"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Daily Rate ($ USD / Day)</span>
+              <span class="json-tag">custom_slider.daily_rate</span>
+            </div>
+            <input type="text" value="3.00" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <span class="text-xs text-slate-300 block mb-1">Min Days</span>
+              <input type="number" value="3" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+            </div>
+            <div>
+              <span class="text-xs text-slate-300 block mb-1">Max Days</span>
+              <input type="number" value="60" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Free New Release -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <h4 class="text-xs font-bold text-white flex items-center gap-2">🎁 Free New Release Promotion</h4>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Free Boost Window (Hours)</span>
+              <span class="json-tag">new_release.hours</span>
+            </div>
+            <input type="number" value="24" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+          </div>
+          <p class="text-[10px] text-slate-500">Every newly created product automatically gets 24h free boost and New Release badge.</p>
+        </div>
+
+        <!-- Card 4: Pause Policy -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <h4 class="text-xs font-bold text-white flex items-center gap-2">⏸️ Enterprise Pause Policy</h4>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Max Allowed Pause Duration (Days)</span>
+              <span class="json-tag">pause_policy.max_days</span>
+            </div>
+            <input type="number" value="30" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <span class="text-slate-400 block mb-1">1st Reminder Day</span>
+              <input type="number" value="27" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+            </div>
+            <div>
+              <span class="text-slate-400 block mb-1">Final Warning Day</span>
+              <input type="number" value="29" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-[#00c2cb]', 'text-slate-950');
+        btn.classList.add('bg-slate-800', 'text-slate-300');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-slate-800', 'text-slate-300');
+        activeBtn.classList.add('bg-[#00c2cb]', 'text-slate-950');
+      }
+    }
+  </script>
+</body>
+</html>
