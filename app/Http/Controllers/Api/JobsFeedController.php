@@ -332,11 +332,17 @@ class JobsFeedController extends Controller
                     ->orWhere('announcement_end_date', '>=', $today);
             });
 
-        // Filter by state_id (supports single ID, array, or comma-separated)
-        $rawStateIds = $request->input('state_ids', $request->input('state_id'));
-        $stateIds = array_filter(array_map('intval', $this->normalizeArrayInput($rawStateIds)));
-        if (! empty($stateIds)) {
-            $query->whereIn('state_id', $stateIds);
+        // Filter by state_id or code (supports single ID/code, array, or comma-separated)
+        $stateFilter = $this->resolveStateFilter($request);
+        $stateIds = $stateFilter['state_ids'];
+        $requestedCodes = $stateFilter['requested_codes'];
+
+        if ($stateFilter['has_filter']) {
+            if (! empty($stateIds)) {
+                $query->whereIn('state_id', $stateIds);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         }
 
         // Optional network_type filter
@@ -441,6 +447,9 @@ class JobsFeedController extends Controller
             'filters' => [
                 'search' => $search !== '' ? $search : null,
                 'state_id' => ! empty($stateIds) ? (count($stateIds) === 1 ? reset($stateIds) : array_values($stateIds)) : null,
+                'code' => ! empty($requestedCodes)
+                    ? (count($requestedCodes) === 1 ? reset($requestedCodes) : array_values($requestedCodes))
+                    : (is_array($stateData) && isset($stateData['code']) ? $stateData['code'] : null),
                 'employment_offering' => ! empty($offerings) ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
             ],
         ], 200);
@@ -504,11 +513,14 @@ class JobsFeedController extends Controller
             $query->whereIn('category', $categories);
         }
 
-        // Optional filter by state_id / state_ids
-        $rawStateIds = $request->input('state_ids', $request->input('state_id'));
-        $stateIds = array_filter(array_map('intval', $this->normalizeArrayInput($rawStateIds)));
-        if (! empty($stateIds)) {
-            $query->whereIn('state_id', $stateIds);
+        // Optional filter by state_id / state_ids or code / codes
+        $stateFilter = $this->resolveStateFilter($request);
+        if ($stateFilter['has_filter']) {
+            if (! empty($stateFilter['state_ids'])) {
+                $query->whereIn('state_id', $stateFilter['state_ids']);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         }
 
         // Aggregate counts grouped by state_id and network_type
@@ -703,6 +715,71 @@ class JobsFeedController extends Controller
                 'website' => $job->industry?->website ?? $job->website,
                 'is_own_industry' => $isOwnIndustry,
             ],
+        ];
+    }
+
+    /**
+     * Resolve state IDs and codes from request inputs (state_id, state_ids, code, codes, state_code, state_codes, state).
+     *
+     * @return array{state_ids: int[], has_filter: bool, requested_codes: string[]}
+     */
+    private function resolveStateFilter(Request $request): array
+    {
+        $rawStateIdInputs = $this->normalizeArrayInput(
+            $request->input('state_ids', $request->input('state_id'))
+        );
+
+        $rawStateCodeInputs = $this->normalizeArrayInput(
+            $request->input('state_codes', $request->input('state_code', $request->input('codes', $request->input('code', $request->input('state')))))
+        );
+
+        $rawCombined = array_merge($rawStateIdInputs, $rawStateCodeInputs);
+
+        if (empty($rawCombined)) {
+            return [
+                'state_ids' => [],
+                'has_filter' => false,
+                'requested_codes' => [],
+            ];
+        }
+
+        $numericIds = [];
+        $stringCodes = [];
+
+        foreach ($rawCombined as $item) {
+            if (is_numeric($item)) {
+                $numericIds[] = (int) $item;
+            } else {
+                $trimmed = trim((string) $item);
+                if ($trimmed !== '') {
+                    $stringCodes[] = $trimmed;
+                }
+            }
+        }
+
+        $resolvedIds = $numericIds;
+
+        if (! empty($stringCodes)) {
+            $upperCodes = array_map('strtoupper', $stringCodes);
+            $lowerSlugs = array_map('strtolower', $stringCodes);
+
+            $matchedIds = State::query()
+                ->where(function ($q) use ($upperCodes, $lowerSlugs, $stringCodes) {
+                    $q->whereIn('code', $upperCodes)
+                        ->orWhereIn('slug', $lowerSlugs)
+                        ->orWhereIn('name', $stringCodes);
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $resolvedIds = array_merge($resolvedIds, $matchedIds);
+        }
+
+        return [
+            'state_ids' => array_values(array_unique(array_filter($resolvedIds))),
+            'has_filter' => true,
+            'requested_codes' => array_values(array_unique(array_map('strtoupper', $stringCodes))),
         ];
     }
 
