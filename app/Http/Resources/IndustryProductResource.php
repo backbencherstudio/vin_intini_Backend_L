@@ -48,6 +48,23 @@ class IndustryProductResource extends JsonResource
             $isLiked = $this->likes()->where('user_id', auth('api')->id())->exists();
         }
 
+        $boostDaysLeft = null;
+        $boostRemainingText = null;
+
+        if ($this->isBoosted() && $this->boost_expires_at && $this->boost_expires_at->isFuture()) {
+            $diffInSeconds = max(0, (int) now()->diffInSeconds($this->boost_expires_at, false));
+            $boostDaysLeft = (int) ceil($diffInSeconds / 86400);
+
+            if ($boostDaysLeft > 1) {
+                $boostRemainingText = "{$boostDaysLeft} days left";
+            } elseif ($diffInSeconds > 3600) {
+                $diffInHours = (int) ceil($diffInSeconds / 3600);
+                $boostRemainingText = "{$diffInHours} hours left";
+            } else {
+                $boostRemainingText = '1 hour left';
+            }
+        }
+
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
@@ -88,6 +105,8 @@ class IndustryProductResource extends JsonResource
             'is_liked' => $isLiked,
             'is_boosted' => $this->isBoosted(),
             'boost_expires_at' => $this->boost_expires_at?->toISOString(),
+            'boost_days_left' => $boostDaysLeft,
+            'boost_remaining_text' => $boostRemainingText,
             'is_new_release' => $this->isNewRelease(),
             'new_release_expires_at' => $this->new_release_expires_at?->toISOString(),
             'badge' => $this->getAdBadge(),

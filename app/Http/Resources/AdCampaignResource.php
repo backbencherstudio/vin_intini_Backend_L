@@ -92,13 +92,32 @@ class AdCampaignResource extends JsonResource
             'total_clicks' => $totalClicks,
             'ctr' => $ctr,
             'ctr_formatted' => $ctr.'%',
-            'boost_package' => $this->whenLoaded('boostPackage', fn () => new BoostPackageResource($this->boostPackage)),
+            'boost_package' => $this->whenLoaded('boostPackage', function () {
+                return [
+                    'id' => $this->boostPackage->id,
+                    'name' => $this->boostPackage->name,
+                    'badge' => $this->boostPackage->badge,
+                    'duration_days' => (int) $this->boostPackage->duration_days,
+                    'price' => (float) $this->boostPackage->price,
+                ];
+            }),
             'boostable' => $this->whenLoaded('boostable', function () {
                 if ($this->boostable instanceof IndustryProduct) {
-                    return new IndustryProductResource($this->boostable);
+                    return [
+                        'id' => $this->boostable->id,
+                        'product_name' => $this->boostable->product_name,
+                        'slug' => $this->boostable->slug,
+                        'image_url' => $this->boostable->image_url,
+                        'network_type' => $this->boostable->network_type,
+                        'industry_type' => $this->boostable->industry_type,
+                        'status' => $this->boostable->status,
+                    ];
                 }
 
-                return $this->boostable;
+                return [
+                    'id' => $this->boostable?->id,
+                    'name' => $this->boostable?->name ?? $this->boostable?->title ?? null,
+                ];
             }),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
