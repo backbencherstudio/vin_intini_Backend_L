@@ -106,7 +106,7 @@ test('admin can view single boost package', function () {
     ]);
 
     $response = $this->actingAs($this->adminUser, 'api')
-        ->getJson("/api/admin/boost-packages/{$package->id}")
+        ->getJson("/api/admin/boost-packages/{$package->id}/show")
         ->assertStatus(200)
         ->assertJson([
             'success' => true,
@@ -141,7 +141,7 @@ test('admin can create a new boost package', function () {
     ];
 
     $response = $this->actingAs($this->adminUser, 'api')
-        ->postJson('/api/admin/boost-packages', $payload)
+        ->postJson('/api/admin/boost-packages/store', $payload)
         ->assertStatus(201)
         ->assertJson([
             'success' => true,
@@ -172,7 +172,7 @@ test('admin cannot create a boost package with invalid data', function () {
     ];
 
     $this->actingAs($this->adminUser, 'api')
-        ->postJson('/api/admin/boost-packages', $invalidPayload)
+        ->postJson('/api/admin/boost-packages/store', $invalidPayload)
         ->assertStatus(422)
         ->assertJsonValidationErrors(['name', 'target_entity', 'duration_days', 'price']);
 });
@@ -193,7 +193,7 @@ test('admin can update a boost package', function () {
     ];
 
     $this->actingAs($this->adminUser, 'api')
-        ->patchJson("/api/admin/boost-packages/{$package->id}", $updatePayload)
+        ->patchJson("/api/admin/boost-packages/{$package->id}/update", $updatePayload)
         ->assertStatus(200)
         ->assertJson([
             'success' => true,
@@ -292,7 +292,7 @@ test('admin cannot delete a boost package if active campaigns exist', function (
     ]);
 
     $this->actingAs($this->adminUser, 'api')
-        ->deleteJson("/api/admin/boost-packages/{$package->id}")
+        ->deleteJson("/api/admin/boost-packages/{$package->id}/delete")
         ->assertStatus(422)
         ->assertJson([
             'success' => false,
@@ -312,7 +312,7 @@ test('admin can delete a boost package if no active campaigns exist', function (
     ]);
 
     $this->actingAs($this->adminUser, 'api')
-        ->deleteJson("/api/admin/boost-packages/{$package->id}")
+        ->deleteJson("/api/admin/boost-packages/{$package->id}/delete")
         ->assertStatus(200)
         ->assertJson([
             'success' => true,

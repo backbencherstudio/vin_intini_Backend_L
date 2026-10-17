@@ -99,7 +99,7 @@ class ProductBoostController extends Controller
             'otp' => ['required_if:checkout_type,stripe', 'nullable', 'digits:4'],
             'payment_method' => ['required_if:checkout_type,stripe', 'string'],
             'revenuecat_transaction_id' => ['required_if:checkout_type,revenuecat', 'string'],
-            'network_type' => ['nullable', 'string', 'in:psychology,neuroscience,both'],
+            'network_type' => ['nullable', 'string', 'in:psychology,neuroscience'],
             'placements' => ['nullable', 'array'],
             'placements.*' => ['string'],
         ], [
@@ -359,7 +359,7 @@ class ProductBoostController extends Controller
             'success' => true,
             'message' => 'Campaign paused successfully. Remaining time has been frozen.',
             'data' => [
-                'campaign' => new AdCampaignResource($campaign->fresh(['boostable', 'boostPackage'])),
+                'campaign' => new AdCampaignResource($campaign->fresh()),
             ],
         ], 200);
     }
@@ -387,7 +387,7 @@ class ProductBoostController extends Controller
             'success' => true,
             'message' => 'Campaign resumed successfully. Expiration date extended by paused duration.',
             'data' => [
-                'campaign' => new AdCampaignResource($campaign->fresh(['boostable', 'boostPackage'])),
+                'campaign' => new AdCampaignResource($campaign->fresh()),
             ],
         ], 200);
     }

@@ -45,7 +45,7 @@ class ProductBoostPaymentService
     {
         [$package, $durationDays, $amount, $priorityWeight] = $this->resolvePricingAndDuration($params);
 
-        $networkType = $params['network_type'] ?? 'both';
+        $networkType = $product->network_type;
         $placements = $params['placements'] ?? ['marketplace', 'newsfeed'];
         $paymentMethodId = $params['payment_method'];
 
@@ -160,7 +160,7 @@ class ProductBoostPaymentService
                 'requires_action' => false,
                 'client_secret' => null,
                 'payment_status' => 'succeeded',
-                'campaign' => $campaign->load(['boostable', 'boostPackage', 'user']),
+                'campaign' => $campaign->withoutRelations(),
                 'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
             ];
         });
@@ -251,7 +251,7 @@ class ProductBoostPaymentService
             return [
                 'success' => true,
                 'message' => 'Payment confirmed and boost campaign activated successfully.',
-                'campaign' => $campaign->fresh(['boostable', 'boostPackage', 'user']),
+                'campaign' => $campaign->withoutRelations(),
                 'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
             ];
         });
@@ -314,7 +314,7 @@ class ProductBoostPaymentService
             ];
         }
 
-        $networkType = $params['network_type'] ?? 'both';
+        $networkType = $product->network_type;
         $placements = $params['placements'] ?? ['marketplace', 'newsfeed'];
         $durationDays = $package->duration_days;
         $amount = (float) $package->price;
@@ -366,7 +366,7 @@ class ProductBoostPaymentService
             return [
                 'success' => true,
                 'message' => 'Boost campaign activated successfully via mobile store purchase.',
-                'campaign' => $campaign->load(['boostable', 'boostPackage', 'user']),
+                'campaign' => $campaign->withoutRelations(),
                 'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
             ];
         });

@@ -48,7 +48,7 @@ class FairPlayAdRotationService
             $query->whereNotIn('id', $excludeCampaignIds);
         }
 
-        if (! empty($networkType) && $networkType !== 'both') {
+        if ($placement !== 'newsfeed' && ! empty($networkType) && $networkType !== 'both') {
             $query->where(function ($q) use ($networkType) {
                 $q->where('network_type', $networkType)
                     ->orWhere('network_type', 'both');
