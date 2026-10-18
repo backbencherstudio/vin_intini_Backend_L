@@ -301,6 +301,8 @@ class PublicationTest extends TestCase
         $responseProf->assertStatus(200);
         $responseProf->assertJsonCount(1, 'data');
         $responseProf->assertJsonPath('data.0.publication_type', 'professional');
+        $responseProf->assertJsonPath('data.0.industry.name', $this->industry->name);
+        $responseProf->assertJsonPath('data.0.user', null);
         $responseProf->assertJsonStructure([
             'success',
             'message',
@@ -319,6 +321,9 @@ class PublicationTest extends TestCase
         $responseUni->assertStatus(200);
         $responseUni->assertJsonCount(1, 'data');
         $responseUni->assertJsonPath('data.0.publication_type', 'university');
+        $expectedUserName = trim($this->premiumUser->first_name.' '.$this->premiumUser->last_name);
+        $responseUni->assertJsonPath('data.0.user.name', $expectedUserName ?: $this->premiumUser->username);
+        $responseUni->assertJsonPath('data.0.industry', null);
     }
 
     public function test_public_feed_cursor_pagination_orders_latest_on_top(): void
