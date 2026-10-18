@@ -676,4 +676,54 @@ class JobsFeedSearchTest extends TestCase
         $sortedData = $resSort->json('data');
         $this->assertGreaterThanOrEqual($sortedData[1]['active_jobs_count'], $sortedData[0]['active_jobs_count']);
     }
+
+    public function test_jobsfeed_returns_searched_state_and_city_info_and_job_level_names(): void
+    {
+        $user = $this->createAuthenticatedUser();
+
+        $state = State::create(['name' => 'Alabama', 'code' => 'AL', 'slug' => 'alabama']);
+        $city1 = City::create(['name' => 'Alexander City', 'state_id' => $state->id]);
+        $city2 = City::create(['name' => 'Andalusia', 'state_id' => $state->id]);
+
+        $job = $this->createJob([
+            'state_id' => $state->id,
+            'city_id' => $city1->id,
+            'job_title' => 'Nest Developer',
+        ]);
+
+        // Query with state_id and multiple city_id[]
+        $response = $this->actingAs($user, 'api')->getJson('/api/industry/jobsfeed?'.http_build_query([
+            'state_id' => $state->id,
+            'city_id' => [$city1->id, $city2->id],
+        ]));
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('state.id', $state->id)
+            ->assertJsonPath('state.name', 'Alabama')
+            ->assertJsonPath('state.code', 'AL')
+            ->assertJsonCount(2, 'cities')
+            ->assertJsonPath('cities.0.id', $city1->id)
+            ->assertJsonPath('cities.0.name', 'Alexander City')
+            ->assertJsonPath('cities.1.id', $city2->id)
+            ->assertJsonPath('cities.1.name', 'Andalusia')
+            ->assertJsonPath('data.0.id', $job->id)
+            ->assertJsonPath('data.0.state_id', $state->id)
+            ->assertJsonPath('data.0.state_name', 'Alabama')
+            ->assertJsonPath('data.0.city_id', $city1->id)
+            ->assertJsonPath('data.0.city_name', 'Alexander City')
+            ->assertJsonMissingPath('states')
+            ->assertJsonMissingPath('city');
+
+        // Query with single city_id - state should be auto-resolved and cities should contain that city
+        $singleCityRes = $this->actingAs($user, 'api')->getJson('/api/industry/jobsfeed?city_id='.$city1->id);
+
+        $singleCityRes->assertOk()
+            ->assertJsonCount(1, 'cities')
+            ->assertJsonPath('cities.0.id', $city1->id)
+            ->assertJsonPath('cities.0.name', 'Alexander City')
+            ->assertJsonPath('state.id', $state->id)
+            ->assertJsonPath('state.name', 'Alabama');
+    }
 }

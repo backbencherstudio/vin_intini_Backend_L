@@ -15,7 +15,6 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 
 class JobsFeedController extends Controller
 {
@@ -143,18 +142,15 @@ class JobsFeedController extends Controller
             $query->whereIn('employment_type', $employmentTypes);
         }
 
-        // State filter (supports state_id, state_ids[], and state name/code string)
-        $rawStateIds = $request->input('state_ids', $request->input('state_id'));
-        $stateIds = array_filter(array_map('intval', $this->normalizeArrayInput($rawStateIds)));
-        if (! empty($stateIds)) {
-            $query->whereIn('state_id', $stateIds);
-        } elseif ($request->filled('state')) {
-            $stateInput = trim((string) $request->input('state'));
-            $query->whereHas('state', function ($q) use ($stateInput) {
-                $q->where('name', $stateInput)
-                    ->orWhere('code', $stateInput)
-                    ->orWhere('slug', Str::slug($stateInput));
-            });
+        // State filter (supports state_id, state_ids[], code, codes, and state name strings)
+        $stateFilter = $this->resolveStateFilter($request);
+        $stateIds = $stateFilter['state_ids'];
+        if ($stateFilter['has_filter']) {
+            if (! empty($stateIds)) {
+                $query->whereIn('state_id', $stateIds);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         }
 
         // City filter (supports city_id, city_ids[], and city name strings)
@@ -245,8 +241,8 @@ class JobsFeedController extends Controller
         // Paginate results with lightweight relationships
         $paginated = $query->with([
             'industry:id,name,slug,logo,website,created_by',
-            'state:id,name',
-            'city:id,name',
+            'state:id,name,code,slug',
+            'city:id,name,state_id',
         ])
             ->withCount('applications')
             ->latest('id')
@@ -254,9 +250,72 @@ class JobsFeedController extends Controller
 
         $formattedData = $this->formatJobCollection($paginated->getCollection(), $currentUser);
 
+        // Resolve searched state information for the response
+        $stateData = null;
+        if (! empty($stateIds)) {
+            $statesQuery = State::query()->select(['id', 'name', 'code', 'slug'])->whereIn('id', $stateIds)->get();
+            if (count($stateIds) === 1) {
+                $first = $statesQuery->first();
+                $stateData = $first ? [
+                    'id' => (int) $first->id,
+                    'name' => $first->name,
+                    'code' => $first->code,
+                    'slug' => $first->slug,
+                ] : null;
+            } else {
+                $stateData = $statesQuery->map(fn ($s) => [
+                    'id' => (int) $s->id,
+                    'name' => $s->name,
+                    'code' => $s->code,
+                    'slug' => $s->slug,
+                ])->values()->all();
+            }
+        }
+
+        // Resolve searched cities information for the response
+        $citiesData = [];
+        $searchedCities = collect();
+        if (! empty($cityIds) || ! empty($cityNames)) {
+            $citiesQuery = City::query()->select(['id', 'state_id', 'name']);
+            if (! empty($cityIds) && ! empty($cityNames)) {
+                $citiesQuery->where(function ($q) use ($cityIds, $cityNames) {
+                    $q->whereIn('id', $cityIds)
+                        ->orWhereIn('name', $cityNames);
+                });
+            } elseif (! empty($cityIds)) {
+                $citiesQuery->whereIn('id', $cityIds);
+            } else {
+                $citiesQuery->whereIn('name', $cityNames);
+            }
+            $searchedCities = $citiesQuery->get();
+
+            $citiesData = $searchedCities->map(fn ($c) => [
+                'id' => (int) $c->id,
+                'name' => $c->name,
+            ])->values()->all();
+        }
+
+        // Auto-resolve state if state was not explicitly specified but all searched cities belong to a single state
+        if ($stateData === null && $searchedCities->isNotEmpty()) {
+            $uniqueStateIds = $searchedCities->pluck('state_id')->filter()->unique()->values()->all();
+            if (count($uniqueStateIds) === 1) {
+                $autoState = State::query()->select(['id', 'name', 'code', 'slug'])->find($uniqueStateIds[0]);
+                if ($autoState) {
+                    $stateData = [
+                        'id' => (int) $autoState->id,
+                        'name' => $autoState->name,
+                        'code' => $autoState->code,
+                        'slug' => $autoState->slug,
+                    ];
+                }
+            }
+        }
+
         $responsePayload = [
             'success' => true,
             'status' => 'success',
+            'state' => $stateData,
+            'cities' => $citiesData,
             'data' => $formattedData,
             'total_jobs' => $totalJobsCount,
             'stats' => [
@@ -398,8 +457,8 @@ class JobsFeedController extends Controller
 
         $paginated = $query->with([
             'industry:id,name,slug,logo,website,created_by',
-            'state:id,name',
-            'city:id,name',
+            'state:id,name,code,slug',
+            'city:id,name,state_id',
         ])
             ->withCount('applications')
             ->latest('id')
@@ -705,7 +764,9 @@ class JobsFeedController extends Controller
             'salary_min' => $job->salary_min,
             'salary_max' => $job->salary_max,
             'state_id' => $job->state_id,
+            'state_name' => $job->state?->name,
             'city_id' => $job->city_id,
+            'city_name' => $job->city?->name,
 
             'industry' => [
                 'id' => $job->industry?->id,
