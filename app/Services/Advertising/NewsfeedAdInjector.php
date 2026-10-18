@@ -134,7 +134,7 @@ class NewsfeedAdInjector
                 'id' => $campaign->industry_id,
                 'name' => $campaign->industry?->name,
                 'slug' => $campaign->industry?->slug,
-                'logo' => $campaign->industry?->logo ? asset('storage/'.$campaign->industry->logo) : null,
+                'logo' => $campaign->industry?->logo,
                 'tagline' => $campaign->industry?->tagline,
             ],
             'product_details' => [

@@ -34,6 +34,42 @@ Route::get('/subscription-test', function () {
     return view('subscription-test');
 })->name('subscription.test');
 
+Route::get('/newsfeed-preview', function () {
+    $posts = \App\Models\Post::query()
+        ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
+        ->with([
+            'user:id,username,first_name,last_name,profile_image,title',
+            'media',
+        ])
+        ->whereNotNull('description')
+        ->where('description', '!=', '')
+        ->latest('id')
+        ->take(15)
+        ->get();
+
+    $feedItems = collect($posts)->map(function ($post) {
+        return [
+            'id' => $post->id,
+            'is_sponsored' => false,
+            'user' => $post->user,
+            'description' => $post->description,
+            'visibility' => $post->visibility ?? 'public',
+            'total_like' => $post->total_like ?? 0,
+            'total_comment' => $post->total_comment ?? 0,
+            'media' => $post->media,
+            'created_at' => $post->created_at,
+        ];
+    });
+
+    $injector = app(\App\Services\Advertising\NewsfeedAdInjector::class);
+    $finalFeed = $injector->injectAdsIntoFeed($feedItems, null);
+
+    return view('newsfeed-preview', [
+        'feed' => $finalFeed,
+        'postsCount' => $posts->count(),
+    ]);
+})->name('newsfeed.preview');
+
 Route::get('/clear', function () {
     Artisan::call('optimize:clear');
 
