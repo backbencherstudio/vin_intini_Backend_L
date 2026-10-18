@@ -54,8 +54,13 @@ class SubscriptionController extends Controller
 
     public function plans(Request $request): JsonResponse
     {
+        $planType = $request->filled('plan_type')
+            ? $request->string('plan_type')->trim()->lower()->toString()
+            : ($request->filled('type') ? $request->string('type')->trim()->lower()->toString() : null);
+
         $plans = Plan::where('status', 'active')
-            ->when($request->filled('billing_cycle'), fn($query) => $query->where('billing_cycle', $request->string('billing_cycle')))
+            ->when($request->filled('billing_cycle'), fn ($query) => $query->where('billing_cycle', $request->string('billing_cycle')))
+            ->when($planType, fn ($query) => $query->where('plan_type', $planType))
             ->where(function ($query) {
                 $query->whereNotNull('stripe_price_id')
                     ->orWhereNotNull('revenuecat_store_identifier_ios')
@@ -234,7 +239,7 @@ class SubscriptionController extends Controller
             } catch (ApiErrorException $e) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to cancel subscription: ' . $e->getMessage(),
+                    'message' => 'Failed to cancel subscription: '.$e->getMessage(),
                 ], 422);
             }
 
@@ -276,7 +281,7 @@ class SubscriptionController extends Controller
         } catch (RevenueCatException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to cancel subscription: ' . $e->getMessage(),
+                'message' => 'Failed to cancel subscription: '.$e->getMessage(),
             ], 422);
         }
 
@@ -359,7 +364,7 @@ class SubscriptionController extends Controller
                 'usd' => '$',
                 'eur' => '€',
                 'gbp' => '£',
-                default => strtoupper($currency) . ' ',
+                default => strtoupper($currency).' ',
             };
 
             $cycleLabel = match ($cycle) {
@@ -368,7 +373,7 @@ class SubscriptionController extends Controller
                 default => '/ month',
             };
 
-            $amountFormatted = $currencySymbol . number_format($amount, 2) . ' ' . $cycleLabel;
+            $amountFormatted = $currencySymbol.number_format($amount, 2).' '.$cycleLabel;
 
             $planType = $transaction->plan?->plan_type instanceof PlanType
                 ? $transaction->plan->plan_type->value
