@@ -172,4 +172,28 @@ class TwoFactorOtpTest extends TestCase
             ->assertJsonPath('status', false)
             ->assertJsonPath('message', 'Recovery email is already verified.');
     }
+
+    public function test_resend_recovery_email_otp_throttled_with_formatted_time(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'primary@example.com',
+            'recovery_email' => 'recovery@example.com',
+            'recovery_email_verified_at' => null,
+        ]);
+        $user->assignRole('user');
+
+        Otp::create([
+            'user_id' => $user->id,
+            'type' => OtpType::RECOVERY_EMAIL->value,
+            'otp' => 1234,
+            'expires_at' => now()->addSeconds(145),
+        ]);
+
+        $response = $this->actingAs($user, 'api')
+            ->postJson('/api/2fa/recovery-email/resend-otp');
+
+        $response->assertStatus(429)
+            ->assertJsonPath('status', false)
+            ->assertJsonPath('message', 'Please wait 02:25 min before requesting a new code.');
+    }
 }

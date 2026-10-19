@@ -304,16 +304,15 @@ class TwoFactorController extends Controller
             ->where('type', OtpType::RECOVERY_EMAIL->value)
             ->first();
 
-        if ($otpRecord?->expires_at) {
-            $totalExpirySeconds = 180;
-            $currentRemainingSeconds = now()->diffInSeconds($otpRecord->expires_at, false);
+        if ($otpRecord?->expires_at && now()->lt($otpRecord->expires_at)) {
+            $remainingSeconds = (int) ceil(now()->diffInSeconds($otpRecord->expires_at, false));
 
-            $waitAttempt = $currentRemainingSeconds - 120; // 60 seconds cooldown
+            if ($remainingSeconds > 0) {
+                $formattedTime = sprintf('%02d:%02d min', floor($remainingSeconds / 60), $remainingSeconds % 60);
 
-            if ($waitAttempt > 0) {
                 return response()->json([
                     'status' => false,
-                    'message' => "Please wait {$waitAttempt} seconds before requesting a new code.",
+                    'message' => "Please wait {$formattedTime} before requesting a new code.",
                 ], 429);
             }
         }
@@ -450,16 +449,16 @@ class TwoFactorController extends Controller
             ->where('type', OtpType::RECOVERY->value)
             ->first();
 
-        if ($otpRecord?->expires_at) {
-            $totalExpirySeconds = 600;
+        if ($otpRecord?->expires_at && now()->lt($otpRecord->expires_at)) {
             $currentRemainingSeconds = now()->diffInSeconds($otpRecord->expires_at, false);
-
-            $waitAttempt = $currentRemainingSeconds - 540;
+            $waitAttempt = (int) ceil($currentRemainingSeconds - 540);
 
             if ($waitAttempt > 0) {
+                $formattedTime = sprintf('%02d:%02d min', floor($waitAttempt / 60), $waitAttempt % 60);
+
                 return response()->json([
                     'status' => false,
-                    'message' => "Please wait {$waitAttempt} seconds before requesting a new code.",
+                    'message' => "Please wait {$formattedTime} before requesting a new code.",
                 ], 429);
             }
         }
