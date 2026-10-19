@@ -73,7 +73,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'pending_deletion',
                 'days_left' => (int) $daysRemaining,
-                'name' => $user->first_name.' '.$user->last_name,
+                'name' => $user->first_name . ' ' . $user->last_name,
                 'email' => $user->email,
                 'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
             ], 200);
@@ -237,7 +237,6 @@ class AuthController extends Controller
                     'logo' => $industry->logo,
                     'cover_image' => $industry->cover_image,
                     'followers_count' => (int) $industry->followers_count,
-                    'total_followers' => (int) $industry->followers_count,
                 ] : null,
             ],
         ]);
