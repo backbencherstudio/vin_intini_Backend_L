@@ -143,7 +143,9 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
 
-        $industry = Industry::where('created_by', $user->id)->first();
+        $industry = Industry::where('created_by', $user->id)
+            ->withCount('followers')
+            ->first();
 
         $user->load(['roles', 'profile.currentPosition', 'educations.institution']);
 
@@ -221,6 +223,7 @@ class AuthController extends Controller
             'industry' => [
                 'can_create_company_page' => $user->canCreateCompanyPage(),
                 'has_company' => (bool) $industry,
+                'total_followers' => (int) ($industry?->followers_count ?? 0),
                 'company' => $industry ? [
                     'id' => $industry->id,
                     'name' => $industry->name,
@@ -233,6 +236,8 @@ class AuthController extends Controller
                     'description' => $industry->description,
                     'logo' => $industry->logo,
                     'cover_image' => $industry->cover_image,
+                    'followers_count' => (int) $industry->followers_count,
+                    'total_followers' => (int) $industry->followers_count,
                 ] : null,
             ],
         ]);
