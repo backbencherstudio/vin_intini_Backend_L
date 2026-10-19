@@ -164,7 +164,7 @@ class IndustryProductController extends Controller
                 ->where('status', 'active')
                 ->where('network_type', $request->input('network_type'))
                 ->where('industry_type', $request->input('industry_type'))
-                ->with(['creator', 'industry', 'section', 'category'])
+                ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
                 ->feedOrder();
 
             // If specific section is chosen
@@ -349,7 +349,7 @@ class IndustryProductController extends Controller
             if (! empty($topProductIds)) {
                 $products = IndustryProduct::query()
                     ->whereIn('id', $topProductIds)
-                    ->with(['creator', 'industry', 'section', 'category'])
+                    ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
                     ->feedOrder()
                     ->get();
 

@@ -10,8 +10,15 @@ use App\Http\Controllers\Admin\InstitutionReportController;
 use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Api\SecuritySettingsController;
+use App\Http\Resources\IndustryProductResource;
+use App\Models\AdCampaign;
+use App\Models\IndustryProduct;
+use App\Models\IndustrySections;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Services\Advertising\NewsfeedAdInjector;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -35,7 +42,7 @@ Route::get('/subscription-test', function () {
 })->name('subscription.test');
 
 Route::get('/newsfeed-preview', function () {
-    $posts = \App\Models\Post::query()
+    $posts = Post::query()
         ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
         ->with([
             'user:id,username,first_name,last_name,profile_image,title',
@@ -61,7 +68,7 @@ Route::get('/newsfeed-preview', function () {
         ];
     });
 
-    $injector = app(\App\Services\Advertising\NewsfeedAdInjector::class);
+    $injector = app(NewsfeedAdInjector::class);
     $finalFeed = $injector->injectAdsIntoFeed($feedItems, null);
 
     return view('newsfeed-preview', [
@@ -69,6 +76,91 @@ Route::get('/newsfeed-preview', function () {
         'postsCount' => $posts->count(),
     ]);
 })->name('newsfeed.preview');
+
+Route::get('/product-feed-preview', function (Request $request) {
+    $networkType = $request->input('network_type', 'psychology');
+    $industryType = $request->input('industry_type', 'biotechnology');
+    $sectionId = $request->input('section_id');
+    $categoryId = $request->input('category_id');
+    $search = $request->input('search');
+    $viewMode = $request->input('view', 'grouped');
+
+    $sections = IndustrySections::query()
+        ->where('network_type', $networkType)
+        ->where('industry_type', $industryType)
+        ->with(['IndustryCategory' => fn ($q) => $q->select('id', 'section_id', 'category_name')->orderBy('category_name')])
+        ->orderBy('id')
+        ->get();
+
+    $query = IndustryProduct::query()
+        ->where('status', 'active')
+        ->where('network_type', $networkType)
+        ->where('industry_type', $industryType)
+        ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
+        ->feedOrder();
+
+    if ($sectionId) {
+        $query->where('section_id', $sectionId);
+    }
+    if ($categoryId) {
+        $query->where('category_id', $categoryId);
+    }
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('product_name', 'LIKE', "%{$search}%")
+                ->orWhere('description', 'LIKE', "%{$search}%");
+        });
+    }
+
+    $allProducts = $query->take(30)->get();
+
+    $transformedProducts = $allProducts->map(function ($p) {
+        return (new IndustryProductResource($p))->resolve();
+    });
+
+    $groupedBySection = [];
+    foreach ($sections as $sec) {
+        $secProducts = $transformedProducts->where('section_id', $sec->id)->values();
+        $groupedBySection[] = [
+            'section' => $sec,
+            'products' => $secProducts,
+            'total' => $secProducts->count(),
+        ];
+    }
+
+    $totalImpressions = (int) AdCampaign::where('status', 'active')
+        ->where('boostable_type', IndustryProduct::class)
+        ->sum('total_impressions');
+
+    $totalClicks = (int) AdCampaign::where('status', 'active')
+        ->where('boostable_type', IndustryProduct::class)
+        ->sum('total_clicks');
+
+    $avgCtr = $totalImpressions > 0 ? round(($totalClicks / $totalImpressions) * 100, 1) : 0.0;
+
+    $stats = [
+        'total_active' => $allProducts->count(),
+        'boosted_count' => $allProducts->filter(fn ($p) => $p->isBoosted())->count(),
+        'new_release_count' => $allProducts->filter(fn ($p) => $p->isNewRelease())->count(),
+        'organic_count' => $allProducts->filter(fn ($p) => ! $p->isBoosted() && ! $p->isNewRelease())->count(),
+        'total_impressions' => $totalImpressions,
+        'total_clicks' => $totalClicks,
+        'avg_ctr' => $avgCtr,
+    ];
+
+    return view('product-feed-preview', [
+        'sections' => $sections,
+        'groupedBySection' => $groupedBySection,
+        'flatProducts' => $transformedProducts,
+        'stats' => $stats,
+        'currentNetwork' => $networkType,
+        'currentIndustry' => $industryType,
+        'currentSection' => $sectionId,
+        'currentCategory' => $categoryId,
+        'search' => $search,
+        'viewMode' => $viewMode,
+    ]);
+})->name('product-feed.preview');
 
 Route::get('/clear', function () {
     Artisan::call('optimize:clear');
