@@ -110,4 +110,66 @@ class TwoFactorOtpTest extends TestCase
             'type' => OtpType::RECOVERY->value,
         ]);
     }
+
+    public function test_user_can_resend_otp_for_unverified_recovery_email_and_confirm(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create([
+            'email' => 'primary@example.com',
+            'recovery_email' => 'recovery@example.com',
+            'recovery_email_verified_at' => null,
+        ]);
+        $user->assignRole('user');
+
+        Otp::create([
+            'user_id' => $user->id,
+            'type' => OtpType::RECOVERY_EMAIL->value,
+            'otp' => 1111,
+            'expires_at' => now()->subMinutes(10),
+        ]);
+
+        $resendResponse = $this->actingAs($user, 'api')
+            ->postJson('/api/2fa/recovery-email/resend-otp');
+
+        $resendResponse->assertOk()
+            ->assertJsonPath('status', true);
+
+        Mail::assertQueued(RecoveryOtpMail::class);
+
+        $newOtpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::RECOVERY_EMAIL->value)
+            ->first();
+
+        $this->assertNotNull($newOtpRecord);
+        $this->assertTrue(now()->lt($newOtpRecord->expires_at));
+
+        $confirmResponse = $this->actingAs($user, 'api')
+            ->postJson('/api/2fa/recovery-email/confirm', [
+                'otp' => (string) $newOtpRecord->otp,
+            ]);
+
+        $confirmResponse->assertOk()
+            ->assertJsonPath('status', true);
+
+        $user->refresh();
+        $this->assertNotNull($user->recovery_email_verified_at);
+    }
+
+    public function test_cannot_resend_recovery_email_otp_if_already_verified(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'primary@example.com',
+            'recovery_email' => 'recovery@example.com',
+            'recovery_email_verified_at' => now(),
+        ]);
+        $user->assignRole('user');
+
+        $response = $this->actingAs($user, 'api')
+            ->postJson('/api/2fa/recovery-email/resend-otp');
+
+        $response->assertStatus(400)
+            ->assertJsonPath('status', false)
+            ->assertJsonPath('message', 'Recovery email is already verified.');
+    }
 }
