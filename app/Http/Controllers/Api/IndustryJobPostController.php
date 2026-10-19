@@ -840,7 +840,7 @@ class IndustryJobPostController extends Controller
             'position' => [$isRequired, 'string', 'max:255'],
             'category' => [$isRequired, 'string', 'max:100'],
             'sub_category' => ['nullable', 'string', 'max:100'],
-            'job_description' => [$isRequired, 'string', 'max:5000'],
+            'job_description' => [$isRequired, 'string'],
 
             'work_mode' => [$isRequired, 'string', 'in:remote,on_site,hybrid'],
             'employment_type' => [$isRequired, 'string', 'in:full_time,part_time,short_term,contract,internship'],
