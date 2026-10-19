@@ -112,6 +112,33 @@ class MeCompanyPageFlagTest extends TestCase
             ->assertJsonMissingPath('user.company_id');
     }
 
+    public function test_me_reports_company_followers_count(): void
+    {
+        $user = $this->makeUser();
+        $this->subscribe($user);
+        $industry = Industry::create([
+            'name' => 'Bright Labs',
+            'slug' => 'bright-labs',
+            'industry' => 'Software',
+            'created_by' => $user->id,
+            'authorization_confirmed' => true,
+            'authorization_confirmed_at' => now(),
+        ]);
+
+        $follower1 = $this->makeUser();
+        $follower2 = $this->makeUser();
+        $industry->followers()->attach([$follower1->id, $follower2->id]);
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/me');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('industry.has_company', true)
+            ->assertJsonPath('industry.total_followers', 2)
+            ->assertJsonPath('industry.company.followers_count', 2)
+            ->assertJsonPath('industry.company.total_followers', 2);
+    }
+
     private function makeUser(): User
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
