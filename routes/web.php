@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Resources\IndustryProductResource;
 use App\Models\AdCampaign;
+use App\Models\Group;
 use App\Models\IndustryProduct;
 use App\Models\IndustrySections;
 use App\Models\Post;
@@ -42,6 +43,8 @@ Route::get('/subscription-test', function () {
 })->name('subscription.test');
 
 Route::get('/newsfeed-preview', function () {
+    $limit = (int) request()->input('limit', 150);
+
     $posts = Post::query()
         ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
         ->with([
@@ -51,7 +54,7 @@ Route::get('/newsfeed-preview', function () {
         ->whereNotNull('description')
         ->where('description', '!=', '')
         ->latest('id')
-        ->take(15)
+        ->take($limit)
         ->get();
 
     $feedItems = collect($posts)->map(function ($post) {
@@ -69,11 +72,30 @@ Route::get('/newsfeed-preview', function () {
     });
 
     $injector = app(NewsfeedAdInjector::class);
-    $finalFeed = $injector->injectAdsIntoFeed($feedItems, null);
+    // Client-side IAB viewable tracking: do not record impressions on blind page reload
+    // In preview mode with 100+ posts, allow up to 12 ads (spaced every 8 posts)
+    $finalFeed = $injector->injectAdsIntoFeed($feedItems, null, null, false, 12);
+
+    $sponsoredCards = $finalFeed->where('is_sponsored', true)->values();
+    $campaignIds = $sponsoredCards->pluck('ad_campaign_id')->filter()->unique()->values();
+
+    $activeCampaigns = AdCampaign::whereIn('id', $campaignIds)
+        ->with(['boostPackage', 'industry', 'boostable'])
+        ->get();
+
+    $totalImpressions = (int) $activeCampaigns->sum('total_impressions');
+    $totalClicks = (int) $activeCampaigns->sum('total_clicks');
+
+    $suggestedGroups = Group::query()->latest('id')->take(3)->get();
 
     return view('newsfeed-preview', [
         'feed' => $finalFeed,
         'postsCount' => $posts->count(),
+        'sponsoredCards' => $sponsoredCards,
+        'activeCampaigns' => $activeCampaigns,
+        'totalImpressions' => $totalImpressions,
+        'totalClicks' => $totalClicks,
+        'suggestedGroups' => $suggestedGroups,
     ]);
 })->name('newsfeed.preview');
 
@@ -85,10 +107,33 @@ Route::get('/product-feed-preview', function (Request $request) {
     $search = $request->input('search');
     $viewMode = $request->input('view', 'grouped');
 
+    $networks = [
+        'psychology' => 'Psychology Network',
+        'neuroscience' => 'Neuroscience Network',
+    ];
+
+    $industries = [
+        'biotechnology' => [
+            'name' => 'Biotechnology',
+            'desc' => 'Explore the latest biotech equipment releases advancing brain health research and treatment.',
+            'icon' => 'biotech',
+        ],
+        'psychotropics' => [
+            'name' => 'Psychotropics',
+            'desc' => 'Explore the latest psychopharmacology and psychotropic releases advancing brain health research and treatment.',
+            'icon' => 'psychotropics',
+        ],
+        'publications' => [
+            'name' => 'Publications',
+            'desc' => 'Explore the latest scientific literature, clinical papers, and published journal articles.',
+            'icon' => 'publications',
+        ],
+    ];
+
     $sections = IndustrySections::query()
         ->where('network_type', $networkType)
         ->where('industry_type', $industryType)
-        ->with(['IndustryCategory' => fn ($q) => $q->select('id', 'section_id', 'category_name')->orderBy('category_name')])
+        ->with(['IndustryCategory' => fn ($q) => $q->select('id', 'section_id', 'category_name')->orderBy('id')])
         ->orderBy('id')
         ->get();
 
@@ -112,7 +157,7 @@ Route::get('/product-feed-preview', function (Request $request) {
         });
     }
 
-    $allProducts = $query->take(30)->get();
+    $allProducts = $query->take(120)->get();
 
     $transformedProducts = $allProducts->map(function ($p) {
         return (new IndustryProductResource($p))->resolve();
@@ -125,6 +170,7 @@ Route::get('/product-feed-preview', function (Request $request) {
             'section' => $sec,
             'products' => $secProducts,
             'total' => $secProducts->count(),
+            'categories' => $sec->IndustryCategory,
         ];
     }
 
@@ -153,6 +199,8 @@ Route::get('/product-feed-preview', function (Request $request) {
         'groupedBySection' => $groupedBySection,
         'flatProducts' => $transformedProducts,
         'stats' => $stats,
+        'networks' => $networks,
+        'industries' => $industries,
         'currentNetwork' => $networkType,
         'currentIndustry' => $industryType,
         'currentSection' => $sectionId,
