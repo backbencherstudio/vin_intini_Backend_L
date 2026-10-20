@@ -27,7 +27,10 @@ class NewsfeedAdInjector
         ?User $user = null,
         ?string $networkType = null,
         bool $recordServerImpressions = true,
-        ?int $maxAds = null
+        ?int $maxAds = null,
+        bool $includeTestAnalytics = false,
+        array $excludeCampaignIds = [],
+        bool $bypassFrequencyCapping = false
     ): Collection {
         $settings = $this->boostSettingService->getSettings();
         $newsfeedConfig = $settings['newsfeed_ads'] ?? [];
@@ -52,27 +55,34 @@ class NewsfeedAdInjector
             return $items;
         }
 
-        $excludeCampaignIds = [];
+        $excludeCampaignIds = array_values(array_filter(array_map('intval', $excludeCampaignIds)));
+        $injectedInBatch = [];
         $adsInjected = 0;
         $targetSlotIndex = $firstAdSlot;
 
         // Dynamic Fair-Play ad insertion: 1st ad at $firstAdSlot, subsequent ads every ($adInterval) posts
         while ($items->count() >= $targetSlotIndex && $adsInjected < $maxAdsPerPage) {
+            $mergedExcludes = array_merge($excludeCampaignIds, $injectedInBatch);
+            $effectiveExcludes = array_values(array_reverse(array_unique(array_reverse($mergedExcludes))));
+
             $adCampaign = $this->rotationService->resolveAdForFeed(
                 adType: 'product',
                 networkType: $networkType,
                 placement: 'newsfeed',
-                excludeCampaignIds: $excludeCampaignIds,
-                userId: $user?->id
+                excludeCampaignIds: $effectiveExcludes,
+                userId: $user?->id,
+                ipAddress: request()?->ip(),
+                bypassFrequencyCapping: $bypassFrequencyCapping || $includeTestAnalytics
             );
 
-            if ($adCampaign && $adCampaign->boostable) {
-                $adCard = $this->formatSponsoredCard($adCampaign);
+            if ($adCampaign && $adCampaign->boostable && ! in_array($adCampaign->id, $injectedInBatch, true)) {
+                $adCard = $this->formatSponsoredCard($adCampaign, $user, $includeTestAnalytics);
                 if ($recordServerImpressions) {
                     $this->recordImpression($adCampaign, $user);
                 }
 
                 $items->splice($targetSlotIndex, 0, [$adCard]);
+                $injectedInBatch[] = $adCampaign->id;
                 $excludeCampaignIds[] = $adCampaign->id;
                 $adsInjected++;
                 $targetSlotIndex += ($adInterval + 1);
@@ -86,10 +96,11 @@ class NewsfeedAdInjector
 
     /**
      * Format an ad campaign into a standardized newsfeed card.
+     * Clean, flat, secure payload for production API; includes extra analytics for Blade test mode.
      *
      * @return array<string, mixed>
      */
-    protected function formatSponsoredCard(AdCampaign $campaign): array
+    protected function formatSponsoredCard(AdCampaign $campaign, ?User $user = null, bool $includeTestAnalytics = false): array
     {
         $boostable = $campaign->boostable;
 
@@ -101,9 +112,14 @@ class NewsfeedAdInjector
             ? $boostable->getAdTitle()
             : ($boostable->product_name ?? '');
 
-        $description = method_exists($boostable, 'getAdDescription')
+        $rawDescription = method_exists($boostable, 'getAdDescription')
             ? $boostable->getAdDescription()
             : ($boostable->description ?? null);
+
+        // Plain text for social feed ad card: strip HTML tags and decode entities
+        $captionDescription = $rawDescription
+            ? trim(preg_replace('/\s+/', ' ', strip_tags(html_entity_decode($rawDescription, ENT_QUOTES | ENT_HTML5, 'UTF-8'))))
+            : null;
 
         $image = method_exists($boostable, 'getAdImageUrl')
             ? $boostable->getAdImageUrl()
@@ -127,27 +143,38 @@ class NewsfeedAdInjector
         }
 
         $productName = $boostable?->product_name ?? $title;
-        $productId = $boostable?->product_id ?? null;
+        $productCode = $boostable?->product_id ?? null;
         $sectionName = $boostable?->section?->name ?? null;
         $categoryName = $boostable?->category?->category_name ?? null;
 
-        return [
+        $likesCount = (int) ($boostable?->likes_count ?? 0);
+        $viewsCount = (int) ($boostable?->views_count ?? 0);
+        $uniqueViewsCount = (int) ($boostable?->unique_views_count ?? 0);
+        $isLiked = false;
+        if ($user && $boostable instanceof IndustryProduct) {
+            $isLiked = $boostable->likes()->where('user_id', $user->id)->exists();
+        }
+
+        // 1. Clean, lightweight, industry-standard API payload (Production newsfeed)
+        $card = [
             'id' => 'sponsored_ad_'.$campaign->id,
             'is_sponsored' => true,
             'ad_campaign_id' => $campaign->id,
             'ad_type' => $campaign->ad_type,
             'badge' => $campaign->boostPackage?->badge ?? 'Sponsored',
-            'title' => $title,
+            'product_id' => $boostable?->id,
+            'product_code' => $productCode,
             'product_name' => $productName,
-            'product_id' => $productId,
-            'description' => $description,
+            'title' => $title,
+            'description' => $captionDescription,
             'image' => $image,
             'price' => $boostable?->price ?? null,
             'destination_url' => $destinationUrl,
             'destination_domain' => $domain,
             'cta_text' => 'View Product',
-            'impressions_count' => (int) ($campaign->total_impressions ?? 0),
-            'clicks_count' => (int) ($campaign->total_clicks ?? 0),
+            'likes_count' => $likesCount,
+            'views_count' => $viewsCount,
+            'is_liked' => $isLiked,
             'company' => [
                 'id' => $campaign->industry_id,
                 'name' => $campaign->industry?->name,
@@ -155,10 +182,29 @@ class NewsfeedAdInjector
                 'logo' => $campaign->industry?->logo,
                 'tagline' => $campaign->industry?->tagline,
             ],
-            'product_details' => [
+            'section_name' => $sectionName,
+            'category_name' => $categoryName,
+            'tags' => $tags,
+            'is_new_release' => (bool) ($boostable?->is_new_release ?? false),
+            'created_at' => now()->toISOString(),
+        ];
+
+        // 2. Developer preview & simulation mode: include live analytics & quick-view modal details for test Blade
+        if ($includeTestAnalytics) {
+            $status = ucfirst($boostable?->status ?? 'active');
+            $publishedAt = $boostable?->created_at ? $boostable->created_at->format('d M Y, h:i A') : now()->format('d M Y, h:i A');
+
+            $card['impressions_count'] = (int) ($campaign->total_impressions ?? 0);
+            $card['clicks_count'] = (int) ($campaign->total_clicks ?? 0);
+            $card['product_db_id'] = $boostable?->id;
+            $card['raw_description'] = $rawDescription;
+            $card['status'] = $status;
+            $card['published_at'] = $publishedAt;
+            $card['product_details'] = [
                 'id' => $boostable?->id,
-                'product_id' => $productId,
+                'product_id' => $productCode,
                 'product_name' => $productName,
+                'description' => $rawDescription,
                 'slug' => $boostable?->slug ?? null,
                 'section_id' => $boostable?->section_id ?? null,
                 'section_name' => $sectionName,
@@ -168,12 +214,19 @@ class NewsfeedAdInjector
                 'industry_type' => $boostable?->industry_type ?? null,
                 'tags' => $tags,
                 'is_new_release' => (bool) ($boostable?->is_new_release ?? false),
+                'status' => $status,
+                'published_at' => $publishedAt,
+                'likes_count' => $likesCount,
+                'views_count' => $viewsCount,
+                'unique_views_count' => $uniqueViewsCount,
+                'is_liked' => $isLiked,
                 'poc_name' => $boostable?->poc_name ?? null,
                 'poc_email' => $boostable?->poc_email ?? null,
                 'poc_phone' => $boostable?->poc_phone ?? null,
-            ],
-            'created_at' => now()->toISOString(),
-        ];
+            ];
+        }
+
+        return $card;
     }
 
     /**

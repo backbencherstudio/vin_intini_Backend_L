@@ -7,6 +7,7 @@ use App\Models\AdCampaign;
 use App\Models\AdImpression;
 use App\Services\BoostSettingService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class FairPlayAdRotationService
 {
@@ -25,7 +26,10 @@ class FairPlayAdRotationService
         ?string $networkType = null,
         string $placement = 'newsfeed',
         array $excludeCampaignIds = [],
-        ?int $userId = null
+        ?int $userId = null,
+        ?string $ipAddress = null,
+        int $maxDailyImpressionsPerUser = 5,
+        bool $bypassFrequencyCapping = false
     ): ?AdCampaign {
         $settings = $this->boostSettingService->getSettings();
         $newsfeedConfig = $settings['newsfeed_ads'] ?? [];
@@ -34,7 +38,7 @@ class FairPlayAdRotationService
             return null;
         }
 
-        $maxDailyImpressionsPerUser = (int) ($newsfeedConfig['max_daily_impressions_per_user'] ?? 5);
+        $maxDailyImpressionsPerUser = (int) ($newsfeedConfig['max_daily_impressions_per_user'] ?? $maxDailyImpressionsPerUser);
 
         // Fetch active campaigns matching type and validity
         $query = AdCampaign::query()
@@ -43,10 +47,6 @@ class FairPlayAdRotationService
             ->whereNotNull('ends_at')
             ->where('ends_at', '>', now())
             ->with(['boostable', 'boostPackage', 'industry:id,name,slug,logo,tagline']);
-
-        if (! empty($excludeCampaignIds)) {
-            $query->whereNotIn('id', $excludeCampaignIds);
-        }
 
         if ($placement !== 'newsfeed' && ! empty($networkType) && $networkType !== 'both') {
             $query->where(function ($q) use ($networkType) {
@@ -63,7 +63,7 @@ class FairPlayAdRotationService
         }
 
         // Filter valid candidates in-memory for database engine independence
-        $eligibleCampaigns = $campaigns->filter(function (AdCampaign $campaign) use ($placement, $userId, $maxDailyImpressionsPerUser) {
+        $eligibleCampaigns = $campaigns->filter(function (AdCampaign $campaign) use ($placement, $userId, $maxDailyImpressionsPerUser, $bypassFrequencyCapping) {
             // 1. Boostable entity must exist and be active
             if (! $campaign->boostable) {
                 return false;
@@ -81,7 +81,7 @@ class FairPlayAdRotationService
             }
 
             // 3. User Daily Frequency Capping (Anti-Fatigue)
-            if ($userId !== null && $maxDailyImpressionsPerUser > 0) {
+            if (! $bypassFrequencyCapping && $userId !== null && $maxDailyImpressionsPerUser > 0) {
                 $todayImpressionsCount = AdImpression::where('ad_campaign_id', $campaign->id)
                     ->where('user_id', $userId)
                     ->where('viewed_date', today())
@@ -99,8 +99,47 @@ class FairPlayAdRotationService
             return null;
         }
 
-        // 4. Impression-Balancing Round-Robin algorithm
-        return $eligibleCampaigns->sortBy(function (AdCampaign $campaign) {
+        // Track recently served ads per user/IP so consecutive reloads rotate active campaigns smoothly
+        $userKey = $userId ? "user_{$userId}" : ($ipAddress ? 'ip_'.md5($ipAddress) : null);
+        $cachedRecentIds = [];
+        if ($userKey) {
+            $recencyKey = "user_recent_ads_{$placement}_{$adType}_{$userKey}";
+            $cachedRecentIds = Cache::get($recencyKey, []);
+            if (! is_array($cachedRecentIds)) {
+                $cachedRecentIds = [];
+            }
+            if (empty($excludeCampaignIds) && ! empty($cachedRecentIds)) {
+                $excludeCampaignIds = $cachedRecentIds;
+            }
+        }
+
+        // 4. Stream & Session Deduplication: Prioritize unseen campaigns to prevent back-to-back duplicate ads
+        $candidates = $eligibleCampaigns;
+        if (! empty($excludeCampaignIds)) {
+            $unseenCandidates = $eligibleCampaigns->whereNotIn('id', $excludeCampaignIds);
+            if ($unseenCandidates->isNotEmpty()) {
+                $candidates = $unseenCandidates;
+            } elseif ($eligibleCampaigns->count() > 1) {
+                // All eligible campaigns have been seen in this stream.
+                // Apply sliding window exclusion: preserve chronological recency order,
+                // exclude the most recently seen (N - 1) campaigns so consecutive batches rotate smoothly in round-robin.
+                $uniqueRecent = array_values(array_reverse(array_unique(array_reverse($excludeCampaignIds))));
+                $windowSize = max(1, $eligibleCampaigns->count() - 1);
+                $recentExcluded = array_slice($uniqueRecent, -$windowSize);
+                $slidingCandidates = $eligibleCampaigns->whereNotIn('id', $recentExcluded);
+
+                if ($slidingCandidates->isNotEmpty()) {
+                    $candidates = $slidingCandidates;
+                } else {
+                    $candidates = $eligibleCampaigns;
+                }
+            } else {
+                $candidates = $eligibleCampaigns;
+            }
+        }
+
+        // 5. Impression-Balancing Round-Robin algorithm
+        $selectedCampaign = $candidates->sortBy(function (AdCampaign $campaign) {
             $tierWeight = (int) ($campaign->boostPackage?->priority_weight ?? 1);
             $targetQuota = max($tierWeight * 1000, 1);
             $deliveredRatio = $campaign->total_impressions / $targetQuota;
@@ -108,5 +147,13 @@ class FairPlayAdRotationService
             // Small jitter (0.0000 - 0.0100) breaks ties fairly across concurrent requests
             return $deliveredRatio + (random_int(0, 100) / 10000);
         })->first();
+
+        if ($selectedCampaign && $userKey) {
+            $mergedRecent = array_merge($cachedRecentIds, [$selectedCampaign->id]);
+            $updatedRecentIds = array_values(array_reverse(array_unique(array_reverse($mergedRecent))));
+            Cache::put($recencyKey, array_slice($updatedRecentIds, -20), now()->addHours(2));
+        }
+
+        return $selectedCampaign;
     }
 }

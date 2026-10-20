@@ -167,7 +167,8 @@ test('active boosted product ad is injected at slot 4 with sponsored badge and m
         ->and($injectedAd['ad_type'])->toBe('product')
         ->and($injectedAd['title'])->toBe('BCI Wireless Headset Pro')
         ->and($injectedAd['cta_text'])->toBe('View Product')
-        ->and($injectedAd['company']['name'])->toBe('NeuroTech Labs');
+        ->and($injectedAd['company']['name'])->toBe('NeuroTech Labs')
+        ->and(array_key_exists('unique_views_count', $injectedAd))->toBeFalse();
 
     // Verify impression recorded in ad_impressions table
     $this->assertDatabaseHas('ad_impressions', [
@@ -366,4 +367,63 @@ test('paused and expired campaigns are never served in newsfeed', function () {
     ]);
 
     expect($rotationService->resolveAdForFeed('product', 'both', 'newsfeed'))->toBeNull();
+});
+
+test('ad rotation alternates campaigns across consecutive feed batches using excludeCampaignIds and sliding window round-robin', function () {
+    $rotationService = app(FairPlayAdRotationService::class);
+
+    $productA = createNewsfeedProduct(['product_name' => 'Rotating Product A', 'slug' => 'rotating-product-a']);
+    $productB = createNewsfeedProduct(['product_name' => 'Rotating Product B', 'slug' => 'rotating-product-b']);
+
+    $campaignA = AdCampaign::create([
+        'boostable_type' => IndustryProduct::class,
+        'boostable_id' => $productA->id,
+        'user_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'boost_package_id' => $this->packageStarter->id,
+        'ad_type' => 'product',
+        'network_type' => 'both',
+        'placements' => ['newsfeed'],
+        'amount_paid' => 19.99,
+        'currency' => 'USD',
+        'duration_days' => 7,
+        'starts_at' => now(),
+        'ends_at' => now()->addDays(7),
+        'status' => AdCampaignStatus::ACTIVE,
+        'total_impressions' => 10,
+    ]);
+
+    $campaignB = AdCampaign::create([
+        'boostable_type' => IndustryProduct::class,
+        'boostable_id' => $productB->id,
+        'user_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'boost_package_id' => $this->packageStarter->id,
+        'ad_type' => 'product',
+        'network_type' => 'both',
+        'placements' => ['newsfeed'],
+        'amount_paid' => 19.99,
+        'currency' => 'USD',
+        'duration_days' => 7,
+        'starts_at' => now(),
+        'ends_at' => now()->addDays(7),
+        'status' => AdCampaignStatus::ACTIVE,
+        'total_impressions' => 20,
+    ]);
+
+    // Batch 1: no seen campaigns -> Campaign A selected (lower impressions 10 vs 20)
+    $batch1 = $rotationService->resolveAdForFeed('product', 'both', 'newsfeed', []);
+    expect($batch1->id)->toBe($campaignA->id);
+
+    // Batch 2: Campaign A is excluded -> Campaign B selected!
+    $batch2 = $rotationService->resolveAdForFeed('product', 'both', 'newsfeed', [$campaignA->id]);
+    expect($batch2->id)->toBe($campaignB->id);
+
+    // Batch 3: Both campaigns have been seen ([A, B]) -> Sliding window excludes B -> Campaign A rotates back!
+    $batch3 = $rotationService->resolveAdForFeed('product', 'both', 'newsfeed', [$campaignA->id, $campaignB->id]);
+    expect($batch3->id)->toBe($campaignA->id);
+
+    // Batch 4: Seen is [A, B, A] -> Sliding window excludes A -> Campaign B rotates back!
+    $batch4 = $rotationService->resolveAdForFeed('product', 'both', 'newsfeed', [$campaignA->id, $campaignB->id, $campaignA->id]);
+    expect($batch4->id)->toBe($campaignB->id);
 });

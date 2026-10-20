@@ -209,7 +209,17 @@ class NewsfeedController extends Controller
             }
         }
 
-        $finalFeed = $this->adInjector->injectAdsIntoFeed($feedItems, $user, $networkType);
+        $seenCampaignIds = array_filter(array_map('intval', explode(',', (string) $request->input('seen_campaign_ids', ''))));
+
+        $finalFeed = $this->adInjector->injectAdsIntoFeed(
+            $feedItems,
+            $user,
+            $networkType,
+            excludeCampaignIds: $seenCampaignIds
+        );
+
+        $injectedCampaignIds = $finalFeed->where('is_sponsored', true)->pluck('ad_campaign_id')->filter()->values()->all();
+        $allSeenIds = array_values(array_slice(array_merge($seenCampaignIds, $injectedCampaignIds), -30));
 
         return response()->json([
             'success' => true,
@@ -220,6 +230,7 @@ class NewsfeedController extends Controller
                 'next_cursor' => $posts->nextCursor()?->encode(),
                 'prev_cursor' => $posts->previousCursor()?->encode(),
                 'has_more_pages' => $posts->hasMorePages(),
+                'seen_campaign_ids' => implode(',', $allSeenIds),
             ],
         ]);
     }
