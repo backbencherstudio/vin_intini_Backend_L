@@ -3,6 +3,7 @@
 use App\Enums\AdCampaignStatus;
 use App\Models\AdCampaign;
 use App\Models\AdClick;
+use App\Models\AdImpression;
 use App\Models\BoostPackage;
 use App\Models\Industry;
 use App\Models\IndustryCategory;
@@ -111,6 +112,41 @@ test('client can batch report verified viewable impressions', function () {
     ]);
 
     expect($this->campaign->fresh()->total_impressions)->toBe(1)
+        ->and($this->product->fresh()->impressions_count)->toBe(1);
+});
+
+test('rapid repeated impressions within debounce window are throttled to prevent spam', function () {
+    // First impression: recorded
+    $firstResponse = $this->actingAs($this->user, 'api')
+        ->postJson('/api/advertisements/impressions', [
+            'campaign_ids' => [$this->campaign->id],
+            'placement' => 'industry_product_feed',
+        ]);
+
+    $firstResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'recorded_count' => 1,
+            'debounced_count' => 0,
+        ]);
+
+    // Second impression immediately (rapid reload): debounced, does not increment total_impressions
+    $secondResponse = $this->actingAs($this->user, 'api')
+        ->postJson('/api/advertisements/impressions', [
+            'campaign_ids' => [$this->campaign->id],
+            'placement' => 'industry_product_feed',
+        ]);
+
+    $secondResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'recorded_count' => 0,
+            'debounced_count' => 1,
+        ]);
+
+    // DB must still have only 1 impression record
+    expect(AdImpression::where('ad_campaign_id', $this->campaign->id)->count())->toBe(1)
+        ->and($this->campaign->fresh()->total_impressions)->toBe(1)
         ->and($this->product->fresh()->impressions_count)->toBe(1);
 });
 

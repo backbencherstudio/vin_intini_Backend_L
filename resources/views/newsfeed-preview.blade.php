@@ -1861,6 +1861,11 @@
                                     .then(res => res.json())
                                     .then(data => {
                                         if (data.success) {
+                                            if (data.debounced_count > 0 && data.recorded_count === 0) {
+                                                showToast('impression', 'ℹ️ Impression Debounced (Anti-Spam)', `Campaign #${campaignId} already counted recently. Rapid reloads are throttled.`);
+                                                return;
+                                            }
+
                                             // Update card counter
                                             const impSpan = document.getElementById(`card-imp-${campaignId}`);
                                             if (impSpan) {

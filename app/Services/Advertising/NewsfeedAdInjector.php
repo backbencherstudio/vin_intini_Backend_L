@@ -8,6 +8,7 @@ use App\Models\IndustryProduct;
 use App\Models\User;
 use App\Services\BoostSettingService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class NewsfeedAdInjector
 {
@@ -235,6 +236,13 @@ class NewsfeedAdInjector
     protected function recordImpression(AdCampaign $campaign, ?User $user): void
     {
         try {
+            $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.(request()?->ip() ?: 'unknown');
+            $throttleKey = "ad_impression_throttle_{$campaign->id}_{$userIdentifier}";
+
+            if (! Cache::add($throttleKey, true, now()->addSeconds(30))) {
+                return;
+            }
+
             AdImpression::create([
                 'ad_campaign_id' => $campaign->id,
                 'boostable_type' => $campaign->boostable_type,

@@ -540,8 +540,21 @@ class ProductBoostController extends Controller
             ->with('boostable')
             ->get();
 
+        $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
         $count = 0;
+        $debouncedCount = 0;
+
         foreach ($campaigns as $campaign) {
+            // Anti-spam impression debounce: 30-second cooldown per user/IP per campaign
+            $throttleKey = "ad_impression_throttle_{$campaign->id}_{$userIdentifier}";
+            $isFirstImpression = Cache::add($throttleKey, true, now()->addSeconds(30));
+
+            if (! $isFirstImpression) {
+                $debouncedCount++;
+
+                continue;
+            }
+
             AdImpression::create([
                 'ad_campaign_id' => $campaign->id,
                 'boostable_type' => $campaign->boostable_type,
@@ -563,8 +576,9 @@ class ProductBoostController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Impressions recorded successfully.',
+            'message' => $count > 0 ? 'Impressions recorded successfully.' : 'Impressions processed (debounced).',
             'recorded_count' => $count,
+            'debounced_count' => $debouncedCount,
         ]);
     }
 
