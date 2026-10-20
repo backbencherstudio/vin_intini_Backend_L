@@ -2,6 +2,7 @@
 
 use App\Enums\AdCampaignStatus;
 use App\Models\AdCampaign;
+use App\Models\AdClick;
 use App\Models\BoostPackage;
 use App\Models\Industry;
 use App\Models\IndustryCategory;
@@ -127,6 +128,8 @@ test('client can record ad clicks and receive product destination url', function
                 'ad_campaign_id' => $this->campaign->id,
                 'total_clicks' => 1,
                 'destination_url' => 'https://example.com/products/smart-sensor',
+                'clicks_count' => 1,
+                'views_count' => 1,
             ],
         ]);
 
@@ -137,10 +140,47 @@ test('client can record ad clicks and receive product destination url', function
     ]);
 
     expect($this->campaign->fresh()->total_clicks)->toBe(1)
-        ->and($this->product->fresh()->clicks_count)->toBe(1);
+        ->and($this->product->fresh()->clicks_count)->toBe(1)
+        ->and($this->product->fresh()->views_count)->toBe(1)
+        ->and($this->product->fresh()->unique_views_count)->toBe(1);
 });
 
 test('click recording returns 404 for non-existent campaign', function () {
     $response = $this->postJson('/api/advertisements/999999/click');
     $response->assertNotFound();
+});
+
+test('rapid repeated ad clicks within debounce window are throttled to prevent spam', function () {
+    // First click: recorded
+    $firstResponse = $this->actingAs($this->user, 'api')
+        ->postJson("/api/advertisements/{$this->campaign->id}/click", [
+            'placement' => 'newsfeed',
+        ]);
+
+    $firstResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'debounced' => false,
+        ]);
+
+    // Second click immediately: debounced, does not increment total_clicks
+    $secondResponse = $this->actingAs($this->user, 'api')
+        ->postJson("/api/advertisements/{$this->campaign->id}/click", [
+            'placement' => 'newsfeed',
+        ]);
+
+    $secondResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'debounced' => true,
+            'data' => [
+                'total_clicks' => 1,
+                'clicks_count' => 1,
+            ],
+        ]);
+
+    // DB must still have only 1 click record
+    expect(AdClick::where('ad_campaign_id', $this->campaign->id)->count())->toBe(1)
+        ->and($this->campaign->fresh()->total_clicks)->toBe(1)
+        ->and($this->product->fresh()->clicks_count)->toBe(1);
 });

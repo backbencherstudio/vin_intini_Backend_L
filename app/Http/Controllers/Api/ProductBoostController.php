@@ -21,6 +21,7 @@ use App\Services\BoostSettingService;
 use App\Services\ProductBoostPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
@@ -585,32 +586,49 @@ class ProductBoostController extends Controller
         $placement = $request->input('placement', 'newsfeed');
         $ip = $request->ip();
 
-        AdClick::create([
-            'ad_campaign_id' => $campaign->id,
-            'boostable_type' => $campaign->boostable_type,
-            'boostable_id' => $campaign->boostable_id,
-            'user_id' => $user?->id,
-            'placement' => $placement,
-            'ip_address' => $ip,
-        ]);
+        // Anti-spam click debounce: 30-second cooldown per user/IP per campaign
+        $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
+        $clickThrottleKey = "ad_click_throttle_{$campaign->id}_{$userIdentifier}";
+        $isFirstClick = Cache::add($clickThrottleKey, true, now()->addSeconds(30));
 
-        $campaign->increment('total_clicks');
+        if ($isFirstClick) {
+            AdClick::create([
+                'ad_campaign_id' => $campaign->id,
+                'boostable_type' => $campaign->boostable_type,
+                'boostable_id' => $campaign->boostable_id,
+                'user_id' => $user?->id,
+                'placement' => $placement,
+                'ip_address' => $ip,
+            ]);
 
-        if ($campaign->boostable && method_exists($campaign->boostable, 'increment')) {
-            $campaign->boostable->increment('clicks_count');
+            $campaign->increment('total_clicks');
+
+            if ($campaign->boostable && method_exists($campaign->boostable, 'increment')) {
+                $campaign->boostable->increment('clicks_count');
+
+                // Count ad click as a product view as well
+                if (method_exists($campaign->boostable, 'recordView')) {
+                    $campaign->boostable->recordView($user, $ip);
+                }
+            }
         }
 
         $destinationUrl = method_exists($campaign->boostable, 'getAdDestinationUrl')
             ? $campaign->boostable->getAdDestinationUrl()
             : ($campaign->boostable->product_url ?? null);
 
+        $freshBoostable = $campaign->boostable?->fresh();
+
         return response()->json([
             'success' => true,
-            'message' => 'Click recorded successfully.',
+            'message' => $isFirstClick ? 'Click recorded successfully.' : 'Click processed (debounced).',
+            'debounced' => ! $isFirstClick,
             'data' => [
                 'ad_campaign_id' => $campaign->id,
                 'total_clicks' => $campaign->fresh()->total_clicks,
                 'destination_url' => $destinationUrl,
+                'clicks_count' => (int) ($freshBoostable?->clicks_count ?? 0),
+                'views_count' => (int) ($freshBoostable?->views_count ?? 0),
             ],
         ]);
     }
