@@ -219,7 +219,9 @@ class NewsfeedController extends Controller
         );
 
         $injectedCampaignIds = $finalFeed->where('is_sponsored', true)->pluck('ad_campaign_id')->filter()->values()->all();
-        $allSeenIds = array_values(array_slice(array_merge($seenCampaignIds, $injectedCampaignIds), -30));
+        $mergedSeen = array_merge($seenCampaignIds, $injectedCampaignIds);
+        $allSeenIds = array_values(array_reverse(array_unique(array_reverse($mergedSeen))));
+        $allSeenIds = array_slice($allSeenIds, -30);
 
         return response()->json([
             'success' => true,
