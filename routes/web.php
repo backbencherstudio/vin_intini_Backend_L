@@ -10,16 +10,8 @@ use App\Http\Controllers\Admin\InstitutionReportController;
 use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Api\SecuritySettingsController;
-use App\Http\Resources\IndustryProductResource;
-use App\Models\AdCampaign;
-use App\Models\Group;
-use App\Models\IndustryProduct;
-use App\Models\IndustrySections;
-use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
-use App\Services\Advertising\NewsfeedAdInjector;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -42,173 +34,10 @@ Route::get('/subscription-test', function () {
     return view('subscription-test');
 })->name('subscription.test');
 
-Route::get('/newsfeed-preview', function () {
-    $limit = (int) request()->input('limit', 150);
-
-    $posts = Post::query()
-        ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
-        ->with([
-            'user:id,username,first_name,last_name,profile_image,title',
-            'media',
-        ])
-        ->whereNotNull('description')
-        ->where('description', '!=', '')
-        ->latest('id')
-        ->take($limit)
-        ->get();
-
-    $feedItems = collect($posts)->map(function ($post) {
-        return [
-            'id' => $post->id,
-            'is_sponsored' => false,
-            'user' => $post->user,
-            'description' => $post->description,
-            'visibility' => $post->visibility ?? 'public',
-            'total_like' => $post->total_like ?? 0,
-            'total_comment' => $post->total_comment ?? 0,
-            'media' => $post->media,
-            'created_at' => $post->created_at,
-        ];
-    });
-
-    $injector = app(NewsfeedAdInjector::class);
-    // Client-side IAB viewable tracking: do not record impressions on blind page reload
-    // In preview mode with 100+ posts, allow up to 12 ads (spaced every 8 posts)
-    $finalFeed = $injector->injectAdsIntoFeed($feedItems, null, null, false, 12);
-
-    $sponsoredCards = $finalFeed->where('is_sponsored', true)->values();
-    $campaignIds = $sponsoredCards->pluck('ad_campaign_id')->filter()->unique()->values();
-
-    $activeCampaigns = AdCampaign::whereIn('id', $campaignIds)
-        ->with(['boostPackage', 'industry', 'boostable'])
-        ->get();
-
-    $totalImpressions = (int) $activeCampaigns->sum('total_impressions');
-    $totalClicks = (int) $activeCampaigns->sum('total_clicks');
-
-    $suggestedGroups = Group::query()->latest('id')->take(3)->get();
-
-    return view('newsfeed-preview', [
-        'feed' => $finalFeed,
-        'postsCount' => $posts->count(),
-        'sponsoredCards' => $sponsoredCards,
-        'activeCampaigns' => $activeCampaigns,
-        'totalImpressions' => $totalImpressions,
-        'totalClicks' => $totalClicks,
-        'suggestedGroups' => $suggestedGroups,
-    ]);
-})->name('newsfeed.preview');
-
-Route::get('/product-feed-preview', function (Request $request) {
-    $networkType = $request->input('network_type', 'psychology');
-    $industryType = $request->input('industry_type', 'biotechnology');
-    $sectionId = $request->input('section_id');
-    $categoryId = $request->input('category_id');
-    $search = $request->input('search');
-    $viewMode = $request->input('view', 'grouped');
-
-    $networks = [
-        'psychology' => 'Psychology Network',
-        'neuroscience' => 'Neuroscience Network',
-    ];
-
-    $industries = [
-        'biotechnology' => [
-            'name' => 'Biotechnology',
-            'desc' => 'Explore the latest biotech equipment releases advancing brain health research and treatment.',
-            'icon' => 'biotech',
-        ],
-        'psychotropics' => [
-            'name' => 'Psychotropics',
-            'desc' => 'Explore the latest psychopharmacology and psychotropic releases advancing brain health research and treatment.',
-            'icon' => 'psychotropics',
-        ],
-        'publications' => [
-            'name' => 'Publications',
-            'desc' => 'Explore the latest scientific literature, clinical papers, and published journal articles.',
-            'icon' => 'publications',
-        ],
-    ];
-
-    $sections = IndustrySections::query()
-        ->where('network_type', $networkType)
-        ->where('industry_type', $industryType)
-        ->with(['IndustryCategory' => fn ($q) => $q->select('id', 'section_id', 'category_name')->orderBy('id')])
-        ->orderBy('id')
-        ->get();
-
-    $query = IndustryProduct::query()
-        ->where('status', 'active')
-        ->where('network_type', $networkType)
-        ->where('industry_type', $industryType)
-        ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
-        ->feedOrder();
-
-    if ($sectionId) {
-        $query->where('section_id', $sectionId);
-    }
-    if ($categoryId) {
-        $query->where('category_id', $categoryId);
-    }
-    if ($search) {
-        $query->where(function ($q) use ($search) {
-            $q->where('product_name', 'LIKE', "%{$search}%")
-                ->orWhere('description', 'LIKE', "%{$search}%");
-        });
-    }
-
-    $allProducts = $query->take(120)->get();
-
-    $transformedProducts = $allProducts->map(function ($p) {
-        return (new IndustryProductResource($p))->resolve();
-    });
-
-    $groupedBySection = [];
-    foreach ($sections as $sec) {
-        $secProducts = $transformedProducts->where('section_id', $sec->id)->values();
-        $groupedBySection[] = [
-            'section' => $sec,
-            'products' => $secProducts,
-            'total' => $secProducts->count(),
-            'categories' => $sec->IndustryCategory,
-        ];
-    }
-
-    $totalImpressions = (int) AdCampaign::where('status', 'active')
-        ->where('boostable_type', IndustryProduct::class)
-        ->sum('total_impressions');
-
-    $totalClicks = (int) AdCampaign::where('status', 'active')
-        ->where('boostable_type', IndustryProduct::class)
-        ->sum('total_clicks');
-
-    $avgCtr = $totalImpressions > 0 ? round(($totalClicks / $totalImpressions) * 100, 1) : 0.0;
-
-    $stats = [
-        'total_active' => $allProducts->count(),
-        'boosted_count' => $allProducts->filter(fn ($p) => $p->isBoosted())->count(),
-        'new_release_count' => $allProducts->filter(fn ($p) => $p->isNewRelease())->count(),
-        'organic_count' => $allProducts->filter(fn ($p) => ! $p->isBoosted() && ! $p->isNewRelease())->count(),
-        'total_impressions' => $totalImpressions,
-        'total_clicks' => $totalClicks,
-        'avg_ctr' => $avgCtr,
-    ];
-
-    return view('product-feed-preview', [
-        'sections' => $sections,
-        'groupedBySection' => $groupedBySection,
-        'flatProducts' => $transformedProducts,
-        'stats' => $stats,
-        'networks' => $networks,
-        'industries' => $industries,
-        'currentNetwork' => $networkType,
-        'currentIndustry' => $industryType,
-        'currentSection' => $sectionId,
-        'currentCategory' => $categoryId,
-        'search' => $search,
-        'viewMode' => $viewMode,
-    ]);
-})->name('product-feed.preview');
+// Temporary Developer Preview & Test Routes for Boosting System (safe to delete anytime)
+if (file_exists(__DIR__.'/boosting_test.php')) {
+    require __DIR__.'/boosting_test.php';
+}
 
 Route::get('/clear', function () {
     Artisan::call('optimize:clear');

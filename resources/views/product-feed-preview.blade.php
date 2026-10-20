@@ -688,11 +688,20 @@
             display: flex;
             align-items: center;
             gap: 5px;
-            transition: color 0.15s ease;
+            transition: all 0.15s ease;
+            padding: 4px 8px;
+            border-radius: 6px;
         }
 
         .card-action-btn:hover {
             color: #0284c7;
+            background: #f0f9ff;
+        }
+
+        .card-action-btn.liked {
+            color: #0284c7;
+            font-weight: 700;
+            background: #e0f2fe;
         }
 
         /* Empty State */
@@ -849,11 +858,20 @@
         .modal-card {
             background: #ffffff;
             border-radius: 16px;
-            max-width: 600px;
+            max-width: 680px;
+            max-height: 90vh;
             width: 100%;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             animation: fadeInDown 0.2s ease;
+        }
+
+        .modal-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            max-height: calc(90vh - 75px);
         }
 
         .modal-header {
@@ -1127,7 +1145,7 @@
                                         </div>
 
                                         <p class="card-desc">
-                                            {{ $prod['description'] ?? 'High resolution diagnostic and research apparatus engineered for brain health.' }}
+                                            {{ Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags(html_entity_decode($prod['description'] ?? 'High resolution diagnostic and research apparatus engineered for brain health.', ENT_QUOTES | ENT_HTML5, 'UTF-8')))), 130) }}
                                         </p>
 
                                         <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between;">
@@ -1148,13 +1166,19 @@
 
                                     <!-- Card Footer (Like & Views) -->
                                     <div class="card-footer">
-                                        <button type="button" class="card-action-btn" title="Like this product">
+                                        <button type="button" 
+                                                class="card-action-btn like-btn {{ !empty($prod['is_liked']) ? 'liked' : '' }}" 
+                                                id="card-like-btn-{{ $prod['id'] }}"
+                                                onclick="toggleProductLike({{ $prod['id'] }}, '{{ addslashes($prod['product_name']) }}', this, event)"
+                                                title="Like this product">
                                             <span>👍</span>
-                                            <span>Like</span>
+                                            <span class="like-label" id="card-like-label-{{ $prod['id'] }}">{{ !empty($prod['is_liked']) ? 'Liked' : 'Like' }}</span>
+                                            <span class="like-count" id="card-likes-count-{{ $prod['id'] }}" style="margin-left: 2px; font-weight: 700;">({{ number_format($prod['likes_count'] ?? 0) }})</span>
                                         </button>
-                                        <div style="display:flex; align-items:center; gap:5px;">
+                                        <div style="display:flex; align-items:center; gap:5px; font-size:12px; color:#64748b; font-weight:600;">
                                             <span>👁️</span>
-                                            <span>Views</span>
+                                            <span id="card-views-count-{{ $prod['id'] }}">{{ number_format($prod['views_count'] ?? 0) }}</span>
+                                            <span>views</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1433,6 +1457,11 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
+                        if (data.debounced) {
+                            showToast('info', 'ℹ️ Click Already Counted (Anti-Spam)', `Campaign #${campaignId} click was already recorded recently. Rapid repeated clicks are debounced.`);
+                            return;
+                        }
+
                         const totalAdClicks = data.data && data.data.total_clicks ? data.data.total_clicks : null;
 
                         const clickSpan = document.getElementById(`card-click-${campaignId}`);
@@ -1454,29 +1483,168 @@
             openProductModal(product);
         }
 
+        function toggleProductLike(productId, productName, btnEl, event) {
+            if (event) event.stopPropagation();
+
+            const isCurrentlyLiked = btnEl.classList.contains('liked');
+            const labelEl = document.getElementById(`card-like-label-${productId}`);
+            const countEl = document.getElementById(`card-likes-count-${productId}`);
+
+            let currentCount = countEl ? (parseInt(countEl.textContent.replace(/[^0-9]/g, '')) || 0) : 0;
+            let newLiked = !isCurrentlyLiked;
+            let newCount = newLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
+
+            // Optimistic UI update
+            if (newLiked) {
+                btnEl.classList.add('liked');
+                if (labelEl) labelEl.textContent = 'Liked';
+            } else {
+                btnEl.classList.remove('liked');
+                if (labelEl) labelEl.textContent = 'Like';
+            }
+            if (countEl) countEl.textContent = `(${newCount.toLocaleString()})`;
+
+            fetch(`/preview/products/${productId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Preview-Mode': 'true'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const serverLikes = data.data.likes_count;
+                    if (countEl) countEl.textContent = `(${serverLikes.toLocaleString()})`;
+                    showToast('click', data.data.is_liked ? 'Product Liked 👍' : 'Product Unliked', `${productName}`);
+                }
+            })
+            .catch(err => {
+                console.error('Like error:', err);
+                if (isCurrentlyLiked) {
+                    btnEl.classList.add('liked');
+                    if (labelEl) labelEl.textContent = 'Liked';
+                } else {
+                    btnEl.classList.remove('liked');
+                    if (labelEl) labelEl.textContent = 'Like';
+                }
+                if (countEl) countEl.textContent = `(${currentCount.toLocaleString()})`;
+            });
+        }
+
         function openProductModal(product) {
-            document.getElementById('modalTitle').textContent = product.product_name;
+            const campaignId = product.ad_campaign_id;
+            const productName = product.product_name || 'Product Details';
+            const productId = product.product_id || 'N/A';
+            const productDbId = product.id || product.product_id;
+            const description = product.description || 'No description provided for this product.';
+            const sectionName = product.section_name || (product.section ? product.section.name : 'N/A');
+            const categoryName = product.category_name || (product.category ? product.category.category_name : 'N/A');
+            const networkType = product.network_type ? (product.network_type.charAt(0).toUpperCase() + product.network_type.slice(1)) : 'Psychology';
+            const industryType = product.industry_type ? (product.industry_type.charAt(0).toUpperCase() + product.industry_type.slice(1)) : ((product.industry && product.industry.name) ? product.industry.name : 'Biotechnology');
+            const status = product.status ? (product.status.charAt(0).toUpperCase() + product.status.slice(1)) : 'Active';
+            const publishedAt = product.created_at ? new Date(product.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recently';
+            const rawTags = (product.tags && Array.isArray(product.tags) && product.tags.length) ? product.tags : ['Diagnostic', 'Research', 'Apparatus'];
+            const pocName = product.poc_name || 'Niaz Ahmed Nayeem';
+            const pocEmail = product.poc_email || 'niaz.softvence@gmail.com';
+            const pocPhone = product.poc_phone || '+8801800000000';
+            const destinationUrl = product.product_url || 'https://mindunite.pixelstack.cloud/';
+            const productImage = product.image_url || product.image || 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80';
+
+            // Sync live counts with feed card if available
+            const viewsSpan = document.getElementById(`card-views-count-${product.id}`);
+            const likesSpan = document.getElementById(`card-likes-count-${product.id}`);
+            const viewsCount = viewsSpan ? (parseInt(viewsSpan.textContent.replace(/[^0-9]/g, '')) || 0) : (product.views_count || 1);
+            const likesCount = likesSpan ? (parseInt(likesSpan.textContent.replace(/[^0-9]/g, '')) || 0) : (product.likes_count || 0);
+
+            // Record view in backend DB when opened
+            if (productDbId) {
+                fetch(`/preview/products/${productDbId}/details`, {
+                    headers: { 'Accept': 'application/json', 'X-Preview-Mode': 'true' }
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success && d.data && typeof d.data.views_count !== 'undefined') {
+                        const vSpan = document.getElementById(`card-views-count-${product.id}`);
+                        if (vSpan) {
+                            vSpan.textContent = d.data.views_count.toLocaleString();
+                        }
+                        const modalViews = document.getElementById('modalViewsCount');
+                        if (modalViews) modalViews.textContent = d.data.views_count.toLocaleString();
+                    }
+                })
+                .catch(() => {});
+            }
+
+            let tagsHtml = '';
+            rawTags.forEach(t => {
+                tagsHtml += `<span style="background: #ffffff; border: 1px solid #e2e8f0; color: #475569; padding: 4px 14px; border-radius: 16px; font-size: 12px; font-weight: 500;">${t}</span>`;
+            });
+
+            document.getElementById('modalTitle').textContent = 'View Product';
             document.getElementById('modalBody').innerHTML = `
-                <div style="margin-bottom: 16px;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
-                        <span style="font-size:12px; font-weight:700; color:${product.is_boosted ? '#0284c7' : (product.is_new_release ? '#ea580c' : '#475569')}; background:${product.is_boosted ? '#e0f2fe' : (product.is_new_release ? '#ffedd5' : '#f1f5f9')}; padding:3px 10px; border-radius:6px;">
-                            ${product.is_boosted ? '⚡ BOOSTED SPONSORED' : (product.is_new_release ? '🔥 NEW RELEASE' : 'ORGANIC')}
-                        </span>
-                        ${product.ad_campaign_id ? `<span style="font-size:11.5px; font-weight:700; color:#475569; background:#f1f5f9; padding:3px 8px; border-radius:6px;">Campaign #${product.ad_campaign_id}</span>` : ''}
-                        <span style="color:#64748b; font-size:13px;">ID: ${product.product_id}</span>
+                <div>
+                    <!-- 1. Top Card: Image + Overview Grid -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #ffffff; margin-bottom: 16px;">
+                        <div style="display: flex; gap: 16px; align-items: flex-start;">
+                            <img src="${productImage}" alt="${productName}" 
+                                 onerror="this.src='https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80'"
+                                 style="width: 140px; height: 140px; object-fit: cover; border-radius: 8px; flex-shrink: 0; border: 1px solid #f1f5f9;">
+                            
+                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; min-height: 140px;">
+                                <div>
+                                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                        <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.3;">
+                                            ${productName}
+                                        </h3>
+                                        <span style="background: #ecfdf5; color: #10b981; border: 1px solid #a7f3d0; border-radius: 12px; font-size: 11px; font-weight: 600; padding: 2px 10px; white-space: nowrap;">
+                                            ${status}
+                                        </span>
+                                    </div>
+
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: 12.5px;">
+                                        <div>
+                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Network Type</div>
+                                            <div style="font-weight: 600; color: #1e293b;">${networkType}</div>
+                                        </div>
+                                        <div>
+                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Industry Type</div>
+                                            <div style="font-weight: 600; color: #1e293b;">${industryType}</div>
+                                        </div>
+                                        <div>
+                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Section</div>
+                                            <div style="font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sectionName}</div>
+                                        </div>
+                                        <div>
+                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Category</div>
+                                            <div style="font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${categoryName}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; margin-top: 8px; border-top: 1px solid #f1f5f9; font-size: 11.5px; color: #64748b;">
+                                    <div style="display: flex; gap: 14px;">
+                                        <span>Total Views <strong id="modalViewsCount" style="color: #0f172a; font-weight: 700;">${viewsCount.toLocaleString()}</strong></span>
+                                        <span>Likes <strong style="color: #0f172a; font-weight: 700;">${likesCount.toLocaleString()}</strong></span>
+                                    </div>
+                                    <div style="color: #64748b; font-size: 11px;">
+                                        Published ${publishedAt}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <p style="color:#334155; font-size:14px; line-height:1.6; margin-bottom:16px;">${product.description || 'No description provided.'}</p>
-                    
                     ${product.is_boosted ? `
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-around;">
                             <div style="text-align: center;">
                                 <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Impressions</div>
-                                <div style="font-size: 18px; font-weight: 800; color: #0284c7;">${product.impressions_count || 0}</div>
+                                <div style="font-size: 18px; font-weight: 800; color: #0284c7;">${(product.impressions_count || 0).toLocaleString()}</div>
                             </div>
                             <div style="text-align: center;">
                                 <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Clicks</div>
-                                <div style="font-size: 18px; font-weight: 800; color: #ec4899;">${product.clicks_count || 0}</div>
+                                <div style="font-size: 18px; font-weight: 800; color: #ec4899;">${(product.clicks_count || 0).toLocaleString()}</div>
                             </div>
                             <div style="text-align: center;">
                                 <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">CTR</div>
@@ -1485,16 +1653,54 @@
                         </div>
                     ` : ''}
 
-                    <div style="background:#f8fafc; padding:14px; border-radius:10px; font-size:13px; color:#475569; line-height:1.7; border:1px solid #e2e8f0;">
-                        <div><strong>Manufacturer / Partner:</strong> ${product.industry ? product.industry.name : (product.poc_name || 'N/A')}</div>
-                        <div><strong>Section:</strong> ${product.section_name || 'N/A'}</div>
-                        <div><strong>Category:</strong> ${product.category_name || 'N/A'}</div>
+                    <!-- 2. Description Box -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; background: #ffffff;">
+                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Description</h4>
+                        <div style="color: #475569; font-size: 13px; line-height: 1.6; margin: 0; word-break: break-word;">
+                            ${cleanModalDescription(description)}
+                        </div>
                     </div>
 
-                    <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-                        <a href="${product.product_url || '#'}" target="_blank" style="background:#0284c7; color:#fff; text-decoration:none; padding:10px 20px; border-radius:8px; font-size:13.5px; font-weight:700;">
-                            Visit Official Product Page &rarr;
+                    <!-- 3. Product Link -->
+                    <div style="margin-bottom: 16px;">
+                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 6px 0;">Product Link</h4>
+                        <a href="${destinationUrl}" target="_blank" 
+                           style="color: #0284c7; font-size: 13px; text-decoration: none; word-break: break-all; display: inline-block; font-weight: 600;">
+                            ${destinationUrl} &rarr;
                         </a>
+                    </div>
+
+                    <!-- 4. Product Tags -->
+                    <div style="margin-bottom: 16px;">
+                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Product Tags</h4>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${tagsHtml}
+                        </div>
+                    </div>
+
+                    <!-- 5. Person of Contact -->
+                    <div>
+                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 10px 0;">Person of Contact</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Name</div>
+                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    ${pocName}
+                                </div>
+                            </div>
+                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Email</div>
+                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a; word-break: break-all;">
+                                    ${pocEmail}
+                                </div>
+                            </div>
+                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Phone Number</div>
+                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a;">
+                                    ${pocPhone}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1542,6 +1748,20 @@
                 toast.style.transition = 'all 0.3s ease';
                 setTimeout(() => toast.remove(), 300);
             }, 3500);
+        }
+
+        function cleanModalDescription(html) {
+            if (!html) return 'No description provided for this product.';
+            if (!/<[a-z][\s\S]*>/i.test(html)) {
+                return `<p style="margin:0 0 8px 0; line-height:1.6;">${html.replace(/\n/g, '<br>')}</p>`;
+            }
+            return html
+                .replace(/id="docs-internal-guid-[^"]*"/gi, '')
+                .replace(/style="[^"]*"/gi, function(match) {
+                    return match
+                        .replace(/(font-size|font-family|line-height|white-space|margin-top|margin-bottom|padding-inline-start)\s*:[^;"]*;?/gi, '')
+                        .replace(/color\s*:\s*#000000;?/gi, '');
+                });
         }
 
         document.addEventListener('DOMContentLoaded', () => {

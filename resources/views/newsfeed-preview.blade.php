@@ -673,18 +673,43 @@
         /* Post Body Text */
         .post-body-text {
             padding: 4px 16px 12px 16px;
-            font-size: 13.5px;
-            color: #334155;
-            line-height: 1.6;
+            font-size: 14px;
+            color: #1e293b;
+            line-height: 1.55;
             word-break: break-word;
         }
 
+        .post-body-text p {
+            margin: 0 0 8px 0;
+        }
+
+        .post-body-text p:last-child {
+            margin-bottom: 0;
+        }
+
+        .post-body-text ul, .post-body-text ol {
+            margin: 4px 0 8px 20px;
+            padding: 0;
+        }
+
+        .post-body-text li {
+            margin-bottom: 3px;
+        }
+
+        .post-content-clamped {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
         .see-more-link {
-            color: var(--brand-primary);
+            color: #0a66c2;
             font-weight: 600;
             font-size: 13px;
             cursor: pointer;
             margin-left: 4px;
+            text-decoration: none;
         }
 
         .see-more-link:hover {
@@ -695,6 +720,9 @@
         .post-media-container {
             padding: 0 16px 12px 16px;
             cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .post-media-img {
@@ -1139,6 +1167,20 @@
             fill: currentColor;
         }
 
+        .post-action-btn.liked {
+            color: #0a66c2 !important;
+            font-weight: 700;
+        }
+
+        .post-action-btn.liked svg {
+            fill: #0a66c2 !important;
+        }
+
+        .post-action-btn.details-btn:hover {
+            background: #f8fafc;
+            color: var(--brand-primary);
+        }
+
         /* ========================================================
            5. RIGHT SIDEBAR (GROUPS YOU MIGHT BE INTERESTED)
            ======================================================== */
@@ -1326,6 +1368,115 @@
         @keyframes toastSlide {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ========================================================
+           CURSOR PAGINATION & INFINITE SCROLL STYLES
+           ======================================================== */
+        .cursor-pagination-box {
+            margin: 20px 0 36px 0;
+            text-align: center;
+        }
+
+        .cursor-controls-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .load-more-cursor-btn {
+            background: #ffffff;
+            color: #0a66c2;
+            border: 1.5px solid #0a66c2;
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 24px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(10, 102, 194, 0.12);
+        }
+
+        .load-more-cursor-btn:hover {
+            background: #0a66c2;
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(10, 102, 194, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .load-more-cursor-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            animation: spinBtn 0.7s linear infinite;
+        }
+
+        @keyframes spinBtn {
+            to { transform: rotate(360deg); }
+        }
+
+        .cursor-meta-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .cursor-badge {
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+            border: 1px solid #e2e8f0;
+        }
+
+        .cursor-badge code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            color: #0f172a;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .feed-end-notice {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px 20px;
+            text-align: center;
+            color: #475569;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            margin: 10px 0;
+        }
+
+        .feed-end-icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+
+        .feed-end-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .feed-end-subtitle {
+            font-size: 13px;
+            color: #64748b;
         }
     </style>
 </head>
@@ -1520,275 +1671,39 @@
                 </div>
             </div>
 
-            <!-- 2. Posts Stream (Mixed Organic Posts & Injected Sponsored Ads) -->
-            @forelse($feed as $index => $item)
-                @php
-                    $isSponsored = !empty($item['is_sponsored']) && $item['is_sponsored'];
-                @endphp
+            <!-- 2. Posts Stream (Mixed Organic Posts & Injected Sponsored Ads via Cursor Pagination) -->
+            <div id="feedStreamContainer">
+                @include('partials.newsfeed-post-items', ['feed' => $feed])
+            </div>
 
-                @if($isSponsored)
-                    <!-- ==============================================
-                         SPONSORED AD CARD (Matching Food Panda / Softvence Delta style)
-                         ============================================== -->
-                    @php
-                        $campaignId = $item['ad_campaign_id'] ?? null;
-                        $companyName = $item['company']['name'] ?? 'MindUnite Partner';
-                        $companyTagline = $item['company']['tagline'] ?? 'Make life delicious and innovative!';
-                        $compLogo = $item['company']['logo'] ?? null;
-                        if ($compLogo && !str_starts_with($compLogo, 'http')) {
-                            $compLogo = asset('storage/' . ltrim($compLogo, '/'));
-                        }
+            <!-- Cursor Pagination & Infinite Scroll Controls -->
+            <div class="cursor-pagination-box" id="cursorPaginationBox">
+                <!-- Infinite scroll sentinel observer target -->
+                <div id="infiniteScrollSentinel" style="height: 10px; width: 100%;"></div>
 
-                        $adImage = $item['image'] ?? null;
-                        if ($adImage && !str_starts_with($adImage, 'http')) {
-                            $adImage = asset('storage/' . ltrim($adImage, '/'));
-                        }
-
-                        $productDetails = $item['product_details'] ?? [];
-                        $productName = $item['product_name'] ?? $item['title'] ?? 'Sponsored Product';
-                        $productId = $item['product_id'] ?? ($productDetails['product_id'] ?? null);
-                        $sectionName = $productDetails['section_name'] ?? null;
-                        $categoryName = $productDetails['category_name'] ?? null;
-                        $tags = $productDetails['tags'] ?? [];
-                        $domain = $item['destination_domain'] ?? null;
-                        $isNewRelease = !empty($productDetails['is_new_release']);
-                        $pocName = $productDetails['poc_name'] ?? null;
-                        $pocEmail = $productDetails['poc_email'] ?? null;
-                        $pocPhone = $productDetails['poc_phone'] ?? null;
-                    @endphp
-
-                    <article class="post-card sponsored-ad-card linkedin-ad-card" 
-                             id="ad-campaign-{{ $campaignId }}" 
-                             data-campaign-id="{{ $campaignId }}" 
-                             data-ad-title="{{ $productName }}">
-
-                        <!-- LinkedIn Sponsored Header -->
-                        <div class="linkedin-ad-header">
-                            <div class="linkedin-ad-author-col">
-                                <div class="linkedin-ad-logo" onclick="trackAdClick({{ $campaignId }}, '{{ addslashes($productName) }}', '{{ $item['destination_url'] ?? '#' }}', event)">
-                                    @if(!empty($compLogo))
-                                        <img src="{{ $compLogo }}" alt="{{ $companyName }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; background:#f3f2ef; color:#0a66c2; font-weight:800; font-size:16px;">
-                                            {{ substr($companyName, 0, 2) }}
-                                        </div>
-                                    @else
-                                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f3f2ef; color:#0a66c2; font-weight:800; font-size:16px;">
-                                            {{ substr($companyName, 0, 2) }}
-                                        </div>
-                                    @endif
-                                </div>
-                                <div class="linkedin-ad-meta">
-                                    <div class="linkedin-author-name" onclick="trackAdClick({{ $campaignId }}, '{{ addslashes($productName) }}', '{{ $item['destination_url'] ?? '#' }}', event)">
-                                        {{ $companyName }}
-                                    </div>
-                                    <div class="linkedin-author-tagline">{{ $companyTagline }}</div>
-                                    <div class="linkedin-promoted-meta">
-                                        <span>Promoted</span>
-                                        <span>&bull;</span>
-                                        <svg viewBox="0 0 16 16"><path d="M8 1a7 7 0 107 7 7 7 0 00-7-7zM2.5 8a5.46 5.46 0 01.35-1.92L6 9.2V10a1 1 0 001 1v1.93A5.5 5.5 0 012.5 8zm8.9 4.39A5.5 5.5 0 018 13.5v-1.5a1 1 0 00-1-1h-.5v-2H8a1 1 0 001-1V7h1a1 1 0 001-1V5.79A5.47 5.47 0 0113.5 8a5.45 5.45 0 01-2.1 4.39z"/></svg>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="linkedin-header-actions">
-                                <button type="button" class="linkedin-follow-btn">
-                                    <svg viewBox="0 0 16 16" width="13" height="13" fill="#0a66c2"><path d="M14 9H9v5H7V9H2V7h5V2h2v5h5z"/></svg>
-                                    <span>Follow</span>
-                                </button>
-                                <button type="button" class="icon-more-btn" title="More options">
-                                    <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- LinkedIn Post Body Caption -->
-                        <div class="post-body-text">
-                            {{ $item['description'] ?? 'Discover advanced technological solutions engineered for brain health and scientific research.' }}
-                            <a href="javascript:void(0)" class="see-more-link">See more</a>
-                        </div>
-
-                        <!-- LinkedIn Ad Creative Banner (Edge-to-Edge) -->
-                        <div class="post-media-container" onclick="trackAdClick({{ $campaignId }}, '{{ addslashes($productName) }}', '{{ $item['destination_url'] ?? '#' }}', event)">
-                            @if(!empty($adImage))
-                                <img src="{{ $adImage }}" alt="{{ $productName }}" class="post-media-img" onerror="this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=80'">
-                            @else
-                                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80" alt="{{ $productName }}" class="post-media-img">
-                            @endif
-                        </div>
-
-                        <!-- LinkedIn Signature Link Preview Box (Flush Below Banner) -->
-                        <div class="linkedin-preview-box" onclick="trackAdClick({{ $campaignId }}, '{{ addslashes($productName) }}', '{{ $item['destination_url'] ?? '#' }}', event)">
-                            <div class="linkedin-preview-left">
-                                <div class="linkedin-domain-row">
-                                    <span>{{ $domain ?: 'mindunite.com' }}</span>
-                                    @if($productId)
-                                        <span class="linkedin-sku-tag">ID: #{{ $productId }}</span>
-                                    @endif
-                                    @if($isNewRelease)
-                                        <span class="linkedin-new-release-tag">🔥 New</span>
-                                    @endif
-                                </div>
-                                <h4 class="linkedin-product-title" title="{{ $productName }}">
-                                    {{ $productName }}
-                                </h4>
-                                <div class="linkedin-meta-desc">
-                                    @if($sectionName)
-                                        <span>{{ $sectionName }}</span>
-                                    @endif
-                                    @if($sectionName && $categoryName)
-                                        <span>&bull;</span>
-                                    @endif
-                                    @if($categoryName)
-                                        <span style="color:#0a66c2; font-weight:600;">{{ $categoryName }}</span>
-                                    @endif
-                                    @if($pocName || $pocEmail)
-                                        <span>&bull;</span>
-                                        <span>POC: {{ $pocName ?: $pocEmail }}</span>
-                                    @endif
-                                </div>
-                                @if(!empty($tags) && count($tags) > 0)
-                                    <div style="display:flex; align-items:center; gap:5px; margin-top:3px;">
-                                        @foreach(array_slice($tags, 0, 3) as $t)
-                                            <span class="linkedin-tag-chip">#{{ $t }}</span>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-
-                            <div class="linkedin-preview-right">
-                                <button type="button" class="linkedin-cta-btn" onclick="trackAdClick({{ $campaignId }}, '{{ addslashes($productName) }}', '{{ $item['destination_url'] ?? '#' }}', event)">
-                                    {{ $item['cta_text'] ?? 'Learn more' }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Real-time Live Analytics & Simulation Bar -->
-                        <div class="linkedin-metric-bar">
-                            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                                <span>👁️ Impressions: <strong id="card-imp-{{ $campaignId }}" style="color:#0a66c2;">{{ number_format($item['impressions_count'] ?? 0) }}</strong></span>
-                                <span>🖱️ Clicks: <strong id="card-click-{{ $campaignId }}" style="color:#059669;">{{ number_format($item['clicks_count'] ?? 0) }}</strong></span>
-                                <span style="color:#cbd5e1;">|</span>
-                                <span style="color:#64748b;">CTR: <strong id="card-ctr-{{ $campaignId }}">{{ $item['impressions_count'] > 0 ? number_format(($item['clicks_count'] / $item['impressions_count']) * 100, 1) : 0 }}%</strong></span>
-                            </div>
-                            <button type="button" class="linkedin-specs-modal-btn" onclick="event.stopPropagation(); openProductQuickView({{ json_encode($item) }})">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                                <span>Quick View Modal</span>
-                            </button>
-                        </div>
-
-                        <!-- LinkedIn Engagement Stats Row -->
-                        <div class="post-stats-row">
-                            <span style="display:flex; align-items:center; gap:4px;">
-                                <span style="background:#0a66c2; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:10px;">👍</span>
-                                <span>1 like</span>
-                            </span>
-                            <span>0 comments</span>
-                        </div>
-
-                        <!-- LinkedIn Action Buttons Row -->
-                        <div class="post-actions-row">
-                            <button type="button" class="post-action-btn">
-                                <svg viewBox="0 0 24 24"><path d="M19.46 11l-3.91-3.91a7 7 0 0 1-1.69-2.74l-.49-1.47A2.76 2.76 0 0 0 10.76 1 2.75 2.75 0 0 0 8 3.74v1.12a9.19 9.19 0 0 0 .46 2.85L8.89 9H4.12A2.74 2.74 0 0 0 1.5 11.45a2.58 2.58 0 0 0 .54 1.63L5 18.52a3 3 0 0 0 2.45 1.48h8.86a3 3 0 0 0 2.87-2.12l1.9-6.41A1.75 1.75 0 0 0 21 11a1.76 1.76 0 0 0-1.54 0z"/></svg>
-                                <span>Like</span>
-                            </button>
-                            <button type="button" class="post-action-btn">
-                                <svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
-                                <span>Comment</span>
-                            </button>
-                            <button type="button" class="post-action-btn">
-                                <svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
-                                <span>Repost</span>
-                            </button>
-                            <button type="button" class="post-action-btn">
-                                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                                <span>Send</span>
-                            </button>
-                        </div>
-                    </article>
-
-                @else
-                    <!-- ==============================================
-                         ORGANIC USER POST CARD (Matching screenshot style)
-                         ============================================== -->
-                    @php
-                        $user = $item['user'] ?? null;
-                        $firstName = $user->first_name ?? 'Member';
-                        $lastName = $user->last_name ?? '';
-                        $fullName = trim("$firstName $lastName") ?: ($user->username ?? 'Member');
-                        $initials = strtoupper(substr($firstName, 0, 1) . substr($lastName ?: $firstName, 0, 1));
-                        $title = $user->title ?? 'Limitless Together';
-                        $profileImg = $user->profile_image ?? null;
-                        if ($profileImg && !str_starts_with($profileImg, 'http')) {
-                            $profileImg = asset('storage/' . ltrim($profileImg, '/'));
-                        }
-                    @endphp
-
-                    <article class="post-card" id="post-{{ $item['id'] }}">
-                        <div class="post-card-header">
-                            <div class="post-header-left">
-                                <div class="post-avatar-wrap circle">
-                                    @if(!empty($profileImg))
-                                        <img src="{{ $profileImg }}" alt="{{ $fullName }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; background:#e0f2fe; color:#0284c7; font-weight:700;">
-                                            {{ $initials }}
-                                        </div>
-                                    @else
-                                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#e0f2fe; color:#0284c7; font-weight:700;">
-                                            {{ $initials }}
-                                        </div>
-                                    @endif
-                                </div>
-                                <div class="post-meta-col">
-                                    <div class="post-author-name">{{ $fullName }}</div>
-                                    <div class="post-author-subtitle">{{ $title }}</div>
-                                    <div class="post-time-meta">{{ isset($item['created_at']) ? \Carbon\Carbon::parse($item['created_at'])->diffForHumans() : 'a day ago' }}</div>
-                                </div>
-                            </div>
-                            <div class="post-header-right">
-                                <button type="button" class="icon-more-btn" title="Options">
-                                    <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="post-body-text">
-                            {{ $item['description'] }}
-                            @if(strlen($item['description']) > 160)
-                                <a href="javascript:void(0)" class="see-more-link">See more</a>
-                            @endif
-                        </div>
-
-                        <!-- Post Media Images (if available) -->
-                        @if(!empty($item['media']) && count($item['media']) > 0)
-                            <div class="post-media-container">
-                                @foreach($item['media'] as $media)
-                                    <img src="{{ asset('storage/' . $media->file_path) }}" alt="Post image" class="post-media-img" onerror="this.style.display='none';">
-                                @endforeach
-                            </div>
-                        @endif
-
-                        <div class="post-stats-row">
-                            <span>{{ $item['total_like'] ?? 0 }} likes</span>
-                            <span>{{ $item['total_comment'] ?? 0 }} comments</span>
-                        </div>
-
-                        <div class="post-actions-row">
-                            <button type="button" class="post-action-btn">
-                                <svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
-                                <span>Like</span>
-                            </button>
-                            <button type="button" class="post-action-btn">
-                                <svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
-                                <span>Comments</span>
-                            </button>
-                        </div>
-                    </article>
-                @endif
-
-            @empty
-                <div class="post-card" style="padding: 48px 20px; text-align: center; color: #94a3b8;">
-                    <p style="font-size: 15px; font-weight: 600;">No posts in feed right now.</p>
+                <div class="cursor-controls-inner" id="cursorControlsInner" @if(empty($hasMorePages)) style="display:none;" @endif>
+                    <button type="button" class="load-more-cursor-btn" id="loadMoreBtn" onclick="loadNextCursorBatch()">
+                        <span class="btn-spinner" id="loadMoreSpinner" style="display:none;"></span>
+                        <span id="loadMoreText">Load More Posts (Next Cursor)</span>
+                        <svg id="loadMoreIcon" viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                    </button>
+                    <div class="cursor-meta-info">
+                        <span class="cursor-badge">
+                            ⚡ Next Cursor: <code id="displayCursor">{{ $nextCursor ? \Illuminate\Support\Str::limit($nextCursor, 18) : 'None' }}</code>
+                        </span>
+                        <span class="cursor-badge">
+                            📦 Batch: <strong id="displayBatchSize">{{ count($feed) }}</strong> items
+                        </span>
+                    </div>
                 </div>
-            @endforelse
+
+                <!-- End of feed state -->
+                <div class="feed-end-notice" id="feedEndNotice" @if(!empty($hasMorePages)) style="display:none;" @endif>
+                    <div class="feed-end-icon">🎉</div>
+                    <div class="feed-end-title">You're all caught up!</div>
+                    <div class="feed-end-subtitle">You have reached the end of the newsfeed cursor stream.</div>
+                </div>
+            </div>
 
         </main>
 
@@ -1902,73 +1817,85 @@
         const trackedImpressions = new Set();
         const dwellTimers = new Map();
 
+        // Cursor Pagination State
+        let nextCursorToken = @json($nextCursor);
+        let hasMoreCursorPages = @json((bool) $hasMorePages);
+        let seenCampaignIds = @json((string) ($seenCampaignIds ?? ''));
+        let isFetchingNextBatch = false;
+        let impressionObserver = null;
+
         // 1. IAB Viewable Impression Observer (50% visibility for 600ms dwell)
         function initViewableImpressionTracker() {
-            const sponsoredCards = document.querySelectorAll('.post-card.sponsored-ad-card[data-campaign-id]');
+            const sponsoredCards = document.querySelectorAll('.post-card.sponsored-ad-card[data-campaign-id]:not([data-observed="true"])');
             if (!sponsoredCards.length) return;
 
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    const card = entry.target;
-                    const campaignId = card.getAttribute('data-campaign-id');
-                    const adTitle = card.getAttribute('data-ad-title') || 'Sponsored Ad';
+            if (!impressionObserver) {
+                impressionObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const card = entry.target;
+                        const campaignId = card.getAttribute('data-campaign-id');
+                        const adTitle = card.getAttribute('data-ad-title') || 'Sponsored Ad';
 
-                    if (!campaignId || trackedImpressions.has(campaignId)) return;
+                        if (!campaignId || trackedImpressions.has(campaignId)) return;
 
-                    if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-                        // Start 600ms dwell timer
-                        if (!dwellTimers.has(campaignId)) {
-                            const timer = setTimeout(() => {
-                                dwellTimers.delete(campaignId);
-                                if (trackedImpressions.has(campaignId)) return;
-                                trackedImpressions.add(campaignId);
+                        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+                            // Start 600ms dwell timer
+                            if (!dwellTimers.has(campaignId)) {
+                                const timer = setTimeout(() => {
+                                    dwellTimers.delete(campaignId);
+                                    if (trackedImpressions.has(campaignId)) return;
+                                    trackedImpressions.add(campaignId);
 
-                                // Fire API call: POST /api/advertisements/impressions
-                                fetch('/api/advertisements/impressions', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        campaign_ids: [parseInt(campaignId)],
-                                        placement: 'newsfeed'
+                                    // Fire API call: POST /api/advertisements/impressions
+                                    fetch('/api/advertisements/impressions', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            campaign_ids: [parseInt(campaignId)],
+                                            placement: 'newsfeed'
+                                        })
                                     })
-                                })
-                                .then(res => res.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        // Update card counter
-                                        const impSpan = document.getElementById(`card-imp-${campaignId}`);
-                                        if (impSpan) {
-                                            const current = parseInt(impSpan.textContent.replace(/,/g, '')) || 0;
-                                            impSpan.textContent = (current + 1).toLocaleString();
+                                    .then(res => res.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            // Update card counter
+                                            const impSpan = document.getElementById(`card-imp-${campaignId}`);
+                                            if (impSpan) {
+                                                const current = parseInt(impSpan.textContent.replace(/,/g, '')) || 0;
+                                                impSpan.textContent = (current + 1).toLocaleString();
+                                            }
+
+                                            totalImpressions++;
+                                            updateStickyMetrics();
+
+                                            showToast('impression', '⚡ IAB Impression Recorded!', `Campaign #${campaignId} ("${adTitle}") &rarr; DB count incremented.`);
                                         }
+                                    })
+                                    .catch(err => console.error('Impression error:', err));
+                                }, 600);
 
-                                        totalImpressions++;
-                                        updateStickyMetrics();
-
-                                        showToast('impression', '⚡ IAB Impression Recorded!', `Campaign #${campaignId} ("${adTitle}") &rarr; DB count incremented.`);
-                                    }
-                                })
-                                .catch(err => console.error('Impression error:', err));
-                            }, 600);
-
-                            dwellTimers.set(campaignId, timer);
+                                dwellTimers.set(campaignId, timer);
+                            }
+                        } else {
+                            // Scrolled away before dwell completed
+                            if (dwellTimers.has(campaignId)) {
+                                clearTimeout(dwellTimers.get(campaignId));
+                                dwellTimers.delete(campaignId);
+                            }
                         }
-                    } else {
-                        // Scrolled away before dwell completed
-                        if (dwellTimers.has(campaignId)) {
-                            clearTimeout(dwellTimers.get(campaignId));
-                            dwellTimers.delete(campaignId);
-                        }
-                    }
+                    });
+                }, {
+                    threshold: 0.5
                 });
-            }, {
-                threshold: 0.5
-            });
+            }
 
-            sponsoredCards.forEach(card => observer.observe(card));
+            sponsoredCards.forEach(card => {
+                card.setAttribute('data-observed', 'true');
+                impressionObserver.observe(card);
+            });
         }
 
         // 2. Track Verified Ad Click
@@ -1995,6 +1922,11 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    if (data.debounced) {
+                        showToast('info', 'ℹ️ Click Already Counted (Anti-Spam)', `Campaign #${campaignId} click was already recorded recently. Rapid repeated clicks are debounced.`);
+                        return;
+                    }
+
                     const totalAdClicks = data.data && typeof data.data.total_clicks !== 'undefined' ? data.data.total_clicks : null;
 
                     const clickSpan = document.getElementById(`card-click-${campaignId}`);
@@ -2012,6 +1944,15 @@
                         }
                     }
 
+                    // Live sync product views count on the card
+                    if (data.data && typeof data.data.views_count !== 'undefined') {
+                        const viewsSpan = document.getElementById(`card-views-count-${campaignId}`);
+                        if (viewsSpan) {
+                            const newViews = data.data.views_count;
+                            viewsSpan.textContent = `${newViews.toLocaleString()} ${newViews === 1 ? 'view' : 'views'}`;
+                        }
+                    }
+
                     totalClicks++;
                     updateStickyMetrics();
 
@@ -2023,7 +1964,89 @@
             });
         }
 
-        // 3. Update Sticky Metrics
+        // 3. Toggle Product Like (LinkedIn Sponsored Product)
+        function toggleProductLike(productId, campaignId, productName, btn) {
+            if (!productId) return;
+
+            const isCurrentlyLiked = btn.classList.contains('liked');
+            const newLikedState = !isCurrentlyLiked;
+            const textSpan = btn.querySelector('.like-btn-text');
+
+            // Optimistic UI state
+            if (newLikedState) {
+                btn.classList.add('liked');
+                if (textSpan) textSpan.textContent = 'Liked';
+            } else {
+                btn.classList.remove('liked');
+                if (textSpan) textSpan.textContent = 'Like';
+            }
+
+            const likesSpan = document.getElementById(`card-likes-count-${campaignId}`);
+            if (likesSpan) {
+                const currentLikes = parseInt(likesSpan.textContent.replace(/[^0-9]/g, '')) || 0;
+                const updatedLikes = Math.max(0, currentLikes + (newLikedState ? 1 : -1));
+                likesSpan.textContent = `${updatedLikes.toLocaleString()} ${updatedLikes === 1 ? 'like' : 'likes'}`;
+            }
+
+            fetch(`/preview/products/${productId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Preview-Mode': 'true'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const serverLikes = data.data.likes_count;
+                    const serverViews = data.data.views_count;
+                    const serverIsLiked = data.data.is_liked;
+
+                    // Authoritative sync
+                    if (serverIsLiked) {
+                        btn.classList.add('liked');
+                        if (textSpan) textSpan.textContent = 'Liked';
+                    } else {
+                        btn.classList.remove('liked');
+                        if (textSpan) textSpan.textContent = 'Like';
+                    }
+
+                    if (likesSpan && typeof serverLikes !== 'undefined') {
+                        likesSpan.textContent = `${serverLikes.toLocaleString()} ${serverLikes === 1 ? 'like' : 'likes'}`;
+                    }
+
+                    const viewsSpan = document.getElementById(`card-views-count-${campaignId}`);
+                    if (viewsSpan && typeof serverViews !== 'undefined') {
+                        viewsSpan.textContent = `${serverViews.toLocaleString()} ${serverViews === 1 ? 'view' : 'views'}`;
+                    }
+
+                    showToast('click', serverIsLiked ? '👍 Product Liked!' : '👍 Product Unliked', `"${productName}": ${serverLikes} likes &bull; ${serverViews} views`);
+                } else {
+                    // Revert optimistic update
+                    if (isCurrentlyLiked) {
+                        btn.classList.add('liked');
+                        if (textSpan) textSpan.textContent = 'Liked';
+                    } else {
+                        btn.classList.remove('liked');
+                        if (textSpan) textSpan.textContent = 'Like';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Like error:', err);
+                // Revert optimistic update
+                if (isCurrentlyLiked) {
+                    btn.classList.add('liked');
+                    if (textSpan) textSpan.textContent = 'Liked';
+                } else {
+                    btn.classList.remove('liked');
+                    if (textSpan) textSpan.textContent = 'Like';
+                }
+            });
+        }
+
+        // 4. Update Sticky Metrics
         function updateStickyMetrics() {
             const stickyImp = document.getElementById('sticky-imp-count');
             const stickyClk = document.getElementById('sticky-click-count');
@@ -2059,83 +2082,166 @@
         }
 
         // 5. Product Quick-View Modal
+        // 5. Product Details Modal (Exact match with user design)
         function openProductQuickView(item) {
             const details = item.product_details || {};
             const campaignId = item.ad_campaign_id;
             const productName = item.product_name || item.title || 'Sponsored Product';
             const productId = item.product_id || details.product_id || 'N/A';
-            const description = item.description || 'No description provided.';
+            const productDbId = item.product_db_id || details.id || productId;
+            const rawDescription = item.raw_description || (item.product_details && item.product_details.description) || item.description || 'No description provided for this product.';
             const sectionName = details.section_name || 'N/A';
             const categoryName = details.category_name || 'N/A';
-            const networkType = details.network_type ? details.network_type.toUpperCase() : 'N/A';
-            const tags = details.tags || [];
-            const pocName = details.poc_name || null;
-            const pocEmail = details.poc_email || null;
-            const pocPhone = details.poc_phone || null;
-            const companyName = (item.company && item.company.name) ? item.company.name : 'MindUnite Partner';
-            const destinationUrl = item.destination_url || '#';
-            const impSpan = document.getElementById(`card-imp-${campaignId}`);
-            const clickSpan = document.getElementById(`card-click-${campaignId}`);
-            const impCount = impSpan ? impSpan.textContent : (item.impressions_count || 0);
-            const clickCount = clickSpan ? clickSpan.textContent : (item.clicks_count || 0);
+            const networkType = details.network_type ? (details.network_type.charAt(0).toUpperCase() + details.network_type.slice(1)) : 'Psychology';
+            const industryType = details.industry_type ? (details.industry_type.charAt(0).toUpperCase() + details.industry_type.slice(1)) : ((item.company && item.company.name) ? item.company.name : 'Biotechnology');
+            const status = details.status || item.status || 'Active';
+            const publishedAt = details.published_at || item.published_at || '10 Oct 2026, 05:00 PM';
+            const rawTags = (details.tags && details.tags.length) ? details.tags : ['Backend', 'PHP', 'Laravel'];
+            const pocName = details.poc_name || 'Niaz Ahmed Nayeem';
+            const pocEmail = details.poc_email || 'niaz.softvence@gmail.com';
+            const pocPhone = details.poc_phone || '+8801800000000';
+            const destinationUrl = item.destination_url || 'https://mindunite.pixelstack.cloud/';
+            const productImage = item.image || 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80';
 
-            let tagHtml = '';
-            if (tags.length) {
-                tagHtml = `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">` + 
-                    tags.map(t => `<span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:600; padding:2px 8px; border-radius:12px; border:1px solid #bae6fd;">#${t}</span>`).join('') + 
-                    `</div>`;
+            // Sync live counts with feed card if available
+            const viewsSpan = document.getElementById(`card-views-count-${campaignId}`);
+            const likesSpan = document.getElementById(`card-likes-count-${campaignId}`);
+            const viewsCount = viewsSpan ? (parseInt(viewsSpan.textContent.replace(/[^0-9]/g, '')) || 0) : (item.views_count || details.views_count || 1);
+            const likesCount = likesSpan ? (parseInt(likesSpan.textContent.replace(/[^0-9]/g, '')) || 0) : (item.likes_count || details.likes_count || 0);
+
+            // Record view in DB when opened
+            if (productDbId) {
+                fetch(`/preview/products/${productDbId}/details`, {
+                    headers: { 'Accept': 'application/json', 'X-Preview-Mode': 'true' }
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success && d.data && typeof d.data.views_count !== 'undefined') {
+                        const vSpan = document.getElementById(`card-views-count-${campaignId}`);
+                        if (vSpan) {
+                            vSpan.textContent = `${d.data.views_count.toLocaleString()} ${d.data.views_count === 1 ? 'view' : 'views'}`;
+                        }
+                        const modalViews = document.getElementById('modalViewsCount');
+                        if (modalViews) modalViews.textContent = d.data.views_count;
+                        const modalUniqueViews = document.getElementById('modalUniqueViewsCount');
+                        if (modalUniqueViews && typeof d.data.unique_views_count !== 'undefined') {
+                            modalUniqueViews.textContent = d.data.unique_views_count;
+                        }
+                    }
+                })
+                .catch(() => {});
             }
 
-            document.getElementById('modalTitle').textContent = productName;
+            let tagsHtml = '';
+            rawTags.forEach(t => {
+                tagsHtml += `<span style="background: #ffffff; border: 1px solid #e2e8f0; color: #475569; padding: 4px 14px; border-radius: 16px; font-size: 12px; font-weight: 500;">${t}</span>`;
+            });
+
+            const uniqueViewsCount = item.unique_views_count || details.unique_views_count || 1;
+
+            document.getElementById('modalTitle').textContent = 'View Product';
             document.getElementById('modalBody').innerHTML = `
-                <div style="margin-bottom: 16px;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
-                        <span style="font-size:12px; font-weight:700; color:#0284c7; background:#e0f2fe; padding:3px 10px; border-radius:6px;">
-                            ⚡ SPONSORED PRODUCT
-                        </span>
-                        ${details.is_new_release ? `<span style="font-size:11.5px; font-weight:700; color:#ea580c; background:#ffedd5; padding:3px 8px; border-radius:6px;">🔥 New Release</span>` : ''}
-                        ${campaignId ? `<span style="font-size:11.5px; font-weight:700; color:#475569; background:#f1f5f9; padding:3px 8px; border-radius:6px;">Campaign #${campaignId}</span>` : ''}
-                        <span style="color:#64748b; font-size:13px; font-family:monospace; font-weight:600;">ID: ${productId}</span>
-                    </div>
+                <div>
+                    <!-- 1. Top Card: Image + Overview Grid -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #ffffff; margin-bottom: 16px;">
+                        <div style="display: flex; gap: 16px; align-items: flex-start;">
+                            <img src="${productImage}" alt="${productName}" 
+                                 onerror="this.src='https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80'"
+                                 style="width: 140px; height: 140px; object-fit: cover; border-radius: 8px; flex-shrink: 0; border: 1px solid #f1f5f9;">
+                            
+                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; min-height: 140px;">
+                                <div>
+                                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                        <h3 style="font-size: 19px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.3;">
+                                             ${productName}
+                                        </h3>
+                                        <span style="background: #ecfdf5; color: #10b981; border: 1px solid #a7f3d0; border-radius: 12px; font-size: 11px; font-weight: 600; padding: 2px 10px; white-space: nowrap;">
+                                             ${status}
+                                        </span>
+                                    </div>
 
-                    <p style="color:#334155; font-size:14px; line-height:1.6; margin-bottom:16px;">${description}</p>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: 12.5px;">
+                                        <div>
+                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Network Type</div>
+                                            <div style="font-weight: 600; color: #1e293b;">${networkType}</div>
+                                        </div>
+                                        <div>
+                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Industry Type</div>
+                                            <div style="font-weight: 600; color: #1e293b;">${industryType}</div>
+                                        </div>
+                                        <div>
+                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Section</div>
+                                            <div style="font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sectionName}</div>
+                                        </div>
+                                        <div>
+                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Category</div>
+                                            <div style="font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${categoryName}</div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                    ${tagHtml}
-
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin: 16px 0; display: flex; align-items: center; justify-content: space-around;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Impressions</div>
-                            <div style="font-size: 18px; font-weight: 800; color: #0284c7;">${impCount}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Clicks</div>
-                            <div style="font-size: 18px; font-weight: 800; color: #ec4899;">${clickCount}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Placement</div>
-                            <div style="font-size: 15px; font-weight: 800; color: #10b981;">Newsfeed</div>
-                        </div>
-                    </div>
-
-                    <div style="background:#f8fafc; padding:14px; border-radius:10px; font-size:13px; color:#475569; line-height:1.7; border:1px solid #e2e8f0;">
-                        <div><strong>Manufacturer / Partner:</strong> ${companyName}</div>
-                        <div><strong>Section:</strong> ${sectionName}</div>
-                        <div><strong>Category:</strong> ${categoryName}</div>
-                        <div><strong>Network:</strong> ${networkType}</div>
-                        ${(pocName || pocEmail || pocPhone) ? `
-                            <div style="margin-top:6px; padding-top:6px; border-top:1px dashed #cbd5e1;">
-                                <strong>Point of Contact (POC):</strong> ${pocName || 'N/A'} ${pocEmail ? `(&bull; ${pocEmail})` : ''} ${pocPhone ? `(&bull; ${pocPhone})` : ''}
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; margin-top: 8px; border-top: 1px solid #f1f5f9; font-size: 11.5px; color: #64748b;">
+                                    <div style="display: flex; gap: 14px;">
+                                        <span>Total Views: <strong id="modalViewsCount" style="color: #0f172a; font-weight: 700;">${viewsCount}</strong></span>
+                                        <span>Unique: <strong id="modalUniqueViewsCount" style="color: #0284c7; font-weight: 700;">${uniqueViewsCount}</strong></span>
+                                        <span>Likes: <strong style="color: #0f172a; font-weight: 700;">${likesCount}</strong></span>
+                                    </div>
+                                    <div style="color: #64748b; font-size: 11px;">
+                                        Published ${publishedAt}
+                                    </div>
+                                </div>
                             </div>
-                        ` : ''}
+                        </div>
                     </div>
 
-                    <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-                        <button type="button" onclick="closeModal()" style="background:#f1f5f9; color:#475569; border:none; padding:10px 18px; border-radius:8px; font-size:13.5px; font-weight:600; cursor:pointer;">
-                            Close
-                        </button>
-                        <a href="javascript:void(0)" onclick="trackAdClick(${campaignId}, '${productName.replace(/'/g, "\\'")}', '${destinationUrl}')" style="background:#0284c7; color:#fff; text-decoration:none; padding:10px 20px; border-radius:8px; font-size:13.5px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
-                            Visit Official Product Page &rarr;
+                    <!-- 2. Description Box -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; background: #ffffff;">
+                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Description</h4>
+                        <div style="color: #475569; font-size: 13px; line-height: 1.6; margin: 0; word-break: break-word;">
+                            ${cleanModalDescription(rawDescription)}
+                        </div>
+                    </div>
+
+                    <!-- 3. Product Link -->
+                    <div style="margin-bottom: 16px;">
+                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 6px 0;">Product Link</h4>
+                        <a href="${destinationUrl}" target="_blank" onclick="trackAdClick(${campaignId}, '${productName.replace(/'/g, "\\'")}', '${destinationUrl}')" 
+                           style="color: #0284c7; font-size: 13px; text-decoration: none; word-break: break-all; display: inline-block;">
+                            ${destinationUrl}
                         </a>
+                    </div>
+
+                    <!-- 4. Product Tags -->
+                    <div style="margin-bottom: 16px;">
+                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Product Tags</h4>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${tagsHtml}
+                        </div>
+                    </div>
+
+                    <!-- 5. Person of Contact -->
+                    <div>
+                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 10px 0;">Person of Contact</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Name</div>
+                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    ${pocName}
+                                </div>
+                            </div>
+                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Email</div>
+                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a; word-break: break-all;">
+                                    ${pocEmail}
+                                </div>
+                            </div>
+                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Phone Number</div>
+                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a;">
+                                    ${pocPhone}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2152,8 +2258,169 @@
             }
         }
 
+        function cleanModalDescription(html) {
+            if (!html) return 'No description provided for this product.';
+            if (!/<[a-z][\s\S]*>/i.test(html)) {
+                return `<p style="margin:0 0 8px 0; line-height:1.6;">${html.replace(/\n/g, '<br>')}</p>`;
+            }
+            return html
+                .replace(/id="docs-internal-guid-[^"]*"/gi, '')
+                .replace(/style="[^"]*"/gi, function(match) {
+                    return match
+                        .replace(/(font-size|font-family|line-height|white-space|margin-top|margin-bottom|padding-inline-start)\s*:[^;"]*;?/gi, '')
+                        .replace(/color\s*:\s*#000000;?/gi, '');
+                });
+        }
+
+        function toggleAdCaption(campaignId, btn) {
+            const trunc = document.getElementById(`ad-caption-trunc-${campaignId}`);
+            const full = document.getElementById(`ad-caption-full-${campaignId}`);
+            if (trunc && full) {
+                if (full.style.display === 'none') {
+                    trunc.style.display = 'none';
+                    full.style.display = 'inline';
+                    btn.textContent = 'see less';
+                } else {
+                    trunc.style.display = 'inline';
+                    full.style.display = 'none';
+                    btn.textContent = 'see more';
+                }
+            }
+        }
+
+        function togglePostContent(postId, btn) {
+            const el = document.getElementById(`post-content-${postId}`);
+            if (el) {
+                if (el.classList.contains('post-content-clamped')) {
+                    el.classList.remove('post-content-clamped');
+                    btn.textContent = 'see less';
+                } else {
+                    el.classList.add('post-content-clamped');
+                    btn.textContent = '...see more';
+                }
+            }
+        }
+
+        function togglePostText(postId, btn) {
+            const trunc = document.getElementById(`post-text-trunc-${postId}`);
+            const full = document.getElementById(`post-text-full-${postId}`);
+            if (trunc && full) {
+                if (full.style.display === 'none') {
+                    trunc.style.display = 'none';
+                    full.style.display = 'inline';
+                    btn.textContent = 'see less';
+                } else {
+                    trunc.style.display = 'inline';
+                    full.style.display = 'none';
+                    btn.textContent = 'see more';
+                }
+            }
+        }
+
+        // 3. Cursor Pagination Stream Loader
+        async function loadNextCursorBatch() {
+            if (isFetchingNextBatch || !hasMoreCursorPages || !nextCursorToken) return;
+
+            isFetchingNextBatch = true;
+            const btn = document.getElementById('loadMoreBtn');
+            const spinner = document.getElementById('loadMoreSpinner');
+            const text = document.getElementById('loadMoreText');
+            const icon = document.getElementById('loadMoreIcon');
+
+            if (btn) btn.disabled = true;
+            if (spinner) spinner.style.display = 'inline-block';
+            if (icon) icon.style.display = 'none';
+            if (text) text.textContent = 'Fetching next batch...';
+
+            try {
+                const url = `/newsfeed-preview?cursor=${encodeURIComponent(nextCursorToken)}&load_more=1&seen_campaign_ids=${encodeURIComponent(seenCampaignIds)}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success && data.html) {
+                    const container = document.getElementById('feedStreamContainer');
+                    if (container) {
+                        const temp = document.createElement('div');
+                        temp.innerHTML = data.html;
+                        while (temp.firstChild) {
+                            container.appendChild(temp.firstChild);
+                        }
+                    }
+
+                    // Update Cursor state & seen campaigns
+                    nextCursorToken = data.next_cursor;
+                    hasMoreCursorPages = !!data.has_more;
+                    if (data.seen_campaign_ids !== undefined) {
+                        seenCampaignIds = data.seen_campaign_ids;
+                    }
+
+                    // Update UI meta badge
+                    const displayCursor = document.getElementById('displayCursor');
+                    if (displayCursor) {
+                        displayCursor.textContent = nextCursorToken ? (nextCursorToken.length > 18 ? nextCursorToken.substring(0, 18) + '...' : nextCursorToken) : 'None';
+                    }
+
+                    const displayBatchSize = document.getElementById('displayBatchSize');
+                    if (displayBatchSize) {
+                        displayBatchSize.textContent = data.count || 0;
+                    }
+
+                    // Re-observe newly injected sponsored cards!
+                    initViewableImpressionTracker();
+
+                    showToast('impression', '📥 Next Batch Loaded!', `Fetched ${data.count} items using cursor pagination.`);
+                }
+
+                if (!hasMoreCursorPages || !nextCursorToken) {
+                    const controls = document.getElementById('cursorControlsInner');
+                    const notice = document.getElementById('feedEndNotice');
+                    if (controls) controls.style.display = 'none';
+                    if (notice) notice.style.display = 'block';
+                }
+            } catch (err) {
+                console.error('Error fetching next cursor batch:', err);
+                showToast('click', '⚠️ Loading Error', 'Failed to fetch the next posts batch.');
+            } finally {
+                isFetchingNextBatch = false;
+                if (btn) btn.disabled = false;
+                if (spinner) spinner.style.display = 'none';
+                if (icon) icon.style.display = 'inline-block';
+                if (text) text.textContent = 'Load More Posts (Next Cursor)';
+            }
+        }
+
+        // 4. Infinite Scroll Sentinel Observer
+        function initInfiniteScroll() {
+            const sentinel = document.getElementById('infiniteScrollSentinel');
+            if (!sentinel) return;
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && hasMoreCursorPages && !isFetchingNextBatch && nextCursorToken) {
+                        loadNextCursorBatch();
+                    }
+                });
+            }, {
+                rootMargin: '300px',
+                threshold: 0.1
+            });
+
+            observer.observe(sentinel);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             initViewableImpressionTracker();
+            initInfiniteScroll();
         });
     </script>
 </body>
