@@ -142,7 +142,7 @@ Route::get('/product-feed-preview', function (Request $request) {
     $sectionId = $request->input('section_id');
     $categoryId = $request->input('category_id');
     $search = $request->input('search');
-    $viewMode = $request->input('view', 'grouped');
+    $viewMode = $request->input('view', 'all');
 
     $networks = [
         'psychology' => 'Psychology Network',

@@ -360,7 +360,15 @@
         }
 
         .industry-header {
-            margin-bottom: 28px;
+            margin-bottom: 24px;
+        }
+
+        .industry-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
         .industry-main-title {
@@ -375,6 +383,92 @@
             font-size: 13.5px;
             color: var(--text-muted);
             line-height: 1.5;
+        }
+
+        /* View Mode Segmented Controls */
+        .view-mode-toggle-group {
+            display: inline-flex;
+            align-items: center;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            gap: 4px;
+        }
+
+        .view-mode-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .view-mode-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke-width: 2.2;
+        }
+
+        .view-mode-btn:hover {
+            color: #0f172a;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .view-mode-btn.active {
+            background: #ffffff;
+            color: #0284c7;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+            font-weight: 700;
+        }
+
+        .view-mode-btn .view-badge-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #e2e8f0;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 9999px;
+            line-height: 1.2;
+        }
+
+        .view-mode-btn.active .view-badge-count {
+            background: #e0f2fe;
+            color: #0284c7;
+        }
+
+        /* All Products Summary Sub-bar */
+        .all-products-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 16px;
+            margin-bottom: 22px;
+            font-size: 13px;
+            color: #64748b;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .all-products-header-bar .pill-stats {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 12px;
         }
 
         /* Section Block */
@@ -1030,190 +1124,149 @@
         <section class="main-feed-area">
             <!-- Header for Selected Industry -->
             <div class="industry-header">
-                <h1 class="industry-main-title">{{ $industries[$currentIndustry]['name'] ?? 'Industry Products' }}</h1>
-                <p class="industry-main-desc">{{ $industries[$currentIndustry]['desc'] ?? 'Explore the latest releases advancing brain health research and treatment.' }}</p>
-            </div>
-
-            <!-- Sections Loop -->
-            @forelse($groupedBySection as $group)
-                @php
-                    $section = $group['section'];
-                    $secProducts = $group['products'];
-                    $categories = $group['categories'];
-                @endphp
-
-                <div class="section-block" id="section-block-{{ $section->id }}">
-                    <!-- Section Title -->
-                    <h2 class="section-title">{{ $section->name }}</h2>
-
-                    <!-- Category Tabs Sub-navigation -->
-                    <div class="categories-tabs-bar">
-                        <button type="button" 
-                                class="cat-tab-btn active" 
-                                onclick="filterSectionCategory({{ $section->id }}, 'all', this)">
-                            All
-                        </button>
-
-                        @foreach($categories as $cat)
-                            <button type="button" 
-                                    class="cat-tab-btn" 
-                                    onclick="filterSectionCategory({{ $section->id }}, {{ $cat->id }}, this)">
-                                {{ $cat->category_name }}
-                            </button>
-                        @endforeach
+                <div class="industry-header-row">
+                    <div>
+                        <h1 class="industry-main-title">{{ $industries[$currentIndustry]['name'] ?? 'Industry Products' }}</h1>
+                        <p class="industry-main-desc">{{ $industries[$currentIndustry]['desc'] ?? 'Explore the latest releases advancing brain health research and treatment.' }}</p>
                     </div>
 
-                    <!-- Products Grid -->
-                    @if($secProducts->isNotEmpty())
-                        <div class="products-grid" id="grid-sec-{{ $section->id }}">
-                            @foreach($secProducts as $prodIndex => $prod)
-                                @php
-                                    $isBoosted = !empty($prod['is_boosted']);
-                                    $isNewRelease = !empty($prod['is_new_release']);
-                                    $campaignId = $prod['ad_campaign_id'] ?? null;
-                                    $isExtra = $prodIndex >= 6;
-                                @endphp
+                    <!-- View Mode Switcher -->
+                    <div class="view-mode-toggle-group">
+                        <button type="button" 
+                                class="view-mode-btn {{ $viewMode !== 'section' ? 'active' : '' }}" 
+                                id="viewBtnAll"
+                                onclick="switchViewMode('all')"
+                                title="View all products together in a single feed">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                                <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                                <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                                <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                            </svg>
+                            <span>All Products View</span>
+                            <span class="view-badge-count">{{ $flatProducts->count() }}</span>
+                        </button>
 
-                                <div class="product-card {{ $isBoosted ? 'boosted' : '' }} {{ !$isBoosted && $isNewRelease ? 'new-release' : '' }} {{ $isExtra ? 'extra-card' : '' }}" 
-                                     data-section-id="{{ $section->id }}"
-                                     data-category-id="{{ $prod['category_id'] ?? '' }}"
-                                     @if($isExtra) style="display: none;" @endif
-                                     @if($isBoosted && $campaignId)
-                                         data-campaign-id="{{ $campaignId }}"
-                                         data-product-name="{{ $prod['product_name'] }}"
-                                     @endif>
+                        <button type="button" 
+                                class="view-mode-btn {{ $viewMode === 'section' ? 'active' : '' }}" 
+                                id="viewBtnSection"
+                                onclick="switchViewMode('section')"
+                                title="View products grouped section-wise">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                            <span>Section-wise View</span>
+                            <span class="view-badge-count">{{ count($groupedBySection) }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-                                    <!-- Boosted / New Release Badge Ribbon -->
-                                    @if($isBoosted)
-                                        <div class="boosted-ribbon">
-                                            <span>⚡</span>
-                                            <span>Sponsored</span>
-                                        </div>
-                                    @elseif($isNewRelease)
-                                        <div class="new-release-ribbon">
-                                            <span>🔥</span>
-                                            <span>New Release</span>
-                                        </div>
-                                    @endif
+            <!-- VIEW 1: All Type Products Unified Grid (Default) -->
+            <div id="viewModeAllContainer" style="{{ $viewMode !== 'section' ? 'display: block;' : 'display: none;' }}">
+                <div class="all-products-header-bar">
+                    <div>
+                        <strong>All Available Products</strong> &bull; Showing {{ $flatProducts->count() }} items sorted by priority
+                    </div>
+                    <div class="pill-stats">
+                        @if(!empty($stats['boosted_count']))
+                            <span style="color:#0284c7; font-weight: 700;">⚡ {{ $stats['boosted_count'] }} Sponsored</span>
+                        @endif
+                        @if(!empty($stats['new_release_count']))
+                            <span style="color:#d97706; font-weight: 700;">🔥 {{ $stats['new_release_count'] }} New Release</span>
+                        @endif
+                        <span style="color:#64748b; font-weight: 600;">📦 {{ $stats['organic_count'] ?? 0 }} Regular</span>
+                    </div>
+                </div>
 
-                                    <!-- Image Area: Authentic Cyan Brain Graphic or Uploaded Product Image -->
-                                    <div class="card-image-wrap" onclick="handleCardClick({{ json_encode($prod) }})">
-                                        @if(!empty($prod['image_url']) && !str_contains($prod['image_url'], 'placeholder'))
-                                            <img src="{{ $prod['image_url'] }}" alt="{{ $prod['product_name'] }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                            <div class="brain-cyan-illustration" style="display:none;">
-                                                <svg viewBox="0 0 100 80">
-                                                    <!-- Cyan neural network brain illustration matching screenshot -->
-                                                    <circle cx="50" cy="40" r="30" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-dasharray="10 6"/>
-                                                    <path d="M30 40 Q40 20 50 40 T70 40" fill="none" stroke="#38bdf8" stroke-width="4.5" stroke-linecap="round"/>
-                                                    <path d="M35 50 Q50 35 65 50" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round"/>
-                                                    <circle cx="30" cy="40" r="4.5" fill="#38bdf8"/>
-                                                    <circle cx="50" cy="40" r="5.5" fill="#38bdf8"/>
-                                                    <circle cx="70" cy="40" r="4.5" fill="#38bdf8"/>
-                                                    <circle cx="50" cy="22" r="4" fill="#0284c7"/>
-                                                    <circle cx="65" cy="50" r="4" fill="#0284c7"/>
-                                                </svg>
-                                            </div>
-                                        @else
-                                            <div class="brain-cyan-illustration">
-                                                <svg viewBox="0 0 100 80">
-                                                    <circle cx="50" cy="40" r="30" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-dasharray="10 6"/>
-                                                    <path d="M30 40 Q40 20 50 40 T70 40" fill="none" stroke="#38bdf8" stroke-width="4.5" stroke-linecap="round"/>
-                                                    <path d="M35 50 Q50 35 65 50" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round"/>
-                                                    <circle cx="30" cy="40" r="4.5" fill="#38bdf8"/>
-                                                    <circle cx="50" cy="40" r="5.5" fill="#38bdf8"/>
-                                                    <circle cx="70" cy="40" r="4.5" fill="#38bdf8"/>
-                                                    <circle cx="50" cy="22" r="4" fill="#0284c7"/>
-                                                    <circle cx="65" cy="50" r="4" fill="#0284c7"/>
-                                                </svg>
-                                            </div>
-                                        @endif
-                                    </div>
+                @if($flatProducts->isNotEmpty())
+                    <div class="products-grid" id="grid-all-products">
+                        @foreach($flatProducts as $prod)
+                            @include('partials.product-feed-card', ['prod' => $prod, 'isExtra' => false])
+                        @endforeach
+                    </div>
+                @else
+                    <div class="empty-section-message" style="padding: 60px 20px;">
+                        <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No products found in this industry.</p>
+                        <p style="font-size: 13px; color: #94a3b8;">Try switching networks or choosing another industry from the sidebar.</p>
+                    </div>
+                @endif
+            </div>
 
-                                    <!-- Card Content Body -->
-                                    <div class="card-body">
-                                        <div class="card-title-row">
-                                            <h3 class="card-title">{{ $prod['product_name'] }}</h3>
-                                            @if(!empty($prod['tags']) && is_array($prod['tags']) && count($prod['tags']) > 0)
-                                                <span class="card-tag-badge">{{ $prod['tags'][0] }}</span>
-                                            @elseif(!empty($prod['category_name']))
-                                                <span class="card-tag-badge">{{ Str::limit($prod['category_name'], 12) }}</span>
-                                            @endif
-                                        </div>
+            <!-- VIEW 2: Section-wise Grouped Blocks -->
+            <div id="viewModeSectionContainer" style="{{ $viewMode === 'section' ? 'display: block;' : 'display: none;' }}">
+                @forelse($groupedBySection as $group)
+                    @php
+                        $section = $group['section'];
+                        $secProducts = $group['products'];
+                        $categories = $group['categories'];
+                    @endphp
 
-                                        <div class="card-subtitle">
-                                            {{ $prod['industry']['name'] ?? $prod['creator']['name'] ?? 'MindUnite Verified Partner' }}
-                                        </div>
+                    <div class="section-block" id="section-block-{{ $section->id }}">
+                        <!-- Section Title -->
+                        <h2 class="section-title">{{ $section->name }}</h2>
 
-                                        <p class="card-desc">
-                                            {{ Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags(html_entity_decode($prod['description'] ?? 'High resolution diagnostic and research apparatus engineered for brain health.', ENT_QUOTES | ENT_HTML5, 'UTF-8')))), 130) }}
-                                        </p>
+                        <!-- Category Tabs Sub-navigation -->
+                        <div class="categories-tabs-bar">
+                            <button type="button" 
+                                    class="cat-tab-btn active" 
+                                    onclick="filterSectionCategory({{ $section->id }}, 'all', this)">
+                                All
+                            </button>
 
-                                        <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between;">
-                                            <a href="javascript:void(0)" class="learn-more-link" onclick="handleCardClick({{ json_encode($prod) }})">
-                                                <span>Learn more</span>
-                                                <span>&gt;</span>
-                                            </a>
-                                        </div>
-
-                                        <!-- Real-time metrics for Boosted products -->
-                                        @if($isBoosted && $campaignId)
-                                            <div class="card-metrics-pill-bar">
-                                                <span>👁️ Imp: <strong id="card-imp-{{ $campaignId }}" style="color:#0284c7;">{{ number_format($prod['impressions_count'] ?? 0) }}</strong></span>
-                                                <span>🖱️ Clicks: <strong id="card-click-{{ $campaignId }}" style="color:#ec4899;">{{ number_format($prod['clicks_count'] ?? 0) }}</strong></span>
-                                            </div>
-                                        @endif
-                                    </div>
-
-                                    <!-- Card Footer (Like & Views) -->
-                                    <div class="card-footer">
-                                        <button type="button" 
-                                                class="card-action-btn like-btn {{ !empty($prod['is_liked']) ? 'liked' : '' }}" 
-                                                id="card-like-btn-{{ $prod['id'] }}"
-                                                onclick="toggleProductLike({{ $prod['id'] }}, '{{ addslashes($prod['product_name']) }}', this, event)"
-                                                title="Like this product">
-                                            <span>👍</span>
-                                            <span class="like-label" id="card-like-label-{{ $prod['id'] }}">{{ !empty($prod['is_liked']) ? 'Liked' : 'Like' }}</span>
-                                            <span class="like-count" id="card-likes-count-{{ $prod['id'] }}" style="margin-left: 2px; font-weight: 700;">({{ number_format($prod['likes_count'] ?? 0) }})</span>
-                                        </button>
-                                        <div style="display:flex; align-items:center; gap:5px; font-size:12px; color:#64748b; font-weight:600;">
-                                            <span>👁️</span>
-                                            <span id="card-views-count-{{ $prod['id'] }}">{{ number_format($prod['views_count'] ?? 0) }}</span>
-                                            <span>views</span>
-                                        </div>
-                                    </div>
-                                </div>
+                            @foreach($categories as $cat)
+                                <button type="button" 
+                                        class="cat-tab-btn" 
+                                        onclick="filterSectionCategory({{ $section->id }}, {{ $cat->id }}, this)">
+                                    {{ $cat->category_name }}
+                                </button>
                             @endforeach
                         </div>
 
-                        <!-- See More Products Button (per section, default shows 6 products) -->
-                        @if($secProducts->count() > 6)
-                            <div class="see-more-wrap" id="see-more-wrap-{{ $section->id }}">
-                                <button type="button" 
-                                        class="see-more-btn" 
-                                        id="see-more-btn-{{ $section->id }}"
-                                        onclick="toggleSectionExpand({{ $section->id }})">
-                                    <span class="btn-text">See more products ({{ $secProducts->count() - 6 }} more)</span>
-                                    <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-                                </button>
+                        <!-- Products Grid -->
+                        @if($secProducts->isNotEmpty())
+                            <div class="products-grid" id="grid-sec-{{ $section->id }}">
+                                @foreach($secProducts as $prodIndex => $prod)
+                                    @include('partials.product-feed-card', [
+                                        'prod' => $prod,
+                                        'isExtra' => $prodIndex >= 6,
+                                        'sectionId' => $section->id
+                                    ])
+                                @endforeach
+                            </div>
+
+                            <!-- See More Products Button (per section, default shows 6 products) -->
+                            @if($secProducts->count() > 6)
+                                <div class="see-more-wrap" id="see-more-wrap-{{ $section->id }}">
+                                    <button type="button" 
+                                            class="see-more-btn" 
+                                            id="see-more-btn-{{ $section->id }}"
+                                            onclick="toggleSectionExpand({{ $section->id }})">
+                                        <span class="btn-text">See more products ({{ $secProducts->count() - 6 }} more)</span>
+                                        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                                    </button>
+                                </div>
+                            @endif
+                        @else
+                            <!-- Empty State matching Screenshot 2 -->
+                            <div class="empty-section-message">
+                                @if($currentIndustry === 'psychotropics')
+                                    No medications found in this category
+                                @else
+                                    No products found in this category
+                                @endif
                             </div>
                         @endif
-                    @else
-                        <!-- Empty State matching Screenshot 2 -->
-                        <div class="empty-section-message">
-                            @if($currentIndustry === 'psychotropics')
-                                No medications found in this category
-                            @else
-                                No products found in this category
-                            @endif
-                        </div>
-                    @endif
-                </div>
-            @empty
-                <div class="empty-section-message" style="padding: 60px 20px;">
-                    <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No sections found for this industry.</p>
-                    <p style="font-size: 13px; color: #94a3b8;">Try switching networks or choosing another industry from the sidebar.</p>
-                </div>
-            @endforelse
+                    </div>
+                @empty
+                    <div class="empty-section-message" style="padding: 60px 20px;">
+                        <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No sections found for this industry.</p>
+                        <p style="font-size: 13px; color: #94a3b8;">Try switching networks or choosing another industry from the sidebar.</p>
+                    </div>
+                @endforelse
+            </div>
         </section>
     </main>
 
@@ -1263,15 +1316,48 @@
     </div>
 
     <!-- ========================================================
-         6. JAVASCRIPT: FILTERING & IAB TRACKING
+         6. JAVASCRIPT: VIEW SWITCHER, FILTERING & IAB TRACKING
          ======================================================== -->
     <script>
         const trackedImpressions = new Set();
         const dwellTimers = new Map();
         let totalImpressions = {{ $stats['total_impressions'] ?? 0 }};
         let totalClicks = {{ $stats['total_clicks'] ?? 0 }};
+        let currentViewMode = '{{ $viewMode ?? 'all' }}';
+        let globalImpressionObserver = null;
 
+        // 1. View Mode Switcher (All Products View vs Section-wise View)
+        function switchViewMode(mode) {
+            currentViewMode = mode;
+            const allContainer = document.getElementById('viewModeAllContainer');
+            const sectionContainer = document.getElementById('viewModeSectionContainer');
+            const btnAll = document.getElementById('viewBtnAll');
+            const btnSection = document.getElementById('viewBtnSection');
 
+            if (mode === 'all') {
+                if (allContainer) allContainer.style.display = 'block';
+                if (sectionContainer) sectionContainer.style.display = 'none';
+                if (btnAll) btnAll.classList.add('active');
+                if (btnSection) btnSection.classList.remove('active');
+            } else {
+                if (allContainer) allContainer.style.display = 'none';
+                if (sectionContainer) sectionContainer.style.display = 'block';
+                if (btnAll) btnAll.classList.remove('active');
+                if (btnSection) btnSection.classList.add('active');
+            }
+
+            // Sync URL query param without page reload so refreshing maintains view state
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('view', mode);
+                window.history.replaceState({}, '', url.toString());
+            } catch (e) {}
+
+            // Re-bind IAB impression observer for visible cards in the active view
+            setTimeout(() => {
+                initViewableImpressionTracker();
+            }, 100);
+        }
 
         // 2. Client-Side Section Expansion & Sub-Category Tab Filtering
         const sectionState = {};
@@ -1372,10 +1458,20 @@
 
         // 3. IAB Viewable Impression Observer (50% visibility for 600ms)
         function initViewableImpressionTracker() {
-            const boostedCards = document.querySelectorAll('.product-card.boosted[data-campaign-id]');
+            if (globalImpressionObserver) {
+                globalImpressionObserver.disconnect();
+            }
+
+            const activeContainer = currentViewMode === 'section'
+                ? document.getElementById('viewModeSectionContainer')
+                : document.getElementById('viewModeAllContainer');
+
+            if (!activeContainer) return;
+
+            const boostedCards = activeContainer.querySelectorAll('.product-card.boosted[data-campaign-id]');
             if (!boostedCards.length) return;
 
-            const observer = new IntersectionObserver((entries) => {
+            globalImpressionObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     const card = entry.target;
                     const campaignId = card.getAttribute('data-campaign-id');
@@ -1411,12 +1507,11 @@
                                             return;
                                         }
 
-                                        // Update card count
-                                        const impSpan = document.getElementById(`card-imp-${campaignId}`);
-                                        if (impSpan) {
+                                        // Update card count across all instances of this campaign card in DOM
+                                        document.querySelectorAll(`.card-imp-${campaignId}`).forEach(impSpan => {
                                             const current = parseInt(impSpan.textContent.replace(/,/g, '')) || 0;
                                             impSpan.textContent = (current + 1).toLocaleString();
-                                        }
+                                        });
 
                                         totalImpressions++;
                                         updateStickyMetrics();
@@ -1441,7 +1536,7 @@
                 threshold: 0.5
             });
 
-            boostedCards.forEach(card => observer.observe(card));
+            boostedCards.forEach(card => globalImpressionObserver.observe(card));
         }
 
         // 4. Handle Card & CTA Click
@@ -1469,11 +1564,10 @@
 
                         const totalAdClicks = data.data && data.data.total_clicks ? data.data.total_clicks : null;
 
-                        const clickSpan = document.getElementById(`card-click-${campaignId}`);
-                        if (clickSpan) {
+                        document.querySelectorAll(`.card-click-${campaignId}`).forEach(clickSpan => {
                             const current = parseInt(clickSpan.textContent.replace(/,/g, '')) || 0;
                             clickSpan.textContent = (totalAdClicks || (current + 1)).toLocaleString();
-                        }
+                        });
 
                         totalClicks++;
                         updateStickyMetrics();
@@ -1492,22 +1586,22 @@
             if (event) event.stopPropagation();
 
             const isCurrentlyLiked = btnEl.classList.contains('liked');
-            const labelEl = document.getElementById(`card-like-label-${productId}`);
-            const countEl = document.getElementById(`card-likes-count-${productId}`);
+            const countEl = document.querySelector(`.card-likes-count-${productId}`);
 
             let currentCount = countEl ? (parseInt(countEl.textContent.replace(/[^0-9]/g, '')) || 0) : 0;
             let newLiked = !isCurrentlyLiked;
             let newCount = newLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
 
-            // Optimistic UI update
-            if (newLiked) {
-                btnEl.classList.add('liked');
-                if (labelEl) labelEl.textContent = 'Liked';
-            } else {
-                btnEl.classList.remove('liked');
-                if (labelEl) labelEl.textContent = 'Like';
-            }
-            if (countEl) countEl.textContent = `(${newCount.toLocaleString()})`;
+            // Optimistic UI update across all instances in DOM
+            document.querySelectorAll(`.card-like-btn-${productId}`).forEach(b => {
+                if (newLiked) b.classList.add('liked'); else b.classList.remove('liked');
+            });
+            document.querySelectorAll(`.card-like-label-${productId}`).forEach(l => {
+                l.textContent = newLiked ? 'Liked' : 'Like';
+            });
+            document.querySelectorAll(`.card-likes-count-${productId}`).forEach(c => {
+                c.textContent = `(${newCount.toLocaleString()})`;
+            });
 
             fetch(`/preview/products/${productId}/like`, {
                 method: 'POST',
@@ -1521,20 +1615,23 @@
             .then(data => {
                 if (data.success && data.data) {
                     const serverLikes = data.data.likes_count;
-                    if (countEl) countEl.textContent = `(${serverLikes.toLocaleString()})`;
+                    document.querySelectorAll(`.card-likes-count-${productId}`).forEach(c => {
+                        c.textContent = `(${serverLikes.toLocaleString()})`;
+                    });
                     showToast('click', data.data.is_liked ? 'Product Liked 👍' : 'Product Unliked', `${productName}`);
                 }
             })
             .catch(err => {
                 console.error('Like error:', err);
-                if (isCurrentlyLiked) {
-                    btnEl.classList.add('liked');
-                    if (labelEl) labelEl.textContent = 'Liked';
-                } else {
-                    btnEl.classList.remove('liked');
-                    if (labelEl) labelEl.textContent = 'Like';
-                }
-                if (countEl) countEl.textContent = `(${currentCount.toLocaleString()})`;
+                document.querySelectorAll(`.card-like-btn-${productId}`).forEach(b => {
+                    if (isCurrentlyLiked) b.classList.add('liked'); else b.classList.remove('liked');
+                });
+                document.querySelectorAll(`.card-like-label-${productId}`).forEach(l => {
+                    l.textContent = isCurrentlyLiked ? 'Liked' : 'Like';
+                });
+                document.querySelectorAll(`.card-likes-count-${productId}`).forEach(c => {
+                    c.textContent = `(${currentCount.toLocaleString()})`;
+                });
             });
         }
 
@@ -1558,8 +1655,8 @@
             const productImage = product.image_url || product.image || 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80';
 
             // Sync live counts with feed card if available
-            const viewsSpan = document.getElementById(`card-views-count-${product.id}`);
-            const likesSpan = document.getElementById(`card-likes-count-${product.id}`);
+            const viewsSpan = document.querySelector(`.card-views-count-${product.id}`);
+            const likesSpan = document.querySelector(`.card-likes-count-${product.id}`);
             const viewsCount = viewsSpan ? (parseInt(viewsSpan.textContent.replace(/[^0-9]/g, '')) || 0) : (product.views_count || 1);
             const likesCount = likesSpan ? (parseInt(likesSpan.textContent.replace(/[^0-9]/g, '')) || 0) : (product.likes_count || 0);
 
@@ -1571,10 +1668,9 @@
                 .then(r => r.json())
                 .then(d => {
                     if (d.success && d.data && typeof d.data.views_count !== 'undefined') {
-                        const vSpan = document.getElementById(`card-views-count-${product.id}`);
-                        if (vSpan) {
+                        document.querySelectorAll(`.card-views-count-${product.id}`).forEach(vSpan => {
                             vSpan.textContent = d.data.views_count.toLocaleString();
-                        }
+                        });
                         const modalViews = document.getElementById('modalViewsCount');
                         if (modalViews) modalViews.textContent = d.data.views_count.toLocaleString();
                     }
