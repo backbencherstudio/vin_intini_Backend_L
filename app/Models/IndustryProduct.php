@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class IndustryProduct extends Model implements BoostableInterface
 {
@@ -41,6 +42,7 @@ class IndustryProduct extends Model implements BoostableInterface
         'boost_expires_at',
         'boost_score',
         'views_count',
+        'unique_views_count',
         'impressions_count',
         'clicks_count',
         'likes_count',
@@ -165,5 +167,39 @@ class IndustryProduct extends Model implements BoostableInterface
     public function getAdType(): string
     {
         return 'product';
+    }
+
+    /**
+     * Record a product view with unique visitor deduplication and 30-second cooldown protection.
+     */
+    public function recordView(?User $user = null, ?string $ip = null): void
+    {
+        $viewCriteria = [
+            'industry_product_id' => $this->id,
+            'user_id' => $user?->id,
+        ];
+
+        if (! $user) {
+            $viewCriteria['ip_address'] = $ip;
+        }
+
+        $view = IndustryProductView::firstOrCreate(
+            $viewCriteria,
+            ['ip_address' => $ip]
+        );
+
+        if ($view->wasRecentlyCreated) {
+            $this->increment('unique_views_count');
+        }
+
+        // Total views: increments on every view, protected by a 30s cache cooldown per user/IP
+        $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
+        $cooldownKey = "product_view_throttle_{$this->id}_{$userIdentifier}";
+
+        if (Cache::add($cooldownKey, true, now()->addSeconds(30))) {
+            $this->increment('views_count');
+        } elseif ($view->wasRecentlyCreated && $this->views_count == 0) {
+            $this->increment('views_count');
+        }
     }
 }

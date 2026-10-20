@@ -18,7 +18,8 @@ class IndustryProductResource extends JsonResource
      */
     public function __construct(
         $resource,
-        protected array|int|null $likedProductIds = null
+        protected array|int|null $likedProductIds = null,
+        protected bool $isIndustryContext = false
     ) {
         if (is_int($likedProductIds)) {
             $this->likedProductIds = null;
@@ -65,6 +66,12 @@ class IndustryProductResource extends JsonResource
             }
         }
 
+        $user = auth('api')->user() ?? auth('web')->user() ?? $request->user();
+        $isIndustryContext = $this->isIndustryContext
+            || $request->is('*my-listings*')
+            || $request->is('*industry/products/dashboard*')
+            || ($user && ($user->id === $this->creator_id || ($user->industry && $user->industry->id === $this->industry_id)) && ! $request->is('*product-feed*', '*feed*'));
+
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
@@ -101,6 +108,9 @@ class IndustryProductResource extends JsonResource
             'information_confirmed' => (bool) $this->information_confirmed,
             'status' => $this->status,
             'views_count' => (int) ($this->views_count ?? 0),
+            $this->mergeWhen($isIndustryContext, [
+                'unique_views_count' => (int) ($this->unique_views_count ?? 0),
+            ]),
             'impressions_count' => (int) ($this->impressions_count ?? 0),
             'clicks_count' => (int) ($this->clicks_count ?? 0),
             'likes_count' => (int) ($this->likes_count ?? 0),

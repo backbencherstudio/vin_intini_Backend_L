@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\IndustryCategory;
 use App\Models\IndustryPartner;
 use App\Models\IndustrySections;
 
