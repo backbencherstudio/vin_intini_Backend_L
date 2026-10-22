@@ -58,12 +58,9 @@ trait HasBoostableCampaigns
 
     public function scopeFeedOrder(Builder $query): Builder
     {
-        return $query->orderByRaw('
-            CASE 
-                WHEN is_boosted = 1 AND (boost_expires_at IS NULL OR boost_expires_at > NOW()) THEN 2
-                WHEN is_new_release = 1 AND (new_release_expires_at IS NULL OR new_release_expires_at > NOW()) THEN 1
-                ELSE 0
-            END DESC
-        ')->orderByDesc('boost_score')->orderByDesc('id');
+        return $query->orderByDesc('is_boosted')
+            ->orderByDesc('is_new_release')
+            ->orderByDesc('boost_score')
+            ->orderByDesc('id');
     }
 }

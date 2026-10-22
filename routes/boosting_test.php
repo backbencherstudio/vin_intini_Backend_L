@@ -174,11 +174,16 @@ Route::get('/product-feed-preview', function (Request $request) {
         ->orderBy('id')
         ->get();
 
-    // Auto-expire products whose boost expired
+    // Auto-expire products whose boost or new release expired
     IndustryProduct::where('is_boosted', true)
         ->whereNotNull('boost_expires_at')
         ->where('boost_expires_at', '<=', now())
         ->update(['is_boosted' => false]);
+
+    IndustryProduct::where('is_new_release', true)
+        ->whereNotNull('new_release_expires_at')
+        ->where('new_release_expires_at', '<=', now())
+        ->update(['is_new_release' => false]);
 
     $currentUser = auth('api')->user() ?? auth('web')->user() ?? User::where('email', 'niaz.softvence@gmail.com')->first();
 

@@ -3617,7 +3617,19 @@
                         tempContainer.innerHTML = data.html;
                         const newCards = Array.from(tempContainer.children);
 
+                        const existingIds = new Set(
+                            Array.from(targetGrid.querySelectorAll('.product-card'))
+                                .map(c => c.getAttribute('data-product-id'))
+                                .filter(Boolean)
+                        );
+
                         newCards.forEach(card => {
+                            const pId = card.getAttribute('data-product-id');
+                            if (pId && existingIds.has(pId)) {
+                                return;
+                            }
+                            if (pId) existingIds.add(pId);
+
                             card.classList.add('fade-in-card');
                             targetGrid.appendChild(card);
                         });
