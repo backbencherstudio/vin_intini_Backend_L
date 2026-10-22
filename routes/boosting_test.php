@@ -511,6 +511,10 @@ Route::get('/boosting-showcase', function () {
     abort(404, 'Boosting showcase documentation file not found.');
 })->name('boosting.showcase');
 
+Route::get('/admin/boosting-showcase', function () {
+    return view('admin.boosting-showcase');
+})->name('admin.boosting.showcase');
+
 // =========================================================================
 // 4. Product Details & Like Simulation Endpoints (for Blade Preview)
 // =========================================================================
