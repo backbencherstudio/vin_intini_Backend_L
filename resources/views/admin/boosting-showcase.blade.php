@@ -698,109 +698,6 @@
                             <span class="text-[11px] text-slate-500 mt-1 block">Clear promotional summary shown to users on paywall cards.</span>
                         </div>
 
-                        <!-- Row 4: Fixed Deliverable Features & Placements (Strict Checklist - No Freeform Input) -->
-                        <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
-                            <div class="flex flex-wrap items-center justify-between pb-3 border-b border-slate-200/80 gap-2">
-                                <div>
-                                    <label class="font-bold text-slate-900 text-xs flex items-center gap-2">
-                                        <span>Package Features & Placement Permissions</span>
-                                        <span id="selectedFeaturesCountPill" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-100 text-[#008f95]">7 of 8 Selected</span>
-                                    </label>
-                                    <p class="text-[11px] text-slate-500 mt-0.5">Fixed platform-supported capabilities. Admin selects via checkboxes only to guarantee delivery & zero false promises.</p>
-                                </div>
-                                <div class="flex items-center gap-1.5">
-                                    <button type="button" onclick="selectAllFeatures(true)" class="text-[11px] font-bold text-[#008f95] hover:underline">Select All</button>
-                                    <span class="text-slate-300">|</span>
-                                    <button type="button" onclick="selectAllFeatures(false)" class="text-[11px] font-bold text-slate-500 hover:underline">Clear All</button>
-                                </div>
-                            </div>
-
-                            <!-- 1. Placements Section (2 Active Channels Only) -->
-                            <div>
-                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">1. Ad Placement Channels (বিজ্ঞাপনের স্থানসমূহ)</span>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3.5 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_placement_marketplace" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs">Marketplace Product Feed</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Top-ranked priority placement in category & catalog feeds (All plans).</div>
-                                        </div>
-                                    </label>
-
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3.5 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_placement_newsfeed" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                                <span>Main Newsfeed Stream</span>
-                                                <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-cyan-100 text-[#008f95]">Growth (14d) & Best Value (30d)</span>
-                                            </div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Post #4 insertion in general user social stream.</div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- 2. Visual & Algorithm Features -->
-                            <div>
-                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">2. Visual & Ranking Capabilities (ভিজ্যুয়াল ও অগ্রাধিকার সুবিধা)</span>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_feature_topplacement" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs">Continuous Top Placement</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Active priority position throughout campaign.</div>
-                                        </div>
-                                    </label>
-
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_feature_badge" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs">Featured 'Sponsored' Badge</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Cyan highlighted badge ribbon on card.</div>
-                                        </div>
-                                    </label>
-
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_feature_rotation" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs">Fair-Play Exposure Rotation</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Equal impression algorithm prevents burial.</div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- 3. Lead Capture, Analytics & Policy -->
-                            <div>
-                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">3. Leads, Analytics & Policy (লিড, অ্যানালিটিক্স ও নিয়ন্ত্রণ)</span>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_feature_analytics" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs">Verified Views & Click Analytics</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Transparent real-time ad tracking metrics.</div>
-                                        </div>
-                                    </label>
-
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_feature_inquiry" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs">Direct Buyer Inquiries & Chat</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">1-click direct buyer communication button.</div>
-                                        </div>
-                                    </label>
-
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_feature_pause" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs">30-Day Pause Protection</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Freeze campaign when out of stock.</div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Row 5: Priority Weight & Badge Ribbon -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
@@ -1014,6 +911,18 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Point 10: Elimination of Pointless "Package Features" Input in Boosting -->
+                        <div class="p-4 rounded-2xl bg-cyan-50 border border-cyan-200 flex items-start gap-3">
+                            <span class="p-2 rounded-xl bg-cyan-100 text-[#008f95] font-bold text-sm">10</span>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-cyan-950 text-sm">Elimination of Useless "Package Features" Input in Package Creation</h4>
+                                <p class="text-xs text-cyan-800 mt-1">In Figma (Screen 2), an arbitrary freeform "Package Features" chip input was included. Unlike subscription membership tiers where user permissions vary, product boosting is a duration-based exposure service. Every single boosted product on MindUnite automatically receives all platform capabilities (Continuous Top Placement, Fair-Play Rotation, Sponsored Badge, and Live Analytics). Forcing an admin to manually type or check arbitrary features creates confusion, maintenance overhead, and false expectations.</p>
+                                <div class="mt-2 text-xs font-semibold text-emerald-800 bg-emerald-100/70 p-2 rounded-xl inline-block">
+                                    ✓ Fix: Completely removed "Package Features" from the plan creation form. The admin only manages real, concrete parameters: <strong>Plan Name, Duration (Days), Price ($), Badge Ribbon, Description, and RevenueCat Mobile IAP Identifiers</strong>.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1194,47 +1103,6 @@
             }
         }
 
-        function handleFeatureCheckboxChange() {
-            const checkboxes = document.querySelectorAll('.feature-checkbox-card input[type="checkbox"]');
-            let checkedCount = 0;
-            checkboxes.forEach(chk => {
-                if (chk.checked) checkedCount++;
-            });
-            const pill = document.getElementById('selectedFeaturesCountPill');
-            if (pill) {
-                pill.innerText = `${checkedCount} of ${checkboxes.length} Selected`;
-            }
-        }
-
-        function selectAllFeatures(selectAll) {
-            const checkboxes = document.querySelectorAll('.feature-checkbox-card input[type="checkbox"]');
-            checkboxes.forEach(chk => {
-                chk.checked = selectAll;
-            });
-            handleFeatureCheckboxChange();
-        }
-
-        function setFeatureCheckboxesForPlan(days) {
-            const setChecked = (id, val) => {
-                const el = document.getElementById(id);
-                if (el) el.checked = val;
-            };
-
-            // Common deliverable capabilities for all plans
-            setChecked('chk_placement_marketplace', true);
-            setChecked('chk_feature_topplacement', true);
-            setChecked('chk_feature_badge', true);
-            setChecked('chk_feature_rotation', true);
-            setChecked('chk_feature_analytics', true);
-            setChecked('chk_feature_inquiry', true);
-            setChecked('chk_feature_pause', true);
-
-            // Newsfeed Ad Stream is enabled for 14+ Days (Growth & Best Value)
-            setChecked('chk_placement_newsfeed', days >= 14);
-
-            handleFeatureCheckboxChange();
-        }
-
         function editPlanDemo(name, price, days) {
             switchView('create');
             document.getElementById('formHeaderTitle').innerText = 'Edit Boosting Plan: ' + name;
@@ -1254,9 +1122,6 @@
             if (badgeInput) {
                 badgeInput.value = days === 7 ? 'Starter Tier' : (days === 14 ? 'Most Popular Plan' : 'Maximum Reach');
             }
-
-            // Strictly set fixed feature checkboxes for the selected plan
-            setFeatureCheckboxesForPlan(days);
         }
 
         function toggleIapSection() {
@@ -1296,7 +1161,12 @@
 
         function handleFormSubmit(e) {
             e.preventDefault();
-            alert('Boosting plan saved successfully! Dispatched POST /api/admin/boost-packages.');
+
+            const name = document.getElementById('inputPlanName')?.value || 'New Boosting Plan';
+            const duration = parseInt(document.getElementById('inputDuration')?.value || '7', 10);
+            const price = parseFloat(document.getElementById('inputPrice')?.value || '19.99');
+
+            alert(`✅ Boosting Package "${name}" Saved Successfully!\n\n• Duration: ${duration} Days\n• Price: $${price.toFixed(2)}\n\nAll platform boosting capabilities (Continuous Top Placement, Fair-Play Rotation, Sponsored Badge, and Live Analytics) are automatically active for this plan.`);
             switchView('overview');
         }
     </script>
