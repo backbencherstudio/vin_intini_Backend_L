@@ -19,10 +19,10 @@ The **Admin Boosting System** enables platform administrators to configure self-
 1. **Equal Platform Feature Standard (Static Features):**
    Unlike user subscription tiers where permissions vary (e.g. 5 jobs vs 50 jobs), **every single product boost package receives equal, top-tier promotional capabilities**. Therefore, admin does **NOT** manually input or check feature checkboxes during plan creation.
    The 4 core features guaranteed for every boosted campaign are:
-   - `Marketplace Feed + Main Newsfeed` (Dual Placement)
-   - `Sponsored Badge` (Cyan ribbon on cards)
-   - `Fair-Play` (Impression-balancing round-robin rotation)
-   - `Live Analytics` (Real-time impressions & CTR tracking)
+   - `Dual Placement: Marketplace Feed + Main Newsfeed` (Dual Channel Exposure)
+   - `Featured "Sponsored" Badge Ribbon` (Cyan highlight on cards for maximum CTR)
+   - `Fair-Play Exposure Rotation (Never Buried)` (Impression-balancing round-robin rotation)
+   - `Real-Time Verified Views & Click Analytics` (Fraud-free impressions & engagement tracking)
 2. **Admin-Configurable Plan Parameters:**
    - **Boosting Plan Name** (e.g. `Starter Boost`, `Growth Boost`, `Best Value Boost`)
    - **Duration (Days)** (e.g. `7`, `14`, `30`)
@@ -103,12 +103,13 @@ Accept: application/json
       "daily_price": 2.33,
       "estimated_impressions": "40,000 – 60,000+ Impressions",
       "badge": "Best Value (Save 18%)",
+      "promotion_highlight": "30 Days Full-Month Non-Stop",
       "description": "Full-month omnipresent promotion for top vendors & brands.",
       "features": [
-        "Marketplace Feed + Main Newsfeed",
-        "Sponsored Badge",
-        "Fair-Play",
-        "Live Analytics"
+        "Dual Placement: Marketplace Feed + Main Newsfeed",
+        "Featured \"Sponsored\" Badge Ribbon",
+        "Fair-Play Exposure Rotation (Never Buried)",
+        "Real-Time Verified Views & Click Analytics"
       ],
       "priority_weight": 3,
       "status": "active",
@@ -131,12 +132,13 @@ Accept: application/json
       "daily_price": 2.50,
       "estimated_impressions": "15,000 – 25,000 Impressions",
       "badge": "Most Popular Plan",
+      "promotion_highlight": "14 Days Extended Multi-Channel Reach",
       "description": "Multi-channel promotion across marketplace & main newsfeed.",
       "features": [
-        "Marketplace Feed + Main Newsfeed",
-        "Sponsored Badge",
-        "Fair-Play",
-        "Live Analytics"
+        "Dual Placement: Marketplace Feed + Main Newsfeed",
+        "Featured \"Sponsored\" Badge Ribbon",
+        "Fair-Play Exposure Rotation (Never Buried)",
+        "Real-Time Verified Views & Click Analytics"
       ],
       "priority_weight": 2,
       "status": "active",
@@ -159,12 +161,13 @@ Accept: application/json
       "daily_price": 2.85,
       "estimated_impressions": "5,000 – 10,000 Impressions",
       "badge": "Starter Tier",
+      "promotion_highlight": "7 Days Active Promotion",
       "description": "Essential front-row visibility to jumpstart product discovery.",
       "features": [
-        "Marketplace Feed + Main Newsfeed",
-        "Sponsored Badge",
-        "Fair-Play",
-        "Live Analytics"
+        "Dual Placement: Marketplace Feed + Main Newsfeed",
+        "Featured \"Sponsored\" Badge Ribbon",
+        "Fair-Play Exposure Rotation (Never Buried)",
+        "Real-Time Verified Views & Click Analytics"
       ],
       "priority_weight": 1,
       "status": "active",
@@ -200,7 +203,8 @@ Allows Admin to create a new boosting package.
 | `duration_days` | `integer` | **Yes** | Total campaign days (min: 1, max: 365). |
 | `price` | `numeric` | **Yes** | Price in USD (min: 0, max: 999999.99). |
 | `description` | `string` | No | Marketing summary shown on paywall cards. |
-| `badge` | `string` | No | Optional badge ribbon (e.g. `'Most Popular Plan'`). |
+| `badge` | `string` | No | Optional badge ribbon above card (e.g. `'Most Popular Plan'`). |
+| `promotion_highlight` | `string` | No | Highlighted pill inside card (e.g. `'14 Days Extended Multi-Channel Reach'`). |
 | `estimated_impressions` | `string` | No | Impression highlight (e.g. `'15,000 – 25,000 Impressions'`). |
 | `priority_weight` | `integer` | No | Display sorting priority: `1` (Standard), `2` (Growth), `3` (VIP). Default: `0`. |
 | `status` | `string` | No | `'active'` or `'inactive'`. Default: `'active'`. |
@@ -217,6 +221,7 @@ Allows Admin to create a new boosting package.
   "price": 9.99,
   "description": "Quick 3-day weekend discovery burst for product flash sales.",
   "badge": "Flash Promo",
+  "promotion_highlight": "3 Days Weekend Discovery Burst",
   "estimated_impressions": "3,000 – 5,000 Impressions",
   "priority_weight": 1,
   "status": "active",
@@ -240,12 +245,13 @@ Allows Admin to create a new boosting package.
     "daily_price": 3.33,
     "estimated_impressions": "3,000 – 5,000 Impressions",
     "badge": "Flash Promo",
+    "promotion_highlight": "3 Days Weekend Discovery Burst",
     "description": "Quick 3-day weekend discovery burst for product flash sales.",
     "features": [
-      "Marketplace Feed + Main Newsfeed",
-      "Sponsored Badge",
-      "Fair-Play",
-      "Live Analytics"
+      "Dual Placement: Marketplace Feed + Main Newsfeed",
+      "Featured \"Sponsored\" Badge Ribbon",
+      "Fair-Play Exposure Rotation (Never Buried)",
+      "Real-Time Verified Views & Click Analytics"
     ],
     "priority_weight": 1,
     "status": "active",
@@ -281,12 +287,13 @@ Allows Admin to create a new boosting package.
     "daily_price": 2.50,
     "estimated_impressions": "15,000 – 25,000 Impressions",
     "badge": "Most Popular Plan",
+    "promotion_highlight": "14 Days Extended Multi-Channel Reach",
     "description": "Multi-channel promotion across marketplace & main newsfeed.",
     "features": [
-      "Marketplace Feed + Main Newsfeed",
-      "Sponsored Badge",
-      "Fair-Play",
-      "Live Analytics"
+      "Dual Placement: Marketplace Feed + Main Newsfeed",
+      "Featured \"Sponsored\" Badge Ribbon",
+      "Fair-Play Exposure Rotation (Never Buried)",
+      "Real-Time Verified Views & Click Analytics"
     ],
     "priority_weight": 2,
     "status": "active",
@@ -319,6 +326,7 @@ Allows Admin to create a new boosting package.
   "duration_days": 14,
   "description": "Updated reach summary.",
   "badge": "Top Seller",
+  "promotion_highlight": "14 Days VIP Extended Reach",
   "estimated_impressions": "18,000 – 28,000 Impressions",
   "priority_weight": 2,
   "status": "active"
@@ -339,12 +347,13 @@ Allows Admin to create a new boosting package.
     "daily_price": 2.64,
     "estimated_impressions": "18,000 – 28,000 Impressions",
     "badge": "Top Seller",
+    "promotion_highlight": "14 Days VIP Extended Reach",
     "description": "Updated reach summary.",
     "features": [
-      "Marketplace Feed + Main Newsfeed",
-      "Sponsored Badge",
-      "Fair-Play",
-      "Live Analytics"
+      "Dual Placement: Marketplace Feed + Main Newsfeed",
+      "Featured \"Sponsored\" Badge Ribbon",
+      "Fair-Play Exposure Rotation (Never Buried)",
+      "Real-Time Verified Views & Click Analytics"
     ],
     "priority_weight": 2,
     "status": "active",
@@ -519,9 +528,10 @@ interface BoostingPackage {
   price: number;
   daily_price: number; // e.g. 2.50
   badge?: string; // e.g. "Most Popular Plan"
+  promotion_highlight?: string; // e.g. "14 Days Extended Multi-Channel Reach"
   estimated_impressions?: string; // e.g. "15,000 – 25,000 Impressions"
   description?: string;
-  features: string[]; // ["Marketplace Feed + Main Newsfeed", "Sponsored Badge", "Fair-Play", "Live Analytics"]
+  features: string[]; // ["Dual Placement: Marketplace Feed + Main Newsfeed", "Featured \"Sponsored\" Badge Ribbon", "Fair-Play Exposure Rotation (Never Buried)", "Real-Time Verified Views & Click Analytics"]
   status: 'active' | 'inactive';
   priority_weight: number;
 }
@@ -548,11 +558,54 @@ When building the Create/Edit form modal or page:
 3. `duration_days`: Number input (`Duration (Days) *`)
 4. `price`: Number input (`Price ($ USD) *`)
 5. `description`: Textarea (`Package Description *`)
-6. `badge`: Text input (`Badge Ribbon (Optional)`)
-7. `estimated_impressions`: Text input (`Estimated Impression`)
-8. `status`: Select dropdown (`Active` / `Inactive`)
-9. **Platform Guaranteed Features (Informational Only):** Render a read-only badge component showing the 4 features (No user input required).
-10. **RevenueCat In-App Purchase Accordion:**
+6. `badge`: Text input (`Badge Ribbon (Optional)` - e.g. "Most Popular Plan")
+7. `promotion_highlight`: Text input (`Promotion Duration Highlight (Badge)` - e.g. "14 Days Extended Multi-Channel Reach")
+8. `estimated_impressions`: Text input (`Estimated Impression`)
+9. `status`: Select dropdown (`Active` / `Inactive`)
+10. **Platform Guaranteed Features (Informational Only):** Render a read-only badge component showing the 4 features (No user input required).
+11. **RevenueCat In-App Purchase Accordion:**
     - `revenuecat_store_identifier_ios` (iOS Store ID)
     - `revenuecat_store_identifier_android` (Android Store ID)
     - `revenuecat_entitlement_identifier` (Entitlement ID)
+
+---
+
+### 4.3. Guaranteed Platform Features Breakdown & UI Copy Guide
+(ইউজার ও অ্যাডভার্টাইজারদের জন্য বিস্তারিত অর্থ ও ফ্রন্টএন্ড UI তে উপস্থাপনের নিয়ম)
+
+প্রতিটি বুস্টিং প্যাকেজের সাথে প্ল্যাটফর্ম গ্যারান্টিড ৪টি ফিচার অন্তর্ভুক্ত থাকে। ইউজার যাতে প্যাকেজ কেনার সময় সুস্পষ্টভাবে বুঝতে পারে সে কী পাচ্ছে, ফ্রন্টএন্ড টিম নিচের শিরোনাম ও সাবটাইটেল ফরম্যাটটি ব্যবহার করবে:
+
+| # | Feature Name | UI Title + Subtitle | সাধারণ ইউজারদের বোঝার জন্য বিস্তারিত অর্থ |
+|---|--------------|---------------------|------------------------------------------|
+| 1 | **Dual Placement** | **Dual Placement:** Marketplace Feed + Main Newsfeed | **মার্কেটপ্লেস ও মেইন নিউজফিড উভয় জায়গায় শো করবে:** পণ্যটি কেবল মার্কেটপ্লেসের ভেতর সীমাবদ্ধ থাকবে না, সাধারণ কমিউনিটি হোম নিউজফিডেও (সোশ্যাল টাইমলাইনে ৪ নম্বর পোস্ট ও প্রতি ৮ পোস্ট পরপর) প্রমোশনাল স্পন্সরড কার্ড হিসেবে ইউজারদের সামনে ভেসে উঠবে। |
+| 2 | **Sponsored Badge** | **Featured Badge:** Eye-catching 'Sponsored' Ribbon | **আকর্ষণীয় 'Sponsored' ব্যাজ রিবন:** পণ্যের উপর উজ্জ্বল প্রিমিয়াম সায়ান রঙের স্পন্সরড রিবন থাকে। এতে সাধারণ পোস্ট থেকে আলাদা দেখায় এবং ক্রেতাদের বিশ্বাসযোগ্যতা ও ক্লিকে রূপান্তরের হার (CTR) বৃদ্ধি পায়। |
+| 3 | **Fair-Play Rotation** | **Fair-Play Rotation:** Equal exposure, never buried | **সবার সমান সুযোগ – কখনো নিচে হারিয়ে যাবে না:** স্বয়ংক্রিয় রাউন্ড-রবিন অ্যালগরিদম নিশ্চিত করে যে যেকোনো প্যাকেজ নেওয়া বিক্রেতার পণ্যই রোটেশনের মাধ্যমে সমানভাবে সবার উপরে পৌঁছাবে। কোনো বড় ব্র্যান্ডের বিজ্ঞাপনের নিচে আপনার বিজ্ঞাপন চাপা পড়বে না। |
+| 4 | **Live Analytics** | **Live Analytics:** Real-time verified views & clicks | **রিয়েল-টাইম ভেরিফায়েড ভিউ ও ক্লিক রিপোর্ট:** ড্যাশবোর্ডে একদম লাইভ দেখতে পাবেন কতজন প্রকৃত ইউজার আপনার পণ্যটি দেখেছেন, কতজন ক্লিক করেছেন এবং কতজন সরাসরি চ্যাটে বা লিডে পরিণত হয়েছেন। কোনো ফেক বা বট ক্লিক গণনা হয় না। |
+
+#### Frontend UI Rendering Recommendation (Mobile App & Web Paywall):
+```jsx
+// কার্ডে দেখানোর সময় Title বোল্ড এবং Subtitle রেগুলার টেক্সটে দেখানো সবচেয়ে আকর্ষণীয় ও স্পষ্ট:
+<ul className="space-y-2">
+  <li>
+    <span className="text-emerald-500 font-bold">✓</span>
+    <span className="font-semibold text-slate-800"> Dual Placement:</span>
+    <span className="text-slate-600"> Marketplace Feed + Main Newsfeed</span>
+  </li>
+  <li>
+    <span className="text-emerald-500 font-bold">✓</span>
+    <span className="font-semibold text-slate-800"> Featured Badge:</span>
+    <span className="text-slate-600"> Eye-catching 'Sponsored' Ribbon</span>
+  </li>
+  <li>
+    <span className="text-emerald-500 font-bold">✓</span>
+    <span className="font-semibold text-slate-800"> Fair-Play Rotation:</span>
+    <span className="text-slate-600"> Equal exposure, never buried</span>
+  </li>
+  <li>
+    <span className="text-emerald-500 font-bold">✓</span>
+    <span className="font-semibold text-slate-800"> Live Analytics:</span>
+    <span className="text-slate-600"> Real-time verified views & clicks</span>
+  </li>
+</ul>
+```
+

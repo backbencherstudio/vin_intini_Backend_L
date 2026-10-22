@@ -30,6 +30,7 @@ class StoreBoostPackageRequest extends FormRequest
             'price' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'estimated_impressions' => ['nullable', 'string', 'max:255'],
             'badge' => ['nullable', 'string', 'max:255'],
+            'promotion_highlight' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
             'features' => ['nullable', 'array'],
             'features.*' => ['string', 'max:255'],

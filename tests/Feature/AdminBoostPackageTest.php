@@ -130,6 +130,7 @@ test('admin can create a new boost package', function () {
         'price' => 119.99,
         'estimated_impressions' => '30,000 - 50,000 impressions',
         'badge' => 'Enterprise',
+        'promotion_highlight' => '60 Days Non-Stop VIP Domination',
         'description' => 'Maximum exposure across marketplace and social feeds.',
         'features' => [
             'Pinned Marketplace Placement',
@@ -152,6 +153,7 @@ test('admin can create a new boost package', function () {
                 'duration_days' => 60,
                 'price' => 119.99,
                 'badge' => 'Enterprise',
+                'promotion_highlight' => '60 Days Non-Stop VIP Domination',
                 'is_active' => true,
             ],
         ]);
@@ -160,6 +162,7 @@ test('admin can create a new boost package', function () {
         'name' => '60-Day Enterprise Visibility',
         'duration_days' => 60,
         'price' => 119.99,
+        'promotion_highlight' => '60 Days Non-Stop VIP Domination',
     ]);
 });
 
@@ -190,6 +193,7 @@ test('admin can update a boost package', function () {
         'name' => 'Updated 7-Day Flash Boost',
         'price' => 14.99,
         'badge' => 'Flash',
+        'promotion_highlight' => '7 Days Turbo Flash',
     ];
 
     $this->actingAs($this->adminUser, 'api')
@@ -202,6 +206,7 @@ test('admin can update a boost package', function () {
                 'name' => 'Updated 7-Day Flash Boost',
                 'price' => 14.99,
                 'badge' => 'Flash',
+                'promotion_highlight' => '7 Days Turbo Flash',
             ],
         ]);
 
@@ -209,6 +214,7 @@ test('admin can update a boost package', function () {
         'id' => $package->id,
         'name' => 'Updated 7-Day Flash Boost',
         'price' => 14.99,
+        'promotion_highlight' => '7 Days Turbo Flash',
     ]);
 });
 

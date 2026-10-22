@@ -18,6 +18,7 @@ class BoostPackage extends Model
         'price',
         'estimated_impressions',
         'badge',
+        'promotion_highlight',
         'description',
         'features',
         'priority_weight',

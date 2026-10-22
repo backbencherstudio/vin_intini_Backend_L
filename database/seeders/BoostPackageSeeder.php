@@ -14,10 +14,10 @@ class BoostPackageSeeder extends Seeder
     public function run(): void
     {
         $defaultFeatures = [
-            'Marketplace Feed + Main Newsfeed',
-            'Sponsored Badge',
-            'Fair-Play',
-            'Live Analytics',
+            'Dual Placement: Marketplace Feed + Main Newsfeed',
+            'Featured "Sponsored" Badge Ribbon',
+            'Fair-Play Exposure Rotation (Never Buried)',
+            'Real-Time Verified Views & Click Analytics',
         ];
 
         $packages = [
@@ -28,6 +28,7 @@ class BoostPackageSeeder extends Seeder
                 'price' => 19.99,
                 'estimated_impressions' => '5,000 – 10,000 Impressions',
                 'badge' => 'Starter Tier',
+                'promotion_highlight' => '7 Days Active Promotion',
                 'description' => 'Essential front-row visibility to jumpstart product discovery.',
                 'features' => $defaultFeatures,
                 'priority_weight' => 1,
@@ -43,6 +44,7 @@ class BoostPackageSeeder extends Seeder
                 'price' => 34.99,
                 'estimated_impressions' => '15,000 – 25,000 Impressions',
                 'badge' => 'Most Popular Plan',
+                'promotion_highlight' => '14 Days Extended Multi-Channel Reach',
                 'description' => 'Multi-channel promotion across marketplace & main newsfeed.',
                 'features' => $defaultFeatures,
                 'priority_weight' => 2,
@@ -58,6 +60,7 @@ class BoostPackageSeeder extends Seeder
                 'price' => 69.99,
                 'estimated_impressions' => '40,000 – 60,000+ Impressions',
                 'badge' => 'Best Value (Save 18%)',
+                'promotion_highlight' => '30 Days Full-Month Non-Stop',
                 'description' => 'Full-month omnipresent promotion for top vendors & brands.',
                 'features' => $defaultFeatures,
                 'priority_weight' => 3,

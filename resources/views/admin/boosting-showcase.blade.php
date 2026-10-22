@@ -438,22 +438,22 @@
                                         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
                                         <span class="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Platform Standard</span>
                                     </div>
-                                    <ul class="space-y-2 text-xs text-slate-700">
+                                    <ul class="space-y-2.5 text-xs text-slate-700">
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span class="font-semibold text-slate-800">Marketplace Feed + Main Newsfeed</span>
+                                            <span><strong>Dual Placement:</strong> Marketplace Feed + Main Newsfeed</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Sponsored Badge</span>
+                                            <span><strong>Featured Badge:</strong> Eye-catching 'Sponsored' Ribbon</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Fair-Play</span>
+                                            <span><strong>Fair-Play Rotation:</strong> Equal exposure, never buried</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Live Analytics</span>
+                                            <span><strong>Live Analytics:</strong> Real-time verified views & clicks</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -508,22 +508,22 @@
                                         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
                                         <span class="text-[10px] font-semibold text-[#008f95] bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-100">Platform Standard</span>
                                     </div>
-                                    <ul class="space-y-2 text-xs text-slate-700">
+                                    <ul class="space-y-2.5 text-xs text-slate-700">
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span class="font-semibold text-slate-800">Marketplace Feed + Main Newsfeed</span>
+                                            <span><strong>Dual Placement:</strong> Marketplace Feed + Main Newsfeed</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Sponsored Badge</span>
+                                            <span><strong>Featured Badge:</strong> Eye-catching 'Sponsored' Ribbon</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Fair-Play</span>
+                                            <span><strong>Fair-Play Rotation:</strong> Equal exposure, never buried</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Live Analytics</span>
+                                            <span><strong>Live Analytics:</strong> Real-time verified views & clicks</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -578,22 +578,22 @@
                                         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
                                         <span class="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Platform Standard</span>
                                     </div>
-                                    <ul class="space-y-2 text-xs text-slate-700">
+                                    <ul class="space-y-2.5 text-xs text-slate-700">
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span class="font-semibold text-slate-800">Marketplace Feed + Main Newsfeed</span>
+                                            <span><strong>Dual Placement:</strong> Marketplace Feed + Main Newsfeed</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Sponsored Badge</span>
+                                            <span><strong>Featured Badge:</strong> Eye-catching 'Sponsored' Ribbon</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Fair-Play</span>
+                                            <span><strong>Fair-Play Rotation:</strong> Equal exposure, never buried</span>
                                         </li>
                                         <li class="flex items-center gap-2">
                                             <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span>Live Analytics</span>
+                                            <span><strong>Live Analytics:</strong> Real-time verified views & clicks</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -835,21 +835,33 @@
                                 Because all boosting plans receive equal fair-play exposure across our network, these 4 core capabilities are statically embedded into every plan. Admins do not need to configure features manually:
                             </p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-semibold text-slate-800">
-                                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
-                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
-                                    <span>1. Marketplace Feed + Main Newsfeed</span>
+                                <div class="p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
+                                    <div class="flex items-center gap-2 text-slate-900 font-bold">
+                                        <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs shrink-0">✓</span>
+                                        <span>1. Dual Placement (Feed + Newsfeed)</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 font-normal mt-1 ml-7">Promoted in both marketplace product feed and main community newsfeed slot #4.</p>
                                 </div>
-                                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
-                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
-                                    <span>2. Sponsored Badge</span>
+                                <div class="p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
+                                    <div class="flex items-center gap-2 text-slate-900 font-bold">
+                                        <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs shrink-0">✓</span>
+                                        <span>2. Featured 'Sponsored' Badge</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 font-normal mt-1 ml-7">Cyan highlight ribbon on product card builds trust and attracts instant clicks.</p>
                                 </div>
-                                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
-                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
-                                    <span>3. Fair-Play</span>
+                                <div class="p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
+                                    <div class="flex items-center gap-2 text-slate-900 font-bold">
+                                        <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs shrink-0">✓</span>
+                                        <span>3. Fair-Play Exposure Rotation</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 font-normal mt-1 ml-7">Impression-balancing round-robin ensures ads get equal views and never stay buried.</p>
                                 </div>
-                                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
-                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
-                                    <span>4. Live Analytics</span>
+                                <div class="p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
+                                    <div class="flex items-center gap-2 text-slate-900 font-bold">
+                                        <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs shrink-0">✓</span>
+                                        <span>4. Live Verified Analytics</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 font-normal mt-1 ml-7">Real-time tracking of actual user views, direct clicks, and buyer inquiries.</p>
                                 </div>
                             </div>
                         </div>
