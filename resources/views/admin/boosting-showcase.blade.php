@@ -395,18 +395,18 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                        <!-- CARD 1: Starter / Basic Boost (CORRECTED FIGMA BUG: was titled "Basic Free" with $19.99!) -->
+                        <!-- CARD 1: Starter Boost (Honest 7-Day Promotion) -->
                         <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between glow-hover transition-all relative">
                             <div class="absolute -top-2.5 left-6 bg-cyan-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow">
-                                Corrected from "Basic Free"
+                                ⏱️ 7 Days Active Promotion
                             </div>
                             <div>
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
                                         <h4 class="text-base font-bold text-slate-900">Starter Boost</h4>
-                                        <p class="text-xs text-slate-500">Get started with essential market visibility.</p>
+                                        <p class="text-xs text-slate-500">Essential top-row visibility to jumpstart product discovery.</p>
                                     </div>
-                                    <button type="button" onclick="editPlanDemo('Starter Boost', 19.99, 7)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100">
+                                    <button type="button" onclick="editPlanDemo('Starter Boost', 19.99, 7)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
@@ -416,15 +416,16 @@
                                     <span class="text-xs text-slate-400 font-semibold">/ 7 Days</span>
                                 </div>
 
-                                <div class="my-4 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 text-center">
-                                    Est. 5,000 – 10,000 Impressions
+                                <div class="my-4 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 text-center flex items-center justify-center gap-1.5">
+                                    <span>⏱️</span><span>7 Days Continuous Top Placement</span>
                                 </div>
 
                                 <div class="space-y-2.5 text-xs text-slate-600 my-5">
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Basic real-time analytics</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Up to 5,000 guaranteed impressions</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Standard marketplace placement</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Email notification support</div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>7 Days continuous</strong> marketplace top-row placement</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Featured <strong>'Sponsored'</strong> badge ribbon on card</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Fair-play rotation</strong> (equal exposure, never buried)</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Real-time verified <strong>view & click analytics</strong></span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Direct buyer inquiry & chat messaging access</span></div>
                                 </div>
                             </div>
 
@@ -434,7 +435,7 @@
                             </div>
                         </div>
 
-                        <!-- CARD 2: Growth Boost (Popular Plan) -->
+                        <!-- CARD 2: Growth Boost (Popular Plan - Honest 14-Day Multi-Placement) -->
                         <div class="bg-white rounded-3xl border-2 border-[#00c2cb] shadow-lg p-6 flex flex-col justify-between glow-hover transition-all relative">
                             <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#043940] text-[#00c2cb] border border-[#00c2cb] text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow">
                                 Most Popular Plan
@@ -443,9 +444,9 @@
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
                                         <h4 class="text-base font-bold text-slate-900">Growth Boost</h4>
-                                        <p class="text-xs text-slate-500">Maximize your reach, discovery, and engagement.</p>
+                                        <p class="text-xs text-slate-500">Multi-channel visibility across marketplace & newsfeed streams.</p>
                                     </div>
-                                    <button type="button" onclick="editPlanDemo('Growth Boost', 34.99, 14)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100">
+                                    <button type="button" onclick="editPlanDemo('Growth Boost', 34.99, 14)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
@@ -455,15 +456,17 @@
                                     <span class="text-xs text-slate-400 font-semibold">/ 14 Days</span>
                                 </div>
 
-                                <div class="my-4 px-3 py-1.5 rounded-xl bg-cyan-50 text-[#008f95] text-xs font-bold border border-cyan-200 text-center">
-                                    Est. 15,000 – 25,000 Impressions
+                                <div class="my-4 px-3 py-1.5 rounded-xl bg-cyan-50 text-[#008f95] text-xs font-bold border border-cyan-200 text-center flex items-center justify-center gap-1.5">
+                                    <span>🚀</span><span>14 Days Extended Multi-Channel Reach</span>
                                 </div>
 
                                 <div class="space-y-2.5 text-xs text-slate-600 my-5">
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Up to 15,000 guaranteed impressions</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Targeted industry category placement</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Featured Sponsored badge ribbon</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Newsfeed ad rotation placement</div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>14 Days continuous</strong> front-row priority placement</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Featured <strong>'Sponsored'</strong> badge ribbon on card</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Dual Placement:</strong> Marketplace Feed + Newsfeed Stream</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Fair-play rotation</strong> (priority equalization queue)</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Real-time verified <strong>view & click analytics</strong></span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Direct buyer inquiry & chat messaging access</span></div>
                                 </div>
                             </div>
 
@@ -473,15 +476,15 @@
                             </div>
                         </div>
 
-                        <!-- CARD 3: Best Value (Enterprise Boost) -->
+                        <!-- CARD 3: Best Value Boost (Honest 30-Day Full-Month Promotion) -->
                         <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between glow-hover transition-all">
                             <div>
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
                                         <h4 class="text-base font-bold text-slate-900">Best Value Boost</h4>
-                                        <p class="text-xs text-slate-500">For maximum exposure, lead capture & ROI.</p>
+                                        <p class="text-xs text-slate-500">Full-month omnipresent promotion for industry leaders & top vendors.</p>
                                     </div>
-                                    <button type="button" onclick="editPlanDemo('Best Value Boost', 69.99, 30)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100">
+                                    <button type="button" onclick="editPlanDemo('Best Value Boost', 69.99, 30)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
@@ -491,15 +494,17 @@
                                     <span class="text-xs text-slate-400 font-semibold">/ 30 Days</span>
                                 </div>
 
-                                <div class="my-4 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 text-center">
-                                    Est. 100,000 – 200,000 Impressions
+                                <div class="my-4 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 text-center flex items-center justify-center gap-1.5">
+                                    <span>👑</span><span>30 Days Full-Month Non-Stop Placement</span>
                                 </div>
 
                                 <div class="space-y-2.5 text-xs text-slate-600 my-5">
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Up to 100,000+ impressions</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Omnichannel (Marketplace + Feed + Search)</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Full analytics & click export</div>
-                                    <div class="flex items-center gap-2"><svg width="14" height="14" class="text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Dedicated account manager support</div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>30 Days uninterrupted</strong> top-ranked placement</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Featured <strong>'Sponsored'</strong> badge ribbon on card</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Dual Placement:</strong> Marketplace Feed + Newsfeed Stream</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Maximum rotation velocity</strong> across all related categories</span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Real-time verified <strong>view & click analytics</strong></span></div>
+                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Direct buyer inquiry & chat messaging access</span></div>
                                 </div>
                             </div>
 
@@ -693,11 +698,26 @@
                             <span class="text-[11px] text-slate-500 mt-1 block">Clear promotional summary shown to users on paywall cards.</span>
                         </div>
 
-                        <!-- Row 4: Plan Features (Interactive Tag Pills) -->
+                        <!-- Row 4: Plan Features (Interactive Tag Pills & Quick-Add) -->
                         <div>
-                            <label class="block font-bold text-slate-700 mb-1.5">Package Features & Benefits</label>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="font-bold text-slate-700">Package Features & Benefits</label>
+                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">100% Deliverable Services Only</span>
+                            </div>
+
+                            <!-- 1-Click Quick Add Buttons -->
+                            <div class="flex flex-wrap items-center gap-1.5 mb-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Quick Add:</span>
+                                <button type="button" onclick="quickAddChip('Continuous Marketplace Top Placement')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Top Placement</button>
+                                <button type="button" onclick="quickAddChip('Featured \'Sponsored\' Badge Ribbon')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ 'Sponsored' Badge</button>
+                                <button type="button" onclick="quickAddChip('Dual Placement: Marketplace Feed + Newsfeed Stream')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Dual Placement</button>
+                                <button type="button" onclick="quickAddChip('Fair-Play Exposure Rotation (Equal Reach)')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Fair Exposure Rotation</button>
+                                <button type="button" onclick="quickAddChip('Real-Time Verified View & Click Analytics')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Live Analytics</button>
+                                <button type="button" onclick="quickAddChip('Direct Buyer Inquiries & Messaging Access')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Direct Inquiries</button>
+                            </div>
+
                             <div class="flex gap-2 mb-3">
-                                <input type="text" id="featureTextInput" placeholder="e.g. Targeted category placement..." class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 text-xs outline-none">
+                                <input type="text" id="featureTextInput" placeholder="Type custom honest feature or click quick-add buttons above..." class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 text-xs outline-none">
                                 <button type="button" onclick="addFeatureChip()" class="btn-cyan px-4 py-2.5 rounded-xl font-bold flex items-center gap-1 shadow-sm">
                                     <span>+ Add</span>
                                 </button>
@@ -706,15 +726,27 @@
                             <!-- Chips list -->
                             <div id="featureChipsContainer" class="flex flex-wrap gap-2 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 min-h-[48px]">
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ Up to 15,000 guaranteed impressions</span>
+                                    <span>✓ 14 Days continuous front-row placement</span>
                                     <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
                                 </span>
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ Featured Sponsored ribbon</span>
+                                    <span>✓ Featured 'Sponsored' badge ribbon on card</span>
                                     <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
                                 </span>
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ Newsfeed ad injection placement</span>
+                                    <span>✓ Dual Placement: Marketplace Feed + Newsfeed Stream</span>
+                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
+                                </span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
+                                    <span>✓ Fair-play exposure rotation (priority equalization queue)</span>
+                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
+                                </span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
+                                    <span>✓ Real-time verified view & click analytics</span>
+                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
+                                </span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
+                                    <span>✓ Direct buyer inquiry & chat messaging access</span>
                                     <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
                                 </span>
                             </div>
@@ -739,12 +771,12 @@
                             </div>
                         </div>
 
-                        <!-- Row 6: Estimated Impressions Range -->
+                        <!-- Row 6: Duration & Placement Highlight (Replaces misleading impression promises) -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
-                                <label class="block font-bold text-slate-700 mb-1.5">Estimated Impressions Text</label>
-                                <input type="text" id="inputEstimatedImp" placeholder="e.g. Est. 15,000 – 25,000 Impressions" value="Est. 15,000 – 25,000 Impressions" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 font-semibold text-xs outline-none">
-                                <span class="text-[11px] text-slate-400 mt-1 block">Displays estimated benchmark views to customer.</span>
+                                <label class="block font-bold text-slate-700 mb-1.5">Promotion Duration Highlight (Badge)</label>
+                                <input type="text" id="inputEstimatedImp" placeholder="e.g. 14 Days Extended Multi-Channel Reach" value="14 Days Extended Multi-Channel Reach" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 font-semibold text-xs outline-none">
+                                <span class="text-[11px] text-slate-400 mt-1 block">Transparent highlight badge shown to buyers (No fake impressions, strictly duration & placement).</span>
                             </div>
 
                             <div>
@@ -810,7 +842,7 @@
                     <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
                         <div>
                             <h3 class="text-xl font-extrabold text-slate-900">Figma Design Review & Architectural Audit</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Summary of all 8 inconsistencies found in the Figma screens with exact developer/designer fixes.</p>
+                            <p class="text-xs text-slate-500 mt-0.5">Summary of all 9 architectural inconsistencies & false-advertising risks found in Figma with exact developer/designer fixes.</p>
                         </div>
                         <button type="button" onclick="switchView('overview')" class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100">
                             ← Back to Dashboard
@@ -910,6 +942,26 @@
                                 <p class="text-xs text-slate-600 mt-1">Admin needs clear guidance on what "Priority Weight" does. In our fair-play platform, it controls the <strong>sorting order in the pricing table</strong> (which plan is featured first to vendors).</p>
                                 <div class="mt-2 text-xs font-semibold text-emerald-800 bg-emerald-100/70 p-2 rounded-xl inline-block">
                                     ✓ Fix: Add helpful label tooltip: <em>"Used for pricing table sorting order (1 = Standard, 2 = Growth, 3 = VIP)"</em>.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Point 9: Anti-Misleading Advertising & Real-Value Standard -->
+                        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                            <span class="p-2 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-sm">9</span>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-emerald-950 text-sm">Zero Negativity Standard: Elimination of Fake Impression Guarantees & Phantom Services</h4>
+                                <p class="text-xs text-emerald-800 mt-1">Figma contained unfulfillable promises like <strong>"Up to 15,000 / 100,000 guaranteed impressions"</strong>, <strong>"Dedicated account manager support"</strong>, and <strong>"Location targeting"</strong> for $19.99–$69.99 self-serve boost packages. When real marketplace visitor volume fluctuates or when automated systems cannot provide 1-on-1 human managers, advertisers file chargebacks and leave toxic reviews.</p>
+                                <div class="mt-2 text-xs font-semibold text-emerald-900 bg-white/90 p-2.5 rounded-xl border border-emerald-200">
+                                    ✓ Fix: Strictly enforce MindUnite's <strong>100% Deliverable Services Standard</strong>:
+                                    <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-700 font-normal">
+                                        <li><strong>Guaranteed Duration:</strong> 7, 14, 30 continuous active days of marketplace top placement.</li>
+                                        <li><strong>'Sponsored' Badge Ribbon:</strong> Highlighting cards with dedicated verified badge styling.</li>
+                                        <li><strong>Fair-Play Exposure Rotation:</strong> Impression equalization guarantees every boosted product gets front-row rotation and never stays buried.</li>
+                                        <li><strong>Multi-Channel Reach:</strong> Dual placement across Marketplace Feed and Network Newsfeed stream.</li>
+                                        <li><strong>Real-Time Analytics:</strong> Live verified view impressions and real click-through reporting.</li>
+                                        <li><strong>Direct Buyer Inquiries:</strong> Direct messaging channel between interested buyers and vendors.</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -1088,9 +1140,21 @@
                 auditEl.classList.remove('hidden');
                 document.getElementById('currentBreadcrumbText').innerText = 'Figma Audit';
                 document.getElementById('pageTitleText').innerText = 'Figma Design Audit & Fixes';
-                document.getElementById('pageSubtitleText').innerText = 'Complete analysis of all 8 inconsistencies in Figma and how they are resolved in production.';
+                document.getElementById('pageSubtitleText').innerText = 'Complete analysis of all 9 architectural inconsistencies & false-advertising risks in Figma and how they are resolved.';
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
+        }
+
+        function quickAddChip(val) {
+            if (!val) return;
+            const container = document.getElementById('featureChipsContainer');
+            const existing = Array.from(container.children).some(el => el.textContent.includes(val));
+            if (existing) return;
+
+            const chip = document.createElement('span');
+            chip.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200';
+            chip.innerHTML = `<span>✓ ${val}</span><button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>`;
+            container.appendChild(chip);
         }
 
         function editPlanDemo(name, price, days) {
@@ -1099,7 +1163,29 @@
             document.getElementById('inputPlanName').value = name;
             document.getElementById('inputPrice').value = price;
             document.getElementById('inputDuration').value = days;
-            document.getElementById('inputDescription').value = 'Elevate visibility and reach across the psychology and biotechnology network for ' + days + ' days.';
+            document.getElementById('inputDescription').value = 'Elevate visibility and reach across the psychology and biotechnology network for ' + days + ' continuous days.';
+
+            const highlightInput = document.getElementById('inputEstimatedImp');
+            if (highlightInput) {
+                highlightInput.value = days + ' Days Active Promotion';
+            }
+
+            const badgeInput = document.getElementById('inputBadge');
+            if (badgeInput) {
+                badgeInput.value = days === 7 ? 'Starter Tier' : (days === 14 ? 'Most Popular Plan' : 'Maximum Reach');
+            }
+
+            // Populate honest feature chips
+            const container = document.getElementById('featureChipsContainer');
+            container.innerHTML = '';
+            quickAddChip(days + ' Days continuous marketplace top-row placement');
+            quickAddChip("Featured 'Sponsored' badge ribbon on card");
+            if (days >= 14) {
+                quickAddChip('Dual Placement: Marketplace Feed + Newsfeed Stream');
+            }
+            quickAddChip('Fair-play exposure rotation (equal exposure)');
+            quickAddChip('Real-time verified view & click analytics');
+            quickAddChip('Direct buyer inquiry & chat messaging access');
         }
 
         function addFeatureChip() {
@@ -1107,12 +1193,7 @@
             const val = input.value.trim();
             if (!val) return;
 
-            const container = document.getElementById('featureChipsContainer');
-            const chip = document.createElement('span');
-            chip.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200';
-            chip.innerHTML = `<span>✓ ${val}</span><button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>`;
-            container.appendChild(chip);
-
+            quickAddChip(val);
             input.value = '';
             input.focus();
         }
