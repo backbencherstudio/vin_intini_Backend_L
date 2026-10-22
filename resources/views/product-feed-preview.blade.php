@@ -910,6 +910,13 @@
             margin-top: 24px;
         }
 
+        /* See More Button & Link */
+        .see-more-wrap {
+            display: flex;
+            justify-content: center;
+            margin-top: 24px;
+        }
+
         .see-more-btn {
             background: #ffffff;
             border: 1.5px solid #0284c7;
@@ -925,6 +932,7 @@
             box-shadow: 0 2px 6px rgba(2, 132, 199, 0.08);
             transition: all 0.2s ease;
             user-select: none;
+            text-decoration: none;
         }
 
         .see-more-btn:hover {
@@ -943,8 +951,143 @@
             transition: transform 0.2s ease;
         }
 
-        .see-more-btn.is-expanded svg {
-            transform: rotate(180deg);
+        .see-more-btn:hover svg {
+            transform: translateX(3px);
+        }
+
+        /* Dedicated Section View Styles */
+        .dedicated-section-header {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+        }
+
+        .section-breadcrumb-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .back-to-sections-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #0284c7;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 7px 16px;
+            background: rgba(2, 132, 199, 0.08);
+            border-radius: 9999px;
+            transition: all 0.15s ease;
+        }
+
+        .back-to-sections-btn:hover {
+            background: rgba(2, 132, 199, 0.18);
+            transform: translateX(-3px);
+        }
+
+        .section-tag-badge {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 4px 12px;
+            border-radius: 6px;
+        }
+
+        .dedicated-title-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .dedicated-section-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-dark);
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+
+        .dedicated-section-desc {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* Cursor Pagination Container */
+        .cursor-pagination-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 22px;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            margin-top: 32px;
+            gap: 16px;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .pagination-meta {
+            font-size: 13.5px;
+            color: var(--text-muted);
+        }
+
+        .pagination-meta strong {
+            color: var(--text-dark);
+        }
+
+        .pagination-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cursor-nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: 1.5px solid #0284c7;
+            color: #0284c7;
+            background: #ffffff;
+            user-select: none;
+        }
+
+        .cursor-nav-btn:hover:not(.disabled) {
+            background: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .cursor-nav-btn.disabled {
+            border-color: #e2e8f0;
+            color: #94a3b8;
+            background: #f8fafc;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .cursor-nav-indicator {
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+            padding: 0 4px;
         }
 
         /* ========================================================
@@ -1834,186 +1977,275 @@
 
         <!-- Right Main Feed Area -->
         <section class="main-feed-area">
-            <!-- Header for Selected Industry -->
-            <div class="industry-header">
-                <div class="industry-header-info">
-                    <h1 class="industry-main-title">{{ $industries[$currentIndustry]['name'] ?? 'Industry Products' }}</h1>
-                    <p class="industry-main-desc">{{ $industries[$currentIndustry]['desc'] ?? 'Explore the latest releases advancing brain health research and treatment.' }}</p>
-                </div>
+            @if(isset($activeSection) && $activeSection)
+                <!-- ========================================================
+                     DEDICATED SECTION VIEW (Triggered via "See More" Button)
+                     ======================================================== -->
+                <div class="dedicated-section-header">
+                    <div class="section-breadcrumb-bar">
+                        <a href="{{ route('product-feed.preview', ['network_type' => $currentNetwork, 'industry_type' => $currentIndustry, 'view' => 'section']) }}" 
+                           class="back-to-sections-btn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                            <span>Back to All {{ $industries[$currentIndustry]['name'] ?? 'Industry' }} Sections</span>
+                        </a>
+                        <span class="section-tag-badge">Section Directory</span>
+                    </div>
 
-                <!-- Controls Row: View Mode Switcher on Left, Search Bar on Right -->
-                <div class="industry-header-controls-row">
-                    <!-- View Mode Switcher -->
-                    <div class="view-mode-toggle-group">
-                        <button type="button" 
-                                class="view-mode-btn {{ $viewMode !== 'section' ? 'active' : '' }}" 
-                                id="viewBtnAll"
-                                onclick="switchViewMode('all')"
-                                title="View all products together in a single feed">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-                                <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-                                <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-                                <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                    <div class="dedicated-title-row">
+                        <div>
+                            <h2 class="dedicated-section-title">{{ $activeSection->name }}</h2>
+                            <p class="dedicated-section-desc">
+                                Showing products in this section &bull; <strong>{{ $totalSectionProducts }}</strong> total products
+                            </p>
+                        </div>
+
+                        <!-- Search in this section -->
+                        <div class="feed-search-wrap">
+                            <svg class="feed-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="7"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             </svg>
-                            <span>All Products View</span>
-                            <span class="view-badge-count" id="viewCountAll">{{ $flatProducts->count() }}</span>
-                        </button>
-
-                        <button type="button" 
-                                class="view-mode-btn {{ $viewMode === 'section' ? 'active' : '' }}" 
-                                id="viewBtnSection"
-                                onclick="switchViewMode('section')"
-                                title="View products grouped section-wise">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <line x1="3" y1="6" x2="21" y2="6"></line>
-                                <line x1="3" y1="12" x2="21" y2="12"></line>
-                                <line x1="3" y1="18" x2="21" y2="18"></line>
-                            </svg>
-                            <span>Section-wise View</span>
-                            <span class="view-badge-count" id="viewCountSection">{{ count($groupedBySection) }}</span>
-                        </button>
+                            <input type="text" 
+                                   id="feedSearchInput" 
+                                   class="feed-search-input" 
+                                   placeholder="search in this section..." 
+                                   value="{{ $search ?? '' }}"
+                                   oninput="handleFeedSearch(this.value)"
+                                   onkeydown="handleSearchKeydown(event)"
+                                   autocomplete="off"
+                                   aria-label="Search products in this section">
+                            <button type="button" 
+                                    id="clearSearchBtn" 
+                                    class="feed-search-clear" 
+                                    onclick="clearFeedSearch()" 
+                                    title="Clear search"
+                                    style="{{ !empty($search) ? 'display: flex;' : 'display: none;' }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Search Bar -->
-                    <div class="feed-search-wrap">
-                        <svg class="feed-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="7"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input type="text" 
-                               id="feedSearchInput" 
-                               class="feed-search-input" 
-                               placeholder="search by product name or id" 
-                               value="{{ $search ?? '' }}"
-                               oninput="handleFeedSearch(this.value)"
-                               onkeydown="handleSearchKeydown(event)"
-                               autocomplete="off"
-                               aria-label="Search by product name or id">
-                        <button type="button" 
-                                id="clearSearchBtn" 
-                                class="feed-search-clear" 
-                                onclick="clearFeedSearch()" 
-                                title="Clear search"
-                                style="{{ !empty($search) ? 'display: flex;' : 'display: none;' }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW 1: All Type Products Unified Grid (Default) -->
-            <div id="viewModeAllContainer" style="{{ $viewMode !== 'section' ? 'display: block;' : 'display: none;' }}">
-                <div class="all-products-header-bar">
-                    <div id="allProductsSummaryText">
-                        @if(!empty($search))
-                            <strong>Search Results</strong> &bull; Showing {{ $flatProducts->count() }} matching items for "{{ $search }}"
-                        @else
-                            <strong>All Available Products</strong> &bull; Showing {{ $flatProducts->count() }} items sorted by priority
-                        @endif
-                    </div>
-                    <div class="pill-stats">
-                        @if(!empty($stats['boosted_count']))
-                            <span style="color:#0284c7; font-weight: 700;">⚡ {{ $stats['boosted_count'] }} Sponsored</span>
-                        @endif
-                        @if(!empty($stats['new_release_count']))
-                            <span style="color:#d97706; font-weight: 700;">🔥 {{ $stats['new_release_count'] }} New Release</span>
-                        @endif
-                        <span style="color:#64748b; font-weight: 600;">📦 {{ $stats['organic_count'] ?? 0 }} Regular</span>
-                    </div>
-                </div>
-
-                @if($flatProducts->isNotEmpty())
-                    <div class="products-grid" id="grid-all-products">
-                        @foreach($flatProducts as $prod)
-                            @include('partials.product-feed-card', ['prod' => $prod, 'isExtra' => false])
+                    <!-- Category Tabs for this Section -->
+                    <div class="categories-tabs-bar" style="margin-top: 18px; margin-bottom: 0;">
+                        <a href="{{ route('product-feed.preview', ['network_type' => $currentNetwork, 'industry_type' => $currentIndustry, 'section_id' => $activeSection->id]) }}" 
+                           class="cat-tab-btn {{ empty($currentCategory) || $currentCategory === 'all' ? 'active' : '' }}"
+                           style="text-decoration: none;">
+                            All
+                        </a>
+                        @foreach(($sectionCategories ?? $activeSection->IndustryCategory ?? collect([])) as $cat)
+                            <a href="{{ route('product-feed.preview', ['network_type' => $currentNetwork, 'industry_type' => $currentIndustry, 'section_id' => $activeSection->id, 'category_id' => $cat->id]) }}" 
+                               class="cat-tab-btn {{ (string)$currentCategory === (string)$cat->id ? 'active' : '' }}"
+                               style="text-decoration: none;">
+                                {{ $cat->category_name }}
+                            </a>
                         @endforeach
                     </div>
+                </div>
+
+                @if($sectionPaginatedProducts && $sectionPaginatedProducts->isNotEmpty())
+                    <div class="products-grid" id="grid-dedicated-section" style="margin-top: 20px;">
+                        @foreach($sectionPaginatedProducts as $prod)
+                            @include('partials.product-feed-card', ['prod' => $prod, 'isExtra' => false, 'sectionId' => $activeSection->id])
+                        @endforeach
+                    </div>
+
+                    <!-- Cursor Pagination for Section -->
+                    @include('partials.cursor-pagination', ['paginator' => $sectionPaginatedProducts])
                 @else
-                    <div class="empty-section-message" style="padding: 60px 20px;">
-                        <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No products found in this industry.</p>
-                        <p style="font-size: 13px; color: #94a3b8;">Try switching networks or choosing another industry from the sidebar.</p>
+                    <div class="empty-section-message" style="padding: 60px 20px; margin-top: 20px;">
+                        <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No products found in this section.</p>
+                        <p style="font-size: 13px; color: #94a3b8;">Try choosing another category or clearing your search.</p>
                     </div>
                 @endif
-            </div>
 
-            <!-- VIEW 2: Section-wise Grouped Blocks -->
-            <div id="viewModeSectionContainer" style="{{ $viewMode === 'section' ? 'display: block;' : 'display: none;' }}">
-                @forelse($groupedBySection as $group)
-                    @php
-                        $section = $group['section'];
-                        $secProducts = $group['products'];
-                        $categories = $group['categories'];
-                    @endphp
+            @else
+                <!-- ========================================================
+                     MAIN FEED (All Products View & Section-wise View)
+                     ======================================================== -->
+                <div class="industry-header">
+                    <div class="industry-header-info">
+                        <h1 class="industry-main-title">{{ $industries[$currentIndustry]['name'] ?? 'Industry Products' }}</h1>
+                        <p class="industry-main-desc">{{ $industries[$currentIndustry]['desc'] ?? 'Explore the latest releases advancing brain health research and treatment.' }}</p>
+                    </div>
 
-                    <div class="section-block" id="section-block-{{ $section->id }}">
-                        <!-- Section Title -->
-                        <h2 class="section-title">{{ $section->name }}</h2>
-
-                        <!-- Category Tabs Sub-navigation -->
-                        <div class="categories-tabs-bar" id="cat-tabs-bar-{{ $section->id }}">
+                    <!-- Controls Row: View Mode Switcher on Left, Search Bar on Right -->
+                    <div class="industry-header-controls-row">
+                        <!-- View Mode Switcher -->
+                        <div class="view-mode-toggle-group">
                             <button type="button" 
-                                    class="cat-tab-btn active" 
-                                    data-category-id="all"
-                                    onclick="filterSectionCategory({{ $section->id }}, 'all', this)">
-                                All
+                                    class="view-mode-btn {{ $viewMode !== 'section' ? 'active' : '' }}" 
+                                    id="viewBtnAll"
+                                    onclick="switchViewMode('all')"
+                                    title="View all products together in a single feed">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                                    <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                                    <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                                    <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                                </svg>
+                                <span>All Products View</span>
+                                <span class="view-badge-count" id="viewCountAll">{{ $totalAllCount ?? $flatProducts->count() }}</span>
                             </button>
 
-                            @foreach($categories as $cat)
-                                <button type="button" 
-                                        class="cat-tab-btn" 
-                                        data-category-id="{{ $cat->id }}"
-                                        onclick="filterSectionCategory({{ $section->id }}, {{ $cat->id }}, this)">
-                                    {{ $cat->category_name }}
-                                </button>
+                            <button type="button" 
+                                    class="view-mode-btn {{ $viewMode === 'section' ? 'active' : '' }}" 
+                                    id="viewBtnSection"
+                                    onclick="switchViewMode('section')"
+                                    title="View products grouped section-wise">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                                </svg>
+                                <span>Section-wise View</span>
+                                <span class="view-badge-count" id="viewCountSection">{{ count($groupedBySection) }}</span>
+                            </button>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="feed-search-wrap">
+                            <svg class="feed-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="7"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" 
+                                   id="feedSearchInput" 
+                                   class="feed-search-input" 
+                                   placeholder="search by product name or id" 
+                                   value="{{ $search ?? '' }}"
+                                   oninput="handleFeedSearch(this.value)"
+                                   onkeydown="handleSearchKeydown(event)"
+                                   autocomplete="off"
+                                   aria-label="Search by product name or id">
+                            <button type="button" 
+                                    id="clearSearchBtn" 
+                                    class="feed-search-clear" 
+                                    onclick="clearFeedSearch()" 
+                                    title="Clear search"
+                                    style="{{ !empty($search) ? 'display: flex;' : 'display: none;' }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW 1: All Type Products Unified Grid (Default) -->
+                <div id="viewModeAllContainer" style="{{ $viewMode !== 'section' ? 'display: block;' : 'display: none;' }}">
+                    <div class="all-products-header-bar">
+                        <div id="allProductsSummaryText">
+                            @if(!empty($search))
+                                <strong>Search Results</strong> &bull; Showing matching items for "{{ $search }}"
+                            @else
+                                <strong>All Available Products</strong> &bull; Showing {{ $totalAllCount ?? $flatProducts->count() }} items sorted by priority
+                            @endif
+                        </div>
+                        <div class="pill-stats">
+                            @if(!empty($stats['boosted_count']))
+                                <span style="color:#0284c7; font-weight: 700;">⚡ {{ $stats['boosted_count'] }} Sponsored</span>
+                            @endif
+                            @if(!empty($stats['new_release_count']))
+                                <span style="color:#d97706; font-weight: 700;">🔥 {{ $stats['new_release_count'] }} New Release</span>
+                            @endif
+                            <span style="color:#64748b; font-weight: 600;">📦 {{ $stats['organic_count'] ?? 0 }} Regular</span>
+                        </div>
+                    </div>
+
+                    @if($flatProducts->isNotEmpty())
+                        <div class="products-grid" id="grid-all-products">
+                            @foreach($flatProducts as $prod)
+                                @include('partials.product-feed-card', ['prod' => $prod, 'isExtra' => false])
                             @endforeach
                         </div>
 
-                        <!-- Products Grid -->
-                        @if($secProducts->isNotEmpty())
-                            <div class="products-grid" id="grid-sec-{{ $section->id }}">
-                                @foreach($secProducts as $prodIndex => $prod)
-                                    @include('partials.product-feed-card', [
-                                        'prod' => $prod,
-                                        'isExtra' => $prodIndex >= 6,
-                                        'sectionId' => $section->id
-                                    ])
+                        <!-- Cursor Pagination for All Products View -->
+                        @if(isset($allPaginated))
+                            @include('partials.cursor-pagination', ['paginator' => $allPaginated])
+                        @endif
+                    @else
+                        <div class="empty-section-message" style="padding: 60px 20px;">
+                            <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No products found in this industry.</p>
+                            <p style="font-size: 13px; color: #94a3b8;">Try switching networks or choosing another industry from the sidebar.</p>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- VIEW 2: Section-wise Grouped Blocks -->
+                <div id="viewModeSectionContainer" style="{{ $viewMode === 'section' ? 'display: block;' : 'display: none;' }}">
+                    @forelse($groupedBySection as $group)
+                        @php
+                            $section = $group['section'];
+                            $secProducts = $group['products'];
+                            $categories = $group['categories'];
+                            $secTotal = $group['total'] ?? $secProducts->count();
+                        @endphp
+
+                        <div class="section-block" id="section-block-{{ $section->id }}">
+                            <!-- Section Title -->
+                            <h2 class="section-title">{{ $section->name }}</h2>
+
+                            <!-- Category Tabs Sub-navigation -->
+                            <div class="categories-tabs-bar" id="cat-tabs-bar-{{ $section->id }}">
+                                <button type="button" 
+                                        class="cat-tab-btn active" 
+                                        data-category-id="all"
+                                        onclick="filterSectionCategory({{ $section->id }}, 'all', this)">
+                                    All
+                                </button>
+
+                                @foreach($categories as $cat)
+                                    <button type="button" 
+                                            class="cat-tab-btn" 
+                                            data-category-id="{{ $cat->id }}"
+                                            onclick="filterSectionCategory({{ $section->id }}, {{ $cat->id }}, this)">
+                                        {{ $cat->category_name }}
+                                    </button>
                                 @endforeach
                             </div>
 
-                            <!-- See More Products Button (per section, default shows 6 products) -->
-                            @if($secProducts->count() > 6)
-                                <div class="see-more-wrap" id="see-more-wrap-{{ $section->id }}">
-                                    <button type="button" 
-                                            class="see-more-btn" 
-                                            id="see-more-btn-{{ $section->id }}"
-                                            onclick="toggleSectionExpand({{ $section->id }})">
-                                        <span class="btn-text">See more products ({{ $secProducts->count() - 6 }} more)</span>
-                                        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-                                    </button>
+                            <!-- Products Grid (Top 6 per section) -->
+                            @if($secProducts->isNotEmpty())
+                                <div class="products-grid" id="grid-sec-{{ $section->id }}">
+                                    @foreach($secProducts as $prodIndex => $prod)
+                                        @include('partials.product-feed-card', [
+                                            'prod' => $prod,
+                                            'isExtra' => false,
+                                            'sectionId' => $section->id
+                                        ])
+                                    @endforeach
+                                </div>
+
+                                <!-- See More Button: Redirects to Dedicated Section Page with Cursor Pagination! -->
+                                @if($secTotal > 6)
+                                    <div class="see-more-wrap" id="see-more-wrap-{{ $section->id }}">
+                                        <a href="{{ route('product-feed.preview', ['network_type' => $currentNetwork, 'industry_type' => $currentIndustry, 'section_id' => $section->id, 'view' => 'section']) }}" 
+                                           class="see-more-btn see-more-link" 
+                                           id="see-more-btn-{{ $section->id }}"
+                                           title="View all {{ $secTotal }} products in {{ $section->name }}">
+                                            <span class="btn-text">See all products in this section ({{ $secTotal - 6 }} more)</span>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                        </a>
+                                    </div>
+                                @endif
+                            @else
+                                <div class="empty-section-message">
+                                    No products found in this category
                                 </div>
                             @endif
-                        @else
-                            <!-- Empty State matching Screenshot 2 -->
-                            <div class="empty-section-message">
-                                @if($currentIndustry === 'psychotropics')
-                                    No medications found in this category
-                                @else
-                                    No products found in this category
-                                @endif
-                            </div>
-                        @endif
-                    </div>
-                @empty
-                    <div class="empty-section-message" style="padding: 60px 20px;">
-                        <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No sections found for this industry.</p>
-                        <p style="font-size: 13px; color: #94a3b8;">Try switching networks or choosing another industry from the sidebar.</p>
-                    </div>
-                @endforelse
-            </div>
+                        </div>
+                    @empty
+                        <div class="empty-section-message" style="padding: 60px 20px;">
+                            <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No sections found for this industry.</p>
+                            <p style="font-size: 13px; color: #94a3b8;">Try switching networks or choosing another industry from the sidebar.</p>
+                        </div>
+                    @endforelse
+                </div>
+            @endif
         </section>
     </main>
 
@@ -2143,7 +2375,15 @@
             if (event.key === 'Enter') {
                 event.preventDefault();
                 clearTimeout(searchDebounceTimer);
-                executeFeedSearch(event.target.value);
+                const val = event.target.value.trim();
+                const url = new URL(window.location.href);
+                if (val) {
+                    url.searchParams.set('search', val);
+                } else {
+                    url.searchParams.delete('search');
+                }
+                url.searchParams.delete('cursor');
+                window.location.href = url.toString();
             }
         }
 
@@ -2153,6 +2393,16 @@
                 input.value = '';
                 input.focus();
             }
+            try {
+                const url = new URL(window.location.href);
+                if (url.searchParams.has('search') || url.searchParams.has('cursor')) {
+                    url.searchParams.delete('search');
+                    url.searchParams.delete('cursor');
+                    window.location.href = url.toString();
+                    return;
+                }
+            } catch (e) {}
+
             Object.keys(sectionState).forEach(secId => {
                 sectionState[secId].activeCategory = 'all';
             });
@@ -2460,46 +2710,16 @@
             });
 
             const btnWrap = document.getElementById(`see-more-wrap-${sectionId}`);
-            const btn = document.getElementById(`see-more-btn-${sectionId}`);
 
-            // When searching, show all matching cards directly (no 6-card limit cutting off search matches)
-            if (query) {
-                matchingCards.forEach(card => {
-                    card.style.display = 'flex';
-                });
-                if (btnWrap) btnWrap.style.display = 'none';
-            } else if (state.expanded) {
-                matchingCards.forEach(card => {
-                    card.style.display = 'flex';
-                });
-                if (btnWrap && btn) {
-                    if (matchingCards.length > 6) {
-                        btnWrap.style.display = 'flex';
-                        btn.classList.add('is-expanded');
-                        const btnText = btn.querySelector('.btn-text');
-                        if (btnText) btnText.textContent = 'Show less';
-                    } else {
-                        btnWrap.style.display = 'none';
-                    }
-                }
-            } else {
-                matchingCards.forEach((card, idx) => {
-                    if (idx < 6) {
-                        card.style.display = 'flex';
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
-                if (btnWrap && btn) {
-                    const remaining = matchingCards.length - 6;
-                    if (remaining > 0) {
-                        btnWrap.style.display = 'flex';
-                        btn.classList.remove('is-expanded');
-                        const btnText = btn.querySelector('.btn-text');
-                        if (btnText) btnText.textContent = `See more products (${remaining} more)`;
-                    } else {
-                        btnWrap.style.display = 'none';
-                    }
+            matchingCards.forEach(card => {
+                card.style.display = 'flex';
+            });
+
+            if (btnWrap) {
+                if (query) {
+                    btnWrap.style.display = 'none';
+                } else {
+                    btnWrap.style.display = matchingCards.length > 0 ? 'flex' : 'none';
                 }
             }
 

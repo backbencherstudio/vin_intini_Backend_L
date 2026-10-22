@@ -180,53 +180,129 @@ Route::get('/product-feed-preview', function (Request $request) {
         ->where('boost_expires_at', '<=', now())
         ->update(['is_boosted' => false]);
 
-    $query = IndustryProduct::query()
+    $currentUser = auth('api')->user() ?? auth('web')->user() ?? User::where('email', 'niaz.softvence@gmail.com')->first();
+
+    // =========================================================================
+    // CASE 1: SPECIFIC SECTION VIEW (Redirected from "See More" button or direct link)
+    // =========================================================================
+    $activeSection = null;
+    $sectionPaginatedProducts = null;
+    $totalSectionProducts = 0;
+
+    if ($sectionId) {
+        $activeSection = $sections->firstWhere('id', (int) $sectionId)
+            ?? IndustrySections::with(['IndustryCategory' => fn ($q) => $q->select('id', 'section_id', 'category_name')->orderBy('id')])->find((int) $sectionId);
+
+        if ($activeSection) {
+            $secQuery = IndustryProduct::query()
+                ->where('status', 'active')
+                ->where('section_id', $activeSection->id)
+                ->with(['creator', 'industry', 'section', 'category', 'activeCampaign.boostPackage'])
+                ->feedOrder();
+
+            if ($categoryId) {
+                $secQuery->where('category_id', (int) $categoryId);
+            }
+            if ($search) {
+                $secQuery->where(function ($q) use ($search) {
+                    $q->where('product_name', 'LIKE', "%{$search}%")
+                        ->orWhere('description', 'LIKE', "%{$search}%")
+                        ->orWhere('product_id', 'LIKE', "%{$search}%");
+                });
+            }
+
+            $totalSectionProducts = (clone $secQuery)->count();
+            $sectionPaginated = $secQuery->cursorPaginate(12)->withQueryString();
+
+            $pIds = $sectionPaginated->pluck('id')->all();
+            $likedIds = $currentUser
+                ? IndustryProductLike::where('user_id', $currentUser->id)
+                    ->whereIn('industry_product_id', $pIds)
+                    ->pluck('industry_product_id')
+                    ->flip()
+                    ->all()
+                : [];
+
+            $transformedSec = $sectionPaginated->getCollection()->map(function ($p) use ($likedIds) {
+                return (new IndustryProductResource($p, $likedIds))->resolve();
+            });
+            $sectionPaginated->setCollection($transformedSec);
+            $sectionPaginatedProducts = $sectionPaginated;
+        }
+    }
+
+    // =========================================================================
+    // CASE 2: MAIN FEED (Section-wise Overview + All Products with Cursor Pagination)
+    // =========================================================================
+    $groupedBySection = [];
+    foreach ($sections as $sec) {
+        $secCount = IndustryProduct::where('status', 'active')
+            ->where('section_id', $sec->id)
+            ->count();
+
+        $secTopProds = IndustryProduct::where('status', 'active')
+            ->where('section_id', $sec->id)
+            ->with(['creator', 'industry', 'section', 'category', 'activeCampaign.boostPackage'])
+            ->feedOrder()
+            ->take(6)
+            ->get();
+
+        $secProductIds = $secTopProds->pluck('id')->all();
+        $secLikedIds = $currentUser
+            ? IndustryProductLike::where('user_id', $currentUser->id)
+                ->whereIn('industry_product_id', $secProductIds)
+                ->pluck('industry_product_id')
+                ->flip()
+                ->all()
+            : [];
+
+        $transformedTop = $secTopProds->map(function ($p) use ($secLikedIds) {
+            return (new IndustryProductResource($p, $secLikedIds))->resolve();
+        });
+
+        $groupedBySection[] = [
+            'section' => $sec,
+            'products' => $transformedTop,
+            'total' => $secCount,
+            'has_more' => $secCount > 6,
+            'categories' => $sec->IndustryCategory,
+        ];
+    }
+
+    // All Products View: Cursor-paginated (12 items per page)
+    $allQuery = IndustryProduct::query()
         ->where('status', 'active')
         ->where('network_type', $networkType)
         ->where('industry_type', $industryType)
         ->with(['creator', 'industry', 'section', 'category', 'activeCampaign.boostPackage'])
         ->feedOrder();
 
-    if ($sectionId) {
-        $query->where('section_id', $sectionId);
-    }
-    if ($categoryId) {
-        $query->where('category_id', $categoryId);
-    }
     if ($search) {
-        $query->where(function ($q) use ($search) {
+        $allQuery->where(function ($q) use ($search) {
             $q->where('product_name', 'LIKE', "%{$search}%")
                 ->orWhere('description', 'LIKE', "%{$search}%")
                 ->orWhere('product_id', 'LIKE', "%{$search}%");
         });
     }
 
-    $allProducts = $query->take(500)->get();
+    $totalAllCount = (clone $allQuery)->count();
+    $allPaginated = $allQuery->cursorPaginate(12)->withQueryString();
 
-    $currentUser = auth('api')->user() ?? auth('web')->user() ?? User::where('email', 'niaz.softvence@gmail.com')->first();
-    $likedProductIds = $currentUser
+    $allProductIds = $allPaginated->pluck('id')->all();
+    $allLikedIds = $currentUser
         ? IndustryProductLike::where('user_id', $currentUser->id)
-            ->whereIn('industry_product_id', $allProducts->pluck('id'))
+            ->whereIn('industry_product_id', $allProductIds)
             ->pluck('industry_product_id')
             ->flip()
             ->all()
         : [];
 
-    $transformedProducts = $allProducts->map(function ($p) use ($likedProductIds) {
-        return (new IndustryProductResource($p, $likedProductIds))->resolve();
+    $transformedAll = $allPaginated->getCollection()->map(function ($p) use ($allLikedIds) {
+        return (new IndustryProductResource($p, $allLikedIds))->resolve();
     });
+    $allPaginated->setCollection($transformedAll);
 
-    $groupedBySection = [];
-    foreach ($sections as $sec) {
-        $secProducts = $transformedProducts->where('section_id', $sec->id)->values();
-        $groupedBySection[] = [
-            'section' => $sec,
-            'products' => $secProducts,
-            'total' => $secProducts->count(),
-            'categories' => $sec->IndustryCategory,
-        ];
-    }
-
+    // Global Stats for monitor
     $totalImpressions = (int) AdCampaign::where('status', 'active')
         ->where('boostable_type', IndustryProduct::class)
         ->sum('total_impressions');
@@ -238,10 +314,10 @@ Route::get('/product-feed-preview', function (Request $request) {
     $avgCtr = $totalImpressions > 0 ? round(($totalClicks / $totalImpressions) * 100, 1) : 0.0;
 
     $stats = [
-        'total_active' => $allProducts->count(),
-        'boosted_count' => $allProducts->filter(fn ($p) => $p->isBoosted())->count(),
-        'new_release_count' => $allProducts->filter(fn ($p) => $p->isNewRelease())->count(),
-        'organic_count' => $allProducts->filter(fn ($p) => ! $p->isBoosted() && ! $p->isNewRelease())->count(),
+        'total_active' => $totalAllCount,
+        'boosted_count' => IndustryProduct::where('status', 'active')->where('network_type', $networkType)->where('industry_type', $industryType)->where('is_boosted', true)->count(),
+        'new_release_count' => IndustryProduct::where('status', 'active')->where('network_type', $networkType)->where('industry_type', $industryType)->where('is_new_release', true)->count(),
+        'organic_count' => IndustryProduct::where('status', 'active')->where('network_type', $networkType)->where('industry_type', $industryType)->where('is_boosted', false)->where('is_new_release', false)->count(),
         'total_impressions' => $totalImpressions,
         'totalClicks' => $totalClicks,
         'avg_ctr' => $avgCtr,
@@ -250,7 +326,13 @@ Route::get('/product-feed-preview', function (Request $request) {
     return view('product-feed-preview', [
         'sections' => $sections,
         'groupedBySection' => $groupedBySection,
-        'flatProducts' => $transformedProducts,
+        'flatProducts' => $allPaginated->getCollection(),
+        'allPaginated' => $allPaginated,
+        'activeSection' => $activeSection,
+        'sectionCategories' => $activeSection ? $activeSection->IndustryCategory : collect([]),
+        'sectionPaginatedProducts' => $sectionPaginatedProducts,
+        'totalSectionProducts' => $totalSectionProducts,
+        'totalAllCount' => $totalAllCount,
         'stats' => $stats,
         'networks' => $networks,
         'industries' => $industries,

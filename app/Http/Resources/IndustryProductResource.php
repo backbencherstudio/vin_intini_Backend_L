@@ -120,6 +120,7 @@ class IndustryProductResource extends JsonResource
             'boost_expires_at' => $this->boost_expires_at?->toISOString(),
             'boost_days_left' => $boostDaysLeft,
             'boost_remaining_text' => $boostRemainingText,
+            'boost_score' => (int) ($this->boost_score ?? 0),
             'is_new_release' => $this->isNewRelease(),
             'new_release_expires_at' => $this->new_release_expires_at?->toISOString(),
             'badge' => $this->getAdBadge(),
