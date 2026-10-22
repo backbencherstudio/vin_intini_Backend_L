@@ -1091,6 +1091,130 @@
         }
 
         /* ========================================================
+           CURSOR INFINITE SCROLL LOADER & END BADGES
+           ======================================================== */
+        .infinite-scroll-container {
+            width: 100%;
+            margin-top: 16px;
+            padding: 8px 0 24px;
+            position: relative;
+        }
+
+        .infinite-scroll-sentinel {
+            width: 100%;
+            height: 20px;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .infinite-scroll-loader {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 24px 0;
+            color: #0284c7;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .scroll-spinner-ring {
+            width: 26px;
+            height: 26px;
+            border: 3px solid rgba(2, 132, 199, 0.18);
+            border-top-color: #0284c7;
+            border-radius: 50%;
+            animation: scrollSpinRing 0.75s linear infinite;
+        }
+
+        @keyframes scrollSpinRing {
+            to { transform: rotate(360deg); }
+        }
+
+        .infinite-scroll-end {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            padding: 32px 0 16px;
+        }
+
+        .scroll-end-line {
+            flex: 1;
+            max-width: 160px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #cbd5e1, transparent);
+        }
+
+        .scroll-end-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 7px 18px;
+            border-radius: 9999px;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #64748b;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .scroll-end-badge svg {
+            color: #10b981;
+        }
+
+        .infinite-scroll-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 24px 0;
+            color: #ef4444;
+            font-size: 13.5px;
+            font-weight: 600;
+        }
+
+        .scroll-retry-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 16px;
+            background: #ffffff;
+            border: 1.5px solid #ef4444;
+            color: #ef4444;
+            border-radius: 9999px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .scroll-retry-btn:hover {
+            background: #ef4444;
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(239, 68, 68, 0.25);
+        }
+
+        @keyframes cardFadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-card {
+            animation: cardFadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* ========================================================
            4. STICKY REAL-TIME MONITOR & TOAST NOTIFICATIONS
            ======================================================== */
         .sticky-monitor {
@@ -2052,8 +2176,12 @@
                         @endforeach
                     </div>
 
-                    <!-- Cursor Pagination for Section -->
-                    @include('partials.cursor-pagination', ['paginator' => $sectionPaginatedProducts])
+                    <!-- Infinite Scroll for Dedicated Section (Auto loads data on scroll) -->
+                    @include('partials.infinite-scroll', [
+                        'paginator' => $sectionPaginatedProducts,
+                        'targetGridId' => 'grid-dedicated-section',
+                        'feedMode' => 'section'
+                    ])
                 @else
                     <div class="empty-section-message" style="padding: 60px 20px; margin-top: 20px;">
                         <p style="font-size: 16px; font-weight: 600; color: #64748b; margin-bottom: 8px;">No products found in this section.</p>
@@ -2163,9 +2291,13 @@
                             @endforeach
                         </div>
 
-                        <!-- Cursor Pagination for All Products View -->
+                        <!-- Infinite Scroll for All Products View (Auto loads data on scroll) -->
                         @if(isset($allPaginated))
-                            @include('partials.cursor-pagination', ['paginator' => $allPaginated])
+                            @include('partials.infinite-scroll', [
+                                'paginator' => $allPaginated,
+                                'targetGridId' => 'grid-all-products',
+                                'feedMode' => 'all'
+                            ])
                         @endif
                     @else
                         <div class="empty-section-message" style="padding: 60px 20px;">
@@ -2794,9 +2926,10 @@
                 globalImpressionObserver.disconnect();
             }
 
-            const activeContainer = currentViewMode === 'section'
-                ? document.getElementById('viewModeSectionContainer')
-                : document.getElementById('viewModeAllContainer');
+            const activeContainer = document.getElementById('grid-dedicated-section')
+                || (currentViewMode === 'section'
+                    ? document.getElementById('viewModeSectionContainer')
+                    : document.getElementById('viewModeAllContainer'));
 
             if (!activeContainer) return;
 
@@ -3391,8 +3524,142 @@
                 });
         }
 
+        // ========================================================
+        // 7. CURSOR-BASED AUTO-LOAD INFINITE SCROLL SYSTEM
+        // ========================================================
+        let infiniteScrollObserver = null;
+        let isFetchingNextBatch = false;
+        let currentNextCursor = null;
+        let hasMoreItemsToLoad = false;
+        let currentTargetGridId = 'grid-dedicated-section';
+
+        function initInfiniteScroll() {
+            const wrap = document.getElementById('infiniteScrollWrap');
+            if (!wrap) return;
+
+            hasMoreItemsToLoad = wrap.getAttribute('data-has-more') === 'true';
+            currentNextCursor = wrap.getAttribute('data-next-cursor') || null;
+            currentTargetGridId = wrap.getAttribute('data-target-grid') || 'grid-dedicated-section';
+
+            const sentinel = document.getElementById('infiniteScrollSentinel');
+            if (!sentinel) return;
+
+            if (infiniteScrollObserver) {
+                infiniteScrollObserver.disconnect();
+            }
+
+            if ('IntersectionObserver' in window) {
+                infiniteScrollObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting && hasMoreItemsToLoad && !isFetchingNextBatch && currentNextCursor) {
+                            loadNextProductBatch();
+                        }
+                    });
+                }, {
+                    root: null,
+                    rootMargin: '300px', // Trigger 300px before user hits bottom for seamless flow
+                    threshold: 0.05
+                });
+
+                infiniteScrollObserver.observe(sentinel);
+            }
+
+            window.addEventListener('scroll', handleWindowScrollInfiniteFallback, { passive: true });
+        }
+
+        function handleWindowScrollInfiniteFallback() {
+            if (isFetchingNextBatch || !hasMoreItemsToLoad || !currentNextCursor) return;
+            const scrollHeight = document.documentElement.scrollHeight;
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            const clientHeight = window.innerHeight;
+
+            if (scrollTop + clientHeight >= scrollHeight - 350) {
+                loadNextProductBatch();
+            }
+        }
+
+        async function loadNextProductBatch() {
+            if (isFetchingNextBatch || !hasMoreItemsToLoad || !currentNextCursor) return;
+            isFetchingNextBatch = true;
+
+            const loader = document.getElementById('infiniteScrollLoader');
+            const errorEl = document.getElementById('infiniteScrollError');
+            const endEl = document.getElementById('infiniteScrollEnd');
+
+            if (loader) loader.style.display = 'flex';
+            if (errorEl) errorEl.style.display = 'none';
+
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('cursor', currentNextCursor);
+                url.searchParams.set('ajax', '1');
+
+                const response = await fetch(url.toString(), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success && data.html) {
+                    const targetGrid = document.getElementById(currentTargetGridId) 
+                        || document.getElementById('grid-dedicated-section')
+                        || document.getElementById('grid-all-products');
+
+                    if (targetGrid) {
+                        const tempContainer = document.createElement('div');
+                        tempContainer.innerHTML = data.html;
+                        const newCards = Array.from(tempContainer.children);
+
+                        newCards.forEach(card => {
+                            card.classList.add('fade-in-card');
+                            targetGrid.appendChild(card);
+                        });
+                    }
+
+                    currentNextCursor = data.next_cursor || null;
+                    hasMoreItemsToLoad = Boolean(data.has_more);
+
+                    // Re-sync IAB viewable impression observer for newly added cards
+                    setTimeout(() => {
+                        initViewableImpressionTracker();
+                    }, 100);
+                } else {
+                    hasMoreItemsToLoad = false;
+                    currentNextCursor = null;
+                }
+            } catch (err) {
+                console.error('Infinite scroll loading error:', err);
+                if (errorEl) errorEl.style.display = 'flex';
+            } finally {
+                isFetchingNextBatch = false;
+                if (loader) loader.style.display = 'none';
+
+                if (!hasMoreItemsToLoad) {
+                    if (endEl) endEl.style.display = 'flex';
+                    if (infiniteScrollObserver) {
+                        infiniteScrollObserver.disconnect();
+                    }
+                    window.removeEventListener('scroll', handleWindowScrollInfiniteFallback);
+                }
+            }
+        }
+
+        function retryInfiniteScroll() {
+            const errorEl = document.getElementById('infiniteScrollError');
+            if (errorEl) errorEl.style.display = 'none';
+            loadNextProductBatch();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             initViewableImpressionTracker();
+            initInfiniteScroll();
             const searchInput = document.getElementById('feedSearchInput');
             if (searchInput && searchInput.value) {
                 executeFeedSearch(searchInput.value);

@@ -228,6 +228,26 @@ Route::get('/product-feed-preview', function (Request $request) {
             });
             $sectionPaginated->setCollection($transformedSec);
             $sectionPaginatedProducts = $sectionPaginated;
+
+            if ($request->ajax() || $request->wantsJson() || $request->has('ajax')) {
+                $html = '';
+                foreach ($sectionPaginatedProducts as $prod) {
+                    $html .= view('partials.product-feed-card', [
+                        'prod' => $prod,
+                        'isExtra' => false,
+                        'sectionId' => $activeSection->id,
+                    ])->render();
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'html' => $html,
+                    'count' => $sectionPaginatedProducts->count(),
+                    'has_more' => $sectionPaginatedProducts->hasMorePages(),
+                    'next_cursor' => $sectionPaginatedProducts->nextCursor()?->encode(),
+                    'next_url' => $sectionPaginatedProducts->nextPageUrl(),
+                ]);
+            }
         }
     }
 
@@ -301,6 +321,25 @@ Route::get('/product-feed-preview', function (Request $request) {
         return (new IndustryProductResource($p, $allLikedIds))->resolve();
     });
     $allPaginated->setCollection($transformedAll);
+
+    if ($request->ajax() || $request->wantsJson() || $request->has('ajax')) {
+        $html = '';
+        foreach ($allPaginated as $prod) {
+            $html .= view('partials.product-feed-card', [
+                'prod' => $prod,
+                'isExtra' => false,
+            ])->render();
+        }
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'count' => $allPaginated->count(),
+            'has_more' => $allPaginated->hasMorePages(),
+            'next_cursor' => $allPaginated->nextCursor()?->encode(),
+            'next_url' => $allPaginated->nextPageUrl(),
+        ]);
+    }
 
     // Global Stats for monitor
     $totalImpressions = (int) AdCampaign::where('status', 'active')
