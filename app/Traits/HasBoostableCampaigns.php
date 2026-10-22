@@ -59,8 +59,8 @@ trait HasBoostableCampaigns
     public function scopeFeedOrder(Builder $query): Builder
     {
         return $query->orderByDesc('is_boosted')
+            ->orderBy('impressions_count', 'asc')
             ->orderByDesc('is_new_release')
-            ->orderByDesc('boost_score')
             ->orderByDesc('id');
     }
 }

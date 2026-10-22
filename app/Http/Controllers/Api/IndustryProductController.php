@@ -157,6 +157,17 @@ class IndustryProductController extends Controller
 
         $currentUser = auth('api')->user();
 
+        // Auto-expire products whose boost or new release expired
+        IndustryProduct::where('is_boosted', true)
+            ->whereNotNull('boost_expires_at')
+            ->where('boost_expires_at', '<=', now())
+            ->update(['is_boosted' => false]);
+
+        IndustryProduct::where('is_new_release', true)
+            ->whereNotNull('new_release_expires_at')
+            ->where('new_release_expires_at', '<=', now())
+            ->update(['is_new_release' => false]);
+
         // 1. Tab filter / Search / Section show-all / Explicit flat pagination view
         if ($request->filled('section_id') || $request->filled('category_id') || $request->filled('search') || $request->boolean('flat') || $request->filled('cursor')) {
             $query = IndustryProduct::query()
