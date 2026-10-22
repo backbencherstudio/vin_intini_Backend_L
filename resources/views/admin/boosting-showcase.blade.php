@@ -704,7 +704,7 @@
                                 <div>
                                     <label class="font-bold text-slate-900 text-xs flex items-center gap-2">
                                         <span>Package Features & Placement Permissions</span>
-                                        <span id="selectedFeaturesCountPill" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-100 text-[#008f95]">8 of 9 Selected</span>
+                                        <span id="selectedFeaturesCountPill" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-100 text-[#008f95]">7 of 8 Selected</span>
                                     </label>
                                     <p class="text-[11px] text-slate-500 mt-0.5">Fixed platform-supported capabilities. Admin selects via checkboxes only to guarantee delivery & zero false promises.</p>
                                 </div>
@@ -715,37 +715,26 @@
                                 </div>
                             </div>
 
-                            <!-- 1. Placements Section -->
+                            <!-- 1. Placements Section (2 Active Channels Only) -->
                             <div>
                                 <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">1. Ad Placement Channels (বিজ্ঞাপনের স্থানসমূহ)</span>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3.5 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
                                         <input type="checkbox" id="chk_placement_marketplace" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
                                         <div>
                                             <div class="font-bold text-slate-800 text-xs">Marketplace Product Feed</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Top-ranked priority row in category & catalog feeds.</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Top-ranked priority placement in category & catalog feeds (All plans).</div>
                                         </div>
                                     </label>
 
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3.5 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
                                         <input type="checkbox" id="chk_placement_newsfeed" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
                                         <div>
                                             <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                                                 <span>Main Newsfeed Stream</span>
-                                                <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-cyan-100 text-[#008f95]">Growth+</span>
+                                                <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-cyan-100 text-[#008f95]">Growth (14d) & Best Value (30d)</span>
                                             </div>
                                             <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Post #4 insertion in general user social stream.</div>
-                                        </div>
-                                    </label>
-
-                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
-                                        <input type="checkbox" id="chk_placement_timeline" onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
-                                        <div>
-                                            <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                                <span>Community & Profiles</span>
-                                                <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 text-amber-700">VIP</span>
-                                            </div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Network forum feeds, user profiles & topic sidebars.</div>
                                         </div>
                                     </label>
                                 </div>
@@ -1240,11 +1229,8 @@
             setChecked('chk_feature_inquiry', true);
             setChecked('chk_feature_pause', true);
 
-            // Newsfeed Ad Stream is enabled for Tier 2+ (14+ Days)
+            // Newsfeed Ad Stream is enabled for 14+ Days (Growth & Best Value)
             setChecked('chk_placement_newsfeed', days >= 14);
-
-            // Community & Profile Timelines is enabled for Tier 3 (30 Days Omnichannel)
-            setChecked('chk_placement_timeline', days >= 30);
 
             handleFeatureCheckboxChange();
         }
@@ -1261,12 +1247,12 @@
             if (highlightInput) {
                 highlightInput.value = days === 7 
                     ? '7 Days Active Product Feed Placement' 
-                    : (days === 14 ? '14 Days Dual Placement (Marketplace + Newsfeed)' : '30 Days Omnichannel Placement (All Feeds & Streams)');
+                    : (days === 14 ? '14 Days Dual Placement (Marketplace + Newsfeed)' : '30 Days Extended Dual Placement (Marketplace + Newsfeed)');
             }
 
             const badgeInput = document.getElementById('inputBadge');
             if (badgeInput) {
-                badgeInput.value = days === 7 ? 'Starter Tier' : (days === 14 ? 'Most Popular Plan' : 'Omnichannel Reach');
+                badgeInput.value = days === 7 ? 'Starter Tier' : (days === 14 ? 'Most Popular Plan' : 'Maximum Reach');
             }
 
             // Strictly set fixed feature checkboxes for the selected plan
