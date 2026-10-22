@@ -1954,9 +1954,10 @@
                         <h2 class="section-title">{{ $section->name }}</h2>
 
                         <!-- Category Tabs Sub-navigation -->
-                        <div class="categories-tabs-bar">
+                        <div class="categories-tabs-bar" id="cat-tabs-bar-{{ $section->id }}">
                             <button type="button" 
                                     class="cat-tab-btn active" 
+                                    data-category-id="all"
                                     onclick="filterSectionCategory({{ $section->id }}, 'all', this)">
                                 All
                             </button>
@@ -1964,6 +1965,7 @@
                             @foreach($categories as $cat)
                                 <button type="button" 
                                         class="cat-tab-btn" 
+                                        data-category-id="{{ $cat->id }}"
                                         onclick="filterSectionCategory({{ $section->id }}, {{ $cat->id }}, this)">
                                     {{ $cat->category_name }}
                                 </button>
@@ -2151,6 +2153,9 @@
                 input.value = '';
                 input.focus();
             }
+            Object.keys(sectionState).forEach(secId => {
+                sectionState[secId].activeCategory = 'all';
+            });
             executeFeedSearch('');
         }
 
@@ -2243,6 +2248,12 @@
             const sectionBlocks = document.querySelectorAll('#viewModeSectionContainer .section-block');
             let visibleSectionCount = 0;
 
+            if (!query) {
+                Object.keys(sectionState).forEach(secId => {
+                    sectionState[secId].activeCategory = 'all';
+                });
+            }
+
             sectionBlocks.forEach(secBlock => {
                 const secId = secBlock.id.replace('section-block-', '');
                 const matchingCount = applySectionDisplay(secId);
@@ -2320,8 +2331,111 @@
             const cleanIdQuery = query.replace(/^#/, '');
 
             const cards = Array.from(grid.querySelectorAll(`.product-card[data-section-id="${sectionId}"]`));
-            const matchingCards = [];
 
+            // 1. Identify which cards and categories in this section match the search query
+            const searchMatchingCatIds = new Set();
+            cards.forEach(card => {
+                let searchMatches = true;
+                if (query) {
+                    const name = (card.getAttribute('data-product-name') || '').toLowerCase();
+                    const pId = (card.getAttribute('data-product-id') || '').toLowerCase();
+                    const searchBlob = (card.getAttribute('data-search-content') || '').toLowerCase();
+
+                    searchMatches = name.includes(query) || 
+                                    pId.includes(query) || 
+                                    pId.includes(cleanIdQuery) || 
+                                    searchBlob.includes(query);
+                }
+                if (searchMatches) {
+                    const cardCatId = card.getAttribute('data-category-id');
+                    if (cardCatId) {
+                        searchMatchingCatIds.add(String(cardCatId));
+                    }
+                }
+            });
+
+            // 2. Adjust Category Tabs based on search results
+            const tabsBar = document.getElementById(`cat-tabs-bar-${sectionId}`);
+            if (tabsBar) {
+                const allBtn = tabsBar.querySelector('.cat-tab-btn[data-category-id="all"]');
+                const catBtns = tabsBar.querySelectorAll('.cat-tab-btn:not([data-category-id="all"])');
+
+                if (query) {
+                    if (searchMatchingCatIds.size === 1) {
+                        // Exactly 1 category matches in this section:
+                        // Show ONLY that category and hide "All" + all other empty categories!
+                        const singleCatId = Array.from(searchMatchingCatIds)[0];
+
+                        if (allBtn) {
+                            allBtn.style.display = 'none';
+                            allBtn.classList.remove('active');
+                        }
+
+                        catBtns.forEach(btn => {
+                            if (btn.getAttribute('data-category-id') === String(singleCatId)) {
+                                btn.style.display = '';
+                                btn.classList.add('active');
+                            } else {
+                                btn.style.display = 'none';
+                                btn.classList.remove('active');
+                            }
+                        });
+
+                        state.activeCategory = singleCatId;
+                    } else if (searchMatchingCatIds.size > 1) {
+                        // Multiple categories have matches: show "All" and only the matching categories
+                        if (allBtn) {
+                            allBtn.style.display = '';
+                        }
+                        let hasActiveVisible = false;
+                        catBtns.forEach(btn => {
+                            const btnCatId = btn.getAttribute('data-category-id');
+                            if (searchMatchingCatIds.has(btnCatId)) {
+                                btn.style.display = '';
+                                if (String(state.activeCategory) === btnCatId) {
+                                    hasActiveVisible = true;
+                                    btn.classList.add('active');
+                                } else {
+                                    btn.classList.remove('active');
+                                }
+                            } else {
+                                btn.style.display = 'none';
+                                btn.classList.remove('active');
+                            }
+                        });
+
+                        if (state.activeCategory === 'all' || !hasActiveVisible) {
+                            state.activeCategory = 'all';
+                            if (allBtn) allBtn.classList.add('active');
+                        } else if (allBtn) {
+                            allBtn.classList.remove('active');
+                        }
+                    } else {
+                        // 0 matches in this section
+                    }
+                } else {
+                    // No active search: restore all category tabs
+                    if (allBtn) {
+                        allBtn.style.display = '';
+                        if (state.activeCategory === 'all') {
+                            allBtn.classList.add('active');
+                        } else {
+                            allBtn.classList.remove('active');
+                        }
+                    }
+                    catBtns.forEach(btn => {
+                        btn.style.display = '';
+                        if (String(state.activeCategory) === btn.getAttribute('data-category-id')) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.remove('active');
+                        }
+                    });
+                }
+            }
+
+            // 3. Filter cards according to activeCategory & search query
+            const matchingCards = [];
             cards.forEach(card => {
                 const cardCatId = card.getAttribute('data-category-id');
                 const catMatches = (state.activeCategory === 'all' || cardCatId === String(state.activeCategory));
