@@ -200,7 +200,7 @@ Route::get('/product-feed-preview', function (Request $request) {
         });
     }
 
-    $allProducts = $query->take(120)->get();
+    $allProducts = $query->take(500)->get();
 
     $currentUser = auth('api')->user() ?? auth('web')->user() ?? User::where('email', 'niaz.softvence@gmail.com')->first();
     $likedProductIds = $currentUser
