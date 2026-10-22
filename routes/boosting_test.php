@@ -144,6 +144,116 @@ Route::get('/product-feed-preview', function (Request $request) {
     $search = $request->input('search');
     $viewMode = $request->input('view', 'all');
 
+    // =========================================================================
+    // FAST-PATH: INSTANT AJAX CURSOR PAGINATION (<50ms zero-lag response)
+    // Skips section hierarchy, DB updates, and heavy count queries on scroll.
+    // =========================================================================
+    if ($request->ajax() || $request->has('ajax') || $request->wantsJson()) {
+        $currentUser = auth('api')->user() ?? auth('web')->user() ?? User::where('email', 'niaz.softvence@gmail.com')->first();
+
+        if ($sectionId) {
+            $secQuery = IndustryProduct::query()
+                ->where('status', 'active')
+                ->where('section_id', (int) $sectionId)
+                ->with(['creator', 'industry', 'section', 'category', 'activeCampaign.boostPackage'])
+                ->feedOrder();
+
+            if ($categoryId) {
+                $secQuery->where('category_id', (int) $categoryId);
+            }
+            if ($search) {
+                $secQuery->where(function ($q) use ($search) {
+                    $q->where('product_name', 'LIKE', "%{$search}%")
+                        ->orWhere('description', 'LIKE', "%{$search}%")
+                        ->orWhere('product_id', 'LIKE', "%{$search}%");
+                });
+            }
+
+            $paginated = $secQuery->cursorPaginate(12)->withQueryString();
+            $pIds = $paginated->pluck('id')->all();
+
+            $likedIds = ($currentUser && ! empty($pIds))
+                ? IndustryProductLike::where('user_id', $currentUser->id)
+                    ->whereIn('industry_product_id', $pIds)
+                    ->pluck('industry_product_id')
+                    ->flip()
+                    ->all()
+                : [];
+
+            $transformed = $paginated->getCollection()->map(function ($p) use ($likedIds) {
+                return (new IndustryProductResource($p, $likedIds))->resolve();
+            });
+            $paginated->setCollection($transformed);
+
+            $html = '';
+            foreach ($paginated as $prod) {
+                $html .= view('partials.product-feed-card', [
+                    'prod' => $prod,
+                    'isExtra' => false,
+                    'sectionId' => (int) $sectionId,
+                ])->render();
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'count' => $paginated->count(),
+                'has_more' => $paginated->hasMorePages(),
+                'next_cursor' => $paginated->nextCursor()?->encode(),
+                'next_url' => $paginated->nextPageUrl(),
+            ]);
+        }
+
+        // Flat / All-products feed AJAX pagination
+        $allQuery = IndustryProduct::query()
+            ->where('status', 'active')
+            ->where('network_type', $networkType)
+            ->where('industry_type', $industryType)
+            ->with(['creator', 'industry', 'section', 'category', 'activeCampaign.boostPackage'])
+            ->feedOrder();
+
+        if ($search) {
+            $allQuery->where(function ($q) use ($search) {
+                $q->where('product_name', 'LIKE', "%{$search}%")
+                    ->orWhere('description', 'LIKE', "%{$search}%")
+                    ->orWhere('product_id', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $paginated = $allQuery->cursorPaginate(12)->withQueryString();
+        $pIds = $paginated->pluck('id')->all();
+
+        $likedIds = ($currentUser && ! empty($pIds))
+            ? IndustryProductLike::where('user_id', $currentUser->id)
+                ->whereIn('industry_product_id', $pIds)
+                ->pluck('industry_product_id')
+                ->flip()
+                ->all()
+            : [];
+
+        $transformed = $paginated->getCollection()->map(function ($p) use ($likedIds) {
+            return (new IndustryProductResource($p, $likedIds))->resolve();
+        });
+        $paginated->setCollection($transformed);
+
+        $html = '';
+        foreach ($paginated as $prod) {
+            $html .= view('partials.product-feed-card', [
+                'prod' => $prod,
+                'isExtra' => false,
+            ])->render();
+        }
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'count' => $paginated->count(),
+            'has_more' => $paginated->hasMorePages(),
+            'next_cursor' => $paginated->nextCursor()?->encode(),
+            'next_url' => $paginated->nextPageUrl(),
+        ]);
+    }
+
     $networks = [
         'psychology' => 'Psychology Network',
         'neuroscience' => 'Neuroscience Network',

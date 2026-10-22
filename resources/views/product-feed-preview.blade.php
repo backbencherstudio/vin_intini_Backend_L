@@ -3557,8 +3557,8 @@
                     });
                 }, {
                     root: null,
-                    rootMargin: '300px', // Trigger 300px before user hits bottom for seamless flow
-                    threshold: 0.05
+                    rootMargin: '1200px', // Pre-fetch 1200px before user reaches bottom for zero perceived lag
+                    threshold: 0.01
                 });
 
                 infiniteScrollObserver.observe(sentinel);
@@ -3573,7 +3573,7 @@
             const scrollTop = window.scrollY || document.documentElement.scrollTop;
             const clientHeight = window.innerHeight;
 
-            if (scrollTop + clientHeight >= scrollHeight - 350) {
+            if (scrollTop + clientHeight >= scrollHeight - 1000) {
                 loadNextProductBatch();
             }
         }
@@ -3585,6 +3585,7 @@
             const loader = document.getElementById('infiniteScrollLoader');
             const errorEl = document.getElementById('infiniteScrollError');
             const endEl = document.getElementById('infiniteScrollEnd');
+            const sentinel = document.getElementById('infiniteScrollSentinel');
 
             if (loader) loader.style.display = 'flex';
             if (errorEl) errorEl.style.display = 'none';
@@ -3659,6 +3660,16 @@
                         infiniteScrollObserver.disconnect();
                     }
                     window.removeEventListener('scroll', handleWindowScrollInfiniteFallback);
+                } else if (currentNextCursor && sentinel) {
+                    // If user is already near bottom on high-res displays, pre-fetch subsequent batch
+                    const rect = sentinel.getBoundingClientRect();
+                    if (rect.top <= window.innerHeight + 1200) {
+                        setTimeout(() => {
+                            if (!isFetchingNextBatch && hasMoreItemsToLoad && currentNextCursor) {
+                                loadNextProductBatch();
+                            }
+                        }, 50);
+                    }
                 }
             }
         }
