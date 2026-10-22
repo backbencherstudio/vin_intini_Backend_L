@@ -1029,62 +1029,681 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
-        /* Modal Simulation */
+        /* ========================================================
+           5. PRODUCT DETAILS MODAL - EXECUTIVE REDESIGN
+           ======================================================== */
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px);
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 9999;
             padding: 20px;
+            opacity: 0;
+            transition: opacity 0.22s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
         }
 
         .modal-card {
             background: #ffffff;
-            border-radius: 16px;
-            max-width: 680px;
-            max-height: 90vh;
+            border-radius: 20px;
+            max-width: 740px;
             width: 100%;
+            max-height: 90vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            animation: fadeInDown 0.2s ease;
+            box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.85);
+            transform: scale(0.96) translateY(10px);
+            transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .modal-body {
-            padding: 20px 24px;
-            overflow-y: auto;
-            max-height: calc(90vh - 75px);
+        .modal-overlay.active .modal-card {
+            transform: scale(1) translateY(0);
         }
 
         .modal-header {
-            padding: 18px 24px;
-            border-bottom: 1px solid var(--border-color);
+            padding: 16px 22px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .modal-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .modal-header-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0284c7, #38bdf8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+        }
+
+        .modal-header-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .modal-title-wrap {
+            display: flex;
+            flex-direction: column;
         }
 
         .modal-title {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 800;
-            color: var(--text-main);
+            color: #0f172a;
+            letter-spacing: -0.01em;
+            line-height: 1.25;
+        }
+
+        .modal-subtitle {
+            font-size: 11.5px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .modal-header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        /* Product ID Pill - Replacing Status: Active */
+        .modal-product-id-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 9999px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .modal-product-id-pill:hover {
+            background: #f0fdf4;
+            border-color: #0284c7;
+            color: #0284c7;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(2, 132, 199, 0.15);
+        }
+
+        .modal-product-id-pill .id-tag {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+        }
+
+        .modal-product-id-pill .id-code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .modal-product-id-pill .copy-icon {
+            width: 13px;
+            height: 13px;
+            color: #94a3b8;
+            transition: color 0.15s ease;
+        }
+
+        .modal-product-id-pill:hover .copy-icon {
+            color: #0284c7;
         }
 
         .modal-close-btn {
-            background: transparent;
-            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            padding: 0;
+        }
+
+        .modal-close-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+            transform: scale(1.05);
+        }
+
+        .modal-close-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke-width: 2.2;
+        }
+
+        /* Modal Body */
+        .modal-body {
+            padding: 22px 24px;
+            overflow-y: auto;
+            max-height: calc(90vh - 145px);
+        }
+
+        .modal-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-body::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        /* Modal Hero Box */
+        .modal-hero-box {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 18px;
+            display: flex;
+            gap: 18px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+
+        .modal-image-col {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0b1120;
+            border: 1px solid #e2e8f0;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-image-col img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .modal-image-col .brain-cyan-illustration {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #0f2744 0%, #060d1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-image-col .brain-cyan-illustration svg {
+            width: 100px;
+            height: 80px;
+            filter: drop-shadow(0 0 10px rgba(14, 165, 233, 0.5));
+        }
+
+        .modal-image-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            z-index: 2;
+        }
+
+        .modal-image-badge.sponsored {
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            color: #ffffff;
+        }
+
+        .modal-image-badge.new-release {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #ffffff;
+        }
+
+        .modal-info-col {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .modal-product-title {
+            font-size: 19px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.3;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.015em;
+        }
+
+        .modal-partner-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12.5px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+
+        .partner-verified-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 10.5px;
+            font-weight: 700;
+        }
+
+        .modal-meta-chips-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px 10px;
+            margin-bottom: 12px;
+        }
+
+        .modal-meta-chip {
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            border-radius: 8px;
+            padding: 6px 10px;
+        }
+
+        .modal-meta-chip .chip-label {
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 2px;
+        }
+
+        .modal-meta-chip .chip-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .modal-stats-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 10px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 12px;
+            color: #64748b;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .modal-stats-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .modal-stat-pill strong {
+            color: #0f172a;
+            font-weight: 800;
+        }
+
+        /* Sponsored Campaign Analytics Box */
+        .modal-boost-analytics {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 14px;
+            padding: 16px 20px;
+            margin-bottom: 18px;
+            color: #ffffff;
+            box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .modal-boost-analytics-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-boost-analytics-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .modal-boost-analytics-badge {
+            font-size: 11px;
+            background: rgba(14, 165, 233, 0.15);
+            color: #7dd3fc;
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .modal-boost-stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .modal-boost-stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+        }
+
+        .modal-boost-stat-label {
+            font-size: 10.5px;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 3px;
+        }
+
+        .modal-boost-stat-num {
             font-size: 20px;
-            color: var(--text-muted);
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        /* Sections */
+        .modal-section-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+        }
+
+        .modal-section-heading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.01em;
+        }
+
+        .modal-description-content {
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        .modal-tags-wrap {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .modal-tag-chip {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 11.5px;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+
+        .modal-tag-chip:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        /* Person of Contact Executive Card */
+        .modal-poc-executive-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .modal-poc-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-poc-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+            flex-shrink: 0;
+        }
+
+        .modal-poc-details .poc-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+
+        .modal-poc-details .poc-role {
+            font-size: 11.5px;
+            color: #64748b;
+        }
+
+        .modal-poc-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-poc-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #334155;
+            text-decoration: none;
+            transition: all 0.15s ease;
             cursor: pointer;
         }
 
-        .modal-body {
-            padding: 24px;
+        .modal-poc-btn:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+            color: #0f172a;
+        }
+
+        .modal-poc-btn svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        /* Modal Sticky Footer */
+        .modal-footer {
+            padding: 14px 22px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-shrink: 0;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .modal-footer-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-footer-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-btn-secondary {
+            padding: 9px 18px;
+            border-radius: 10px;
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .modal-btn-secondary:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+
+        .modal-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 20px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            border: none;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-primary:hover {
+            background: linear-gradient(135deg, #0369a1, #075985);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(2, 132, 199, 0.45);
+        }
+
+        .modal-btn-primary svg {
+            width: 15px;
+            height: 15px;
+            stroke-width: 2.2;
+        }
+
+        .modal-btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 13px;
+            border-radius: 8px;
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            color: #475569;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .modal-btn-action:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+
+        .modal-btn-action.liked {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #dc2626;
+        }
+
+        .modal-btn-action svg {
+            width: 14px;
+            height: 14px;
         }
     </style>
 </head>
@@ -1427,16 +2046,33 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- ========================================================
-         5. PRODUCT DETAILS MODAL
+         5. PRODUCT DETAILS MODAL (EXECUTIVE REDESIGN)
          ======================================================== -->
     <div class="modal-overlay" id="productModal" onclick="closeModalOnOverlay(event)">
         <div class="modal-card">
             <div class="modal-header">
-                <h3 class="modal-title" id="modalTitle">Product Details</h3>
-                <button type="button" class="modal-close-btn" onclick="closeModal()">&times;</button>
+                <div class="modal-header-left">
+                    <div class="modal-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                    </div>
+                    <div class="modal-title-wrap">
+                        <div class="modal-title" id="modalTitle">Product Details</div>
+                        <div class="modal-subtitle" id="modalSubtitle">MindUnite Partner Directory</div>
+                    </div>
+                </div>
+                <div class="modal-header-right" id="modalHeaderRight">
+                    <!-- Dynamic Product ID Pill (replaces status active) + Optional Badges + Close Button -->
+                </div>
             </div>
             <div class="modal-body" id="modalBody">
                 <!-- Dynamically populated -->
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <!-- Dynamically populated action buttons -->
             </div>
         </div>
     </div>
@@ -1973,27 +2609,42 @@
         function openProductModal(product) {
             const campaignId = product.ad_campaign_id;
             const productName = product.product_name || 'Product Details';
-            const productId = product.product_id || 'N/A';
+            const rawId = (product.product_id || product.id || 'N/A').toString();
+            const displayId = rawId.startsWith('#') ? rawId : `#${rawId}`;
             const productDbId = product.id || product.product_id;
             const description = product.description || 'No description provided for this product.';
             const sectionName = product.section_name || (product.section ? product.section.name : 'N/A');
             const categoryName = product.category_name || (product.category ? product.category.category_name : 'N/A');
             const networkType = product.network_type ? (product.network_type.charAt(0).toUpperCase() + product.network_type.slice(1)) : 'Psychology';
             const industryType = product.industry_type ? (product.industry_type.charAt(0).toUpperCase() + product.industry_type.slice(1)) : ((product.industry && product.industry.name) ? product.industry.name : 'Biotechnology');
-            const status = product.status ? (product.status.charAt(0).toUpperCase() + product.status.slice(1)) : 'Active';
             const publishedAt = product.created_at ? new Date(product.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recently';
             const rawTags = (product.tags && Array.isArray(product.tags) && product.tags.length) ? product.tags : ['Diagnostic', 'Research', 'Apparatus'];
             const pocName = product.poc_name || 'Niaz Ahmed Nayeem';
             const pocEmail = product.poc_email || 'niaz.softvence@gmail.com';
             const pocPhone = product.poc_phone || '+8801800000000';
             const destinationUrl = product.product_url || 'https://mindunite.pixelstack.cloud/';
-            const productImage = product.image_url || product.image || 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80';
+            const productImage = product.image_url || product.image || '';
+            const hasValidImage = productImage && !productImage.includes('placeholder');
+
+            const creatorName = (product.creator && product.creator.name) 
+                ? product.creator.name 
+                : ((product.industry && product.industry.name) ? product.industry.name : 'MindUnite Partner');
+
+            const pocInitials = (pocName || 'MU')
+                .split(' ')
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(w => w[0].toUpperCase())
+                .join('') || 'MU';
 
             // Sync live counts with feed card if available
             const viewsSpan = document.querySelector(`.card-views-count-${product.id}`);
             const likesSpan = document.querySelector(`.card-likes-count-${product.id}`);
             const viewsCount = viewsSpan ? (parseInt(viewsSpan.textContent.replace(/[^0-9]/g, '')) || 0) : (product.views_count || 1);
             const likesCount = likesSpan ? (parseInt(likesSpan.textContent.replace(/[^0-9]/g, '')) || 0) : (product.likes_count || 0);
+
+            const existingLikeBtn = document.querySelector(`.card-like-btn-${productDbId}`);
+            const isCurrentlyLiked = existingLikeBtn ? existingLikeBtn.classList.contains('liked') : !!product.is_liked;
 
             // Record view in backend DB when opened
             if (productDbId) {
@@ -2013,138 +2664,266 @@
                 .catch(() => {});
             }
 
+            // 1. Populate Modal Header
+            document.getElementById('modalTitle').textContent = productName;
+            document.getElementById('modalSubtitle').textContent = `${networkType} Network \u2022 ${industryType}`;
+
+            let headerRightHtml = '';
+            if (product.is_boosted) {
+                headerRightHtml += `<span class="modal-image-badge sponsored" style="position:static; margin-right:4px;">\u26A1 Sponsored</span>`;
+            } else if (product.is_new_release) {
+                headerRightHtml += `<span class="modal-image-badge new-release" style="position:static; margin-right:4px;">\uD83D\uDD25 New Release</span>`;
+            }
+
+            // Product ID Pill directly replaces Status: Active
+            headerRightHtml += `
+                <div class="modal-product-id-pill" onclick="copyToClipboard('${displayId}', 'Product ID copied to clipboard!')" title="Click to copy Product ID">
+                    <span class="id-tag">ID:</span>
+                    <span class="id-code">${displayId}</span>
+                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeModal()" title="Close dialog">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            `;
+            document.getElementById('modalHeaderRight').innerHTML = headerRightHtml;
+
+            // 2. Build Tags HTML
             let tagsHtml = '';
             rawTags.forEach(t => {
-                tagsHtml += `<span style="background: #ffffff; border: 1px solid #e2e8f0; color: #475569; padding: 4px 14px; border-radius: 16px; font-size: 12px; font-weight: 500;">${t}</span>`;
+                tagsHtml += `<span class="modal-tag-chip">#${t}</span>`;
             });
 
-            document.getElementById('modalTitle').textContent = 'View Product';
+            // 3. Populate Modal Body
+            const imps = product.impressions_count || 0;
+            const clks = product.clicks_count || 0;
+            const ctr = imps > 0 ? ((clks / imps) * 100).toFixed(1) + '%' : '0.0%';
+
             document.getElementById('modalBody').innerHTML = `
                 <div>
-                    <!-- 1. Top Card: Image + Overview Grid -->
-                    <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #ffffff; margin-bottom: 16px;">
-                        <div style="display: flex; gap: 16px; align-items: flex-start;">
-                            <img src="${productImage}" alt="${productName}" 
-                                 onerror="this.src='https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80'"
-                                 style="width: 140px; height: 140px; object-fit: cover; border-radius: 8px; flex-shrink: 0; border: 1px solid #f1f5f9;">
-                            
-                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; min-height: 140px;">
-                                <div>
-                                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
-                                        <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.3;">
-                                            ${productName}
-                                        </h3>
-                                        <span style="background: #ecfdf5; color: #10b981; border: 1px solid #a7f3d0; border-radius: 12px; font-size: 11px; font-weight: 600; padding: 2px 10px; white-space: nowrap;">
-                                            ${status}
-                                        </span>
-                                    </div>
+                    <!-- Hero Showcase Box -->
+                    <div class="modal-hero-box">
+                        <div class="modal-image-col">
+                            ${product.is_boosted ? '<div class="modal-image-badge sponsored">\u26A1 Sponsored</div>' : (product.is_new_release ? '<div class="modal-image-badge new-release">\uD83D\uDD25 New Release</div>' : '')}
+                            ${hasValidImage ? `
+                                <img src="${productImage}" alt="${escapeHtml(productName)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="brain-cyan-illustration" style="display:none;">
+                                    <svg viewBox="0 0 100 80">
+                                        <circle cx="50" cy="40" r="30" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-dasharray="10 6"/>
+                                        <path d="M30 40 Q40 20 50 40 T70 40" fill="none" stroke="#38bdf8" stroke-width="4.5" stroke-linecap="round"/>
+                                        <path d="M35 50 Q50 35 65 50" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round"/>
+                                        <circle cx="30" cy="40" r="4.5" fill="#38bdf8"/>
+                                        <circle cx="50" cy="40" r="5.5" fill="#38bdf8"/>
+                                        <circle cx="70" cy="40" r="4.5" fill="#38bdf8"/>
+                                        <circle cx="50" cy="22" r="4" fill="#0284c7"/>
+                                        <circle cx="65" cy="50" r="4" fill="#0284c7"/>
+                                    </svg>
+                                </div>
+                            ` : `
+                                <div class="brain-cyan-illustration">
+                                    <svg viewBox="0 0 100 80">
+                                        <circle cx="50" cy="40" r="30" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-dasharray="10 6"/>
+                                        <path d="M30 40 Q40 20 50 40 T70 40" fill="none" stroke="#38bdf8" stroke-width="4.5" stroke-linecap="round"/>
+                                        <path d="M35 50 Q50 35 65 50" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round"/>
+                                        <circle cx="30" cy="40" r="4.5" fill="#38bdf8"/>
+                                        <circle cx="50" cy="40" r="5.5" fill="#38bdf8"/>
+                                        <circle cx="70" cy="40" r="4.5" fill="#38bdf8"/>
+                                        <circle cx="50" cy="22" r="4" fill="#0284c7"/>
+                                        <circle cx="65" cy="50" r="4" fill="#0284c7"/>
+                                    </svg>
+                                </div>
+                            `}
+                        </div>
 
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: 12.5px;">
-                                        <div>
-                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Network Type</div>
-                                            <div style="font-weight: 600; color: #1e293b;">${networkType}</div>
-                                        </div>
-                                        <div>
-                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Industry Type</div>
-                                            <div style="font-weight: 600; color: #1e293b;">${industryType}</div>
-                                        </div>
-                                        <div>
-                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Section</div>
-                                            <div style="font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sectionName}</div>
-                                        </div>
-                                        <div>
-                                            <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Category</div>
-                                            <div style="font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${categoryName}</div>
-                                        </div>
-                                    </div>
+                        <div class="modal-info-col">
+                            <div>
+                                <h3 class="modal-product-title">${escapeHtml(productName)}</h3>
+                                <div class="modal-partner-row">
+                                    <span>By <strong style="color: #0f172a;">${escapeHtml(creatorName)}</strong></span>
+                                    <span class="partner-verified-tag">
+                                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                        </svg>
+                                        Verified Partner
+                                    </span>
                                 </div>
 
-                                <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; margin-top: 8px; border-top: 1px solid #f1f5f9; font-size: 11.5px; color: #64748b;">
-                                    <div style="display: flex; gap: 14px;">
-                                        <span>Total Views <strong id="modalViewsCount" style="color: #0f172a; font-weight: 700;">${viewsCount.toLocaleString()}</strong></span>
-                                        <span>Likes <strong style="color: #0f172a; font-weight: 700;">${likesCount.toLocaleString()}</strong></span>
+                                <div class="modal-meta-chips-grid">
+                                    <div class="modal-meta-chip">
+                                        <div class="chip-label">Network \u2022 Industry</div>
+                                        <div class="chip-value">${networkType} \u2022 ${industryType}</div>
                                     </div>
-                                    <div style="color: #64748b; font-size: 11px;">
-                                        Published ${publishedAt}
+                                    <div class="modal-meta-chip">
+                                        <div class="chip-label">Section</div>
+                                        <div class="chip-value">${escapeHtml(sectionName)}</div>
                                     </div>
+                                    <div class="modal-meta-chip">
+                                        <div class="chip-label">Category</div>
+                                        <div class="chip-value">${escapeHtml(categoryName)}</div>
+                                    </div>
+                                    <div class="modal-meta-chip">
+                                        <div class="chip-label">Product Identifier</div>
+                                        <div class="chip-value" style="font-family: monospace; color: #0284c7;">${displayId}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal-stats-strip">
+                                <div class="modal-stats-group">
+                                    <span class="modal-stat-pill">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        <strong id="modalViewsCount">${viewsCount.toLocaleString()}</strong> Views
+                                    </span>
+                                    <span class="modal-stat-pill">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M2 10.5a1.5 1.5 0 011.5-1.5h3a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 012 19.5v-9zM8 19.5a1.5 1.5 0 001.5 1.5h7.24a2.5 2.5 0 002.43-1.92l1.62-6.5A2.5 2.5 0 0018.36 9.5H14V5.5A2.5 2.5 0 0011.5 3c-.83 0-1.5.67-1.5 1.5v3.83L8 10.42v9.08z"/></svg>
+                                        <strong class="card-likes-count-${productDbId}">(${likesCount.toLocaleString()})</strong> Likes
+                                    </span>
+                                </div>
+                                <div style="color: #64748b; font-size: 11.5px;">
+                                    Published on ${publishedAt}
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     ${product.is_boosted ? `
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-around;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Impressions</div>
-                                <div style="font-size: 18px; font-weight: 800; color: #0284c7;">${(product.impressions_count || 0).toLocaleString()}</div>
+                        <!-- Sponsored Performance Box -->
+                        <div class="modal-boost-analytics">
+                            <div class="modal-boost-analytics-header">
+                                <div class="modal-boost-analytics-title">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                    Sponsored Campaign Performance
+                                </div>
+                                <div class="modal-boost-analytics-badge">
+                                    \u26A1 Active Feed Boost
+                                </div>
                             </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Clicks</div>
-                                <div style="font-size: 18px; font-weight: 800; color: #ec4899;">${(product.clicks_count || 0).toLocaleString()}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">CTR</div>
-                                <div style="font-size: 18px; font-weight: 800; color: #10b981;">${product.impressions_count > 0 ? ((product.clicks_count / product.impressions_count) * 100).toFixed(1) : 0}%</div>
+                            <div class="modal-boost-stats-row">
+                                <div class="modal-boost-stat-card">
+                                    <div class="modal-boost-stat-label">Total Impressions</div>
+                                    <div class="modal-boost-stat-num" style="color: #38bdf8;">${imps.toLocaleString()}</div>
+                                </div>
+                                <div class="modal-boost-stat-card">
+                                    <div class="modal-boost-stat-label">Verified Clicks</div>
+                                    <div class="modal-boost-stat-num" style="color: #f472b6;">${clks.toLocaleString()}</div>
+                                </div>
+                                <div class="modal-boost-stat-card">
+                                    <div class="modal-boost-stat-label">Click-Through Rate</div>
+                                    <div class="modal-boost-stat-num" style="color: #34d399;">${ctr}</div>
+                                </div>
                             </div>
                         </div>
                     ` : ''}
 
-                    <!-- 2. Description Box -->
-                    <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; background: #ffffff;">
-                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Description</h4>
-                        <div style="color: #475569; font-size: 13px; line-height: 1.6; margin: 0; word-break: break-word;">
+                    <!-- Description Card -->
+                    <div class="modal-section-card">
+                        <div class="modal-section-heading">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Product Overview & Technical Description
+                        </div>
+                        <div class="modal-description-content">
                             ${cleanModalDescription(description)}
                         </div>
                     </div>
 
-                    <!-- 3. Product Link -->
-                    <div style="margin-bottom: 16px;">
-                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 6px 0;">Product Link</h4>
-                        <a href="${destinationUrl}" target="_blank" 
-                           style="color: #0284c7; font-size: 13px; text-decoration: none; word-break: break-all; display: inline-block; font-weight: 600;">
-                            ${destinationUrl} &rarr;
-                        </a>
-                    </div>
-
-                    <!-- 4. Product Tags -->
-                    <div style="margin-bottom: 16px;">
-                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Product Tags</h4>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <!-- Product Tags Card -->
+                    <div class="modal-section-card">
+                        <div class="modal-section-heading">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                            Classifications & Tags
+                        </div>
+                        <div class="modal-tags-wrap">
                             ${tagsHtml}
                         </div>
                     </div>
 
-                    <!-- 5. Person of Contact -->
-                    <div>
-                        <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 10px 0;">Person of Contact</h4>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
-                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Name</div>
-                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                    ${pocName}
+                    <!-- Person of Contact (POC) Executive Card -->
+                    <div class="modal-section-card" style="margin-bottom: 4px;">
+                        <div class="modal-section-heading">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            Authorized Person of Contact
+                        </div>
+                        <div class="modal-poc-executive-card">
+                            <div class="modal-poc-profile">
+                                <div class="modal-poc-avatar">${pocInitials}</div>
+                                <div class="modal-poc-details">
+                                    <div class="poc-name">${escapeHtml(pocName)}</div>
+                                    <div class="poc-role">Authorized Partner Representative</div>
                                 </div>
                             </div>
-                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
-                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Email</div>
-                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a; word-break: break-all;">
-                                    ${pocEmail}
-                                </div>
-                            </div>
-                            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff;">
-                                <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Phone Number</div>
-                                <div style="font-size: 12.5px; font-weight: 600; color: #0f172a;">
-                                    ${pocPhone}
-                                </div>
+                            <div class="modal-poc-actions">
+                                <a href="mailto:${pocEmail}" class="modal-poc-btn" title="Send email to ${pocEmail}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                                    Email POC
+                                </a>
+                                <a href="tel:${pocPhone}" class="modal-poc-btn" title="Call ${pocPhone}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                                    Call POC
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
-            document.getElementById('productModal').style.display = 'flex';
+
+            // 4. Populate Modal Footer Actions
+            document.getElementById('modalFooter').innerHTML = `
+                <div class="modal-footer-left">
+                    <button type="button" 
+                            class="modal-btn-action card-like-btn-${productDbId} ${isCurrentlyLiked ? 'liked' : ''}" 
+                            onclick="toggleProductLike(${productDbId}, '${escapeHtml(productName)}', this, event)"
+                            title="Like this product">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2 10.5a1.5 1.5 0 011.5-1.5h3a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 012 19.5v-9zM8 19.5a1.5 1.5 0 001.5 1.5h7.24a2.5 2.5 0 002.43-1.92l1.62-6.5A2.5 2.5 0 0018.36 9.5H14V5.5A2.5 2.5 0 0011.5 3c-.83 0-1.5.67-1.5 1.5v3.83L8 10.42v9.08z"/>
+                        </svg>
+                        <span class="card-like-label-${productDbId}">${isCurrentlyLiked ? 'Liked' : 'Like'}</span>
+                        <span class="card-likes-count-${productDbId}">(${likesCount.toLocaleString()})</span>
+                    </button>
+
+                    <button type="button" class="modal-btn-action" onclick="copyToClipboard('${destinationUrl}', 'Product link copied to clipboard!')" title="Copy product URL">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        <span>Copy Link</span>
+                    </button>
+                </div>
+
+                <div class="modal-footer-right">
+                    <button type="button" class="modal-btn-secondary" onclick="closeModal()">Close</button>
+                    <a href="${destinationUrl}" target="_blank" class="modal-btn-primary" onclick="if(window.recordClickFromModal) window.recordClickFromModal(${productDbId}, ${campaignId || 'null'})">
+                        <span>Visit Official Website</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <line x1="7" y1="17" x2="17" y2="7"></line>
+                            <polyline points="7 7 17 7 17 17"></polyline>
+                        </svg>
+                    </a>
+                </div>
+            `;
+
+            // 5. Reveal modal with smooth animation
+            const modal = document.getElementById('productModal');
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                modal.classList.add('active');
+            });
+            document.body.style.overflow = 'hidden';
         }
 
         function closeModal() {
-            document.getElementById('productModal').style.display = 'none';
+            const modal = document.getElementById('productModal');
+            if (!modal) return;
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }, 180);
         }
 
         function closeModalOnOverlay(e) {
@@ -2152,6 +2931,57 @@
                 closeModal();
             }
         }
+
+        function recordClickFromModal(productDbId, campaignId) {
+            if (campaignId) {
+                fetch(`/api/advertisements/${campaignId}/click`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ placement: 'industry_product_feed_modal' })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && !data.debounced) {
+                        totalClicks++;
+                        updateStickyMetrics();
+                        document.querySelectorAll(`.card-click-${campaignId}`).forEach(clickSpan => {
+                            const current = parseInt(clickSpan.textContent.replace(/,/g, '')) || 0;
+                            clickSpan.textContent = (current + 1).toLocaleString();
+                        });
+                    }
+                })
+                .catch(() => {});
+            }
+        }
+
+        function copyToClipboard(text, message) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('click', '\uD83D\uDCCB Copied!', message || text);
+                }).catch(() => {
+                    promptCopy(text);
+                });
+            } else {
+                promptCopy(text);
+            }
+        }
+
+        function promptCopy(text) {
+            window.prompt('Copy to clipboard: Ctrl+C, Enter', text);
+        }
+
+        // Close modal on Escape key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('productModal');
+                if (modal && modal.style.display === 'flex') {
+                    closeModal();
+                }
+            }
+        });
 
         function updateStickyMetrics() {
             const stickyImp = document.getElementById('sticky-imp-count');
