@@ -395,122 +395,213 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                        <!-- CARD 1: Starter Boost (Honest 7-Day Promotion) -->
-                        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between glow-hover transition-all relative">
-                            <div class="absolute -top-2.5 left-6 bg-cyan-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow">
-                                ⏱️ 7 Days Active Promotion
+                        <!-- CARD 1: Starter Boost (7 Days) -->
+                        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md p-6 flex flex-col justify-between glow-hover transition-all relative">
+                            <div class="absolute -top-3 left-6 bg-slate-800 text-white text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow">
+                                ⏱️ Starter Tier
                             </div>
                             <div>
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
                                         <h4 class="text-base font-bold text-slate-900">Starter Boost</h4>
-                                        <p class="text-xs text-slate-500">Essential top-row visibility to jumpstart product discovery.</p>
+                                        <p class="text-xs text-slate-500 mt-0.5">Essential front-row visibility to jumpstart product discovery.</p>
                                     </div>
-                                    <button type="button" onclick="editPlanDemo('Starter Boost', 19.99, 7)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
+                                    <button type="button" onclick="editPlanDemo('Starter Boost', 19.99, 7, 'Starter Tier', '7 Days Active Promotion', '5,000 – 10,000 Impressions', 'active', 'Essential front-row visibility to jumpstart product discovery.')" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
 
-                                <div class="flex items-baseline gap-1 my-3">
-                                    <span class="text-3xl font-extrabold text-slate-900">$19.99</span>
-                                    <span class="text-xs text-slate-400 font-semibold">/ 7 Days</span>
+                                <!-- Price & Daily Breakdown -->
+                                <div class="flex items-baseline justify-between my-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                                    <div>
+                                        <span class="text-3xl font-extrabold text-slate-900">$19.99</span>
+                                        <span class="text-xs text-slate-400 font-semibold">/ 7 Days</span>
+                                    </div>
+                                    <span class="text-[11px] font-extrabold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs">$2.85 / day</span>
                                 </div>
 
-                                <div class="my-4 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 text-center flex items-center justify-center gap-1.5">
-                                    <span>⏱️</span><span>7 Days Continuous Top Placement</span>
+                                <!-- Promotion Highlight Badge & Estimated Impressions -->
+                                <div class="space-y-2 mb-4 text-xs">
+                                    <div class="py-2 px-3 rounded-xl bg-purple-50/70 border border-purple-100/80 text-purple-900 font-semibold flex items-center justify-between">
+                                        <span class="text-[11px] text-purple-700">⏱️ Promotion Highlight:</span>
+                                        <span class="font-bold text-purple-900">7 Days Active Promotion</span>
+                                    </div>
+                                    <div class="py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-between text-[11px]">
+                                        <span class="text-slate-500 font-medium">Estimated Impressions:</span>
+                                        <span class="font-bold text-slate-900">5,000 – 10,000</span>
+                                    </div>
                                 </div>
 
-                                <div class="space-y-2.5 text-xs text-slate-600 my-5">
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>7 Days continuous</strong> marketplace top-row placement</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Featured <strong>'Sponsored'</strong> badge ribbon on card</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Fair-play rotation</strong> (equal exposure, never buried)</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Real-time verified <strong>view & click analytics</strong></span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Direct buyer inquiry & chat messaging access</span></div>
+                                <!-- Static Guaranteed Package Features -->
+                                <div class="pt-3 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-2.5">
+                                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
+                                        <span class="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Platform Standard</span>
+                                    </div>
+                                    <ul class="space-y-2 text-xs text-slate-700">
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span class="font-semibold text-slate-800">Marketplace Feed + Main Newsfeed</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Sponsored Badge</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Fair-Play</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Live Analytics</span>
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
 
-                            <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                            <div class="pt-4 mt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                                 <span>Target: <strong class="text-slate-700">Product</strong></span>
-                                <span class="badge-active px-2 py-0.5 rounded-full font-bold">Active</span>
+                                <span class="badge-active px-2.5 py-0.5 rounded-full font-bold text-[10px]">Active</span>
                             </div>
                         </div>
 
-                        <!-- CARD 2: Growth Boost (Popular Plan - Honest 14-Day Multi-Placement) -->
-                        <div class="bg-white rounded-3xl border-2 border-[#00c2cb] shadow-lg p-6 flex flex-col justify-between glow-hover transition-all relative">
-                            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#043940] text-[#00c2cb] border border-[#00c2cb] text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow">
-                                Most Popular Plan
+                        <!-- CARD 2: Growth Boost (14 Days) -->
+                        <div class="bg-white rounded-3xl border-2 border-[#00c2cb] shadow-lg hover:shadow-xl p-6 flex flex-col justify-between glow-hover transition-all relative">
+                            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#043940] text-[#00c2cb] border border-[#00c2cb] text-[10px] font-extrabold px-3.5 py-1 rounded-full uppercase tracking-wider shadow">
+                                ⭐ Most Popular Plan
                             </div>
                             <div>
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
                                         <h4 class="text-base font-bold text-slate-900">Growth Boost</h4>
-                                        <p class="text-xs text-slate-500">Multi-channel visibility across marketplace & newsfeed streams.</p>
+                                        <p class="text-xs text-slate-500 mt-0.5">Multi-channel promotion across marketplace & main newsfeed.</p>
                                     </div>
-                                    <button type="button" onclick="editPlanDemo('Growth Boost', 34.99, 14)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
+                                    <button type="button" onclick="editPlanDemo('Growth Boost', 34.99, 14, 'Most Popular Plan', '14 Days Extended Multi-Channel Reach', '15,000 – 25,000 Impressions', 'active', 'Multi-channel promotion across marketplace & main newsfeed.')" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
 
-                                <div class="flex items-baseline gap-1 my-3">
-                                    <span class="text-3xl font-extrabold text-[#008f95]">$34.99</span>
-                                    <span class="text-xs text-slate-400 font-semibold">/ 14 Days</span>
+                                <!-- Price & Daily Breakdown -->
+                                <div class="flex items-baseline justify-between my-3 p-3 rounded-2xl bg-cyan-50/50 border border-cyan-100">
+                                    <div>
+                                        <span class="text-3xl font-extrabold text-[#008f95]">$34.99</span>
+                                        <span class="text-xs text-slate-400 font-semibold">/ 14 Days</span>
+                                    </div>
+                                    <span class="text-[11px] font-extrabold text-[#008f95] bg-white px-2.5 py-1 rounded-lg border border-cyan-200 shadow-2xs">$2.50 / day <span class="text-emerald-600 font-bold">(Save 12%)</span></span>
                                 </div>
 
-                                <div class="my-4 px-3 py-1.5 rounded-xl bg-cyan-50 text-[#008f95] text-xs font-bold border border-cyan-200 text-center flex items-center justify-center gap-1.5">
-                                    <span>🚀</span><span>14 Days Extended Multi-Channel Reach</span>
+                                <!-- Promotion Highlight Badge & Estimated Impressions -->
+                                <div class="space-y-2 mb-4 text-xs">
+                                    <div class="py-2 px-3 rounded-xl bg-cyan-50/70 border border-cyan-200 text-[#008f95] font-semibold flex items-center justify-between">
+                                        <span class="text-[11px] text-[#008f95]">🚀 Promotion Highlight:</span>
+                                        <span class="font-bold text-slate-900">14 Days Extended Multi-Channel Reach</span>
+                                    </div>
+                                    <div class="py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-between text-[11px]">
+                                        <span class="text-slate-500 font-medium">Estimated Impressions:</span>
+                                        <span class="font-bold text-[#008f95]">15,000 – 25,000</span>
+                                    </div>
                                 </div>
 
-                                <div class="space-y-2.5 text-xs text-slate-600 my-5">
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>14 Days continuous</strong> front-row priority placement</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Featured <strong>'Sponsored'</strong> badge ribbon on card</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Dual Placement:</strong> Marketplace Feed + Newsfeed Stream</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Fair-play rotation</strong> (priority equalization queue)</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Real-time verified <strong>view & click analytics</strong></span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Direct buyer inquiry & chat messaging access</span></div>
+                                <!-- Static Guaranteed Package Features -->
+                                <div class="pt-3 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-2.5">
+                                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
+                                        <span class="text-[10px] font-semibold text-[#008f95] bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-100">Platform Standard</span>
+                                    </div>
+                                    <ul class="space-y-2 text-xs text-slate-700">
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span class="font-semibold text-slate-800">Marketplace Feed + Main Newsfeed</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Sponsored Badge</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Fair-Play</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Live Analytics</span>
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
 
-                            <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                            <div class="pt-4 mt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                                 <span>Target: <strong class="text-slate-700">Product</strong></span>
-                                <span class="badge-active px-2 py-0.5 rounded-full font-bold">Active</span>
+                                <span class="badge-active px-2.5 py-0.5 rounded-full font-bold text-[10px]">Active</span>
                             </div>
                         </div>
 
-                        <!-- CARD 3: Best Value Boost (Honest 30-Day Full-Month Promotion) -->
-                        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between glow-hover transition-all">
+                        <!-- CARD 3: Best Value Boost (30 Days) -->
+                        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md p-6 flex flex-col justify-between glow-hover transition-all relative">
+                            <div class="absolute -top-3 left-6 bg-amber-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow">
+                                👑 Best Value (Save 18%)
+                            </div>
                             <div>
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
                                         <h4 class="text-base font-bold text-slate-900">Best Value Boost</h4>
-                                        <p class="text-xs text-slate-500">Full-month omnipresent promotion for industry leaders & top vendors.</p>
+                                        <p class="text-xs text-slate-500 mt-0.5">Full-month omnipresent promotion for top vendors & brands.</p>
                                     </div>
-                                    <button type="button" onclick="editPlanDemo('Best Value Boost', 69.99, 30)" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
+                                    <button type="button" onclick="editPlanDemo('Best Value Boost', 69.99, 30, 'Best Value (Save 18%)', '30 Days Full-Month Non-Stop Placement', '40,000 – 60,000+ Impressions', 'active', 'Full-month omnipresent promotion for top vendors & brands.')" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
 
-                                <div class="flex items-baseline gap-1 my-3">
-                                    <span class="text-3xl font-extrabold text-slate-900">$69.99</span>
-                                    <span class="text-xs text-slate-400 font-semibold">/ 30 Days</span>
+                                <!-- Price & Daily Breakdown -->
+                                <div class="flex items-baseline justify-between my-3 p-3 rounded-2xl bg-amber-50/50 border border-amber-100">
+                                    <div>
+                                        <span class="text-3xl font-extrabold text-slate-900">$69.99</span>
+                                        <span class="text-xs text-slate-400 font-semibold">/ 30 Days</span>
+                                    </div>
+                                    <span class="text-[11px] font-extrabold text-amber-800 bg-white px-2.5 py-1 rounded-lg border border-amber-200 shadow-2xs">$2.33 / day <span class="text-emerald-600 font-bold">(Save 18%)</span></span>
                                 </div>
 
-                                <div class="my-4 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 text-center flex items-center justify-center gap-1.5">
-                                    <span>👑</span><span>30 Days Full-Month Non-Stop Placement</span>
+                                <!-- Promotion Highlight Badge & Estimated Impressions -->
+                                <div class="space-y-2 mb-4 text-xs">
+                                    <div class="py-2 px-3 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 font-semibold flex items-center justify-between">
+                                        <span class="text-[11px] text-amber-800">👑 Promotion Highlight:</span>
+                                        <span class="font-bold text-slate-900">30 Days Full-Month Non-Stop</span>
+                                    </div>
+                                    <div class="py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-between text-[11px]">
+                                        <span class="text-slate-500 font-medium">Estimated Impressions:</span>
+                                        <span class="font-bold text-amber-800">40,000 – 60,000+</span>
+                                    </div>
                                 </div>
 
-                                <div class="space-y-2.5 text-xs text-slate-600 my-5">
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>30 Days uninterrupted</strong> top-ranked placement</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Featured <strong>'Sponsored'</strong> badge ribbon on card</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Dual Placement:</strong> Marketplace Feed + Newsfeed Stream</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span><strong>Maximum rotation velocity</strong> across all related categories</span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Real-time verified <strong>view & click analytics</strong></span></div>
-                                    <div class="flex items-start gap-2"><svg width="14" height="14" class="text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Direct buyer inquiry & chat messaging access</span></div>
+                                <!-- Static Guaranteed Package Features -->
+                                <div class="pt-3 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-2.5">
+                                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
+                                        <span class="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Platform Standard</span>
+                                    </div>
+                                    <ul class="space-y-2 text-xs text-slate-700">
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span class="font-semibold text-slate-800">Marketplace Feed + Main Newsfeed</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Sponsored Badge</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Fair-Play</span>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+                                            <span>Live Analytics</span>
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
 
-                            <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                            <div class="pt-4 mt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                                 <span>Target: <strong class="text-slate-700">Product</strong></span>
-                                <span class="badge-active px-2 py-0.5 rounded-full font-bold">Active</span>
+                                <span class="badge-active px-2.5 py-0.5 rounded-full font-bold text-[10px]">Active</span>
                             </div>
                         </div>
 
@@ -565,7 +656,7 @@
                                     <td class="py-4 px-6 font-bold text-slate-900">$19.99</td>
                                     <td class="py-4 px-6 font-semibold text-slate-800">35,678</td>
                                     <td class="py-4 px-6 text-right space-x-2">
-                                        <button onclick="editPlanDemo('Starter Boost', 19.99, 7)" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
+                                        <button onclick="editPlanDemo('Starter Boost', 19.99, 7, 'Starter Tier', '7 Days Active Promotion', '5,000 – 10,000 Impressions', 'active', 'Get started with essential market visibility.', 'mindunite_starter_7d', 'mindunite_starter_7d', 'boost_starter')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
                                             ✏️
                                         </button>
                                         <button onclick="openDeleteModal('Starter Boost')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Delete Plan">
@@ -589,7 +680,7 @@
                                     <td class="py-4 px-6 font-bold text-slate-900">$34.99</td>
                                     <td class="py-4 px-6 font-semibold text-slate-800">4,923</td>
                                     <td class="py-4 px-6 text-right space-x-2">
-                                        <button onclick="editPlanDemo('Growth Boost', 34.99, 14)" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
+                                        <button onclick="editPlanDemo('Growth Boost', 34.99, 14, 'Most Popular Plan', '14 Days Extended Multi-Channel Reach', '15,000 – 25,000 Impressions', 'active', 'Maximize your reach, discovery, and engagement.', 'mindunite_growth_14d', 'mindunite_growth_14d', 'boost_growth')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
                                             ✏️
                                         </button>
                                         <button onclick="openDeleteModal('Growth Boost')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Delete Plan">
@@ -613,7 +704,7 @@
                                     <td class="py-4 px-6 font-bold text-slate-900">$69.99</td>
                                     <td class="py-4 px-6 font-semibold text-slate-800">457</td>
                                     <td class="py-4 px-6 text-right space-x-2">
-                                        <button onclick="editPlanDemo('Best Value Boost', 69.99, 30)" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
+                                        <button onclick="editPlanDemo('Best Value Boost', 69.99, 30, 'Best Value (Save 18%)', '30 Days Full-Month Non-Stop Placement', '40,000 – 60,000+ Impressions', 'active', 'For maximum exposure, lead capture & ROI.', 'mindunite_best_value_30d', 'mindunite_best_value_30d', 'boost_vip')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100" title="Edit Plan">
                                             ✏️
                                         </button>
                                         <button onclick="openDeleteModal('Best Value Boost')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Delete Plan">
@@ -698,44 +789,72 @@
                             <span class="text-[11px] text-slate-500 mt-1 block">Clear promotional summary shown to users on paywall cards.</span>
                         </div>
 
-                        <!-- Row 5: Priority Weight & Badge Ribbon -->
+                        <!-- Row 4: Badge Ribbon (Optional) & Promotion Duration Highlight (Badge) -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
-                                <label class="block font-bold text-slate-700 mb-1.5">Priority Weight (Display Sorting)</label>
-                                <select id="inputPriorityWeight" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-800 font-semibold text-xs outline-none transition-all bg-white">
-                                    <option value="1">1 - Standard Tier</option>
-                                    <option value="2" selected>2 - Growth Tier (Higher)</option>
-                                    <option value="3">3 - Premium / VIP Tier (Highest)</option>
-                                </select>
-                                <span class="text-[11px] text-slate-400 mt-1 block">Used by Admin to sort packages in the paywall pricing table.</span>
+                                <label class="block font-bold text-slate-700 mb-1.5">Badge Ribbon (Optional)</label>
+                                <input type="text" id="inputBadge" placeholder="e.g. Most Popular Plan" value="Most Popular Plan" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 font-semibold text-xs outline-none transition-all">
+                                <span class="text-[11px] text-slate-400 mt-1 block">Displays highlighted badge pill above card (e.g. Most Popular Plan, Best Value).</span>
                             </div>
 
                             <div>
-                                <label class="block font-bold text-slate-700 mb-1.5">Badge Ribbon (Optional)</label>
-                                <input type="text" id="inputBadge" placeholder="e.g. Most Popular Plan" value="Most Popular Plan" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 font-semibold text-xs outline-none">
-                                <span class="text-[11px] text-slate-400 mt-1 block">Displays highlighted badge pill above card.</span>
+                                <label class="block font-bold text-slate-700 mb-1.5">Promotion Duration Highlight (Badge)</label>
+                                <input type="text" id="inputPromotionHighlight" placeholder="e.g. 14 Days Extended Multi-Channel Reach" value="14 Days Extended Multi-Channel Reach" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 font-semibold text-xs outline-none transition-all">
+                                <span class="text-[11px] text-slate-400 mt-1 block">Highlighted pill shown inside card for duration & placement.</span>
                             </div>
                         </div>
 
-                        <!-- Row 6: Duration & Placement Highlight (Replaces misleading impression promises) -->
+                        <!-- Row 5: Estimated Impression & Status -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
-                                <label class="block font-bold text-slate-700 mb-1.5">Promotion Duration Highlight (Badge)</label>
-                                <input type="text" id="inputEstimatedImp" placeholder="e.g. 14 Days Extended Multi-Channel Reach" value="14 Days Extended Multi-Channel Reach" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 font-semibold text-xs outline-none">
-                                <span class="text-[11px] text-slate-400 mt-1 block">Transparent highlight badge shown to buyers (No fake impressions, strictly duration & placement).</span>
+                                <label class="block font-bold text-slate-700 mb-1.5">Estimated Impression</label>
+                                <input type="text" id="inputEstimatedImp" placeholder="e.g. 15,000 – 25,000 Impressions" value="15,000 – 25,000 Impressions" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 font-semibold text-xs outline-none transition-all">
+                                <span class="text-[11px] text-slate-400 mt-1 block">Estimated campaign views/impressions displayed on card.</span>
                             </div>
 
                             <div>
-                                <label class="block font-bold text-slate-700 mb-1.5">Status</label>
+                                <label class="block font-bold text-slate-700 mb-1.5">Status <span class="text-rose-500">*</span></label>
                                 <select id="inputStatus" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-800 font-bold text-xs outline-none transition-all bg-white">
                                     <option value="active" selected>Active (Available for purchase)</option>
                                     <option value="inactive">Inactive (Hidden from checkout)</option>
                                 </select>
-                                <span class="text-[11px] text-slate-400 mt-1 block">Controls visibility in paywall dialog.</span>
+                                <span class="text-[11px] text-slate-400 mt-1 block">Controls visibility in checkout paywall dialog.</span>
                             </div>
                         </div>
 
-                        <!-- Row 7: Mobile In-App Purchase Accordion (CRITICAL MISSING COMPONENT IN FIGMA) -->
+                        <!-- Row 6: STATIC PLATFORM PACKAGE FEATURES (Informational / Read-Only) -->
+                        <div class="p-4 rounded-2xl bg-cyan-50/60 border border-cyan-200/80">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-slate-800 flex items-center gap-2">
+                                    <span class="text-base text-[#008f95]">✨</span>
+                                    <span>Package Features (Static & Guaranteed for All Plans)</span>
+                                </span>
+                                <span class="text-[10px] font-bold text-[#008f95] bg-cyan-100 px-2.5 py-0.5 rounded-full border border-cyan-200">Automatic / No Admin Input Needed</span>
+                            </div>
+                            <p class="text-[11px] text-slate-600 mb-3 leading-relaxed">
+                                Because all boosting plans receive equal fair-play exposure across our network, these 4 core capabilities are statically embedded into every plan. Admins do not need to configure features manually:
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-semibold text-slate-800">
+                                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
+                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
+                                    <span>1. Marketplace Feed + Main Newsfeed</span>
+                                </div>
+                                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
+                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
+                                    <span>2. Sponsored Badge</span>
+                                </div>
+                                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
+                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
+                                    <span>3. Fair-Play</span>
+                                </div>
+                                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-cyan-100 shadow-2xs">
+                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">✓</span>
+                                    <span>4. Live Analytics</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 7: Mobile In-App Purchase Accordion (RevenueCat Credentials) -->
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
                             <button type="button" onclick="toggleIapSection()" class="w-full flex items-center justify-between text-left font-bold text-slate-800 text-xs">
                                 <div class="flex items-center gap-2">
@@ -750,15 +869,15 @@
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label class="block font-semibold text-slate-600 mb-1">iOS Store ID</label>
-                                        <input type="text" placeholder="mindunite_growth_14d" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono">
+                                        <input type="text" id="inputIosStoreId" placeholder="mindunite_growth_14d" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono bg-white">
                                     </div>
                                     <div>
                                         <label class="block font-semibold text-slate-600 mb-1">Android Store ID</label>
-                                        <input type="text" placeholder="mindunite_growth_14d" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono">
+                                        <input type="text" id="inputAndroidStoreId" placeholder="mindunite_growth_14d" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono bg-white">
                                     </div>
                                     <div>
                                         <label class="block font-semibold text-slate-600 mb-1">Entitlement ID</label>
-                                        <input type="text" placeholder="boost_growth" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono">
+                                        <input type="text" id="inputEntitlementId" placeholder="boost_growth" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono bg-white">
                                     </div>
                                 </div>
                             </div>
@@ -1103,24 +1222,47 @@
             }
         }
 
-        function editPlanDemo(name, price, days) {
+        function editPlanDemo(name, price, days, badge, highlight, impressions, status, desc, iosId, androidId, entId) {
             switchView('create');
             document.getElementById('formHeaderTitle').innerText = 'Edit Boosting Plan: ' + name;
             document.getElementById('inputPlanName').value = name;
             document.getElementById('inputPrice').value = price;
             document.getElementById('inputDuration').value = days;
-            document.getElementById('inputDescription').value = 'Elevate visibility and reach across the psychology and biotechnology network for ' + days + ' continuous days.';
-
-            const highlightInput = document.getElementById('inputEstimatedImp');
-            if (highlightInput) {
-                highlightInput.value = days === 7 
-                    ? '7 Days Active Product Feed Placement' 
-                    : (days === 14 ? '14 Days Dual Placement (Marketplace + Newsfeed)' : '30 Days Extended Dual Placement (Marketplace + Newsfeed)');
-            }
+            document.getElementById('inputDescription').value = desc || ('Elevate visibility and reach across the psychology and biotechnology network for ' + days + ' continuous days.');
 
             const badgeInput = document.getElementById('inputBadge');
             if (badgeInput) {
-                badgeInput.value = days === 7 ? 'Starter Tier' : (days === 14 ? 'Most Popular Plan' : 'Maximum Reach');
+                badgeInput.value = badge || (days === 7 ? 'Starter Tier' : (days === 14 ? 'Most Popular Plan' : 'Best Value (Save 18%)'));
+            }
+
+            const highlightInput = document.getElementById('inputPromotionHighlight');
+            if (highlightInput) {
+                highlightInput.value = highlight || (days === 7 ? '7 Days Active Promotion' : (days === 14 ? '14 Days Extended Multi-Channel Reach' : '30 Days Full-Month Non-Stop Placement'));
+            }
+
+            const impInput = document.getElementById('inputEstimatedImp');
+            if (impInput) {
+                impInput.value = impressions || (days === 7 ? '5,000 – 10,000 Impressions' : (days === 14 ? '15,000 – 25,000 Impressions' : '40,000 – 60,000+ Impressions'));
+            }
+
+            const statusInput = document.getElementById('inputStatus');
+            if (statusInput) {
+                statusInput.value = status || 'active';
+            }
+
+            const iosInput = document.getElementById('inputIosStoreId');
+            if (iosInput) {
+                iosInput.value = iosId || ('mindunite_boost_' + days + 'd');
+            }
+
+            const androidInput = document.getElementById('inputAndroidStoreId');
+            if (androidInput) {
+                androidInput.value = androidId || ('mindunite_boost_' + days + 'd');
+            }
+
+            const entInput = document.getElementById('inputEntitlementId');
+            if (entInput) {
+                entInput.value = entId || 'boost_general';
             }
         }
 
@@ -1165,8 +1307,11 @@
             const name = document.getElementById('inputPlanName')?.value || 'New Boosting Plan';
             const duration = parseInt(document.getElementById('inputDuration')?.value || '7', 10);
             const price = parseFloat(document.getElementById('inputPrice')?.value || '19.99');
+            const badge = document.getElementById('inputBadge')?.value || 'None';
+            const highlight = document.getElementById('inputPromotionHighlight')?.value || '';
+            const impressions = document.getElementById('inputEstimatedImp')?.value || '';
 
-            alert(`✅ Boosting Package "${name}" Saved Successfully!\n\n• Duration: ${duration} Days\n• Price: $${price.toFixed(2)}\n\nAll platform boosting capabilities (Continuous Top Placement, Fair-Play Rotation, Sponsored Badge, and Live Analytics) are automatically active for this plan.`);
+            alert(`✅ Boosting Package "${name}" Saved Successfully!\n\n• Duration: ${duration} Days\n• Price: $${price.toFixed(2)}\n• Badge Ribbon: ${badge}\n• Promotion Highlight: ${highlight}\n• Estimated Impressions: ${impressions}\n\nPlatform Static Features (Guaranteed for All Plans):\n1. Marketplace Feed + Main Newsfeed\n2. Sponsored Badge\n3. Fair-Play\n4. Live Analytics`);
             switchView('overview');
         }
     </script>
