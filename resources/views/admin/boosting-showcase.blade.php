@@ -698,57 +698,117 @@
                             <span class="text-[11px] text-slate-500 mt-1 block">Clear promotional summary shown to users on paywall cards.</span>
                         </div>
 
-                        <!-- Row 4: Plan Features (Interactive Tag Pills & Quick-Add) -->
-                        <div>
-                            <div class="flex items-center justify-between mb-1.5">
-                                <label class="font-bold text-slate-700">Package Features & Benefits</label>
-                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">100% Deliverable Services Only</span>
+                        <!-- Row 4: Fixed Deliverable Features & Placements (Strict Checklist - No Freeform Input) -->
+                        <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
+                            <div class="flex flex-wrap items-center justify-between pb-3 border-b border-slate-200/80 gap-2">
+                                <div>
+                                    <label class="font-bold text-slate-900 text-xs flex items-center gap-2">
+                                        <span>Package Features & Placement Permissions</span>
+                                        <span id="selectedFeaturesCountPill" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-100 text-[#008f95]">8 of 9 Selected</span>
+                                    </label>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Fixed platform-supported capabilities. Admin selects via checkboxes only to guarantee delivery & zero false promises.</p>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button type="button" onclick="selectAllFeatures(true)" class="text-[11px] font-bold text-[#008f95] hover:underline">Select All</button>
+                                    <span class="text-slate-300">|</span>
+                                    <button type="button" onclick="selectAllFeatures(false)" class="text-[11px] font-bold text-slate-500 hover:underline">Clear All</button>
+                                </div>
                             </div>
 
-                            <!-- 1-Click Quick Add Buttons -->
-                            <div class="flex flex-wrap items-center gap-1.5 mb-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Quick Add:</span>
-                                <button type="button" onclick="quickAddChip('Continuous Marketplace Top Placement')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Top Placement</button>
-                                <button type="button" onclick="quickAddChip('Featured \'Sponsored\' Badge Ribbon')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ 'Sponsored' Badge</button>
-                                <button type="button" onclick="quickAddChip('Dual Placement: Marketplace Feed + Newsfeed Stream')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Dual Placement</button>
-                                <button type="button" onclick="quickAddChip('Fair-Play Exposure Rotation (Equal Reach)')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Fair Exposure Rotation</button>
-                                <button type="button" onclick="quickAddChip('Real-Time Verified View & Click Analytics')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Live Analytics</button>
-                                <button type="button" onclick="quickAddChip('Direct Buyer Inquiries & Messaging Access')" class="px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-[#008f95] text-[11px] font-semibold text-slate-600 border border-slate-200 transition-all shadow-2xs">+ Direct Inquiries</button>
+                            <!-- 1. Placements Section -->
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">1. Ad Placement Channels (বিজ্ঞাপনের স্থানসমূহ)</span>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_placement_marketplace" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs">Marketplace Product Feed</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Top-ranked priority row in category & catalog feeds.</div>
+                                        </div>
+                                    </label>
+
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_placement_newsfeed" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                                <span>Main Newsfeed Stream</span>
+                                                <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-cyan-100 text-[#008f95]">Growth+</span>
+                                            </div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Post #4 insertion in general user social stream.</div>
+                                        </div>
+                                    </label>
+
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_placement_timeline" onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                                <span>Community & Profiles</span>
+                                                <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 text-amber-700">VIP</span>
+                                            </div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Network forum feeds, user profiles & topic sidebars.</div>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
 
-                            <div class="flex gap-2 mb-3">
-                                <input type="text" id="featureTextInput" placeholder="Type custom honest feature or click quick-add buttons above..." class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#00c2cb] focus:ring-2 focus:ring-[#00c2cb]/20 text-slate-900 text-xs outline-none">
-                                <button type="button" onclick="addFeatureChip()" class="btn-cyan px-4 py-2.5 rounded-xl font-bold flex items-center gap-1 shadow-sm">
-                                    <span>+ Add</span>
-                                </button>
+                            <!-- 2. Visual & Algorithm Features -->
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">2. Visual & Ranking Capabilities (ভিজ্যুয়াল ও অগ্রাধিকার সুবিধা)</span>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_feature_topplacement" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs">Continuous Top Placement</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Active priority position throughout campaign.</div>
+                                        </div>
+                                    </label>
+
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_feature_badge" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs">Featured 'Sponsored' Badge</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Cyan highlighted badge ribbon on card.</div>
+                                        </div>
+                                    </label>
+
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_feature_rotation" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs">Fair-Play Exposure Rotation</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Equal impression algorithm prevents burial.</div>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
 
-                            <!-- Chips list -->
-                            <div id="featureChipsContainer" class="flex flex-wrap gap-2 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 min-h-[48px]">
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ 14 Days continuous front-row placement</span>
-                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ Featured 'Sponsored' badge ribbon on card</span>
-                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ Dual Placement: Marketplace Feed + Newsfeed Stream</span>
-                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ Fair-play exposure rotation (priority equalization queue)</span>
-                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ Real-time verified view & click analytics</span>
-                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200">
-                                    <span>✓ Direct buyer inquiry & chat messaging access</span>
-                                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>
-                                </span>
+                            <!-- 3. Lead Capture, Analytics & Policy -->
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">3. Leads, Analytics & Policy (লিড, অ্যানালিটিক্স ও নিয়ন্ত্রণ)</span>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_feature_analytics" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs">Verified Views & Click Analytics</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Transparent real-time ad tracking metrics.</div>
+                                        </div>
+                                    </label>
+
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_feature_inquiry" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs">Direct Buyer Inquiries & Chat</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">1-click direct buyer communication button.</div>
+                                        </div>
+                                    </label>
+
+                                    <label class="feature-checkbox-card flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00c2cb] cursor-pointer transition-all shadow-2xs">
+                                        <input type="checkbox" id="chk_feature_pause" checked onchange="handleFeatureCheckboxChange()" class="mt-0.5 w-4 h-4 rounded text-[#00c2cb] focus:ring-[#00c2cb] accent-[#00c2cb]">
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-xs">30-Day Pause Protection</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 leading-snug">Freeze campaign when out of stock.</div>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
@@ -1145,16 +1205,48 @@
             }
         }
 
-        function quickAddChip(val) {
-            if (!val) return;
-            const container = document.getElementById('featureChipsContainer');
-            const existing = Array.from(container.children).some(el => el.textContent.includes(val));
-            if (existing) return;
+        function handleFeatureCheckboxChange() {
+            const checkboxes = document.querySelectorAll('.feature-checkbox-card input[type="checkbox"]');
+            let checkedCount = 0;
+            checkboxes.forEach(chk => {
+                if (chk.checked) checkedCount++;
+            });
+            const pill = document.getElementById('selectedFeaturesCountPill');
+            if (pill) {
+                pill.innerText = `${checkedCount} of ${checkboxes.length} Selected`;
+            }
+        }
 
-            const chip = document.createElement('span');
-            chip.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-100 text-[#008f95] font-semibold text-xs border border-cyan-200';
-            chip.innerHTML = `<span>✓ ${val}</span><button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 font-bold ml-1">×</button>`;
-            container.appendChild(chip);
+        function selectAllFeatures(selectAll) {
+            const checkboxes = document.querySelectorAll('.feature-checkbox-card input[type="checkbox"]');
+            checkboxes.forEach(chk => {
+                chk.checked = selectAll;
+            });
+            handleFeatureCheckboxChange();
+        }
+
+        function setFeatureCheckboxesForPlan(days) {
+            const setChecked = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.checked = val;
+            };
+
+            // Common deliverable capabilities for all plans
+            setChecked('chk_placement_marketplace', true);
+            setChecked('chk_feature_topplacement', true);
+            setChecked('chk_feature_badge', true);
+            setChecked('chk_feature_rotation', true);
+            setChecked('chk_feature_analytics', true);
+            setChecked('chk_feature_inquiry', true);
+            setChecked('chk_feature_pause', true);
+
+            // Newsfeed Ad Stream is enabled for Tier 2+ (14+ Days)
+            setChecked('chk_placement_newsfeed', days >= 14);
+
+            // Community & Profile Timelines is enabled for Tier 3 (30 Days Omnichannel)
+            setChecked('chk_placement_timeline', days >= 30);
+
+            handleFeatureCheckboxChange();
         }
 
         function editPlanDemo(name, price, days) {
@@ -1167,35 +1259,18 @@
 
             const highlightInput = document.getElementById('inputEstimatedImp');
             if (highlightInput) {
-                highlightInput.value = days + ' Days Active Promotion';
+                highlightInput.value = days === 7 
+                    ? '7 Days Active Product Feed Placement' 
+                    : (days === 14 ? '14 Days Dual Placement (Marketplace + Newsfeed)' : '30 Days Omnichannel Placement (All Feeds & Streams)');
             }
 
             const badgeInput = document.getElementById('inputBadge');
             if (badgeInput) {
-                badgeInput.value = days === 7 ? 'Starter Tier' : (days === 14 ? 'Most Popular Plan' : 'Maximum Reach');
+                badgeInput.value = days === 7 ? 'Starter Tier' : (days === 14 ? 'Most Popular Plan' : 'Omnichannel Reach');
             }
 
-            // Populate honest feature chips
-            const container = document.getElementById('featureChipsContainer');
-            container.innerHTML = '';
-            quickAddChip(days + ' Days continuous marketplace top-row placement');
-            quickAddChip("Featured 'Sponsored' badge ribbon on card");
-            if (days >= 14) {
-                quickAddChip('Dual Placement: Marketplace Feed + Newsfeed Stream');
-            }
-            quickAddChip('Fair-play exposure rotation (equal exposure)');
-            quickAddChip('Real-time verified view & click analytics');
-            quickAddChip('Direct buyer inquiry & chat messaging access');
-        }
-
-        function addFeatureChip() {
-            const input = document.getElementById('featureTextInput');
-            const val = input.value.trim();
-            if (!val) return;
-
-            quickAddChip(val);
-            input.value = '';
-            input.focus();
+            // Strictly set fixed feature checkboxes for the selected plan
+            setFeatureCheckboxesForPlan(days);
         }
 
         function toggleIapSection() {
