@@ -4,15 +4,18 @@
     $campaignId = $prod['ad_campaign_id'] ?? null;
     $isExtra = $isExtra ?? false;
     $sectionId = $sectionId ?? ($prod['section_id'] ?? 0);
+    $searchBlob = strtolower(($prod['product_name'] ?? '').' '.($prod['product_id'] ?? '').' '.($prod['category_name'] ?? '').' '.implode(' ', (array) ($prod['tags'] ?? [])));
 @endphp
 
 <div class="product-card {{ $isBoosted ? 'boosted' : '' }} {{ !$isBoosted && $isNewRelease ? 'new-release' : '' }} {{ $isExtra ? 'extra-card' : '' }}" 
      data-section-id="{{ $sectionId }}"
      data-category-id="{{ $prod['category_id'] ?? '' }}"
+     data-product-name="{{ strtolower($prod['product_name'] ?? '') }}"
+     data-product-id="{{ strtolower($prod['product_id'] ?? '') }}"
+     data-search-content="{{ $searchBlob }}"
      @if($isExtra) style="display: none;" @endif
      @if($isBoosted && $campaignId)
          data-campaign-id="{{ $campaignId }}"
-         data-product-name="{{ $prod['product_name'] }}"
      @endif>
 
     <!-- Boosted / New Release Badge Ribbon -->

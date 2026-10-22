@@ -196,7 +196,8 @@ Route::get('/product-feed-preview', function (Request $request) {
     if ($search) {
         $query->where(function ($q) use ($search) {
             $q->where('product_name', 'LIKE', "%{$search}%")
-                ->orWhere('description', 'LIKE', "%{$search}%");
+                ->orWhere('description', 'LIKE', "%{$search}%")
+                ->orWhere('product_id', 'LIKE', "%{$search}%");
         });
     }
 

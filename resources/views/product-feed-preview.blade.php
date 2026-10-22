@@ -363,12 +363,105 @@
             margin-bottom: 24px;
         }
 
+        .industry-header-info {
+            margin-bottom: 16px;
+        }
+
         .industry-header-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 16px;
             flex-wrap: wrap;
+        }
+
+        .industry-header-controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* Feed Search Bar */
+        .feed-search-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            min-width: 280px;
+            max-width: 380px;
+            flex: 1 1 280px;
+        }
+
+        .feed-search-icon {
+            position: absolute;
+            left: 14px;
+            width: 17px;
+            height: 17px;
+            color: #94a3b8;
+            pointer-events: none;
+            transition: color 0.15s ease;
+        }
+
+        .feed-search-wrap:focus-within .feed-search-icon {
+            color: #0284c7;
+        }
+
+        .feed-search-input {
+            width: 100%;
+            height: 42px;
+            padding: 0 36px 0 40px;
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 500;
+            color: #0f172a;
+            outline: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+        }
+
+        .feed-search-input::placeholder {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .feed-search-input:hover {
+            border-color: #cbd5e1;
+        }
+
+        .feed-search-input:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15), 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .feed-search-clear {
+            position: absolute;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f1f5f9;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            cursor: pointer;
+            padding: 0;
+            transition: all 0.15s ease;
+        }
+
+        .feed-search-clear:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .feed-search-clear svg {
+            width: 13px;
+            height: 13px;
+            stroke-width: 2.2;
         }
 
         .industry-main-title {
@@ -1124,12 +1217,13 @@
         <section class="main-feed-area">
             <!-- Header for Selected Industry -->
             <div class="industry-header">
-                <div class="industry-header-row">
-                    <div>
-                        <h1 class="industry-main-title">{{ $industries[$currentIndustry]['name'] ?? 'Industry Products' }}</h1>
-                        <p class="industry-main-desc">{{ $industries[$currentIndustry]['desc'] ?? 'Explore the latest releases advancing brain health research and treatment.' }}</p>
-                    </div>
+                <div class="industry-header-info">
+                    <h1 class="industry-main-title">{{ $industries[$currentIndustry]['name'] ?? 'Industry Products' }}</h1>
+                    <p class="industry-main-desc">{{ $industries[$currentIndustry]['desc'] ?? 'Explore the latest releases advancing brain health research and treatment.' }}</p>
+                </div>
 
+                <!-- Controls Row: View Mode Switcher on Left, Search Bar on Right -->
+                <div class="industry-header-controls-row">
                     <!-- View Mode Switcher -->
                     <div class="view-mode-toggle-group">
                         <button type="button" 
@@ -1144,7 +1238,7 @@
                                 <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
                             </svg>
                             <span>All Products View</span>
-                            <span class="view-badge-count">{{ $flatProducts->count() }}</span>
+                            <span class="view-badge-count" id="viewCountAll">{{ $flatProducts->count() }}</span>
                         </button>
 
                         <button type="button" 
@@ -1158,7 +1252,35 @@
                                 <line x1="3" y1="18" x2="21" y2="18"></line>
                             </svg>
                             <span>Section-wise View</span>
-                            <span class="view-badge-count">{{ count($groupedBySection) }}</span>
+                            <span class="view-badge-count" id="viewCountSection">{{ count($groupedBySection) }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Search Bar -->
+                    <div class="feed-search-wrap">
+                        <svg class="feed-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" 
+                               id="feedSearchInput" 
+                               class="feed-search-input" 
+                               placeholder="search by product name or id" 
+                               value="{{ $search ?? '' }}"
+                               oninput="handleFeedSearch(this.value)"
+                               onkeydown="handleSearchKeydown(event)"
+                               autocomplete="off"
+                               aria-label="Search by product name or id">
+                        <button type="button" 
+                                id="clearSearchBtn" 
+                                class="feed-search-clear" 
+                                onclick="clearFeedSearch()" 
+                                title="Clear search"
+                                style="{{ !empty($search) ? 'display: flex;' : 'display: none;' }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -1167,8 +1289,12 @@
             <!-- VIEW 1: All Type Products Unified Grid (Default) -->
             <div id="viewModeAllContainer" style="{{ $viewMode !== 'section' ? 'display: block;' : 'display: none;' }}">
                 <div class="all-products-header-bar">
-                    <div>
-                        <strong>All Available Products</strong> &bull; Showing {{ $flatProducts->count() }} items sorted by priority
+                    <div id="allProductsSummaryText">
+                        @if(!empty($search))
+                            <strong>Search Results</strong> &bull; Showing {{ $flatProducts->count() }} matching items for "{{ $search }}"
+                        @else
+                            <strong>All Available Products</strong> &bull; Showing {{ $flatProducts->count() }} items sorted by priority
+                        @endif
                     </div>
                     <div class="pill-stats">
                         @if(!empty($stats['boosted_count']))
@@ -1357,6 +1483,215 @@
             setTimeout(() => {
                 initViewableImpressionTracker();
             }, 100);
+        }
+
+        // 1.5. Real-Time Client-Side Search (Product Name or Product ID)
+        let searchDebounceTimer = null;
+
+        function handleFeedSearch(rawQuery) {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                executeFeedSearch(rawQuery);
+            }, 90);
+        }
+
+        function handleSearchKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                clearTimeout(searchDebounceTimer);
+                executeFeedSearch(event.target.value);
+            }
+        }
+
+        function clearFeedSearch() {
+            const input = document.getElementById('feedSearchInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            executeFeedSearch('');
+        }
+
+        function executeFeedSearch(rawQuery) {
+            const query = (rawQuery || '').trim().toLowerCase();
+            const cleanIdQuery = query.replace(/^#/, '');
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (clearBtn) {
+                clearBtn.style.display = query.length > 0 ? 'flex' : 'none';
+            }
+
+            // Sync URL parameter without page reload
+            try {
+                const url = new URL(window.location.href);
+                if (query) {
+                    url.searchParams.set('search', query);
+                } else {
+                    url.searchParams.delete('search');
+                }
+                window.history.replaceState({}, '', url.toString());
+            } catch (e) {}
+
+            // A. Filter All Products Grid (#grid-all-products)
+            const allGrid = document.getElementById('grid-all-products');
+            let totalAllMatches = 0;
+            if (allGrid) {
+                const allCards = allGrid.querySelectorAll('.product-card');
+                allCards.forEach(card => {
+                    if (!query) {
+                        card.style.display = 'flex';
+                        totalAllMatches++;
+                        return;
+                    }
+
+                    const name = (card.getAttribute('data-product-name') || '').toLowerCase();
+                    const pId = (card.getAttribute('data-product-id') || '').toLowerCase();
+                    const searchBlob = (card.getAttribute('data-search-content') || '').toLowerCase();
+
+                    const isMatch = name.includes(query) || 
+                                    pId.includes(query) || 
+                                    pId.includes(cleanIdQuery) || 
+                                    searchBlob.includes(query);
+
+                    if (isMatch) {
+                        card.style.display = 'flex';
+                        totalAllMatches++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Update All Products badge count
+                const badgeAll = document.getElementById('viewCountAll');
+                if (badgeAll) {
+                    badgeAll.textContent = totalAllMatches;
+                }
+
+                // Update summary text
+                const summaryTextEl = document.getElementById('allProductsSummaryText');
+                if (summaryTextEl) {
+                    if (query) {
+                        summaryTextEl.innerHTML = `<strong>Search Results</strong> &bull; Showing ${totalAllMatches} matching items for "${escapeHtml(query)}"`;
+                    } else {
+                        summaryTextEl.innerHTML = `<strong>All Available Products</strong> &bull; Showing ${allCards.length} items sorted by priority`;
+                    }
+                }
+
+                // Empty state for All Products view
+                let emptyAllMsg = document.getElementById('emptyAllSearchMsg');
+                if (totalAllMatches === 0 && query) {
+                    if (!emptyAllMsg) {
+                        emptyAllMsg = document.createElement('div');
+                        emptyAllMsg.id = 'emptyAllSearchMsg';
+                        emptyAllMsg.className = 'empty-section-message';
+                        emptyAllMsg.style.gridColumn = '1 / -1';
+                        emptyAllMsg.style.padding = '40px 20px';
+                        emptyAllMsg.innerHTML = `
+                            <p style="font-size: 15px; font-weight: 700; color: #475569; margin-bottom: 6px;">No products match "${escapeHtml(query)}"</p>
+                            <p style="font-size: 13px; color: #94a3b8; margin: 0;">Try searching with a different product name, ID, or category keyword.</p>
+                        `;
+                        allGrid.appendChild(emptyAllMsg);
+                    }
+                    emptyAllMsg.style.display = 'block';
+                } else if (emptyAllMsg) {
+                    emptyAllMsg.style.display = 'none';
+                }
+            }
+
+            // B. Filter Section-wise View (#viewModeSectionContainer)
+            const sectionBlocks = document.querySelectorAll('#viewModeSectionContainer .section-block');
+            let visibleSectionCount = 0;
+
+            sectionBlocks.forEach(secBlock => {
+                const secId = secBlock.id.replace('section-block-', '');
+                const secGrid = document.getElementById(`grid-sec-${secId}`);
+                const seeMoreWrap = document.getElementById(`see-more-wrap-${secId}`);
+                if (!secGrid) return;
+
+                const secCards = secGrid.querySelectorAll(`.product-card[data-section-id="${secId}"]`);
+                let secMatches = 0;
+
+                if (!query) {
+                    secBlock.style.display = 'block';
+                    applySectionDisplay(secId);
+                    visibleSectionCount++;
+                    return;
+                }
+
+                // If query is active: search across all cards in this section
+                secCards.forEach(card => {
+                    const name = (card.getAttribute('data-product-name') || '').toLowerCase();
+                    const pId = (card.getAttribute('data-product-id') || '').toLowerCase();
+                    const searchBlob = (card.getAttribute('data-search-content') || '').toLowerCase();
+
+                    const isMatch = name.includes(query) || 
+                                    pId.includes(query) || 
+                                    pId.includes(cleanIdQuery) || 
+                                    searchBlob.includes(query);
+
+                    if (isMatch) {
+                        card.style.display = 'flex';
+                        secMatches++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Hide category filter empty message while searching
+                const emptyFilterMsg = secBlock.querySelector('.empty-filter-msg');
+                if (emptyFilterMsg) emptyFilterMsg.style.display = 'none';
+
+                // Temporarily hide "See more products" button so all matches are visible
+                if (seeMoreWrap) seeMoreWrap.style.display = 'none';
+
+                if (secMatches > 0) {
+                    secBlock.style.display = 'block';
+                    visibleSectionCount++;
+                } else {
+                    secBlock.style.display = 'none';
+                }
+            });
+
+            // Update Section-wise badge count
+            const badgeSec = document.getElementById('viewCountSection');
+            if (badgeSec) {
+                badgeSec.textContent = visibleSectionCount;
+            }
+
+            // Section-wise container global empty message
+            const secContainer = document.getElementById('viewModeSectionContainer');
+            if (secContainer) {
+                let emptySecMsg = document.getElementById('emptySecSearchMsg');
+                if (visibleSectionCount === 0 && query) {
+                    if (!emptySecMsg) {
+                        emptySecMsg = document.createElement('div');
+                        emptySecMsg.id = 'emptySecSearchMsg';
+                        emptySecMsg.className = 'empty-section-message';
+                        emptySecMsg.style.padding = '50px 20px';
+                        emptySecMsg.innerHTML = `
+                            <p style="font-size: 15px; font-weight: 700; color: #475569; margin-bottom: 6px;">No sections found matching "${escapeHtml(query)}"</p>
+                            <p style="font-size: 13px; color: #94a3b8; margin: 0;">Try searching for another product name or ID.</p>
+                        `;
+                        secContainer.appendChild(emptySecMsg);
+                    }
+                    emptySecMsg.style.display = 'block';
+                } else if (emptySecMsg) {
+                    emptySecMsg.style.display = 'none';
+                }
+            }
+
+            // C. Re-bind IAB impression observer for newly visible cards
+            setTimeout(() => {
+                initViewableImpressionTracker();
+            }, 60);
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         // 2. Client-Side Section Expansion & Sub-Category Tab Filtering
@@ -1867,6 +2202,10 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initViewableImpressionTracker();
+            const searchInput = document.getElementById('feedSearchInput');
+            if (searchInput && searchInput.value) {
+                executeFeedSearch(searchInput.value);
+            }
         });
     </script>
 </body>
