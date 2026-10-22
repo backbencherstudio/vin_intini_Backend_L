@@ -2115,6 +2115,12 @@
                 window.history.replaceState({}, '', url.toString());
             } catch (e) {}
 
+            // Re-apply active search in newly active view
+            const searchInput = document.getElementById('feedSearchInput');
+            if (searchInput && searchInput.value) {
+                executeFeedSearch(searchInput.value);
+            }
+
             // Re-bind IAB impression observer for visible cards in the active view
             setTimeout(() => {
                 initViewableImpressionTracker();
@@ -2239,51 +2245,18 @@
 
             sectionBlocks.forEach(secBlock => {
                 const secId = secBlock.id.replace('section-block-', '');
-                const secGrid = document.getElementById(`grid-sec-${secId}`);
-                const seeMoreWrap = document.getElementById(`see-more-wrap-${secId}`);
-                if (!secGrid) return;
+                const matchingCount = applySectionDisplay(secId);
 
-                const secCards = secGrid.querySelectorAll(`.product-card[data-section-id="${secId}"]`);
-                let secMatches = 0;
-
-                if (!query) {
-                    secBlock.style.display = 'block';
-                    applySectionDisplay(secId);
-                    visibleSectionCount++;
-                    return;
-                }
-
-                // If query is active: search across all cards in this section
-                secCards.forEach(card => {
-                    const name = (card.getAttribute('data-product-name') || '').toLowerCase();
-                    const pId = (card.getAttribute('data-product-id') || '').toLowerCase();
-                    const searchBlob = (card.getAttribute('data-search-content') || '').toLowerCase();
-
-                    const isMatch = name.includes(query) || 
-                                    pId.includes(query) || 
-                                    pId.includes(cleanIdQuery) || 
-                                    searchBlob.includes(query);
-
-                    if (isMatch) {
-                        card.style.display = 'flex';
-                        secMatches++;
+                if (query) {
+                    if (matchingCount > 0) {
+                        secBlock.style.display = 'block';
+                        visibleSectionCount++;
                     } else {
-                        card.style.display = 'none';
+                        secBlock.style.display = 'none';
                     }
-                });
-
-                // Hide category filter empty message while searching
-                const emptyFilterMsg = secBlock.querySelector('.empty-filter-msg');
-                if (emptyFilterMsg) emptyFilterMsg.style.display = 'none';
-
-                // Temporarily hide "See more products" button so all matches are visible
-                if (seeMoreWrap) seeMoreWrap.style.display = 'none';
-
-                if (secMatches > 0) {
+                } else {
                     secBlock.style.display = 'block';
                     visibleSectionCount++;
-                } else {
-                    secBlock.style.display = 'none';
                 }
             });
 
@@ -2339,26 +2312,62 @@
             }
             const state = sectionState[sectionId];
             const grid = document.getElementById(`grid-sec-${sectionId}`);
-            if (!grid) return;
+            if (!grid) return 0;
+
+            const searchInput = document.getElementById('feedSearchInput');
+            const rawQuery = searchInput ? searchInput.value : '';
+            const query = (rawQuery || '').trim().toLowerCase();
+            const cleanIdQuery = query.replace(/^#/, '');
 
             const cards = Array.from(grid.querySelectorAll(`.product-card[data-section-id="${sectionId}"]`));
             const matchingCards = [];
 
             cards.forEach(card => {
                 const cardCatId = card.getAttribute('data-category-id');
-                const matches = (state.activeCategory === 'all' || cardCatId === String(state.activeCategory));
-                if (matches) {
+                const catMatches = (state.activeCategory === 'all' || cardCatId === String(state.activeCategory));
+
+                let searchMatches = true;
+                if (query) {
+                    const name = (card.getAttribute('data-product-name') || '').toLowerCase();
+                    const pId = (card.getAttribute('data-product-id') || '').toLowerCase();
+                    const searchBlob = (card.getAttribute('data-search-content') || '').toLowerCase();
+
+                    searchMatches = name.includes(query) || 
+                                    pId.includes(query) || 
+                                    pId.includes(cleanIdQuery) || 
+                                    searchBlob.includes(query);
+                }
+
+                if (catMatches && searchMatches) {
                     matchingCards.push(card);
                 } else {
                     card.style.display = 'none';
                 }
             });
 
-            // Determine visibility based on expanded state
-            if (state.expanded) {
+            const btnWrap = document.getElementById(`see-more-wrap-${sectionId}`);
+            const btn = document.getElementById(`see-more-btn-${sectionId}`);
+
+            // When searching, show all matching cards directly (no 6-card limit cutting off search matches)
+            if (query) {
                 matchingCards.forEach(card => {
                     card.style.display = 'flex';
                 });
+                if (btnWrap) btnWrap.style.display = 'none';
+            } else if (state.expanded) {
+                matchingCards.forEach(card => {
+                    card.style.display = 'flex';
+                });
+                if (btnWrap && btn) {
+                    if (matchingCards.length > 6) {
+                        btnWrap.style.display = 'flex';
+                        btn.classList.add('is-expanded');
+                        const btnText = btn.querySelector('.btn-text');
+                        if (btnText) btnText.textContent = 'Show less';
+                    } else {
+                        btnWrap.style.display = 'none';
+                    }
+                }
             } else {
                 matchingCards.forEach((card, idx) => {
                     if (idx < 6) {
@@ -2367,26 +2376,16 @@
                         card.style.display = 'none';
                     }
                 });
-            }
-
-            // Update "See more products" button per section
-            const btnWrap = document.getElementById(`see-more-wrap-${sectionId}`);
-            const btn = document.getElementById(`see-more-btn-${sectionId}`);
-            if (btnWrap && btn) {
-                const btnText = btn.querySelector('.btn-text');
-                const remaining = matchingCards.length - 6;
-
-                if (matchingCards.length > 6) {
-                    btnWrap.style.display = 'flex';
-                    if (state.expanded) {
-                        btn.classList.add('is-expanded');
-                        if (btnText) btnText.textContent = 'Show less';
-                    } else {
+                if (btnWrap && btn) {
+                    const remaining = matchingCards.length - 6;
+                    if (remaining > 0) {
+                        btnWrap.style.display = 'flex';
                         btn.classList.remove('is-expanded');
+                        const btnText = btn.querySelector('.btn-text');
                         if (btnText) btnText.textContent = `See more products (${remaining} more)`;
+                    } else {
+                        btnWrap.style.display = 'none';
                     }
-                } else {
-                    btnWrap.style.display = 'none';
                 }
             }
 
@@ -2396,13 +2395,19 @@
                 if (!emptyMsg) {
                     emptyMsg = document.createElement('div');
                     emptyMsg.className = 'empty-section-message empty-filter-msg';
-                    emptyMsg.textContent = 'No products found in this category';
                     grid.parentElement.appendChild(emptyMsg);
+                }
+                if (query) {
+                    emptyMsg.textContent = `No products found matching "${rawQuery}" in this category`;
+                } else {
+                    emptyMsg.textContent = 'No products found in this category';
                 }
                 emptyMsg.style.display = 'block';
             } else if (emptyMsg) {
                 emptyMsg.style.display = 'none';
             }
+
+            return matchingCards.length;
         }
 
         function toggleSectionExpand(sectionId) {
@@ -2424,7 +2429,29 @@
                 sectionState[sectionId] = { expanded: false, activeCategory: 'all' };
             }
             sectionState[sectionId].activeCategory = categoryId;
-            applySectionDisplay(sectionId);
+            const matchingCount = applySectionDisplay(sectionId);
+
+            // Recompute section visibility if search is active
+            const searchInput = document.getElementById('feedSearchInput');
+            const query = (searchInput ? searchInput.value : '').trim();
+            if (query) {
+                const secBlock = document.getElementById(`section-block-${sectionId}`);
+                if (secBlock) {
+                    secBlock.style.display = matchingCount > 0 ? 'block' : 'none';
+                }
+
+                // Update section count badge
+                let visibleCount = 0;
+                document.querySelectorAll('#viewModeSectionContainer .section-block').forEach(sb => {
+                    if (sb.style.display !== 'none') visibleCount++;
+                });
+                const badgeSec = document.getElementById('viewCountSection');
+                if (badgeSec) badgeSec.textContent = visibleCount;
+            }
+
+            setTimeout(() => {
+                initViewableImpressionTracker();
+            }, 60);
         }
 
         // 3. IAB Viewable Impression Observer (50% visibility for 600ms)
