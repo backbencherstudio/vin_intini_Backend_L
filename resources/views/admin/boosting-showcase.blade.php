@@ -319,6 +319,14 @@
                                     <div class="flex justify-between"><span class="text-slate-400">Currency:</span> <span class="font-bold text-slate-800">USD</span></div>
                                     <div class="flex justify-between"><span class="text-slate-400">Min Duration:</span> <span class="font-bold text-slate-800">3 Days</span></div>
                                     <div class="flex justify-between"><span class="text-slate-400">Max Duration:</span> <span class="font-bold text-slate-800">60 Days</span></div>
+                                    <div class="pt-2 mt-2 border-t border-slate-200/80 flex justify-between items-center text-[11px]">
+                                        <span class="text-slate-500 font-medium">Total Purchased:</span>
+                                        <span class="font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">423 Campaigns</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-[11px]">
+                                        <span class="text-slate-500 font-medium">Custom Revenue:</span>
+                                        <span class="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">$14,250.00</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

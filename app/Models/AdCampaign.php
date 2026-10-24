@@ -104,6 +104,21 @@ class AdCampaign extends Model
         return $this->status === AdCampaignStatus::PAUSED;
     }
 
+    public function isCustom(): bool
+    {
+        return $this->boost_package_id === null;
+    }
+
+    public function scopeCustom($query)
+    {
+        return $query->whereNull('boost_package_id');
+    }
+
+    public function scopePreset($query)
+    {
+        return $query->whereNotNull('boost_package_id');
+    }
+
     /**
      * Pause the campaign and freeze the remaining time.
      */

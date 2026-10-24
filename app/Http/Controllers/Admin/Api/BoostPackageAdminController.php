@@ -69,6 +69,9 @@ class BoostPackageAdminController extends Controller
             ->orderBy('id')
             ->get();
 
+        $customCampaigns = AdCampaign::whereNull('boost_package_id');
+        $presetCampaigns = AdCampaign::whereNotNull('boost_package_id');
+
         $overview = [
             'total_packages' => BoostPackage::count(),
             'active_packages' => BoostPackage::where('status', 'active')->count(),
@@ -78,6 +81,22 @@ class BoostPackageAdminController extends Controller
                 ->count(),
             'total_impressions_delivered' => (int) AdCampaign::sum('total_impressions'),
             'total_clicks_recorded' => (int) AdCampaign::sum('total_clicks'),
+            'custom_packages' => [
+                'total_purchased_count' => (int) (clone $customCampaigns)->count(),
+                'live_campaigns_count' => (int) (clone $customCampaigns)
+                    ->where('status', AdCampaignStatus::ACTIVE)
+                    ->where('ends_at', '>', now())
+                    ->count(),
+                'total_revenue' => (float) (clone $customCampaigns)->sum('amount_paid'),
+            ],
+            'preset_packages' => [
+                'total_purchased_count' => (int) (clone $presetCampaigns)->count(),
+                'live_campaigns_count' => (int) (clone $presetCampaigns)
+                    ->where('status', AdCampaignStatus::ACTIVE)
+                    ->where('ends_at', '>', now())
+                    ->count(),
+                'total_revenue' => (float) (clone $presetCampaigns)->sum('amount_paid'),
+            ],
         ];
 
         return response()->json([

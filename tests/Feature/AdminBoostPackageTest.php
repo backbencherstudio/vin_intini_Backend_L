@@ -56,6 +56,22 @@ test('admin can list boost packages with filtering', function () {
         ->assertStatus(200)
         ->assertJsonStructure([
             'success',
+            'overview' => [
+                'total_packages',
+                'active_packages',
+                'total_ad_revenue',
+                'live_campaigns_count',
+                'custom_packages' => [
+                    'total_purchased_count',
+                    'live_campaigns_count',
+                    'total_revenue',
+                ],
+                'preset_packages' => [
+                    'total_purchased_count',
+                    'live_campaigns_count',
+                    'total_revenue',
+                ],
+            ],
             'data' => [
                 '*' => [
                     'id',

@@ -91,7 +91,17 @@ Accept: application/json
     "total_ad_revenue": 45890.50,
     "live_campaigns_count": 41058,
     "total_impressions_delivered": 1420500,
-    "total_clicks_recorded": 98450
+    "total_clicks_recorded": 98450,
+    "custom_packages": {
+      "total_purchased_count": 8420,
+      "live_campaigns_count": 420,
+      "total_revenue": 14250.00
+    },
+    "preset_packages": {
+      "total_purchased_count": 32638,
+      "live_campaigns_count": 40638,
+      "total_revenue": 31640.50
+    }
   },
   "data": [
     {
