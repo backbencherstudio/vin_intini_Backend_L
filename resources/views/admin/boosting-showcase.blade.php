@@ -56,7 +56,45 @@
             background: #94a3b8;
         }
         .glow-hover:hover {
-            box-shadow: 0 10px 25px -5px rgba(0, 194, 203, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 14px 30px -5px rgba(0, 194, 203, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        }
+        .bento-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.25rem;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .bento-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05);
+            transform: translateY(-2px);
+        }
+        .hero-plan-card {
+            background: linear-gradient(180deg, #ffffff 0%, #f0fdfa 100%);
+            border: 2px solid #00c2cb;
+            box-shadow: 0 20px 35px -10px rgba(0, 194, 203, 0.22);
+        }
+        .vip-plan-card {
+            background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
+            border: 2px solid #fde68a;
+            box-shadow: 0 20px 35px -10px rgba(245, 158, 11, 0.16);
+        }
+        .starter-plan-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.04);
+        }
+        .starter-plan-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 14px 30px -5px rgba(15, 23, 42, 0.08);
+            transform: translateY(-2px);
+        }
+        @keyframes pulse-beacon {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.35); opacity: 0.6; }
+        }
+        .beacon-dot {
+            animation: pulse-beacon 2s infinite ease-in-out;
         }
     </style>
 </head>
@@ -227,387 +265,598 @@
                  ============================================================== -->
             <div id="view-overview" class="space-y-8">
 
-                <!-- 1. KPI Stats Cards Row -->
+                <!-- 1. KPI Stats Cards Row (Financial & Channel Intelligence) -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <!-- Total Packages -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-                        <div>
-                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Packages</span>
-                            <div class="text-2xl font-extrabold text-slate-900">3</div>
-                            <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                                <span>+12.4% vs last mo</span>
-                            </span>
+                    <!-- Total Packages & Channels -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Catalog & Channels</span>
+                            <div class="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-[#008f95]">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                            </div>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-[#008f95]">
-                            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        <div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-2xl font-extrabold text-slate-900 tracking-tight">3 Tiers</span>
+                                <span class="text-xs font-bold text-slate-400">+ 1 Custom</span>
+                            </div>
+                            <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                                <span class="text-slate-500 font-medium">Channel Health:</span>
+                                <span class="font-bold text-emerald-600 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    100% Operational
+                                </span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Active Packages -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-                        <div>
-                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Active Packages</span>
-                            <div class="text-2xl font-extrabold text-slate-900">3</div>
-                            <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                                <span>100% Operational</span>
-                            </span>
+                    <!-- Total Campaigns Executed -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Campaigns</span>
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                            </div>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-                            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-2xl font-extrabold text-slate-900 tracking-tight">1,457</span>
+                                <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                    +14.8% MoM
+                                </span>
+                            </div>
+                            <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                                <span class="text-slate-500 font-medium">Preset: <strong class="text-slate-800">1,034</strong></span>
+                                <span class="text-slate-400 font-bold">•</span>
+                                <span class="text-slate-500 font-medium">Custom: <strong class="text-indigo-600 font-bold">423</strong></span>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Total Ads Revenue -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-                        <div>
-                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Ads Revenue</span>
-                            <div class="text-2xl font-extrabold text-slate-900">$80,640.00</div>
-                            <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                                <span>+28.5% from last month</span>
-                            </span>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Ads Revenue</span>
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                            </div>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-                            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        <div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-2xl font-extrabold text-slate-900 tracking-tight">$80,640.00</span>
+                                <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                    +28.5%
+                                </span>
+                            </div>
+                            <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                                <span class="text-slate-500 font-medium">Presets: <strong class="text-slate-800">$66.4k</strong></span>
+                                <span class="text-slate-400 font-bold">•</span>
+                                <span class="text-slate-500 font-medium">Slider: <strong class="text-emerald-600 font-bold">$14.2k</strong></span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Live Campaigns Count -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-                        <div>
-                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Live Campaigns Count</span>
-                            <div class="text-2xl font-extrabold text-slate-900">1,457</div>
-                            <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                                <span>+14.8% active reach</span>
-                            </span>
+                    <!-- Pacing & Fair-Play Health -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Delivery Algorithm</span>
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            </div>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        <div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-2xl font-extrabold text-slate-900 tracking-tight">Fair-Play</span>
+                                <span class="text-xs font-bold text-emerald-600">Active</span>
+                            </div>
+                            <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                                <span class="text-slate-500 font-medium">Pacing Health:</span>
+                                <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 beacon-dot"></span>
+                                    Zero Feed Stacking
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. Plan Overview Section (Global Policies) -->
-                <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
-                    <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-100 mb-5 gap-3">
-                        <div>
-                            <h3 class="text-base font-bold text-slate-900">Plan Overview & Global Pacing Rules</h3>
-                            <p class="text-xs text-slate-500">Global system-wide boosting settings, newsfeed insertion rates, and automated freeze/expiry policies.</p>
+                <!-- 2. Global Delivery Rules & Ad Engine Pacing (Bento Grid) -->
+                <div class="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/90 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-100 mb-6 gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-[#043940] text-[#00c2cb] flex items-center justify-center font-bold text-sm shadow-sm">
+                                ⚡
+                            </div>
+                            <div>
+                                <h3 class="text-base font-extrabold text-slate-900 tracking-tight">Global Delivery Rules & Ad Engine Pacing</h3>
+                                <p class="text-xs text-slate-500">Autonomous platform constraints controlling insertion frequency, duration range, and vendor grace periods.</p>
+                            </div>
                         </div>
-                        <button type="button" onclick="openSettingsModal()" class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-1.5 shadow-sm">
-                            <span>⚙️ Edit Plan Settings</span>
+                        <button type="button" onclick="openSettingsModal()" class="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2 shadow-sm">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            <span>Configure Engine Rules</span>
                         </button>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <!-- Custom Plan Card -->
-                        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/60 flex flex-col justify-between">
+                        <!-- Bento 1: Custom Slider Engine -->
+                        <div class="bento-card p-5 flex flex-col justify-between">
                             <div>
                                 <div class="flex items-center justify-between mb-3">
-                                    <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                        Custom Plan Slider
-                                    </span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Enabled</span>
-                                </div>
-                                <div class="space-y-1.5 text-xs text-slate-600">
-                                    <div class="flex justify-between"><span class="text-slate-400">Channel:</span> <span class="font-bold text-slate-800">Web Checkout</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Daily Rate:</span> <span class="font-bold text-emerald-600">$3.00 / Day</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Currency:</span> <span class="font-bold text-slate-800">USD</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Min Duration:</span> <span class="font-bold text-slate-800">3 Days</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Max Duration:</span> <span class="font-bold text-slate-800">60 Days</span></div>
-                                    <div class="pt-2 mt-2 border-t border-slate-200/80 flex justify-between items-center text-[11px]">
-                                        <span class="text-slate-500 font-medium">Total Purchased:</span>
-                                        <span class="font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">423 Campaigns</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                        <span class="text-xs font-bold text-slate-800">Custom Slider Engine</span>
                                     </div>
-                                    <div class="flex justify-between items-center text-[11px]">
-                                        <span class="text-slate-500 font-medium">Custom Revenue:</span>
-                                        <span class="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">$14,250.00</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Web Checkout</span>
+                                </div>
+
+                                <!-- Slider Visual Simulation -->
+                                <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 mb-3.5">
+                                    <div class="flex justify-between items-center text-xs mb-1.5">
+                                        <span class="text-slate-400 font-medium">Daily Rate:</span>
+                                        <span class="text-sm font-extrabold text-emerald-600">$3.00 <span class="text-[10px] text-slate-400 font-normal">/ Day</span></span>
+                                    </div>
+                                    <!-- Interactive Range Visual Track -->
+                                    <div class="relative py-2">
+                                        <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-emerald-400 to-[#00c2cb] w-3/5 rounded-full"></div>
+                                        </div>
+                                        <div class="absolute top-1/2 left-[58%] -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white border-2 border-[#008f95] shadow-sm"></div>
+                                    </div>
+                                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 mt-1">
+                                        <span>Min: 3 Days</span>
+                                        <span class="text-[#008f95]">Selected: 18 Days</span>
+                                        <span>Max: 60 Days</span>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div class="p-2 rounded-lg bg-indigo-50/70 border border-indigo-100">
+                                        <span class="text-[10px] text-indigo-600 font-medium block">Purchases</span>
+                                        <span class="font-extrabold text-indigo-900 text-xs">423 Campaigns</span>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-emerald-50/70 border border-emerald-100">
+                                        <span class="text-[10px] text-emerald-600 font-medium block">Revenue</span>
+                                        <span class="font-extrabold text-emerald-900 text-xs">$14,250.00</span>
                                     </div>
                                 </div>
                             </div>
+                            <p class="text-[11px] text-slate-400 mt-3 pt-2.5 border-t border-slate-100">
+                                Autonomous dynamic pricing for arbitrary durations.
+                            </p>
                         </div>
 
-                        <!-- Newsfeed Ad Injection -->
-                        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/60 flex flex-col justify-between">
+                        <!-- Bento 2: Newsfeed Ad Injector -->
+                        <div class="bento-card p-5 flex flex-col justify-between">
                             <div>
                                 <div class="flex items-center justify-between mb-3">
-                                    <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-[#00c2cb]"></span>
-                                        Newsfeed Ad Injector
-                                    </span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-[#008f95]">Active</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-[#00c2cb]"></span>
+                                        <span class="text-xs font-bold text-slate-800">Newsfeed Ad Injector</span>
+                                    </div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-[#008f95] border border-cyan-200">Paced</span>
                                 </div>
+
+                                <!-- Stream Sequence Visual Strip -->
+                                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-3.5">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Stream Sequence Pattern</span>
+                                    <div class="flex items-center gap-1 text-[10px] font-bold">
+                                        <span class="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-500 shadow-2xs">#1-#3</span>
+                                        <span class="text-slate-300">➔</span>
+                                        <span class="px-1.5 py-0.5 rounded bg-cyan-500 text-white shadow-xs">Slot #4</span>
+                                        <span class="text-slate-300">➔</span>
+                                        <span class="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-500 shadow-2xs">+8 Posts</span>
+                                        <span class="text-slate-300">➔</span>
+                                        <span class="px-1.5 py-0.5 rounded bg-cyan-500 text-white shadow-xs">Slot #12</span>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-1.5 text-xs">
+                                    <div class="flex justify-between items-center py-1 border-b border-slate-100">
+                                        <span class="text-slate-400">Stream Density:</span>
+                                        <span class="font-bold text-slate-800">Max 2 Ads / Stream</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1">
+                                        <span class="text-slate-400">User Fatigue Limit:</span>
+                                        <span class="font-bold text-[#008f95] bg-cyan-50 px-2 py-0.5 rounded-md">5 Impr / Day / User</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-3 pt-2.5 border-t border-slate-100">
+                                Fair-play rotation keeps newsfeed organic & spam-free.
+                            </p>
+                        </div>
+
+                        <!-- Bento 3: Campaign Pause Protection Policy -->
+                        <div class="bento-card p-5 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                        <span class="text-xs font-bold text-slate-800">Pause Protection Policy</span>
+                                    </div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Freeze Safe</span>
+                                </div>
+
+                                <!-- Stepper Progress Lifecycle -->
+                                <div class="space-y-1.5 p-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-3.5">
+                                    <div class="flex items-center justify-between text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-slate-200 text-slate-700 font-bold text-[9px] flex items-center justify-center">0d</span>
+                                            <span class="text-slate-700 font-semibold">Vendor Freezes</span>
+                                        </div>
+                                        <span class="text-[10px] text-slate-400">Pacing paused</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-amber-100 text-amber-800 font-bold text-[9px] flex items-center justify-center">27d</span>
+                                            <span class="text-amber-800 font-bold">Email Notice</span>
+                                        </div>
+                                        <span class="text-[10px] text-amber-600 font-medium">Auto Notice</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-rose-100 text-rose-800 font-bold text-[9px] flex items-center justify-center">29d</span>
+                                            <span class="text-rose-800 font-bold">Urgent Alert</span>
+                                        </div>
+                                        <span class="text-[10px] text-rose-600 font-medium">Push & Email</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-200/80">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-4 h-4 rounded-full bg-slate-800 text-white font-bold text-[9px] flex items-center justify-center">30d</span>
+                                            <span class="text-slate-900 font-bold">Auto-Expire</span>
+                                        </div>
+                                        <span class="text-[10px] font-bold text-slate-600">Slot Recycled</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-2 pt-2.5 border-t border-slate-100">
+                                Max 30-day freeze prevents hoarding ad inventory.
+                            </p>
+                        </div>
+
+                        <!-- Bento 4: Free New Release Launchpad -->
+                        <div class="bento-card p-5 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                                        <span class="text-xs font-bold text-slate-800">New Release Launchpad</span>
+                                    </div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">Zero-Cost</span>
+                                </div>
+
+                                <div class="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/80 text-center mb-3.5">
+                                    <div class="text-3xl font-extrabold text-purple-950 tracking-tight flex items-center justify-center gap-1.5">
+                                        <span>24</span>
+                                        <span class="text-sm font-bold text-purple-700">Hours</span>
+                                    </div>
+                                    <div class="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full bg-purple-200/60 text-purple-900 text-[10px] font-bold">
+                                        🚀 Instant Top-Rank Visibility
+                                    </div>
+                                </div>
+
                                 <div class="space-y-1.5 text-xs text-slate-600">
-                                    <div class="flex justify-between"><span class="text-slate-400">First Ad Slot:</span> <span class="font-bold text-slate-800">Post #4</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Ad Interval:</span> <span class="font-bold text-slate-800">Every 8 Posts</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Max Ads / Stream:</span> <span class="font-bold text-slate-800">2 Ads</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Max Daily Imp/User:</span> <span class="font-bold text-cyan-600">5 Impr (Fatigue Cap)</span></div>
+                                    <div class="flex justify-between items-center py-1 border-b border-slate-100">
+                                        <span class="text-slate-400">Trigger:</span>
+                                        <span class="font-bold text-slate-800">New Product Submission</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1">
+                                        <span class="text-slate-400">Cost to Vendor:</span>
+                                        <span class="font-bold text-emerald-600">$0.00 (Platform Free)</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- CORRECTED CARD: Pause Policy (Fixed Figma Bug: was labeled "Push Policy") -->
-                        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/60 flex flex-col justify-between relative overflow-hidden">
-                            <div class="absolute top-0 right-0 bg-emerald-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-bl-lg uppercase">
-                                Fixed: Was "Push"
-                            </div>
-                            <div>
-                                <div class="flex items-center justify-between mb-3">
-                                    <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                                        Campaign Pause Policy
-                                    </span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Freeze Policy</span>
-                                </div>
-                                <div class="space-y-1.5 text-xs text-slate-600">
-                                    <div class="flex justify-between"><span class="text-slate-400">Max Freeze Days:</span> <span class="font-bold text-slate-800">30 Days</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">First Warning:</span> <span class="font-bold text-amber-600">Day 27 (Email)</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Last Warning:</span> <span class="font-bold text-rose-600">Day 29 (Urgent)</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-400">Auto Action:</span> <span class="font-bold text-slate-800">Expire on Day 30</span></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- New Release Free Boost -->
-                        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/60 flex flex-col justify-between">
-                            <div>
-                                <div class="flex items-center justify-between mb-3">
-                                    <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-                                        Free New Release
-                                    </span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Automated</span>
-                                </div>
-                                <div class="text-center py-2">
-                                    <div class="text-3xl font-extrabold text-slate-900 tracking-tight">24 <span class="text-sm font-semibold text-slate-400">Hours</span></div>
-                                    <p class="text-[11px] text-slate-500 mt-1">Newly submitted products get 24h free top-ranked boost badge automatically.</p>
-                                </div>
-                            </div>
+                            <p class="text-[11px] text-slate-400 mt-3 pt-2.5 border-t border-slate-100">
+                                Ensures every vendor receives discovery velocity on launch.
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <!-- 3. Boosting Plans Pricing Cards (3 Tiers) -->
+                <!-- 3. Boosting Plans Pricing Cards (3 Tiers - World-Class Paywall Design) -->
                 <div>
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex flex-wrap items-center justify-between mb-5 gap-3">
                         <div>
-                            <h3 class="text-base font-bold text-slate-900">Active Boosting Plan Tiers</h3>
-                            <p class="text-xs text-slate-500">Visual cards displayed to vendors and users during product checkout paywall.</p>
+                            <h3 class="text-lg font-extrabold text-slate-900 tracking-tight">Active Boosting Plan Tiers</h3>
+                            <p class="text-xs text-slate-500">Visual cards presented to vendors during web checkout paywall and native mobile in-app purchases.</p>
                         </div>
-                        <span class="text-xs text-slate-400">Sorted by Priority Weight</span>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px] flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Equal Priority Algorithm (Fair-Play Rotation)
+                            </span>
+                            <span class="text-xs text-slate-400">Sorted by Priority Weight</span>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
 
                         <!-- CARD 1: Starter Boost (7 Days) -->
-                        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md p-6 flex flex-col justify-between glow-hover transition-all relative">
-                            <div class="absolute -top-3 left-6 bg-slate-800 text-white text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow">
-                                ⏱️ Starter Tier
+                        <div class="starter-plan-card rounded-3xl p-6 flex flex-col justify-between relative transition-all">
+                            <!-- Ribbon Badge -->
+                            <div class="absolute -top-3 left-6 bg-slate-900 text-slate-100 text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                                <span>⏱️</span>
+                                <span>Starter Tier</span>
                             </div>
+
                             <div>
+                                <!-- Header & Actions -->
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
-                                        <h4 class="text-base font-bold text-slate-900">Starter Boost</h4>
-                                        <p class="text-xs text-slate-500 mt-0.5">Essential front-row visibility to jumpstart product discovery.</p>
+                                        <h4 class="text-lg font-extrabold text-slate-900 tracking-tight">Starter Boost</h4>
+                                        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">Essential front-row visibility to jumpstart product discovery.</p>
                                     </div>
                                     <button type="button" onclick="editPlanDemo('Starter Boost', 19.99, 7, 'Starter Tier', '7 Days Active Promotion', '5,000 – 10,000 Impressions', 'active', 'Essential front-row visibility to jumpstart product discovery.')" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
 
-                                <!-- Price & Daily Breakdown -->
-                                <div class="flex items-baseline justify-between my-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                                <!-- Price Display & Daily Breakdown -->
+                                <div class="flex items-baseline justify-between my-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                     <div>
-                                        <span class="text-3xl font-extrabold text-slate-900">$19.99</span>
-                                        <span class="text-xs text-slate-400 font-semibold">/ 7 Days</span>
+                                        <span class="text-3xl font-black text-slate-900">$19.99</span>
+                                        <span class="text-xs text-slate-400 font-bold">/ 7 Days</span>
                                     </div>
-                                    <span class="text-[11px] font-extrabold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs">$2.85 / day</span>
+                                    <div class="text-right">
+                                        <span class="text-xs font-extrabold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs block">
+                                            $2.85 / day
+                                        </span>
+                                        <span class="text-[10px] text-slate-400 mt-0.5 block">Standard Daily Rate</span>
+                                    </div>
                                 </div>
 
                                 <!-- Promotion Highlight Badge & Estimated Impressions -->
                                 <div class="space-y-2 mb-4 text-xs">
-                                    <div class="py-2 px-3 rounded-xl bg-purple-50/70 border border-purple-100/80 text-purple-900 font-semibold flex items-center justify-between">
-                                        <span class="text-[11px] text-purple-700">⏱️ Promotion Highlight:</span>
-                                        <span class="font-bold text-purple-900">7 Days Active Promotion</span>
+                                    <div class="py-2.5 px-3 rounded-xl bg-purple-50/80 border border-purple-200/70 text-purple-900 font-bold flex items-center justify-between">
+                                        <span class="text-[11px] text-purple-700 flex items-center gap-1.5 font-medium">
+                                            <span>⏱️</span> Promotion Highlight:
+                                        </span>
+                                        <span class="font-extrabold text-purple-900 text-xs">7 Days Active Promotion</span>
                                     </div>
-                                    <div class="py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-between text-[11px]">
-                                        <span class="text-slate-500 font-medium">Estimated Impressions:</span>
-                                        <span class="font-bold text-slate-900">5,000 – 10,000</span>
+                                    <div class="py-2.5 px-3 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 flex items-center justify-between text-[11px]">
+                                        <span class="text-slate-500 font-medium flex items-center gap-1.5">
+                                            <span>👁️</span> Estimated Reach:
+                                        </span>
+                                        <span class="font-extrabold text-slate-900 text-xs">5,000 – 10,000 Impressions</span>
                                     </div>
                                 </div>
 
                                 <!-- Static Guaranteed Package Features -->
-                                <div class="pt-3 border-t border-slate-100">
-                                    <div class="flex items-center justify-between mb-2.5">
-                                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
-                                        <span class="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Platform Standard</span>
+                                <div class="pt-4 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Guaranteed Features</span>
+                                        <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Platform Standard</span>
                                     </div>
-                                    <ul class="space-y-2.5 text-xs text-slate-700">
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Dual Placement:</strong> Marketplace Feed + Main Newsfeed</span>
+                                    <ul class="space-y-3 text-xs text-slate-700">
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Dual-Placement Feed</strong>
+                                                <span class="text-slate-500 text-[11px]">Marketplace Feed + Main Social Newsfeed</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Featured Badge:</strong> Eye-catching 'Sponsored' Ribbon</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Sponsored Featured Badge</strong>
+                                                <span class="text-slate-500 text-[11px]">High-contrast official promotion badge</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Fair-Play Rotation:</strong> Equal exposure, never buried</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Fair-Play Rotation</strong>
+                                                <span class="text-slate-500 text-[11px]">Equal exposure priority, never algorithmically buried</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Live Analytics:</strong> Real-time verified views & clicks</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Live Real-Time Analytics</strong>
+                                                <span class="text-slate-500 text-[11px]">Verified impressions, views, clicks & CTR</span>
+                                            </div>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
 
-                            <div class="pt-4 mt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                            <div class="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                                 <span>Target: <strong class="text-slate-700">Product</strong></span>
                                 <span class="badge-active px-2.5 py-0.5 rounded-full font-bold text-[10px]">Active</span>
                             </div>
                         </div>
 
-                        <!-- CARD 2: Growth Boost (14 Days) -->
-                        <div class="bg-white rounded-3xl border-2 border-[#00c2cb] shadow-lg hover:shadow-xl p-6 flex flex-col justify-between glow-hover transition-all relative">
-                            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#043940] text-[#00c2cb] border border-[#00c2cb] text-[10px] font-extrabold px-3.5 py-1 rounded-full uppercase tracking-wider shadow">
-                                ⭐ Most Popular Plan
+                        <!-- CARD 2: Growth Boost (14 Days) — HERO PLAN CARD -->
+                        <div class="hero-plan-card rounded-3xl p-6 flex flex-col justify-between relative transition-all transform lg:-translate-y-2">
+                            <!-- Hero Ribbon Badge -->
+                            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#043940] text-[#00c2cb] border-2 border-[#00c2cb] text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1.5">
+                                <span>⭐</span>
+                                <span>Most Popular Choice</span>
                             </div>
+
                             <div>
+                                <!-- Header & Actions -->
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
-                                        <h4 class="text-base font-bold text-slate-900">Growth Boost</h4>
-                                        <p class="text-xs text-slate-500 mt-0.5">Multi-channel promotion across marketplace & main newsfeed.</p>
+                                        <div class="flex items-center gap-2">
+                                            <h4 class="text-lg font-extrabold text-slate-900 tracking-tight">Growth Boost</h4>
+                                            <span class="px-2 py-0.5 rounded-md bg-[#00c2cb]/20 text-[#008f95] text-[10px] font-black">Top Pick</span>
+                                        </div>
+                                        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">Multi-channel promotion across marketplace & main newsfeed.</p>
                                     </div>
                                     <button type="button" onclick="editPlanDemo('Growth Boost', 34.99, 14, 'Most Popular Plan', '14 Days Extended Multi-Channel Reach', '15,000 – 25,000 Impressions', 'active', 'Multi-channel promotion across marketplace & main newsfeed.')" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
 
-                                <!-- Price & Daily Breakdown -->
-                                <div class="flex items-baseline justify-between my-3 p-3 rounded-2xl bg-cyan-50/50 border border-cyan-100">
+                                <!-- Price Display & Daily Breakdown -->
+                                <div class="flex items-baseline justify-between my-4 p-4 rounded-2xl bg-cyan-50/70 border border-cyan-200">
                                     <div>
-                                        <span class="text-3xl font-extrabold text-[#008f95]">$34.99</span>
-                                        <span class="text-xs text-slate-400 font-semibold">/ 14 Days</span>
+                                        <span class="text-3xl font-black text-[#008f95]">$34.99</span>
+                                        <span class="text-xs text-slate-400 font-bold">/ 14 Days</span>
                                     </div>
-                                    <span class="text-[11px] font-extrabold text-[#008f95] bg-white px-2.5 py-1 rounded-lg border border-cyan-200 shadow-2xs">$2.50 / day <span class="text-emerald-600 font-bold">(Save 12%)</span></span>
+                                    <div class="text-right">
+                                        <span class="text-xs font-black text-[#008f95] bg-white px-2.5 py-1 rounded-lg border border-cyan-200 shadow-2xs block">
+                                            $2.50 / day
+                                        </span>
+                                        <span class="text-[10px] font-extrabold text-emerald-600 mt-0.5 block">Save 12% vs Starter</span>
+                                    </div>
                                 </div>
 
                                 <!-- Promotion Highlight Badge & Estimated Impressions -->
                                 <div class="space-y-2 mb-4 text-xs">
-                                    <div class="py-2 px-3 rounded-xl bg-cyan-50/70 border border-cyan-200 text-[#008f95] font-semibold flex items-center justify-between">
-                                        <span class="text-[11px] text-[#008f95]">🚀 Promotion Highlight:</span>
-                                        <span class="font-bold text-slate-900">14 Days Extended Multi-Channel Reach</span>
+                                    <div class="py-2.5 px-3 rounded-xl bg-cyan-100/70 border border-cyan-300 text-[#008f95] font-bold flex items-center justify-between">
+                                        <span class="text-[11px] text-[#008f95] flex items-center gap-1.5 font-medium">
+                                            <span>🚀</span> Promotion Highlight:
+                                        </span>
+                                        <span class="font-extrabold text-slate-900 text-xs">14 Days Extended Multi-Channel Reach</span>
                                     </div>
-                                    <div class="py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-between text-[11px]">
-                                        <span class="text-slate-500 font-medium">Estimated Impressions:</span>
-                                        <span class="font-bold text-[#008f95]">15,000 – 25,000</span>
+                                    <div class="py-2.5 px-3 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 flex items-center justify-between text-[11px]">
+                                        <span class="text-slate-500 font-medium flex items-center gap-1.5">
+                                            <span>👁️</span> Estimated Reach:
+                                        </span>
+                                        <span class="font-extrabold text-[#008f95] text-xs">15,000 – 25,000 Impressions</span>
                                     </div>
                                 </div>
 
                                 <!-- Static Guaranteed Package Features -->
-                                <div class="pt-3 border-t border-slate-100">
-                                    <div class="flex items-center justify-between mb-2.5">
-                                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
-                                        <span class="text-[10px] font-semibold text-[#008f95] bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-100">Platform Standard</span>
+                                <div class="pt-4 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Guaranteed Features</span>
+                                        <span class="text-[10px] font-bold text-[#008f95] bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">Platform Standard</span>
                                     </div>
-                                    <ul class="space-y-2.5 text-xs text-slate-700">
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Dual Placement:</strong> Marketplace Feed + Main Newsfeed</span>
+                                    <ul class="space-y-3 text-xs text-slate-700">
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Dual-Placement Feed</strong>
+                                                <span class="text-slate-500 text-[11px]">Marketplace Feed + Main Social Newsfeed</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Featured Badge:</strong> Eye-catching 'Sponsored' Ribbon</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Sponsored Featured Badge</strong>
+                                                <span class="text-slate-500 text-[11px]">High-contrast official promotion badge</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Fair-Play Rotation:</strong> Equal exposure, never buried</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Fair-Play Rotation</strong>
+                                                <span class="text-slate-500 text-[11px]">Equal exposure priority, never algorithmically buried</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Live Analytics:</strong> Real-time verified views & clicks</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Live Real-Time Analytics</strong>
+                                                <span class="text-slate-500 text-[11px]">Verified impressions, views, clicks & CTR</span>
+                                            </div>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
 
-                            <div class="pt-4 mt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                            <div class="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                                 <span>Target: <strong class="text-slate-700">Product</strong></span>
                                 <span class="badge-active px-2.5 py-0.5 rounded-full font-bold text-[10px]">Active</span>
                             </div>
                         </div>
 
-                        <!-- CARD 3: Best Value Boost (30 Days) -->
-                        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md p-6 flex flex-col justify-between glow-hover transition-all relative">
-                            <div class="absolute -top-3 left-6 bg-amber-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow">
-                                👑 Best Value (Save 18%)
+                        <!-- CARD 3: Best Value Boost (30 Days) — VIP PLAN CARD -->
+                        <div class="vip-plan-card rounded-3xl p-6 flex flex-col justify-between relative transition-all">
+                            <!-- Ribbon Badge -->
+                            <div class="absolute -top-3 left-6 bg-gradient-to-r from-amber-600 to-amber-700 text-white text-[10px] font-extrabold px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                                <span>👑</span>
+                                <span>Best Value (Save 18%)</span>
                             </div>
+
                             <div>
+                                <!-- Header & Actions -->
                                 <div class="flex justify-between items-start mb-3 pt-2">
                                     <div>
-                                        <h4 class="text-base font-bold text-slate-900">Best Value Boost</h4>
-                                        <p class="text-xs text-slate-500 mt-0.5">Full-month omnipresent promotion for top vendors & brands.</p>
+                                        <h4 class="text-lg font-extrabold text-slate-900 tracking-tight">Best Value Boost</h4>
+                                        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">Full-month omnipresent promotion for top vendors & brands.</p>
                                     </div>
                                     <button type="button" onclick="editPlanDemo('Best Value Boost', 69.99, 30, 'Best Value (Save 18%)', '30 Days Full-Month Non-Stop Placement', '40,000 – 60,000+ Impressions', 'active', 'Full-month omnipresent promotion for top vendors & brands.')" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Edit Plan">
                                         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </button>
                                 </div>
 
-                                <!-- Price & Daily Breakdown -->
-                                <div class="flex items-baseline justify-between my-3 p-3 rounded-2xl bg-amber-50/50 border border-amber-100">
+                                <!-- Price Display & Daily Breakdown -->
+                                <div class="flex items-baseline justify-between my-4 p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
                                     <div>
-                                        <span class="text-3xl font-extrabold text-slate-900">$69.99</span>
-                                        <span class="text-xs text-slate-400 font-semibold">/ 30 Days</span>
+                                        <span class="text-3xl font-black text-slate-900">$69.99</span>
+                                        <span class="text-xs text-slate-400 font-bold">/ 30 Days</span>
                                     </div>
-                                    <span class="text-[11px] font-extrabold text-amber-800 bg-white px-2.5 py-1 rounded-lg border border-amber-200 shadow-2xs">$2.33 / day <span class="text-emerald-600 font-bold">(Save 18%)</span></span>
+                                    <div class="text-right">
+                                        <span class="text-xs font-black text-amber-900 bg-white px-2.5 py-1 rounded-lg border border-amber-200 shadow-2xs block">
+                                            $2.33 / day
+                                        </span>
+                                        <span class="text-[10px] font-extrabold text-emerald-600 mt-0.5 block">Save 18% (Best Daily ROI)</span>
+                                    </div>
                                 </div>
 
                                 <!-- Promotion Highlight Badge & Estimated Impressions -->
                                 <div class="space-y-2 mb-4 text-xs">
-                                    <div class="py-2 px-3 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 font-semibold flex items-center justify-between">
-                                        <span class="text-[11px] text-amber-800">👑 Promotion Highlight:</span>
-                                        <span class="font-bold text-slate-900">30 Days Full-Month Non-Stop</span>
+                                    <div class="py-2.5 px-3 rounded-xl bg-amber-100/70 border border-amber-300 text-amber-950 font-bold flex items-center justify-between">
+                                        <span class="text-[11px] text-amber-900 flex items-center gap-1.5 font-medium">
+                                            <span>👑</span> Promotion Highlight:
+                                        </span>
+                                        <span class="font-extrabold text-slate-900 text-xs">30 Days Full-Month Non-Stop</span>
                                     </div>
-                                    <div class="py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-between text-[11px]">
-                                        <span class="text-slate-500 font-medium">Estimated Impressions:</span>
-                                        <span class="font-bold text-amber-800">40,000 – 60,000+</span>
+                                    <div class="py-2.5 px-3 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 flex items-center justify-between text-[11px]">
+                                        <span class="text-slate-500 font-medium flex items-center gap-1.5">
+                                            <span>👁️</span> Estimated Reach:
+                                        </span>
+                                        <span class="font-extrabold text-amber-900 text-xs">40,000 – 60,000+ Impressions</span>
                                     </div>
                                 </div>
 
                                 <!-- Static Guaranteed Package Features -->
-                                <div class="pt-3 border-t border-slate-100">
-                                    <div class="flex items-center justify-between mb-2.5">
-                                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Package Features</span>
-                                        <span class="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Platform Standard</span>
+                                <div class="pt-4 border-t border-slate-100">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Guaranteed Features</span>
+                                        <span class="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Platform Standard</span>
                                     </div>
-                                    <ul class="space-y-2.5 text-xs text-slate-700">
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Dual Placement:</strong> Marketplace Feed + Main Newsfeed</span>
+                                    <ul class="space-y-3 text-xs text-slate-700">
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Dual-Placement Feed</strong>
+                                                <span class="text-slate-500 text-[11px]">Marketplace Feed + Main Social Newsfeed</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Featured Badge:</strong> Eye-catching 'Sponsored' Ribbon</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Sponsored Featured Badge</strong>
+                                                <span class="text-slate-500 text-[11px]">High-contrast official promotion badge</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Fair-Play Rotation:</strong> Equal exposure, never buried</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Fair-Play Rotation</strong>
+                                                <span class="text-slate-500 text-[11px]">Equal exposure priority, never algorithmically buried</span>
+                                            </div>
                                         </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                                            <span><strong>Live Analytics:</strong> Real-time verified views & clicks</span>
+                                        <li class="flex items-start gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">✓</span>
+                                            <div>
+                                                <strong class="text-slate-900 block font-bold">Live Real-Time Analytics</strong>
+                                                <span class="text-slate-500 text-[11px]">Verified impressions, views, clicks & CTR</span>
+                                            </div>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
 
-                            <div class="pt-4 mt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                            <div class="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                                 <span>Target: <strong class="text-slate-700">Product</strong></span>
                                 <span class="badge-active px-2.5 py-0.5 rounded-full font-bold text-[10px]">Active</span>
                             </div>
