@@ -4,6 +4,7 @@ namespace App\Services\Advertising;
 
 use App\Models\AdCampaign;
 use App\Models\AdImpression;
+use App\Models\IndustryFollow;
 use App\Models\IndustryProduct;
 use App\Models\User;
 use App\Services\BoostSettingService;
@@ -27,7 +28,7 @@ class NewsfeedAdInjector
         Collection $posts,
         ?User $user = null,
         ?string $networkType = null,
-        bool $recordServerImpressions = true,
+        bool $recordServerImpressions = false,
         ?int $maxAds = null,
         bool $includeTestAnalytics = false,
         array $excludeCampaignIds = [],
@@ -156,19 +157,36 @@ class NewsfeedAdInjector
             $isLiked = $boostable->likes()->where('user_id', $user->id)->exists();
         }
 
+        $isFollowingIndustry = false;
+        if ($user && $campaign->industry_id) {
+            $isFollowingIndustry = IndustryFollow::where('industry_id', $campaign->industry_id)
+                ->where('user_id', $user->id)
+                ->exists();
+        }
+
+        $industryData = $campaign->industry ? [
+            'id' => $campaign->industry_id,
+            'is_following' => $isFollowingIndustry,
+            'logo' => $campaign->industry->logo,
+            'name' => $campaign->industry->name,
+            'slug' => $campaign->industry->slug,
+            'tagline' => $campaign->industry->tagline,
+        ] : null;
+
         // 1. Clean, lightweight, industry-standard API payload (Production newsfeed)
         $card = [
             'id' => 'sponsored_ad_'.$campaign->id,
             'is_sponsored' => true,
             'ad_campaign_id' => $campaign->id,
             'ad_type' => $campaign->ad_type,
-            'badge' => $campaign->boostPackage?->badge ?? 'Sponsored',
+            'badge' => 'Sponsored',
             'product_id' => $boostable?->id,
             'product_code' => $productCode,
             'product_name' => $productName,
             'title' => $title,
             'description' => $captionDescription,
             'image' => $image,
+            'image_url' => $image,
             'price' => $boostable?->price ?? null,
             'destination_url' => $destinationUrl,
             'destination_domain' => $domain,
@@ -176,13 +194,7 @@ class NewsfeedAdInjector
             'likes_count' => $likesCount,
             'views_count' => $viewsCount,
             'is_liked' => $isLiked,
-            'company' => [
-                'id' => $campaign->industry_id,
-                'name' => $campaign->industry?->name,
-                'slug' => $campaign->industry?->slug,
-                'logo' => $campaign->industry?->logo,
-                'tagline' => $campaign->industry?->tagline,
-            ],
+            'industry' => $industryData,
             'section_name' => $sectionName,
             'category_name' => $categoryName,
             'tags' => $tags,

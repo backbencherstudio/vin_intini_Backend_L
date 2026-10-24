@@ -152,6 +152,7 @@ class IndustryProductController extends Controller
             'cursor' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'flat' => ['nullable', 'boolean'],
+            'view' => ['nullable', 'string', 'in:all,section,overview'],
             'limit_per_section' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
@@ -161,7 +162,7 @@ class IndustryProductController extends Controller
         IndustryProduct::where('is_boosted', true)
             ->whereNotNull('boost_expires_at')
             ->where('boost_expires_at', '<=', now())
-            ->update(['is_boosted' => false]);
+            ->update(['is_new_release' => false, 'is_boosted' => false]);
 
         IndustryProduct::where('is_new_release', true)
             ->whereNotNull('new_release_expires_at')
@@ -169,7 +170,7 @@ class IndustryProductController extends Controller
             ->update(['is_new_release' => false]);
 
         // 1. Tab filter / Search / Section show-all / Explicit flat pagination view
-        if ($request->filled('section_id') || $request->filled('category_id') || $request->filled('search') || $request->boolean('flat') || $request->filled('cursor')) {
+        if ($request->filled('section_id') || $request->filled('category_id') || $request->filled('search') || $request->boolean('flat') || $request->input('view') === 'all' || $request->filled('cursor')) {
             $query = IndustryProduct::query()
                 ->where('status', 'active')
                 ->where('network_type', $request->input('network_type'))
@@ -261,8 +262,8 @@ class IndustryProductController extends Controller
                 }
             }
 
-            $data = $paginated->getCollection()->map(function ($product) use ($likedProductIds) {
-                return (new IndustryProductResource($product, $likedProductIds))->resolve();
+            $data = $paginated->getCollection()->map(function ($product) use ($likedProductIds, $request) {
+                return (new IndustryProductResource($product, $likedProductIds, isFeed: true))->resolve($request);
             });
 
             $responseData = [
@@ -375,10 +376,10 @@ class IndustryProductController extends Controller
             }
         }
 
-        $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $productCounts, $limitPerSection) {
+        $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $productCounts, $limitPerSection, $request) {
             $sectionProducts = $groupedProducts->get((int) $section->id, collect())
-                ->map(function ($product) use ($likedProductIds) {
-                    return (new IndustryProductResource($product, $likedProductIds))->resolve();
+                ->map(function ($product) use ($likedProductIds, $request) {
+                    return (new IndustryProductResource($product, $likedProductIds, isFeed: true))->resolve($request);
                 })->values();
 
             $totalProducts = (int) ($productCounts->get($section->id, 0));

@@ -9,9 +9,10 @@
              ============================================== -->
         @php
             $campaignId = $item['ad_campaign_id'] ?? null;
-            $companyName = $item['company']['name'] ?? 'MindUnite Partner';
-            $companyTagline = $item['company']['tagline'] ?? 'Make life delicious and innovative!';
-            $compLogo = $item['company']['logo'] ?? null;
+            $industryData = $item['industry'] ?? $item['company'] ?? [];
+            $companyName = $industryData['name'] ?? 'MindUnite Partner';
+            $companyTagline = $industryData['tagline'] ?? 'Make life delicious and innovative!';
+            $compLogo = $industryData['logo'] ?? null;
             if ($compLogo && !str_starts_with($compLogo, 'http')) {
                 $compLogo = asset('storage/' . ltrim($compLogo, '/'));
             }

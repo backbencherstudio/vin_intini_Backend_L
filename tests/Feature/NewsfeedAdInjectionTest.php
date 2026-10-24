@@ -167,10 +167,29 @@ test('active boosted product ad is injected at slot 4 with sponsored badge and m
         ->and($injectedAd['ad_type'])->toBe('product')
         ->and($injectedAd['title'])->toBe('BCI Wireless Headset Pro')
         ->and($injectedAd['cta_text'])->toBe('View Product')
-        ->and($injectedAd['company']['name'])->toBe('NeuroTech Labs')
+        ->and($injectedAd['industry']['name'])->toBe('NeuroTech Labs')
+        ->and($injectedAd['industry']['is_following'])->toBeFalse()
+        ->and(array_key_exists('company', $injectedAd))->toBeFalse()
         ->and(array_key_exists('unique_views_count', $injectedAd))->toBeFalse();
 
-    // Verify impression recorded in ad_impressions table
+    // Verify blind feed fetch does NOT record impression (enforcing client-side IAB viewable standard)
+    $this->assertDatabaseMissing('ad_impressions', [
+        'ad_campaign_id' => $campaign->id,
+        'user_id' => $this->user->id,
+        'placement' => 'newsfeed',
+    ]);
+    expect($campaign->fresh()->total_impressions)->toBe(0)
+        ->and($product->fresh()->impressions_count)->toBe(0);
+
+    // Client reports verified viewable impression via POST /api/advertisements/impressions
+    $this->actingAs($this->user, 'api')
+        ->postJson('/api/advertisements/impressions', [
+            'campaign_ids' => [$campaign->id],
+            'placement' => 'newsfeed',
+        ])
+        ->assertOk();
+
+    // Now verify impression recorded in ad_impressions table
     $this->assertDatabaseHas('ad_impressions', [
         'ad_campaign_id' => $campaign->id,
         'user_id' => $this->user->id,
@@ -178,7 +197,6 @@ test('active boosted product ad is injected at slot 4 with sponsored badge and m
         'viewed_date' => today()->toDateString(),
     ]);
 
-    // Verify total_impressions on campaign and impressions_count on product incremented
     expect($campaign->fresh()->total_impressions)->toBe(1)
         ->and($product->fresh()->impressions_count)->toBe(1);
 });

@@ -100,7 +100,16 @@ class IndustryProduct extends Model implements BoostableInterface
     protected function imageUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->image ? asset('storage/'.$this->image) : null,
+            get: function () {
+                if (! $this->image) {
+                    return null;
+                }
+                if (str_starts_with($this->image, 'http://') || str_starts_with($this->image, 'https://')) {
+                    return $this->image;
+                }
+
+                return asset('storage/'.ltrim($this->image, '/'));
+            },
         );
     }
 

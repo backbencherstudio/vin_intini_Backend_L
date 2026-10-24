@@ -19,7 +19,8 @@ class IndustryProductResource extends JsonResource
     public function __construct(
         $resource,
         protected array|int|null $likedProductIds = null,
-        protected bool $isIndustryContext = false
+        protected bool $isIndustryContext = false,
+        protected bool $isFeed = false
     ) {
         if (is_int($likedProductIds)) {
             $this->likedProductIds = null;
@@ -67,27 +68,18 @@ class IndustryProductResource extends JsonResource
         }
 
         $user = auth('api')->user() ?? auth('web')->user() ?? $request->user();
+        $isFeed = $this->isFeed || $request->is('api/*product-feed*', 'api/*feed*') || request()->is('api/*product-feed*', 'api/*feed*');
         $isIndustryContext = $this->isIndustryContext
+            || $request->is('*product-feed-preview*')
             || $request->is('*my-listings*')
             || $request->is('*industry/products/dashboard*')
-            || ($user && ($user->id === $this->creator_id || ($user->industry && $user->industry->id === $this->industry_id)) && ! $request->is('*product-feed*', '*feed*'));
+            || ($user && ($user->id === $this->creator_id || ($user->industry && $user->industry->id === $this->industry_id)) && ! $isFeed);
 
-        return [
+        $cleanShortDesc = Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags(html_entity_decode((string) $this->description, ENT_QUOTES | ENT_HTML5, 'UTF-8')))), 130);
+
+        $payload = [
             'id' => $this->id,
             'product_id' => $this->product_id,
-            'creator_id' => $this->creator_id,
-            'creator' => $this->creator ? [
-                'id' => $this->creator->id,
-                'name' => trim(($this->creator->first_name ?? '').' '.($this->creator->last_name ?? '')),
-                'username' => $this->creator->username,
-                'profile_image' => $this->creator->profile_image_url ?? $this->creator->profile_image,
-            ] : null,
-            'industry_id' => $this->industry_id,
-            'industry' => $this->industry ? [
-                'id' => $this->industry->id,
-                'name' => $this->industry->name,
-                'logo' => $logo,
-            ] : null,
             'product_name' => $this->product_name,
             'slug' => $this->slug,
             'network_type' => $this->network_type,
@@ -96,37 +88,58 @@ class IndustryProductResource extends JsonResource
             'section_name' => $this->section?->name,
             'category_id' => $this->category_id,
             'category_name' => $this->category?->category_name,
-            'description' => $this->description,
-            'short_description' => Str::limit(strip_tags((string) $this->description), 120),
+            'short_description' => $cleanShortDesc,
+            'description' => $isFeed ? $cleanShortDesc : $this->description,
             'product_url' => $this->product_url,
-            'image' => $this->image,
             'image_url' => $this->image_url,
             'tags' => $this->tags,
-            'poc_name' => $this->poc_name,
-            'poc_email' => $this->poc_email,
-            'poc_phone' => $this->poc_phone,
-            'information_confirmed' => (bool) $this->information_confirmed,
-            'status' => $this->status,
             'views_count' => (int) ($this->views_count ?? 0),
-            $this->mergeWhen($isIndustryContext, [
-                'unique_views_count' => (int) ($this->unique_views_count ?? 0),
-            ]),
-            'impressions_count' => (int) ($this->impressions_count ?? 0),
-            'clicks_count' => (int) ($this->clicks_count ?? 0),
             'likes_count' => (int) ($this->likes_count ?? 0),
             'is_liked' => $isLiked,
             'is_boosted' => $this->isBoosted(),
             'ad_campaign_id' => $this->isBoosted() ? ($this->relationLoaded('activeCampaign') ? $this->activeCampaign?->id : $this->activeCampaign()->value('id')) : null,
-            'boost_expires_at' => $this->boost_expires_at?->toISOString(),
-            'boost_days_left' => $boostDaysLeft,
-            'boost_remaining_text' => $boostRemainingText,
-            'boost_score' => (int) ($this->boost_score ?? 0),
             'is_new_release' => $this->isNewRelease(),
-            'new_release_expires_at' => $this->new_release_expires_at?->toISOString(),
             'badge' => $this->getAdBadge(),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'industry' => $this->industry ? [
+                'id' => $this->industry->id,
+                'name' => $this->industry->name,
+                'logo' => $logo,
+            ] : null,
+            'creator' => $this->creator ? [
+                'id' => $this->creator->id,
+                'name' => trim(($this->creator->first_name ?? '').' '.($this->creator->last_name ?? '')),
+                'username' => $this->creator->username,
+                'profile_image' => $this->creator->profile_image_url ?? $this->creator->profile_image,
+            ] : null,
         ];
+
+        // Non-feed context (e.g. details page, management, edit)
+        if (! $isFeed) {
+            $payload['creator_id'] = $this->creator_id;
+            $payload['industry_id'] = $this->industry_id;
+            $payload['image'] = $this->image;
+            $payload['status'] = $this->status;
+            $payload['poc_name'] = $this->poc_name;
+            $payload['poc_email'] = $this->poc_email;
+            $payload['poc_phone'] = $this->poc_phone;
+            $payload['information_confirmed'] = (bool) $this->information_confirmed;
+            $payload['created_at'] = $this->created_at?->toISOString();
+            $payload['updated_at'] = $this->updated_at?->toISOString();
+        }
+
+        // Owner/Industry private advertiser metrics
+        if ($isIndustryContext) {
+            $payload['unique_views_count'] = (int) ($this->unique_views_count ?? 0);
+            $payload['impressions_count'] = (int) ($this->impressions_count ?? 0);
+            $payload['clicks_count'] = (int) ($this->clicks_count ?? 0);
+            $payload['boost_score'] = (int) ($this->boost_score ?? 0);
+            $payload['boost_expires_at'] = $this->boost_expires_at?->toISOString();
+            $payload['boost_days_left'] = $boostDaysLeft;
+            $payload['boost_remaining_text'] = $boostRemainingText;
+            $payload['new_release_expires_at'] = $this->new_release_expires_at?->toISOString();
+        }
+
+        return $payload;
 
     }
 }
