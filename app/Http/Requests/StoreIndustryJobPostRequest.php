@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreIndustryJobPostRequest extends FormRequest
 {
@@ -83,7 +84,14 @@ class StoreIndustryJobPostRequest extends FormRequest
             'employment_offering' => [
                 'nullable',
                 'string',
-                'max:255',
+                Rule::in([
+                    'state_institutions',
+                    'academic_institutions',
+                    'private_practice',
+                    'biotech_industry',
+                    'psychotropics_industry',
+                    'publications_industry',
+                ]),
             ],
 
             'tags' => [

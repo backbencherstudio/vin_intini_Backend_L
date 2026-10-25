@@ -848,7 +848,18 @@ class IndustryJobPostController extends Controller
             'level' => ['nullable', 'string', 'max:100'],
             'experience' => ['nullable', 'string', 'max:100'],
             'network_type' => [$isRequired, 'string', 'in:psychology,neuroscience'],
-            'employment_offering' => [$isRequired, 'string', 'in:state,private'],
+            'employment_offering' => [
+                $isRequired,
+                'string',
+                Rule::in([
+                    'state_institutions',
+                    'academic_institutions',
+                    'private_practice',
+                    'biotech_industry',
+                    'psychotropics_industry',
+                    'publications_industry',
+                ]),
+            ],
 
             'state_id' => [
                 Rule::requiredIf(! $isDraft && $request->input('work_mode') !== 'remote'),
