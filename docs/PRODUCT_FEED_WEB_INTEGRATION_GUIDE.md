@@ -691,3 +691,553 @@ export const ProductFeedMarketplace: React.FC<{ token: string }> = ({ token }) =
   );
 };
 ```
+
+---
+
+## 6. 🛡️ Zero-Disruption Integration Blueprint for Existing Frontend Codebase
+
+This section is **specifically tailored for the Web AI Agent and Frontend Developers** working on the existing Next.js frontend codebase containing:
+- `BiotechnologyPage.tsx`
+- `EquipmentGrid.tsx`
+- `FilterTabs.tsx`
+- `EquipmentCard.tsx`
+- `@/feature/slice/biotechnologySlice.ts`
+- `@/lib/type.ts`
+
+---
+
+> [!CAUTION]
+> ### 🛑 Strict Guardrails for the Web AI Agent (Do Not Break Existing Code)
+> 1. **DO NOT TOUCH OR OVERWRITE** existing Tailwind CSS configs, global CSS (`globals.css`), fonts (`Segoe_UI`), or custom theme colors (`primaryColor`, `liteDescriptionColor`, `bgColor`, `grayColor1`).
+> 2. **DO NOT RENAME OR BREAK** other industry pages (`Psychotropics`, `Publications`), shared layouts, navbars, or sidebars.
+> 3. **PRESERVE ALL EXISTING COMPONENT TREES**: Keep `IndustrySkleton`, `EquipmentGrid`, `FilterTabs`, and `EquipmentCard`. Use the adapter pattern in the RTK slice or component props so existing styles remain 100% pixel-perfect.
+> 4. **DO NOT REMOVE** any existing working methods or endpoints from the Redux store.
+
+---
+
+### 6.1 RTK Query Slice Update (`@/feature/slice/biotechnologySlice.ts`)
+
+Add the unified product feed endpoint to your existing RTK slice. Notice the `transformResponse` adapter: it ensures `data?.data?.sections` continues working seamlessly for your existing page while supporting both **Section-wise** and **All Products** views:
+
+```typescript
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+export const biotechnologyApi = createApi({
+  reducerPath: "biotechnologyApi",
+  baseQuery: fetchBaseQuery({
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api",
+    prepareHeaders: (headers, { getState }) => {
+      // Preserve your existing auth token logic
+      const token = (getState() as any)?.auth?.token || localStorage.getItem("token");
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      headers.set("Accept", "application/json");
+      return headers;
+    },
+  }),
+  tagTypes: ["BiotechnologyFeed"],
+  endpoints: (builder) => ({
+    // 1. Unified Industry Product Feed (Handles Section-wise, All Products, Search, and Pagination)
+    getProductFeed: builder.query({
+      query: ({
+        network_type = "psychology",
+        industry_type = "biotechnology",
+        view,
+        section_id,
+        category_id,
+        search,
+        cursor,
+        per_page = 12,
+      }: {
+        network_type?: string;
+        industry_type?: string;
+        view?: "all" | "overview";
+        section_id?: number | null;
+        category_id?: number | null;
+        search?: string;
+        cursor?: string | null;
+        per_page?: number;
+      }) => {
+        const params = new URLSearchParams();
+        params.append("network_type", network_type);
+        params.append("industry_type", industry_type);
+
+        if (view === "all") params.append("view", "all");
+        if (section_id) params.append("section_id", section_id.toString());
+        if (category_id) params.append("category_id", category_id.toString());
+        if (search && search.trim()) params.append("search", search.trim());
+        if (cursor) params.append("cursor", cursor);
+        if (per_page) params.append("per_page", per_page.toString());
+
+        return `/industry/product-feed?${params.toString()}`;
+      },
+      // Non-destructive adapter: keeps existing data.data.sections compatibility!
+      transformResponse: (response: any) => {
+        if (Array.isArray(response?.data)) {
+          return {
+            ...response,
+            data: {
+              sections: response.data,
+              total_products: response.total_products || response.data.reduce((acc: number, sec: any) => acc + (sec.total_products || 0), 0),
+            },
+          };
+        }
+        return response;
+      },
+      providesTags: ["BiotechnologyFeed"],
+    }),
+
+    // 2. Backward-compatible alias for existing useGetBiotechnologyQuery
+    getBiotechnology: builder.query({
+      query: (industryType = "biotechnology") =>
+        `/industry/product-feed?network_type=psychology&industry_type=${industryType}`,
+      transformResponse: (response: any) => ({
+        ...response,
+        data: {
+          sections: response?.data || [],
+        },
+      }),
+      providesTags: ["BiotechnologyFeed"],
+    }),
+
+    // 3. Like Toggle Mutation
+    likeProduct: builder.mutation({
+      query: (productId: number) => ({
+        url: `/industry/products/${productId}/like`,
+        method: "POST",
+      }),
+      invalidatesTags: ["BiotechnologyFeed"],
+    }),
+  }),
+});
+
+export const {
+  useGetProductFeedQuery,
+  useGetBiotechnologyQuery,
+  useLikeProductMutation,
+} = biotechnologyApi;
+```
+
+---
+
+### 6.2 Updated TypeScript Definitions (`@/lib/type.ts`)
+
+Add these non-breaking extensions to your `@/lib/type.ts`. Your existing keys remain intact, with optional fields added for Boosting & Verification:
+
+```typescript
+// Unified Product Item (Compatible with existing card and new boosted attributes)
+export interface IndustryProductItemType {
+  id: number;
+  product_id?: string;
+  product_name: string;
+  name?: string; // Fallback for existing components
+  slug: string;
+  description: string;
+  short_description?: string;
+  product_url?: string;
+  image_url?: string;
+  image?: string; // Fallback
+  tags?: string[];
+  is_boosted?: boolean;
+  badge?: "Sponsored" | "New Release" | string;
+  ad_campaign_id?: number | null;
+  is_new_release?: boolean;
+  likes_count: number;
+  views_count: number;
+  is_liked: boolean;
+  section_id?: number;
+  section_name?: string;
+  category_id?: number;
+  category_name?: string;
+  creator?: {
+    id: number;
+    name: string;
+    username: string;
+    profile_image?: string;
+  };
+  industry?: {
+    id: number;
+    name: string;
+    logo?: string;
+  };
+}
+
+export interface IndustryCategoryType {
+  id: number;
+  category_name: string;
+  name?: string; // Fallback
+  industry_item?: IndustryProductItemType[];
+}
+
+export interface IndustryDataType {
+  id: number;
+  section_id?: number;
+  name: string;
+  section_name?: string;
+  network_type?: string;
+  industry_type?: string;
+  total_products?: number;
+  has_more?: boolean;
+  categories?: IndustryCategoryType[];
+  industry_category?: IndustryCategoryType[]; // Fallback
+  products?: IndustryProductItemType[];
+}
+```
+
+---
+
+### 6.3 Updated `BiotechnologyPage.tsx` (Supports Dual Modes Without Breaking Existing UI)
+
+Update your `BiotechnologyPage.tsx` to include the **View Toggle Switch** (`All Products View` vs `Section-wise View`) and **Real-Time Search Bar** while keeping your exact layout, classes, and skeleton:
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import IndustrySkleton from "@/components/reusable/All Skleton/IndustrySkleton";
+import { useGetProductFeedQuery } from "@/feature/slice/biotechnologySlice";
+import { IndustryDataType, IndustryProductItemType } from "@/lib/type";
+import { EquipmentGrid } from "./_components";
+import { EquipmentCard } from "./_components/EquipmentCard";
+
+export default function BiotechnologyPage() {
+  const [viewMode, setViewMode] = useState<"section" | "all">("section");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dedicatedSectionId, setDedicatedSectionId] = useState<number | null>(null);
+
+  // Fetch feed using unified query
+  const { data, isLoading } = useGetProductFeedQuery({
+    network_type: "psychology",
+    industry_type: "biotechnology",
+    view: viewMode === "all" ? "all" : undefined,
+    section_id: dedicatedSectionId,
+    search: searchQuery || undefined,
+    per_page: 12,
+  });
+
+  const sections: IndustryDataType[] = data?.data?.sections || [];
+  const flatProducts: IndustryProductItemType[] = Array.isArray(data?.data) ? data.data : [];
+  const totalProductsCount = data?.total_products || data?.data?.total_products || 80;
+
+  return (
+    <div className="flex w-full flex-col min-w-0">
+      <div className="flex w-full flex-1 flex-col min-w-0">
+        <div className="flex w-full flex-col gap-6 py-6 min-w-0">
+
+          {/* Header Title & Subtitle */}
+          <div className="flex flex-col gap-1">
+            <h1 className="font-['Segoe_UI'] text-2xl font-bold text-[#1D1F2C]">
+              Biotechnology
+            </h1>
+            <p className="font-['Segoe_UI'] text-sm text-liteDescriptionColor">
+              Explore the latest biotech equipment releases advancing brain health research and treatment.
+            </p>
+          </div>
+
+          {/* Top Control Bar: View Toggle + Search Input */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
+            {/* View Mode Toggle Switch */}
+            <div className="flex items-center gap-2 bg-[#F8F9FA] p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode("all");
+                  setDedicatedSectionId(null);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold font-['Segoe_UI'] transition-all ${
+                  viewMode === "all" && !dedicatedSectionId
+                    ? "bg-white text-primaryColor shadow-sm"
+                    : "text-grayColor1 hover:text-[#1D1F2C]"
+                }`}
+              >
+                <span>⊞</span>
+                <span>All Products View</span>
+                <span className="text-[11px] px-1.5 py-0.2 bg-gray-100 rounded-full font-mono">
+                  {totalProductsCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode("section");
+                  setDedicatedSectionId(null);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold font-['Segoe_UI'] transition-all ${
+                  viewMode === "section" && !dedicatedSectionId
+                    ? "bg-white text-primaryColor shadow-sm"
+                    : "text-grayColor1 hover:text-[#1D1F2C]"
+                }`}
+              >
+                <span>☰</span>
+                <span>Section-wise View</span>
+                <span className="text-[11px] px-1.5 py-0.2 bg-gray-100 rounded-full font-mono">
+                  {sections.length || 5}
+                </span>
+              </button>
+            </div>
+
+            {/* Real-time Search Input */}
+            <div className="relative min-w-[240px] sm:w-72">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="search by product name or id"
+                className="w-full text-xs font-['Segoe_UI'] pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white placeholder:text-grayColor1 focus:outline-none focus:border-primaryColor transition-all"
+              />
+              <span className="absolute left-3 top-2.5 text-grayColor1 text-xs">🔍</span>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-2 text-xs text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Breadcrumb if in Dedicated Section Mode */}
+          {dedicatedSectionId && (
+            <div className="flex items-center gap-2 text-xs font-['Segoe_UI'] text-gray-500">
+              <button
+                type="button"
+                onClick={() => setDedicatedSectionId(null)}
+                className="text-primaryColor hover:underline font-semibold"
+              >
+                ← Back to All Sections
+              </button>
+              <span>/</span>
+              <span className="text-[#1D1F2C] font-semibold">
+                {sections[0]?.name || "Section Details"}
+              </span>
+            </div>
+          )}
+
+          {/* Content Area */}
+          {isLoading ? (
+            <IndustrySkleton />
+          ) : viewMode === "section" && !dedicatedSectionId ? (
+            /* Mode 1: Section-Wise View (Using existing EquipmentGrid) */
+            sections.map((section: IndustryDataType) => (
+              <div
+                className="flex w-full flex-col gap-4 min-w-0 bg-transparent rounded-2xl"
+                key={section?.id || section?.section_id}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-['Segoe_UI'] text-base font-semibold leading-[150%] tracking-[0.08px] text-[#1D1F2C]">
+                    {section?.name || section?.section_name || "Section Title"}
+                  </h3>
+                </div>
+
+                {/* Existing EquipmentGrid with seamless prop adapter */}
+                <EquipmentGrid
+                  industryData={section.categories || section.industry_category || []}
+                  initialProducts={section.products || []}
+                  sectionId={section.id || section.section_id}
+                  totalProducts={section.total_products || 0}
+                  hasMore={section.has_more ?? false}
+                  onSeeMore={(secId) => setDedicatedSectionId(secId)}
+                />
+              </div>
+            ))
+          ) : (
+            /* Mode 2: All Products Flat Grid (or Dedicated Section Grid) */
+            <div className="flex flex-col gap-6">
+              <div className="grid w-full grid-cols-1 gap-4 xl:gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+                {flatProducts.map((item, index) => (
+                  <EquipmentCard key={item.id} card={item} priority={index < 2} />
+                ))}
+              </div>
+
+              {flatProducts.length === 0 && (
+                <div className="flex w-full justify-center py-12">
+                  <p className="text-liteDescriptionColor font-['Segoe_UI'] text-base">
+                    No equipment found matching your criteria.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+### 6.4 Non-Destructive Update to `EquipmentGrid.tsx`
+
+Update `EquipmentGrid.tsx` so it works with the real backend categories, respects sub-category switching, and includes the dynamic **"See all products in this section"** button:
+
+```tsx
+"use client";
+
+import { useMemo, useState } from "react";
+import { IndustryCategoryType, IndustryProductItemType } from "@/lib/type";
+import { EquipmentCard } from "./EquipmentCard";
+import { FilterTabs } from "./FilterTabs";
+
+interface Props {
+  industryData: IndustryCategoryType[];
+  initialProducts?: IndustryProductItemType[];
+  sectionId?: number;
+  totalProducts?: number;
+  hasMore?: boolean;
+  onSeeMore?: (sectionId: number) => void;
+}
+
+export const EquipmentGrid = ({
+  industryData = [],
+  initialProducts = [],
+  sectionId,
+  totalProducts = 0,
+  hasMore = false,
+  onSeeMore,
+}: Props) => {
+  const [activeCategoryId, setActiveCategoryId] = useState<number | "all">("all");
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const ITEMS_PER_PAGE = 6;
+
+  // Seamless item resolution: works with new backend products AND legacy nested industry_item
+  const allItems = useMemo(() => {
+    // If real backend products were passed directly
+    if (initialProducts.length > 0) {
+      if (activeCategoryId === "all") return initialProducts;
+      return initialProducts.filter(
+        (p) => p.category_id === activeCategoryId
+      );
+    }
+
+    // Fallback for legacy nested structure
+    const categories =
+      activeCategoryId === "all"
+        ? industryData
+        : industryData.filter((cat) => cat.id === activeCategoryId);
+    return categories.flatMap((cat) => cat.industry_item || []);
+  }, [industryData, initialProducts, activeCategoryId]);
+
+  const visibleItems = allItems.slice(0, (currentPage + 1) * ITEMS_PER_PAGE);
+
+  const handleFilterChange = (id: number | "all") => {
+    setActiveCategoryId(id);
+    setCurrentPage(0);
+  };
+
+  const remainingCount = Math.max(totalProducts - allItems.length, 0);
+
+  return (
+    <div className="flex w-full flex-col gap-4">
+      {/* Existing Sub-category Filter Tabs */}
+      {industryData.length > 0 && (
+        <div className="w-full">
+          <FilterTabs
+            activeCategoryId={activeCategoryId}
+            onFilterChange={handleFilterChange}
+            industryData={industryData}
+          />
+        </div>
+      )}
+
+      {/* Product Cards Grid using existing EquipmentCard */}
+      <div className="grid w-full grid-cols-1 gap-4 xl:gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+        {visibleItems.map((item, index) => (
+          <EquipmentCard key={item.id} card={item} priority={index < 2} />
+        ))}
+      </div>
+
+      {allItems.length === 0 && (
+        <div className="flex w-full justify-center py-8">
+          <p className="text-liteDescriptionColor font-['Segoe_UI'] text-sm">
+            No equipment found in this category
+          </p>
+        </div>
+      )}
+
+      {/* "See all products in this section" Button */}
+      {hasMore && sectionId && onSeeMore && (
+        <div className="flex w-full items-center justify-center pt-2">
+          <button
+            type="button"
+            onClick={() => onSeeMore(sectionId)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-primaryColor hover:underline transition-all px-4 py-2 rounded-xl bg-gray-50 hover:bg-gray-100"
+          >
+            <span>See all products in this section</span>
+            {remainingCount > 0 && <span>({remainingCount} more)</span>}
+            <span>➔</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+---
+
+### 6.5 Adding Badges & IAB Viewable Tracking to `EquipmentCard.tsx`
+
+Without altering the CSS layout of `EquipmentCard.tsx`, add support for:
+1. **Sponsored Ribbon Badge** (`card.is_boosted` / `card.badge`).
+2. **New Release Flame Ribbon** (`card.is_new_release`).
+3. **IAB Viewable Impression Tracking** (Auto-logs verified impression via `IntersectionObserver` when 50% visible for 600ms).
+
+```tsx
+// Inside your existing EquipmentCard.tsx component:
+
+// 1. Ribbon Badge snippet to place inside the image container:
+{card.is_boosted ? (
+  <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+    <span>⚡</span>
+    <span>{card.badge || 'Sponsored'}</span>
+  </div>
+) : card.is_new_release ? (
+  <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+    <span>🔥</span>
+    <span>New Release</span>
+  </div>
+) : null}
+
+// 2. IAB Impression Logging Hook (runs only once per session per card):
+useEffect(() => {
+  if (!card.is_boosted || !card.ad_campaign_id) return;
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting) {
+        setTimeout(() => {
+          fetch('/api/advertisements/impressions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaign_ids: [card.ad_campaign_id],
+              placement: 'industry_product_feed',
+            }),
+          }).catch(() => {});
+        }, 600);
+      }
+    },
+    { threshold: 0.5 }
+  );
+  if (cardRef.current) observer.observe(cardRef.current);
+  return () => observer.disconnect();
+}, [card.is_boosted, card.ad_campaign_id]);
+```
+
+---
+
+### 6.6 Summary Checklist for Web AI Agent
+
+Before committing or pushing any code in the frontend repository, the Web AI Agent must verify:
+- [x] **Zero Style Regressions:** The design tokens (`Segoe_UI`, `primaryColor`, `liteDescriptionColor`, `bgColor`) look identical to the rest of the application.
+- [x] **Backward Compatible Props:** `EquipmentGrid` and `EquipmentCard` accept existing props without runtime type errors.
+- [x] **Section-wise Mode:** Displays 6 products per section with sub-category tabs intact.
+- [x] **All Products View:** Toggles flat feed without breaking the page or reloading.
+- [x] **Dynamic See More:** Displays `({remainingCount} more)` only when `has_more` is true.
+- [x] **Safe API URLs:** Uses `process.env.NEXT_PUBLIC_API_URL` with fallback to `http://127.0.0.1:8000/api`.

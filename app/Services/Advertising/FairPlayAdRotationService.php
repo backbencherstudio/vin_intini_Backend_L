@@ -84,6 +84,7 @@ class FairPlayAdRotationService
             if (! $bypassFrequencyCapping && $userId !== null && $maxDailyImpressionsPerUser > 0) {
                 $todayImpressionsCount = AdImpression::where('ad_campaign_id', $campaign->id)
                     ->where('user_id', $userId)
+                    ->where('placement', $placement)
                     ->where('viewed_date', today())
                     ->count();
 

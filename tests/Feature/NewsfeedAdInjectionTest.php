@@ -346,6 +346,21 @@ test('frequency capping prevents showing the same ad to a user who reached max d
     $differentUser = User::factory()->create(['is_verified' => true]);
     $resolvedForDifferentUser = $rotationService->resolveAdForFeed('product', 'both', 'newsfeed', [], $differentUser->id);
     expect($resolvedForDifferentUser?->id)->toBe($campaign->id);
+
+    // User who viewed 5 times on marketplace (industry_product_feed) is NOT blocked in newsfeed
+    $marketplaceUser = User::factory()->create(['is_verified' => true]);
+    for ($i = 0; $i < 5; $i++) {
+        AdImpression::create([
+            'ad_campaign_id' => $campaign->id,
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
+            'user_id' => $marketplaceUser->id,
+            'placement' => 'industry_product_feed',
+            'viewed_date' => today(),
+        ]);
+    }
+    $resolvedForMarketplaceUser = $rotationService->resolveAdForFeed('product', 'both', 'newsfeed', [], $marketplaceUser->id);
+    expect($resolvedForMarketplaceUser?->id)->toBe($campaign->id);
 });
 
 test('paused and expired campaigns are never served in newsfeed', function () {
