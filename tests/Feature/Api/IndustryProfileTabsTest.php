@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\AdCampaignStatus;
 use App\Enums\IndustryJobPostStatus;
+use App\Models\AdCampaign;
+use App\Models\BoostPackage;
 use App\Models\Industry;
 use App\Models\IndustryCategory;
 use App\Models\IndustryFollow;
@@ -240,6 +243,10 @@ class IndustryProfileTabsTest extends TestCase
         $this->assertArrayHasKey('industry_type', $firstItem);
         $this->assertArrayHasKey('description', $firstItem);
         $this->assertArrayHasKey('industry', $firstItem);
+        $this->assertArrayHasKey('is_boosted', $firstItem);
+        $this->assertArrayHasKey('badge', $firstItem);
+        $this->assertArrayHasKey('ad_campaign_id', $firstItem);
+        $this->assertArrayHasKey('is_new_release', $firstItem);
         $this->assertSame($this->industry->id, $firstItem['industry']['id']);
         $this->assertSame('https://cdn.example.com/walton.png', $firstItem['industry']['logo']);
         $this->assertTrue($firstItem['industry']['is_own_industry']);
@@ -250,6 +257,130 @@ class IndustryProfileTabsTest extends TestCase
 
         $this->assertTrue($response->json('pagination.has_more_pages'));
         $this->assertNotNull($response->json('pagination.next_cursor'));
+    }
+
+    public function test_boosted_products_appear_first_in_industry_profile_products_tab_and_fallback_when_expired(): void
+    {
+        $section = IndustrySections::create([
+            'name' => 'Biotech Devices',
+            'network_type' => 'psychology',
+            'industry_type' => 'biotechnology',
+        ]);
+
+        $category = IndustryCategory::create([
+            'section_id' => $section->id,
+            'category_name' => 'Lab Devices',
+        ]);
+
+        $product1 = IndustryProduct::create([
+            'product_id' => 'PRD001',
+            'industry_id' => $this->industry->id,
+            'creator_id' => $this->authUser->id,
+            'section_id' => $section->id,
+            'category_id' => $category->id,
+            'network_type' => 'psychology',
+            'industry_type' => 'biotechnology',
+            'product_name' => 'Old Product 1',
+            'slug' => 'old-product-1',
+            'description' => 'Description for product 1',
+            'status' => 'active',
+        ]);
+
+        $product2 = IndustryProduct::create([
+            'product_id' => 'PRD002',
+            'industry_id' => $this->industry->id,
+            'creator_id' => $this->authUser->id,
+            'section_id' => $section->id,
+            'category_id' => $category->id,
+            'network_type' => 'psychology',
+            'industry_type' => 'biotechnology',
+            'product_name' => 'Middle Product 2 (Boosted)',
+            'slug' => 'middle-product-2-boosted',
+            'description' => 'Description for product 2',
+            'status' => 'active',
+            'is_boosted' => true,
+            'boost_expires_at' => now()->addDays(7),
+        ]);
+
+        $product3 = IndustryProduct::create([
+            'product_id' => 'PRD003',
+            'industry_id' => $this->industry->id,
+            'creator_id' => $this->authUser->id,
+            'section_id' => $section->id,
+            'category_id' => $category->id,
+            'network_type' => 'psychology',
+            'industry_type' => 'biotechnology',
+            'product_name' => 'Newest Product 3 (Unboosted)',
+            'slug' => 'newest-product-3-unboosted',
+            'description' => 'Description for product 3',
+            'status' => 'active',
+        ]);
+
+        $package = BoostPackage::create([
+            'name' => '7-Day Starter',
+            'target_entity' => 'product',
+            'duration_days' => 7,
+            'price' => 19.99,
+            'badge' => 'Starter',
+            'priority_weight' => 1,
+            'status' => 'active',
+        ]);
+
+        $campaign = AdCampaign::create([
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product2->id,
+            'user_id' => $this->authUser->id,
+            'industry_id' => $this->industry->id,
+            'boost_package_id' => $package->id,
+            'ad_type' => 'product',
+            'network_type' => 'both',
+            'placements' => ['marketplace', 'newsfeed'],
+            'amount_paid' => 19.99,
+            'currency' => 'USD',
+            'duration_days' => 7,
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addDays(6),
+            'status' => AdCampaignStatus::ACTIVE,
+        ]);
+
+        // When fetching products, Product 2 (Boosted) MUST be at index 0, followed by Product 3 (Newest unboosted), then Product 1
+        $res = $this->actingAs($this->authUser, 'api')
+            ->getJson("/api/industry/{$this->industry->slug}/products");
+
+        $res->assertOk();
+        $items = $res->json('data');
+        $this->assertCount(3, $items);
+        $this->assertSame($product2->id, $items[0]['id']);
+        $this->assertTrue($items[0]['is_boosted']);
+        $this->assertSame('Sponsored', $items[0]['badge']);
+        $this->assertSame($campaign->id, $items[0]['ad_campaign_id']);
+
+        $this->assertSame($product3->id, $items[1]['id']);
+        $this->assertFalse($items[1]['is_boosted']);
+
+        $this->assertSame($product1->id, $items[2]['id']);
+        $this->assertFalse($items[2]['is_boosted']);
+
+        // Now expire the boost
+        $product2->update([
+            'boost_expires_at' => now()->subHour(),
+        ]);
+        $campaign->update([
+            'status' => AdCampaignStatus::COMPLETED,
+            'ends_at' => now()->subHour(),
+        ]);
+
+        // Next fetch: Product 2 automatically falls back into its natural place sorted by newest-first (Product 3, Product 2, Product 1)
+        $resExpired = $this->actingAs($this->authUser, 'api')
+            ->getJson("/api/industry/{$this->industry->slug}/products");
+
+        $resExpired->assertOk();
+        $expiredItems = $resExpired->json('data');
+        $this->assertSame($product3->id, $expiredItems[0]['id']);
+        $this->assertSame($product2->id, $expiredItems[1]['id']);
+        $this->assertSame($product1->id, $expiredItems[2]['id']);
+        $this->assertFalse($expiredItems[1]['is_boosted']);
+        $this->assertNull($expiredItems[1]['ad_campaign_id']);
     }
 
     public function test_can_fetch_industry_publications_with_cursor_pagination(): void

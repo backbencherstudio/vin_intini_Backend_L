@@ -185,9 +185,23 @@ class IndustryProfileController extends Controller
 
         $currentUser = auth('api')->user() ?? auth()->user();
 
+        // Auto-expire products whose boost or new release has expired
+        IndustryProduct::where('industry_id', $industry->id)
+            ->where('is_boosted', true)
+            ->whereNotNull('boost_expires_at')
+            ->where('boost_expires_at', '<=', now())
+            ->update(['is_new_release' => false, 'is_boosted' => false]);
+
+        IndustryProduct::where('industry_id', $industry->id)
+            ->where('is_new_release', true)
+            ->whereNotNull('new_release_expires_at')
+            ->where('new_release_expires_at', '<=', now())
+            ->update(['is_new_release' => false]);
+
         $query = IndustryProduct::query()
             ->where('industry_id', $industry->id)
-            ->where('status', 'active');
+            ->where('status', 'active')
+            ->with(['activeCampaign']);
 
         // Optional search and filters
         if ($request->filled('search')) {
@@ -217,7 +231,9 @@ class IndustryProfileController extends Controller
         $perPage = min(max($request->integer('per_page', $request->integer('limit', 12)), 1), 100);
         $totalProducts = (clone $query)->count();
 
-        $paginated = $query->latest('id')
+        // Boosted products appear first; non-boosted new products follow in newest-first order
+        $paginated = $query->orderByDesc('is_boosted')
+            ->orderByDesc('id')
             ->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
 
         // Batch load liked status for current user
@@ -247,6 +263,11 @@ class IndustryProfileController extends Controller
                     : asset('storage/'.ltrim($product->image, '/'));
             }
 
+            $isBoosted = (bool) $product->isBoosted();
+            $isNewRelease = (bool) $product->isNewRelease();
+            $adCampaignId = $isBoosted ? ($product->relationLoaded('activeCampaign') ? $product->activeCampaign?->id : $product->activeCampaign()->value('id')) : null;
+            $badge = $product->getAdBadge();
+
             return [
                 'id' => $product->id,
                 'product_id' => $product->product_id,
@@ -259,6 +280,10 @@ class IndustryProfileController extends Controller
                 'network_type' => $product->network_type,
                 'industry_type' => $product->industry_type,
                 'description' => Str::limit(strip_tags((string) $product->description), 150),
+                'is_boosted' => $isBoosted,
+                'badge' => $badge,
+                'ad_campaign_id' => $adCampaignId,
+                'is_new_release' => $isNewRelease,
                 'industry' => $industryInfo,
             ];
         });
