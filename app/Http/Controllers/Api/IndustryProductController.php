@@ -498,7 +498,7 @@ class IndustryProductController extends Controller
 
         $stats = IndustryProduct::query()
             ->where('industry_id', $industry->id)
-            ->selectRaw("COUNT(*) as total_products, COUNT(CASE WHEN status = 'active' THEN 1 END) as total_active_products, COALESCE(SUM(likes_count), 0) as total_likes, COALESCE(SUM(views_count), 0) as total_views, COALESCE(SUM(unique_views_count), 0) as total_unique_views")
+            ->selectRaw("COUNT(*) as total_products, COUNT(CASE WHEN status = 'active' THEN 1 END) as total_active_products, COALESCE(SUM(likes_count), 0) as total_likes, COALESCE(SUM(views_count), 0) as total_views, COALESCE(SUM(unique_views_count), 0) as total_unique_views, COALESCE(SUM(impressions_count), 0) as total_impressions, COALESCE(SUM(clicks_count), 0) as total_clicks")
             ->first();
 
         return response()->json([
@@ -510,6 +510,8 @@ class IndustryProductController extends Controller
                 'total_likes' => (int) ($stats->total_likes ?? 0),
                 'total_views' => (int) ($stats->total_views ?? 0),
                 'total_unique_views' => (int) ($stats->total_unique_views ?? 0),
+                'total_impressions' => (int) ($stats->total_impressions ?? 0),
+                'total_clicks' => (int) ($stats->total_clicks ?? 0),
             ],
         ]);
     }
@@ -547,9 +549,20 @@ class IndustryProductController extends Controller
 
         $paginated = $query->paginate($perPage);
 
+        $stats = IndustryProduct::query()
+            ->where('industry_id', $industry->id)
+            ->selectRaw("COUNT(*) as total_products, COUNT(CASE WHEN status = 'active' THEN 1 END) as total_active_products, COALESCE(SUM(impressions_count), 0) as total_impressions, COALESCE(SUM(clicks_count), 0) as total_clicks")
+            ->first();
+
         return response()->json([
             'success' => true,
             'message' => 'Products retrieved successfully.',
+            'stats' => [
+                'total_products' => (int) ($stats->total_products ?? 0),
+                'total_active_products' => (int) ($stats->total_active_products ?? 0),
+                'total_impressions' => (int) ($stats->total_impressions ?? 0),
+                'total_clicks' => (int) ($stats->total_clicks ?? 0),
+            ],
             'data' => IndustryProductResource::collection($paginated),
             'pagination' => [
                 'current_page' => $paginated->currentPage(),

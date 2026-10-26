@@ -195,7 +195,9 @@ Route::prefix('industry')->group(function () {
         Route::delete('{id}/delete', [IndustryProductController::class, 'destroy']);
 
         // Product Boosting (Stripe Elements direct card payment & RevenueCat IAP)
+        Route::get('{id}/boost/order-summary', [ProductBoostController::class, 'orderSummary']);
         Route::post('{id}/boost/send-otp', [ProductBoostController::class, 'sendOtp']);
+        Route::post('{id}/boost/resend-otp', [ProductBoostController::class, 'resendOtp']);
         Route::post('{id}/boost/purchase', [ProductBoostController::class, 'purchase']);
         Route::post('{id}/boost/confirm', [ProductBoostController::class, 'confirmPayment']);
         Route::get('{id}/boost/campaigns', [ProductBoostController::class, 'campaigns']);

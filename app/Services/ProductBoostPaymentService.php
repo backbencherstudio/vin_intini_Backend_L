@@ -387,7 +387,7 @@ class ProductBoostPaymentService
      *
      * @throws ValidationException
      */
-    private function resolvePricingAndDuration(array $params): array
+    public function resolvePricingAndDuration(array $params): array
     {
         if (! empty($params['boost_package_id'])) {
             $package = BoostPackage::where('status', 'active')->find($params['boost_package_id']);
@@ -432,5 +432,50 @@ class ProductBoostPaymentService
         throw ValidationException::withMessages([
             'package' => ['Please select a boost package or specify custom duration days.'],
         ]);
+    }
+
+    /**
+     * Build an Order Summary payload including product name and estimated impressions.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildOrderSummary(IndustryProduct $product, ?BoostPackage $package, int $durationDays, float $amount): array
+    {
+        $planTitle = $package
+            ? ($package->badge ? "{$package->badge} Boosting" : "{$package->name} Boosting")
+            : "Custom Boosting ({$durationDays} Days)";
+
+        if ($package) {
+            $estimatedImpressions = $package->estimated_impressions ?: '5k – 10k Impression';
+        } else {
+            $sliderConfig = $this->boostSettings->getSliderConfig();
+            $minDaily = (int) ($sliderConfig['daily_estimated_impressions_min'] ?? 700);
+            $maxDaily = (int) ($sliderConfig['daily_estimated_impressions_max'] ?? 1400);
+
+            $minTotal = round(($durationDays * $minDaily) / 1000, 1);
+            $maxTotal = round(($durationDays * $maxDaily) / 1000, 1);
+
+            $minFormatted = ((int) $minTotal == $minTotal) ? (int) $minTotal : $minTotal;
+            $maxFormatted = ((int) $maxTotal == $maxTotal) ? (int) $maxTotal : $maxTotal;
+
+            $estimatedImpressions = "{$minFormatted}k – {$maxFormatted}k Impression";
+        }
+
+        return [
+            'product_id' => $product->product_id,
+            'product_name' => $product->product_name,
+            'product_image' => $product->image_url,
+            'plan_title' => $planTitle,
+            'duration_days' => $durationDays,
+            'duration_text' => "{$durationDays} Days",
+            'estimated_impressions' => "Est. {$estimatedImpressions}",
+            'subtotal' => $amount,
+            'subtotal_formatted' => '$'.number_format($amount, 2),
+            'vat' => 0.00,
+            'vat_formatted' => '$0.00',
+            'total' => $amount,
+            'total_formatted' => '$'.number_format($amount, 2),
+            'currency' => 'USD',
+        ];
     }
 }

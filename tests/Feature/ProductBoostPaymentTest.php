@@ -120,6 +120,21 @@ test('advertiser can view packages with stripe key and custom slider config', fu
     $response->assertJsonPath('data.custom_slider.channel', 'web_only');
 });
 
+test('advertiser can preview checkout order summary with product name', function () {
+    $response = $this->actingAs($this->user, 'api')
+        ->getJson("/api/industry/products/{$this->product->id}/boost/order-summary?boost_package_id={$this->package->id}")
+        ->assertStatus(200);
+
+    $response->assertJsonPath('success', true)
+        ->assertJsonPath('data.product.product_name', 'SynapseBoost Pro')
+        ->assertJsonPath('data.order_summary.product_name', 'SynapseBoost Pro')
+        ->assertJsonPath('data.order_summary.duration_days', 7)
+        ->assertJsonPath('data.order_summary.subtotal', 19.99)
+        ->assertJsonPath('data.order_summary.vat', 0)
+        ->assertJsonPath('data.order_summary.vat_formatted', '$0.00')
+        ->assertJsonPath('data.order_summary.total', 19.99);
+});
+
 test('send otp dispatches email and rate limits subsequent requests', function () {
     Mail::fake();
 
@@ -150,6 +165,26 @@ test('send otp dispatches email and rate limits subsequent requests', function (
 
     $rateLimitResponse->assertStatus(429)
         ->assertJsonPath('success', false);
+});
+
+test('advertiser can resend otp after cooldown', function () {
+    Mail::fake();
+
+    seedBoostOtp($this->user->id, '1111');
+    Carbon::setTestNow(now()->addSeconds(65));
+
+    $response = $this->actingAs($this->user, 'api')
+        ->postJson("/api/industry/products/{$this->product->id}/boost/resend-otp", [
+            'boost_package_id' => $this->package->id,
+        ]);
+
+    $response->assertStatus(200)
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('data.cooldown_seconds', 60);
+
+    Mail::assertQueued(BoostOtpMail::class);
+
+    Carbon::setTestNow();
 });
 
 test('send otp with revenuecat returns 422 info message', function () {

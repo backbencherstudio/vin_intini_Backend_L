@@ -60,17 +60,60 @@ class ProductBoostController extends Controller
     }
 
     /**
+     * Preview order summary for boosting an Industry Product (Screen 3 checkout).
+     */
+    public function orderSummary(Request $request, int|string $id): JsonResponse
+    {
+        $product = IndustryProduct::findOrFail($id);
+        $user = $request->user();
+
+        if ($authError = $this->authorizeProductAction($user, $product)) {
+            return $authError;
+        }
+
+        $validated = $request->validate([
+            'boost_package_id' => ['nullable', 'integer', 'exists:boost_packages,id'],
+            'custom_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+        ]);
+
+        if (empty($validated['boost_package_id']) && empty($validated['custom_days'])) {
+            $defaultPackage = BoostPackage::where('status', 'active')->orderBy('price')->first();
+            $validated['boost_package_id'] = $defaultPackage?->id;
+        }
+
+        [$package, $durationDays, $amount] = $this->boostPaymentService->resolvePricingAndDuration($validated);
+        $orderSummary = $this->boostPaymentService->buildOrderSummary($product, $package, $durationDays, $amount);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order summary calculated successfully.',
+            'data' => [
+                'product' => [
+                    'id' => $product->id,
+                    'product_id' => $product->product_id,
+                    'product_name' => $product->product_name,
+                    'slug' => $product->slug,
+                    'image_url' => $product->image_url,
+                ],
+                'order_summary' => $orderSummary,
+            ],
+        ], 200);
+    }
+
+    /**
      * Send email verification OTP before charging boost payment (identical to Subscription flow).
      */
     public function sendOtp(Request $request, int|string $id): JsonResponse
     {
         $validated = $request->validate([
-            'checkout_type' => ['required', 'string', 'in:stripe,revenuecat'],
+            'checkout_type' => ['nullable', 'string', 'in:stripe,revenuecat'],
             'boost_package_id' => ['nullable', 'integer', 'exists:boost_packages,id'],
             'custom_days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ]);
 
-        if ($validated['checkout_type'] === 'revenuecat') {
+        $checkoutType = $validated['checkout_type'] ?? 'stripe';
+
+        if ($checkoutType === 'revenuecat') {
             return response()->json([
                 'success' => false,
                 'message' => 'This boost package is purchased in the app store via RevenueCat. Complete the purchase in the app and your boost will activate automatically.',
@@ -84,7 +127,25 @@ class ProductBoostController extends Controller
             return $authError;
         }
 
-        return $this->sendOtpToUser($user);
+        $orderSummary = null;
+        if (! empty($validated['boost_package_id']) || ! empty($validated['custom_days'])) {
+            try {
+                [$package, $durationDays, $amount] = $this->boostPaymentService->resolvePricingAndDuration($validated);
+                $orderSummary = $this->boostPaymentService->buildOrderSummary($product, $package, $durationDays, $amount);
+            } catch (\Throwable) {
+                // Ignore pricing resolution error for OTP dispatch
+            }
+        }
+
+        return $this->sendOtpToUser($user, $product, $orderSummary);
+    }
+
+    /**
+     * Resend verification OTP for boost payment.
+     */
+    public function resendOtp(Request $request, int|string $id): JsonResponse
+    {
+        return $this->sendOtp($request, $id);
     }
 
     /**
@@ -93,6 +154,10 @@ class ProductBoostController extends Controller
      */
     public function purchase(Request $request, int|string $id): JsonResponse
     {
+        $request->merge([
+            'checkout_type' => $request->input('checkout_type', 'stripe'),
+        ]);
+
         $validated = $request->validate([
             'checkout_type' => ['required', 'string', 'in:stripe,revenuecat'],
             'boost_package_id' => ['required_if:checkout_type,revenuecat', 'nullable', 'integer', 'exists:boost_packages,id'],
@@ -418,19 +483,26 @@ class ProductBoostController extends Controller
 
     /**
      * Send 4-digit OTP to user's email.
+     *
+     * @param  array<string, mixed>|null  $orderSummary
      */
-    private function sendOtpToUser(User $user): JsonResponse
+    private function sendOtpToUser(User $user, ?IndustryProduct $product = null, ?array $orderSummary = null): JsonResponse
     {
         $otpRecord = Otp::where('user_id', $user->id)
             ->where('type', OtpType::BOOST->value)
+            ->latest('id')
             ->first();
 
-        if ($otpRecord && $otpRecord->expires_at->greaterThan(now())) {
-            $remainingSeconds = (int) ceil(now()->diffInSeconds($otpRecord->expires_at, false));
+        // 60-second resend cooldown for user-friendly countdown timer
+        if ($otpRecord && $otpRecord->updated_at && $otpRecord->updated_at->addSeconds(60)->isFuture()) {
+            $wait = max(1, (int) ceil(now()->diffInSeconds($otpRecord->updated_at->addSeconds(60))));
 
             return response()->json([
                 'success' => false,
-                'message' => "Please wait {$remainingSeconds} seconds before requesting a new OTP.",
+                'message' => "Please wait {$wait} seconds before requesting a new OTP.",
+                'data' => [
+                    'retry_after' => $wait,
+                ],
             ], 429);
         }
 
@@ -446,7 +518,22 @@ class ProductBoostController extends Controller
         $data = [
             'email' => $user->email,
             'requires_verification' => true,
+            'cooldown_seconds' => 60,
         ];
+
+        if ($product) {
+            $data['product'] = [
+                'id' => $product->id,
+                'product_id' => $product->product_id,
+                'product_name' => $product->product_name,
+                'slug' => $product->slug,
+                'image_url' => $product->image_url,
+            ];
+        }
+
+        if ($orderSummary) {
+            $data['order_summary'] = $orderSummary;
+        }
 
         if (app()->environment('local')) {
             $data['debug_otp'] = (string) $otp;
