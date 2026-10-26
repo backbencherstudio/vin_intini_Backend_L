@@ -22,7 +22,7 @@ test('boost packages can be seeded and queried correctly', function () {
 
     expect(BoostPackage::count())->toBe(3);
 
-    $starter = BoostPackage::where('name', '7-Day Starter Boost')->first();
+    $starter = BoostPackage::where('name', 'Starter Boost')->first();
     expect($starter)->not->toBeNull()
         ->and($starter->duration_days)->toBe(7)
         ->and((float) $starter->price)->toBe(19.99)

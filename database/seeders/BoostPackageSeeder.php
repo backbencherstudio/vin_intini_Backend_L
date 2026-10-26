@@ -22,6 +22,7 @@ class BoostPackageSeeder extends Seeder
 
         $packages = [
             [
+                'id' => 1,
                 'name' => 'Starter Boost',
                 'target_entity' => BoostTargetEntity::PRODUCT->value,
                 'duration_days' => 7,
@@ -38,6 +39,7 @@ class BoostPackageSeeder extends Seeder
                 'revenuecat_entitlement_identifier' => 'product_boost_7d',
             ],
             [
+                'id' => 2,
                 'name' => 'Growth Boost',
                 'target_entity' => BoostTargetEntity::PRODUCT->value,
                 'duration_days' => 14,
@@ -54,6 +56,7 @@ class BoostPackageSeeder extends Seeder
                 'revenuecat_entitlement_identifier' => 'product_boost_14d',
             ],
             [
+                'id' => 3,
                 'name' => 'Best Value Boost',
                 'target_entity' => BoostTargetEntity::PRODUCT->value,
                 'duration_days' => 30,
@@ -73,9 +76,11 @@ class BoostPackageSeeder extends Seeder
 
         foreach ($packages as $package) {
             BoostPackage::updateOrCreate(
-                ['name' => $package['name']],
+                ['id' => $package['id']],
                 $package
             );
         }
+
+        BoostPackage::whereNotIn('id', [1, 2, 3])->delete();
     }
 }
