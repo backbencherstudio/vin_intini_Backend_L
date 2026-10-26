@@ -537,7 +537,7 @@ class ProductBoostController extends Controller
 
         $campaigns = AdCampaign::whereIn('id', $validated['campaign_ids'])
             ->where('status', AdCampaignStatus::ACTIVE)
-            ->with('boostable')
+            ->with(['boostable', 'industry'])
             ->get();
 
         $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
@@ -545,6 +545,27 @@ class ProductBoostController extends Controller
         $debouncedCount = 0;
 
         foreach ($campaigns as $campaign) {
+            // Anti-fraud self-impression guard: Ignore impression if user is the industry creator or campaign owner
+            $isOwner = $user && (
+                (int) $user->id === (int) $campaign->user_id
+                || (int) $user->id === (int) ($campaign->industry?->created_by ?? 0)
+                || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
+            );
+
+            if ($isOwner) {
+                // Track owner preview views in cache for daily frequency capping without inflating paid impressions
+                $ownerDateKey = "owner_feed_preview_views_{$campaign->id}_{$user->id}_".today()->toDateString();
+                if (! Cache::has($ownerDateKey)) {
+                    Cache::put($ownerDateKey, 1, now()->endOfDay());
+                } else {
+                    Cache::increment($ownerDateKey);
+                }
+
+                $debouncedCount++;
+
+                continue;
+            }
+
             // Anti-spam impression debounce: 30-second cooldown per user/IP per campaign
             $throttleKey = "ad_impression_throttle_{$campaign->id}_{$userIdentifier}";
             $isFirstImpression = Cache::add($throttleKey, true, now()->addSeconds(30));
@@ -587,7 +608,7 @@ class ProductBoostController extends Controller
      */
     public function recordClick(Request $request, int|string $id): JsonResponse
     {
-        $campaign = AdCampaign::with('boostable')->find($id);
+        $campaign = AdCampaign::with(['boostable', 'industry'])->find($id);
 
         if (! $campaign) {
             return response()->json([
@@ -599,6 +620,34 @@ class ProductBoostController extends Controller
         $user = auth('api')->user() ?? $request->user();
         $placement = $request->input('placement', 'newsfeed');
         $ip = $request->ip();
+
+        $destinationUrl = method_exists($campaign->boostable, 'getAdDestinationUrl')
+            ? $campaign->boostable->getAdDestinationUrl()
+            : ($campaign->boostable?->product_url ?? null);
+
+        // Anti-fraud self-click guard: Do not count clicks if user is the industry creator or campaign owner
+        $isOwner = $user && (
+            (int) $user->id === (int) $campaign->user_id
+            || (int) $user->id === (int) ($campaign->industry?->created_by ?? 0)
+            || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
+        );
+
+        if ($isOwner) {
+            $freshBoostable = $campaign->boostable?->fresh();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Click processed (debounced).',
+                'debounced' => true,
+                'data' => [
+                    'ad_campaign_id' => $campaign->id,
+                    'total_clicks' => (int) $campaign->total_clicks,
+                    'destination_url' => $destinationUrl,
+                    'clicks_count' => (int) ($freshBoostable?->clicks_count ?? 0),
+                    'views_count' => (int) ($freshBoostable?->views_count ?? 0),
+                ],
+            ]);
+        }
 
         // Anti-spam click debounce: 30-second cooldown per user/IP per campaign
         $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
@@ -626,10 +675,6 @@ class ProductBoostController extends Controller
                 }
             }
         }
-
-        $destinationUrl = method_exists($campaign->boostable, 'getAdDestinationUrl')
-            ? $campaign->boostable->getAdDestinationUrl()
-            : ($campaign->boostable->product_url ?? null);
 
         $freshBoostable = $campaign->boostable?->fresh();
 

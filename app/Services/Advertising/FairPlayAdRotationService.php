@@ -46,7 +46,7 @@ class FairPlayAdRotationService
             ->where('ad_type', $adType)
             ->whereNotNull('ends_at')
             ->where('ends_at', '>', now())
-            ->with(['boostable', 'boostPackage', 'industry:id,name,slug,logo,tagline']);
+            ->with(['boostable', 'boostPackage', 'industry:id,created_by,name,slug,logo,tagline']);
 
         if ($placement !== 'newsfeed' && ! empty($networkType) && $networkType !== 'both') {
             $query->where(function ($q) use ($networkType) {
@@ -87,6 +87,17 @@ class FairPlayAdRotationService
                     ->where('placement', $placement)
                     ->where('viewed_date', today())
                     ->count();
+
+                $isOwner = (
+                    (int) $campaign->user_id === (int) $userId
+                    || (int) ($campaign->industry?->created_by ?? 0) === (int) $userId
+                    || (int) ($campaign->boostable?->creator_id ?? 0) === (int) $userId
+                );
+
+                if ($isOwner) {
+                    $ownerDateKey = "owner_feed_preview_views_{$campaign->id}_{$userId}_".today()->toDateString();
+                    $todayImpressionsCount = max($todayImpressionsCount, (int) Cache::get($ownerDateKey, 0));
+                }
 
                 if ($todayImpressionsCount >= $maxDailyImpressionsPerUser) {
                     return false;

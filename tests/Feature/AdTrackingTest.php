@@ -31,6 +31,13 @@ beforeEach(function () {
         'privacy_profile_activity' => 'everyone',
     ]);
 
+    $this->viewer = User::factory()->create(['is_verified' => true]);
+    $this->viewer->assignRole('user');
+    UserProfile::create([
+        'user_id' => $this->viewer->id,
+        'privacy_profile_activity' => 'everyone',
+    ]);
+
     $this->industry = Industry::create([
         'created_by' => $this->user->id,
         'name' => 'Ad Tracking Co',
@@ -92,7 +99,7 @@ beforeEach(function () {
 });
 
 test('client can batch report verified viewable impressions', function () {
-    $response = $this->actingAs($this->user, 'api')
+    $response = $this->actingAs($this->viewer, 'api')
         ->postJson('/api/advertisements/impressions', [
             'campaign_ids' => [$this->campaign->id],
             'placement' => 'newsfeed',
@@ -106,7 +113,7 @@ test('client can batch report verified viewable impressions', function () {
 
     $this->assertDatabaseHas('ad_impressions', [
         'ad_campaign_id' => $this->campaign->id,
-        'user_id' => $this->user->id,
+        'user_id' => $this->viewer->id,
         'placement' => 'newsfeed',
         'viewed_date' => today()->toDateString(),
     ]);
@@ -117,7 +124,7 @@ test('client can batch report verified viewable impressions', function () {
 
 test('rapid repeated impressions within debounce window are throttled to prevent spam', function () {
     // First impression: recorded
-    $firstResponse = $this->actingAs($this->user, 'api')
+    $firstResponse = $this->actingAs($this->viewer, 'api')
         ->postJson('/api/advertisements/impressions', [
             'campaign_ids' => [$this->campaign->id],
             'placement' => 'industry_product_feed',
@@ -131,7 +138,7 @@ test('rapid repeated impressions within debounce window are throttled to prevent
         ]);
 
     // Second impression immediately (rapid reload): debounced, does not increment total_impressions
-    $secondResponse = $this->actingAs($this->user, 'api')
+    $secondResponse = $this->actingAs($this->viewer, 'api')
         ->postJson('/api/advertisements/impressions', [
             'campaign_ids' => [$this->campaign->id],
             'placement' => 'industry_product_feed',
@@ -151,7 +158,7 @@ test('rapid repeated impressions within debounce window are throttled to prevent
 });
 
 test('client can record ad clicks and receive product destination url', function () {
-    $response = $this->actingAs($this->user, 'api')
+    $response = $this->actingAs($this->viewer, 'api')
         ->postJson("/api/advertisements/{$this->campaign->id}/click", [
             'placement' => 'newsfeed',
         ]);
@@ -171,7 +178,7 @@ test('client can record ad clicks and receive product destination url', function
 
     $this->assertDatabaseHas('ad_clicks', [
         'ad_campaign_id' => $this->campaign->id,
-        'user_id' => $this->user->id,
+        'user_id' => $this->viewer->id,
         'placement' => 'newsfeed',
     ]);
 
@@ -188,7 +195,7 @@ test('click recording returns 404 for non-existent campaign', function () {
 
 test('rapid repeated ad clicks within debounce window are throttled to prevent spam', function () {
     // First click: recorded
-    $firstResponse = $this->actingAs($this->user, 'api')
+    $firstResponse = $this->actingAs($this->viewer, 'api')
         ->postJson("/api/advertisements/{$this->campaign->id}/click", [
             'placement' => 'newsfeed',
         ]);
@@ -200,7 +207,7 @@ test('rapid repeated ad clicks within debounce window are throttled to prevent s
         ]);
 
     // Second click immediately: debounced, does not increment total_clicks
-    $secondResponse = $this->actingAs($this->user, 'api')
+    $secondResponse = $this->actingAs($this->viewer, 'api')
         ->postJson("/api/advertisements/{$this->campaign->id}/click", [
             'placement' => 'newsfeed',
         ]);
@@ -219,4 +226,38 @@ test('rapid repeated ad clicks within debounce window are throttled to prevent s
     expect(AdClick::where('ad_campaign_id', $this->campaign->id)->count())->toBe(1)
         ->and($this->campaign->fresh()->total_clicks)->toBe(1)
         ->and($this->product->fresh()->clicks_count)->toBe(1);
+});
+
+test('industry creator or campaign owner cannot generate self impressions or clicks', function () {
+    // Attempting impression as owner/creator:
+    $impressionResponse = $this->actingAs($this->user, 'api')
+        ->postJson('/api/advertisements/impressions', [
+            'campaign_ids' => [$this->campaign->id],
+            'placement' => 'industry_product_feed',
+        ]);
+
+    $impressionResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'recorded_count' => 0,
+            'debounced_count' => 1,
+        ]);
+
+    expect($this->campaign->fresh()->total_impressions)->toBe(0)
+        ->and($this->product->fresh()->impressions_count)->toBe(0);
+
+    // Attempting click as owner/creator:
+    $clickResponse = $this->actingAs($this->user, 'api')
+        ->postJson("/api/advertisements/{$this->campaign->id}/click", [
+            'placement' => 'industry_product_feed',
+        ]);
+
+    $clickResponse->assertOk()
+        ->assertJson([
+            'success' => true,
+            'debounced' => true,
+        ]);
+
+    expect($this->campaign->fresh()->total_clicks)->toBe(0)
+        ->and($this->product->fresh()->clicks_count)->toBe(0);
 });

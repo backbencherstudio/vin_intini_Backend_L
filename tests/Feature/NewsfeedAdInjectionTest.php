@@ -129,7 +129,14 @@ test('active boosted product ad is injected at slot 4 with sponsored badge and m
         ]);
     }
 
+    $advertiser = User::factory()->create(['is_verified' => true]);
+    $advertiser->assignRole('user');
+    UserProfile::create(['user_id' => $advertiser->id, 'privacy_profile_activity' => 'everyone']);
+    $this->industry->update(['created_by' => $advertiser->id]);
+
     $product = createNewsfeedProduct([
+        'creator_id' => $advertiser->id,
+        'industry_id' => $this->industry->id,
         'product_name' => 'BCI Wireless Headset Pro',
         'slug' => 'bci-wireless-headset-pro',
     ]);
@@ -137,7 +144,7 @@ test('active boosted product ad is injected at slot 4 with sponsored badge and m
     $campaign = AdCampaign::create([
         'boostable_type' => IndustryProduct::class,
         'boostable_id' => $product->id,
-        'user_id' => $this->user->id,
+        'user_id' => $advertiser->id,
         'industry_id' => $this->industry->id,
         'boost_package_id' => $this->packageStarter->id,
         'ad_type' => 'product',
