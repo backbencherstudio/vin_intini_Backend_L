@@ -974,10 +974,27 @@ test('my listings returns boost_status active, paused, and inactive with campaig
         ->and($unboostedItem['is_boosted'])->toBeFalse()
         ->and($unboostedItem['ad_campaign_id'])->toBeNull();
 
+    // Actively boosted product appears at the very beginning (index 0)
+    expect($response->json('data.0.id'))->toBe($this->product->id);
+
     // Test filter by boost_status=paused
     $filtered = $this->actingAs($this->user, 'api')
         ->getJson('/api/industry/products/my-listings?boost_status=paused')
         ->assertOk();
     expect($filtered->json('data'))->toHaveCount(1)
         ->and($filtered->json('data.0.id'))->toBe($pausedProduct->id);
+
+    // When boost expires, the product returns to its regular chronological order (newest ID first)
+    $this->product->update([
+        'is_boosted' => false,
+        'boost_expires_at' => now()->subMinute(),
+    ]);
+
+    $expiredResponse = $this->actingAs($this->user, 'api')
+        ->getJson('/api/industry/products/my-listings')
+        ->assertOk();
+
+    expect($expiredResponse->json('data.0.id'))->toBe($unboostedProduct->id)
+        ->and($expiredResponse->json('data.1.id'))->toBe($pausedProduct->id)
+        ->and($expiredResponse->json('data.2.id'))->toBe($this->product->id);
 });

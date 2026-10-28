@@ -535,9 +535,20 @@ class IndustryProductController extends Controller
         $industry = $user->industry;
         $perPage = min(max($request->integer('per_page', 10), 1), 100);
 
+        // Auto-expire products whose boost duration has elapsed
+        IndustryProduct::where('industry_id', $industry->id)
+            ->where('is_boosted', true)
+            ->whereNotNull('boost_expires_at')
+            ->where('boost_expires_at', '<=', now())
+            ->update(['is_boosted' => false]);
+
         $query = IndustryProduct::query()
             ->where('industry_id', $industry->id)
             ->with(['creator', 'industry', 'section', 'category', 'latestCampaign'])
+            ->orderByRaw(
+                'CASE WHEN is_boosted = 1 AND (boost_expires_at IS NULL OR boost_expires_at > ?) THEN 1 ELSE 0 END DESC',
+                [now()]
+            )
             ->latest('id');
 
         if ($request->filled('status')) {
