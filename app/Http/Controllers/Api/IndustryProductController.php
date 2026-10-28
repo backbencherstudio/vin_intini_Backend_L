@@ -531,11 +531,28 @@ class IndustryProductController extends Controller
 
         $query = IndustryProduct::query()
             ->where('industry_id', $industry->id)
-            ->with(['creator', 'industry', 'section', 'category'])
+            ->with(['creator', 'industry', 'section', 'category', 'latestCampaign'])
             ->latest('id');
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('boost_status')) {
+            $boostStatus = $request->input('boost_status');
+            if ($boostStatus === 'active') {
+                $query->where('is_boosted', true)->where(function ($q) {
+                    $q->whereNull('boost_expires_at')->orWhere('boost_expires_at', '>', now());
+                });
+            } elseif ($boostStatus === 'paused') {
+                $query->whereHas('latestCampaign', function ($q) {
+                    $q->where('status', 'paused');
+                });
+            } elseif ($boostStatus === 'inactive' || $boostStatus === 'not_boosted') {
+                $query->where(function ($q) {
+                    $q->where('is_boosted', false)->orWhereNull('is_boosted');
+                });
+            }
         }
 
         if ($request->filled('search')) {

@@ -2,6 +2,7 @@
 
 use App\Enums\AdCampaignStatus;
 use App\Enums\OtpType;
+use App\Enums\PlanType;
 use App\Mail\BoostOtpMail;
 use App\Mail\CampaignActivatedMail;
 use App\Mail\CampaignAutoExpiredMail;
@@ -13,6 +14,8 @@ use App\Models\IndustryCategory;
 use App\Models\IndustryProduct;
 use App\Models\IndustrySections;
 use App\Models\Otp;
+use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -867,4 +870,114 @@ test('industry advertiser can list all their boost campaigns with aggregate metr
     $activeResponse->assertJsonPath('success', true);
     expect($activeResponse->json('data.campaigns.data'))->toHaveCount(1)
         ->and($activeResponse->json('data.campaigns.data.0.id'))->toBe($campaign1->id);
+});
+
+test('my listings returns boost_status active, paused, and inactive with campaign id', function () {
+    $plan = Plan::create([
+        'name' => 'Pro Industry Plan',
+        'plan_type' => PlanType::INDUSTRY->value,
+        'billing_rate' => 99.00,
+        'billing_cycle' => 'monthly',
+        'features' => ['advertisements'],
+        'status' => 'active',
+    ]);
+
+    Subscription::create([
+        'user_id' => $this->user->id,
+        'plan_id' => $plan->id,
+        'status' => 'active',
+        'current_period_start' => now()->subDay(),
+        'current_period_end' => now()->addMonth(),
+    ]);
+
+    // 1. $this->product is boosted and active
+    $this->product->update([
+        'is_boosted' => true,
+        'boost_expires_at' => now()->addDays(5),
+    ]);
+
+    $activeCampaign = AdCampaign::create([
+        'boostable_type' => IndustryProduct::class,
+        'boostable_id' => $this->product->id,
+        'user_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'amount_paid' => 19.99,
+        'duration_days' => 5,
+        'starts_at' => now(),
+        'ends_at' => now()->addDays(5),
+        'status' => AdCampaignStatus::ACTIVE,
+    ]);
+
+    // 2. Create another product that is paused
+    $pausedProduct = IndustryProduct::create([
+        'creator_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'section_id' => $this->section->id,
+        'category_id' => $this->category->id,
+        'network_type' => 'neuroscience',
+        'industry_type' => 'biotechnology',
+        'product_name' => 'Paused Product',
+        'slug' => 'paused-product-123',
+        'description' => 'Paused product description',
+        'status' => 'active',
+        'is_boosted' => false,
+        'boost_expires_at' => now()->addDays(3),
+    ]);
+
+    $pausedCampaign = AdCampaign::create([
+        'boostable_type' => IndustryProduct::class,
+        'boostable_id' => $pausedProduct->id,
+        'user_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'amount_paid' => 19.99,
+        'duration_days' => 5,
+        'starts_at' => now()->subDays(2),
+        'ends_at' => now()->addDays(3),
+        'paused_at' => now(),
+        'status' => AdCampaignStatus::PAUSED,
+    ]);
+
+    // 3. Create another product that is unboosted
+    $unboostedProduct = IndustryProduct::create([
+        'creator_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'section_id' => $this->section->id,
+        'category_id' => $this->category->id,
+        'network_type' => 'neuroscience',
+        'industry_type' => 'biotechnology',
+        'product_name' => 'Unboosted Product',
+        'slug' => 'unboosted-product-456',
+        'description' => 'Unboosted product description',
+        'status' => 'active',
+        'is_boosted' => false,
+    ]);
+
+    $response = $this->actingAs($this->user, 'api')
+        ->getJson('/api/industry/products/my-listings')
+        ->assertOk();
+
+    $items = collect($response->json('data'));
+
+    $activeItem = $items->firstWhere('id', $this->product->id);
+    expect($activeItem['boost_status'])->toBe('active')
+        ->and($activeItem['is_boosted'])->toBeTrue()
+        ->and($activeItem['ad_campaign_id'])->toBe($activeCampaign->id);
+
+    $pausedItem = $items->firstWhere('id', $pausedProduct->id);
+    expect($pausedItem['boost_status'])->toBe('paused')
+        ->and($pausedItem['is_boosted'])->toBeFalse()
+        ->and($pausedItem['ad_campaign_id'])->toBe($pausedCampaign->id)
+        ->and($pausedItem['boost_days_left'])->toBe(3);
+
+    $unboostedItem = $items->firstWhere('id', $unboostedProduct->id);
+    expect($unboostedItem['boost_status'])->toBe('inactive')
+        ->and($unboostedItem['is_boosted'])->toBeFalse()
+        ->and($unboostedItem['ad_campaign_id'])->toBeNull();
+
+    // Test filter by boost_status=paused
+    $filtered = $this->actingAs($this->user, 'api')
+        ->getJson('/api/industry/products/my-listings?boost_status=paused')
+        ->assertOk();
+    expect($filtered->json('data'))->toHaveCount(1)
+        ->and($filtered->json('data.0.id'))->toBe($pausedProduct->id);
 });

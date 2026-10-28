@@ -52,6 +52,10 @@ class IndustryProductResource extends JsonResource
 
         $boostDaysLeft = null;
         $boostRemainingText = null;
+        $boostStatus = $this->getBoostStatus();
+        $campaign = $this->relationLoaded('latestCampaign')
+            ? $this->latestCampaign
+            : ($this->relationLoaded('activeCampaign') && $this->activeCampaign ? $this->activeCampaign : $this->campaigns()->latest('id')->first());
 
         if ($this->isBoosted() && $this->boost_expires_at && $this->boost_expires_at->isFuture()) {
             $diffInSeconds = max(0, (int) now()->diffInSeconds($this->boost_expires_at, false));
@@ -65,6 +69,10 @@ class IndustryProductResource extends JsonResource
             } else {
                 $boostRemainingText = '1 hour left';
             }
+        } elseif ($boostStatus === 'paused' && $campaign && $campaign->paused_at && $campaign->ends_at) {
+            $diffInSeconds = max(0, (int) $campaign->paused_at->diffInSeconds($campaign->ends_at, false));
+            $boostDaysLeft = (int) ceil($diffInSeconds / 86400);
+            $boostRemainingText = $boostDaysLeft > 1 ? "{$boostDaysLeft} days left (paused)" : '1 day left (paused)';
         }
 
         $user = auth('api')->user() ?? auth('web')->user() ?? $request->user();
@@ -97,7 +105,8 @@ class IndustryProductResource extends JsonResource
             'likes_count' => (int) ($this->likes_count ?? 0),
             'is_liked' => $isLiked,
             'is_boosted' => $this->isBoosted(),
-            'ad_campaign_id' => $this->isBoosted() ? ($this->relationLoaded('activeCampaign') ? $this->activeCampaign?->id : $this->activeCampaign()->value('id')) : null,
+            'boost_status' => $boostStatus,
+            'ad_campaign_id' => in_array($boostStatus, ['active', 'paused', 'pending']) ? $campaign?->id : null,
             'is_new_release' => $this->isNewRelease(),
             'badge' => $this->getAdBadge(),
             'industry' => $this->industry ? [

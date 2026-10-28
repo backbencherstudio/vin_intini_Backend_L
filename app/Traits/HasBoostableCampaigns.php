@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Enums\AdCampaignStatus;
 use App\Models\AdCampaign;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -19,6 +20,53 @@ trait HasBoostableCampaigns
         return $this->morphOne(AdCampaign::class, 'boostable')
             ->where('status', 'active')
             ->where('ends_at', '>', now());
+    }
+
+    public function latestCampaign(): MorphOne
+    {
+        return $this->morphOne(AdCampaign::class, 'boostable')
+            ->latestOfMany();
+    }
+
+    public function getBoostStatus(): string
+    {
+        if ($this->isBoosted()) {
+            return 'active';
+        }
+
+        $campaign = $this->relationLoaded('latestCampaign')
+            ? $this->latestCampaign
+            : ($this->relationLoaded('activeCampaign') && $this->activeCampaign ? $this->activeCampaign : $this->campaigns()->latest('id')->first());
+
+        if (! $campaign) {
+            return 'inactive';
+        }
+
+        $status = $campaign->status instanceof AdCampaignStatus
+            ? $campaign->status->value
+            : (string) $campaign->status;
+
+        if ($status === 'paused') {
+            return 'paused';
+        }
+
+        if ($status === 'active' && ($campaign->ends_at === null || $campaign->ends_at->isFuture())) {
+            return 'active';
+        }
+
+        if ($status === 'completed' || ($campaign->ends_at && $campaign->ends_at->isPast())) {
+            return 'completed';
+        }
+
+        if ($status === 'cancelled') {
+            return 'cancelled';
+        }
+
+        if ($status === 'pending') {
+            return 'pending';
+        }
+
+        return 'inactive';
     }
 
     public function isBoosted(): bool
