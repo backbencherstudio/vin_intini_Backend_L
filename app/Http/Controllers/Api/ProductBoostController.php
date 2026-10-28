@@ -721,7 +721,7 @@ class ProductBoostController extends Controller
         $user = auth('api')->user() ?? $request->user();
         $placement = $request->input('placement', 'newsfeed');
         $ip = $request->ip();
-        $cooldown = app()->environment('local') ? 2 : 30;
+        $cooldown = 30; // 30-second cooldown protection per user/IP
 
         // Organic product without an active ad campaign
         if (! $campaign && $product) {

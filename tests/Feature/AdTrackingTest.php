@@ -304,4 +304,13 @@ test('visiting product details route increments clicks_count and ad campaign tot
 
     expect($this->product->fresh()->clicks_count)->toBe(1)
         ->and($this->campaign->fresh()->total_clicks)->toBe(1);
+
+    // Immediate second visit within 30-second debounce window: must not increment
+    $secondResponse = $this->actingAs($viewer, 'api')
+        ->getJson("/api/industry/products/{$this->product->id}/details");
+
+    $secondResponse->assertOk();
+
+    expect($this->product->fresh()->clicks_count)->toBe(1)
+        ->and($this->campaign->fresh()->total_clicks)->toBe(1);
 });

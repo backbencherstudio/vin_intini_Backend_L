@@ -947,7 +947,7 @@ class IndustryProductController extends Controller
         }
 
         $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
-        $cooldown = app()->environment('local') ? 2 : 30;
+        $cooldown = 30; // 30-second anti-spam click debounce protection per user/IP
 
         $productThrottleKey = "product_click_throttle_{$product->id}_{$userIdentifier}";
         if (Cache::add($productThrottleKey, true, now()->addSeconds($cooldown))) {
