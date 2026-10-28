@@ -11,6 +11,7 @@ return [
         'https://mindunit.netlify.app',
         'https://vin-intini-web-frontend.vercel.app',
         'http://localhost:3000',
+        'https://cleared-month-virgin-murphy.trycloudflare.com'
     ],
 
     'allowed_origins_patterns' => [],
