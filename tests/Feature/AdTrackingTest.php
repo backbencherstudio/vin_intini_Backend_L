@@ -261,3 +261,47 @@ test('industry creator or campaign owner cannot generate self impressions or cli
     expect($this->campaign->fresh()->total_clicks)->toBe(0)
         ->and($this->product->fresh()->clicks_count)->toBe(0);
 });
+
+test('client can record clicks by product id, product code or slug on advertisements click route', function () {
+    $thirdPartyViewer = User::factory()->create();
+    $thirdPartyViewer->assignRole('user');
+    UserProfile::create(['user_id' => $thirdPartyViewer->id]);
+
+    // 1. Record click using product_id code on /api/advertisements/{id}/click
+    $responseByCode = $this->actingAs($thirdPartyViewer, 'api')
+        ->postJson("/api/advertisements/{$this->product->product_id}/click", [
+            'placement' => 'industry_product_feed',
+        ]);
+
+    $responseByCode->assertOk()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Click recorded successfully.',
+            'data' => [
+                'ad_campaign_id' => $this->campaign->id,
+                'total_clicks' => 1,
+            ],
+        ]);
+
+    expect($this->campaign->fresh()->total_clicks)->toBe(1)
+        ->and($this->product->fresh()->clicks_count)->toBe(1);
+});
+
+test('visiting product details route increments clicks_count and ad campaign total_clicks for boosted products', function () {
+    $viewer = User::factory()->create();
+    $viewer->assignRole('user');
+    UserProfile::create(['user_id' => $viewer->id]);
+
+    expect($this->campaign->fresh()->total_clicks)->toBe(0)
+        ->and($this->product->fresh()->clicks_count)->toBe(0);
+
+    // Visiting product details (Learn More action in feed)
+    $response = $this->actingAs($viewer, 'api')
+        ->getJson("/api/industry/products/{$this->product->id}/details");
+
+    $response->assertOk()
+        ->assertJsonPath('data.views_count', 1);
+
+    expect($this->product->fresh()->clicks_count)->toBe(1)
+        ->and($this->campaign->fresh()->total_clicks)->toBe(1);
+});

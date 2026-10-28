@@ -691,13 +691,27 @@ class ProductBoostController extends Controller
     }
 
     /**
-     * Record a verified click on an ad campaign and return destination details.
+     * Record a verified click on an ad campaign or product and return destination details.
      */
     public function recordClick(Request $request, int|string $id): JsonResponse
     {
-        $campaign = AdCampaign::with(['boostable', 'industry'])->find($id);
+        $campaign = is_numeric($id) ? AdCampaign::with(['boostable', 'industry'])->find((int) $id) : null;
+        $product = null;
 
         if (! $campaign) {
+            $product = IndustryProduct::with(['creator', 'industry', 'activeCampaign', 'campaigns'])
+                ->where('id', $id)
+                ->orWhere('product_id', $id)
+                ->orWhere('slug', $id)
+                ->first();
+
+            if ($product) {
+                $campaign = $product->activeCampaign()->with(['boostable', 'industry'])->first()
+                    ?? $product->campaigns()->where('status', AdCampaignStatus::ACTIVE)->latest('id')->first();
+            }
+        }
+
+        if (! $campaign && ! $product) {
             return response()->json([
                 'success' => false,
                 'message' => 'Ad campaign not found.',
@@ -707,13 +721,45 @@ class ProductBoostController extends Controller
         $user = auth('api')->user() ?? $request->user();
         $placement = $request->input('placement', 'newsfeed');
         $ip = $request->ip();
+        $cooldown = app()->environment('local') ? 2 : 30;
+
+        // Organic product without an active ad campaign
+        if (! $campaign && $product) {
+            $isOwner = ! app()->environment('local') && $user && (
+                (int) $user->id === (int) $product->creator_id
+                || (int) $user->id === (int) ($product->industry?->created_by ?? 0)
+            );
+
+            $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
+            $productThrottleKey = "product_click_throttle_{$product->id}_{$userIdentifier}";
+            $isFirstClick = ! $isOwner && Cache::add($productThrottleKey, true, now()->addSeconds($cooldown));
+
+            if ($isFirstClick) {
+                $product->increment('clicks_count');
+                if (method_exists($product, 'recordView')) {
+                    $product->recordView($user, $ip);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $isFirstClick ? 'Click recorded successfully.' : 'Click processed (debounced).',
+                'debounced' => ! $isFirstClick,
+                'data' => [
+                    'product_id' => $product->product_id,
+                    'destination_url' => $product->product_url,
+                    'clicks_count' => (int) $product->fresh()->clicks_count,
+                    'views_count' => (int) $product->fresh()->views_count,
+                ],
+            ]);
+        }
 
         $destinationUrl = method_exists($campaign->boostable, 'getAdDestinationUrl')
             ? $campaign->boostable->getAdDestinationUrl()
             : ($campaign->boostable?->product_url ?? null);
 
-        // Anti-fraud self-click guard: Do not count clicks if user is the industry creator or campaign owner
-        $isOwner = $user && (
+        // Anti-fraud self-click guard: Do not count clicks if user is the industry creator or campaign owner (bypassed in local env)
+        $isOwner = ! app()->environment('local') && $user && (
             (int) $user->id === (int) $campaign->user_id
             || (int) $user->id === (int) ($campaign->industry?->created_by ?? 0)
             || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
@@ -736,10 +782,10 @@ class ProductBoostController extends Controller
             ]);
         }
 
-        // Anti-spam click debounce: 30-second cooldown per user/IP per campaign
+        // Anti-spam click debounce: 30-second cooldown per user/IP per campaign (2s in local)
         $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
         $clickThrottleKey = "ad_click_throttle_{$campaign->id}_{$userIdentifier}";
-        $isFirstClick = Cache::add($clickThrottleKey, true, now()->addSeconds(30));
+        $isFirstClick = Cache::add($clickThrottleKey, true, now()->addSeconds($cooldown));
 
         if ($isFirstClick) {
             AdClick::create([
@@ -754,6 +800,9 @@ class ProductBoostController extends Controller
             $campaign->increment('total_clicks');
 
             if ($campaign->boostable && method_exists($campaign->boostable, 'increment')) {
+                $productThrottleKey = "product_click_throttle_{$campaign->boostable->id}_{$userIdentifier}";
+                Cache::put($productThrottleKey, true, now()->addSeconds($cooldown));
+
                 $campaign->boostable->increment('clicks_count');
 
                 // Count ad click as a product view as well

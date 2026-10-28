@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AdCampaignStatus;
 use App\Enums\PlanType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreIndustryProductRequest;
 use App\Http\Requests\UpdateIndustryProductRequest;
 use App\Http\Resources\IndustryProductResource;
+use App\Models\AdClick;
 use App\Models\IndustryProduct;
 use App\Models\IndustryProductLike;
 use App\Models\IndustrySections;
@@ -16,6 +18,7 @@ use App\Services\OptimizedImageUploadService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -409,11 +412,11 @@ class IndustryProductController extends Controller
     }
 
     /**
-     * Show single product details + record unique & total view.
+     * Show single product details + record unique & total view + record verified click (Learn More).
      */
     public function show(Request $request, int|string $id): JsonResponse
     {
-        $product = $this->findProduct($id, ['creator', 'industry', 'section', 'category']);
+        $product = $this->findProduct($id, ['creator', 'industry', 'section', 'category', 'activeCampaign']);
 
         $currentUser = auth('api')->user() ?? auth('web')->user();
         if (! $currentUser && (app()->environment('local', 'testing') || $request->has('preview') || $request->header('X-Preview-Mode'))) {
@@ -422,6 +425,9 @@ class IndustryProductController extends Controller
 
         // Record unique and total view
         $this->recordView($product, $currentUser, $request->ip());
+
+        // Record verified click on product and boost campaign (Learn More / Card Click from feed)
+        $this->recordProductClick($product, $currentUser, $request->ip(), $request->input('placement', 'industry_product_feed'));
 
         return response()->json([
             'success' => true,
@@ -923,6 +929,52 @@ class IndustryProductController extends Controller
     private function recordView(IndustryProduct $product, ?User $user, ?string $ip): void
     {
         $product->recordView($user, $ip);
+    }
+
+    /**
+     * Record a product click and ad campaign click when product details are accessed from feed / Learn More.
+     */
+    private function recordProductClick(IndustryProduct $product, ?User $user, ?string $ip, string $placement = 'industry_product_feed'): void
+    {
+        // Anti-fraud self-click guard (disabled in local environment for seamless developer testing)
+        $isOwner = ! app()->environment('local') && $user && (
+            (int) $user->id === (int) $product->creator_id
+            || (int) $user->id === (int) ($product->industry?->created_by ?? 0)
+        );
+
+        if ($isOwner) {
+            return;
+        }
+
+        $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
+        $cooldown = app()->environment('local') ? 2 : 30;
+
+        $productThrottleKey = "product_click_throttle_{$product->id}_{$userIdentifier}";
+        if (Cache::add($productThrottleKey, true, now()->addSeconds($cooldown))) {
+            $product->increment('clicks_count');
+        }
+
+        // If product has an active boost campaign, record ad click as well
+        $campaign = $product->relationLoaded('activeCampaign') && $product->activeCampaign
+            ? $product->activeCampaign
+            : ($product->activeCampaign()->with(['boostable', 'industry'])->first()
+                ?? $product->campaigns()->where('status', AdCampaignStatus::ACTIVE)->latest('id')->first());
+
+        if ($campaign) {
+            $campaignThrottleKey = "ad_click_throttle_{$campaign->id}_{$userIdentifier}";
+            if (Cache::add($campaignThrottleKey, true, now()->addSeconds($cooldown))) {
+                AdClick::create([
+                    'ad_campaign_id' => $campaign->id,
+                    'boostable_type' => $campaign->boostable_type ?? $product->getMorphClass(),
+                    'boostable_id' => $campaign->boostable_id ?? $product->id,
+                    'user_id' => $user?->id,
+                    'placement' => $placement,
+                    'ip_address' => $ip,
+                ]);
+
+                $campaign->increment('total_clicks');
+            }
+        }
     }
 
     /**
