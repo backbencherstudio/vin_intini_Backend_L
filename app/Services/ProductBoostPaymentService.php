@@ -46,7 +46,7 @@ class ProductBoostPaymentService
         [$package, $durationDays, $amount, $priorityWeight] = $this->resolvePricingAndDuration($params);
 
         $networkType = $product->network_type;
-        $placements = $params['placements'] ?? ['marketplace', 'newsfeed'];
+        $placements = $params['placements'] ?? ['newsfeed', 'product_feed'];
         $paymentMethodId = $params['payment_method'];
 
         $customer = $this->stripe->getOrCreateCustomer($user);
@@ -315,7 +315,7 @@ class ProductBoostPaymentService
         }
 
         $networkType = $product->network_type;
-        $placements = $params['placements'] ?? ['marketplace', 'newsfeed'];
+        $placements = $params['placements'] ?? ['newsfeed', 'product_feed'];
         $durationDays = $package->duration_days;
         $amount = (float) $package->price;
         $priorityWeight = $package->priority_weight;

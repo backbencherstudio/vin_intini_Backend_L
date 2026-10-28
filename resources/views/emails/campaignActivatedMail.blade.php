@@ -218,7 +218,22 @@
                     <tr>
                         <td class="label">Placements:</td>
                         <td class="value">
-                            {{ is_array($campaign->placements) ? implode(', ', array_map('ucwords', $campaign->placements)) : 'Marketplace, Newsfeed' }}
+                            @php
+                                $placementsMap = [
+                                    'marketplace' => 'Product Feed',
+                                    'product_feed' => 'Product Feed',
+                                    'products' => 'Product Feed',
+                                    'newsfeed' => 'Newsfeed',
+                                ];
+                                $rawPlacements = is_array($campaign->placements) && count($campaign->placements) > 0
+                                    ? $campaign->placements
+                                    : ['newsfeed', 'product_feed'];
+                                $formattedPlacements = array_values(array_unique(array_map(function ($p) use ($placementsMap) {
+                                    $key = strtolower(trim((string) $p));
+                                    return $placementsMap[$key] ?? ucwords(str_replace('_', ' ', $key));
+                                }, $rawPlacements)));
+                            @endphp
+                            {{ implode(', ', $formattedPlacements) }}
                         </td>
                     </tr>
                 </table>
@@ -230,7 +245,7 @@
             </div>
 
             <div class="info-note">
-                <strong>Campaign Control:</strong> You can pause and resume your campaign anytime from your advertising dashboard. Please note that campaigns left paused for 30 consecutive days will automatically conclude under our pause policy.
+                <strong>Campaign Control:</strong> You can pause and resume your campaign anytime from your advertising dashboard. Please note that campaigns left paused for {{ $maxPauseDays ?? 30 }} consecutive days will automatically conclude under our pause policy.
             </div>
 
             <p style="margin-top: 30px; margin-bottom: 0;">

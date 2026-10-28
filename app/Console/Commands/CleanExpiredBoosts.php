@@ -83,7 +83,7 @@ class CleanExpiredBoosts extends Command
                 ]);
 
                 if ($campaign->user?->email) {
-                    Mail::to($campaign->user->email)->queue(new CampaignAutoExpiredMail($campaign));
+                    Mail::to($campaign->user->email)->queue(new CampaignAutoExpiredMail($campaign, $maxPauseDays));
                 }
 
                 $autoExpiredPausedCount++;
@@ -97,7 +97,7 @@ class CleanExpiredBoosts extends Command
 
                 if ($campaign->user?->email) {
                     $daysRemaining = max(1, $maxPauseDays - $pausedDays);
-                    Mail::to($campaign->user->email)->queue(new CampaignPauseReminderMail($campaign, $daysRemaining));
+                    Mail::to($campaign->user->email)->queue(new CampaignPauseReminderMail($campaign, $daysRemaining, $maxPauseDays));
                 }
 
                 $remindersSentCount++;
@@ -111,7 +111,7 @@ class CleanExpiredBoosts extends Command
 
                 if ($campaign->user?->email) {
                     $daysRemaining = max(1, $maxPauseDays - $pausedDays);
-                    Mail::to($campaign->user->email)->queue(new CampaignPauseReminderMail($campaign, $daysRemaining));
+                    Mail::to($campaign->user->email)->queue(new CampaignPauseReminderMail($campaign, $daysRemaining, $maxPauseDays));
                 }
 
                 $remindersSentCount++;

@@ -115,10 +115,10 @@
         <div class="content">
             <h2>Boost Campaign Expired</h2>
             <div class="alert-box">
-                Your campaign has reached the 30-day maximum pause limit.
+                Your campaign has reached the {{ $maxPauseDays ?? 30 }}-day maximum pause limit.
             </div>
             <p>
-                The advertising boost campaign for <strong>{{ $campaign->boostable->product_name ?? $campaign->boostable->name ?? 'your product' }}</strong> remained paused for 30 consecutive days and has now automatically concluded.
+                The advertising boost campaign for <strong>{{ $campaign->boostable->product_name ?? $campaign->boostable->name ?? 'your product' }}</strong> remained paused for {{ $maxPauseDays ?? 30 }} consecutive days and has now automatically concluded.
             </p>
             <p>
                 You can start a new boost campaign at any time from your product listing dashboard to regain top-tier visibility.

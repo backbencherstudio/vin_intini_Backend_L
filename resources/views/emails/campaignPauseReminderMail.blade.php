@@ -118,7 +118,7 @@
                 Action Required: {{ $daysRemaining }} {{ $daysRemaining === 1 ? 'day' : 'days' }} remaining before automatic expiration.
             </div>
             <p>
-                Your advertising boost campaign for <strong>{{ $campaign->boostable->product_name ?? $campaign->boostable->name ?? 'your product' }}</strong> has been paused. Under our 30-day pause policy, campaigns remaining paused beyond 30 consecutive days expire automatically.
+                Your advertising boost campaign for <strong>{{ $campaign->boostable->product_name ?? $campaign->boostable->name ?? 'your product' }}</strong> has been paused. Under our {{ $maxPauseDays ?? 30 }}-day pause policy, campaigns remaining paused beyond {{ $maxPauseDays ?? 30 }} consecutive days expire automatically.
             </p>
             <p>
                 To utilize your remaining paid boost days, please resume your campaign from your advertiser dashboard.
@@ -129,7 +129,7 @@
             </div>
 
             <p style="font-size: 13px; color: #94a3b8; margin-top: 25px;">
-                If you choose not to resume, your remaining days will expire at the end of the 30-day pause window.
+                If you choose not to resume, your remaining days will expire at the end of the {{ $maxPauseDays ?? 30 }}-day pause window.
             </p>
         </div>
 
