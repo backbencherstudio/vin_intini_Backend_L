@@ -214,8 +214,10 @@ class RecruiterDashboardTest extends TestCase
         $this->assertSame(1, $data['cards']['total_archived_jobs']['total']);
         $this->assertSame(1, $data['cards']['total_rejected_jobs']['total']);
 
-        // Check Recent Jobs (3 jobs created)
-        $this->assertCount(3, $data['recent_jobs']);
+        // Check Recent Jobs (Archived jobs are excluded)
+        $this->assertCount(2, $data['recent_jobs']);
+        $recentStatuses = array_column($data['recent_jobs'], 'status');
+        $this->assertNotContains(IndustryJobPostStatus::ARCHIVE->value, $recentStatuses);
 
         // Check Graph (weekly has 7 days, monthly has 12 months)
         $this->assertArrayNotHasKey('applicants_chart', $data);
