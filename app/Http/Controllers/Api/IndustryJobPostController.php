@@ -840,7 +840,7 @@ class IndustryJobPostController extends Controller
             'position' => [$isRequired, 'string', 'max:255'],
             'category' => [$isRequired, 'string', 'max:100'],
             'sub_category' => ['nullable', 'string', 'max:100'],
-            'job_description' => [$isRequired, 'string', 'max:5000'],
+            'job_description' => [$isRequired, 'string'],
 
             'work_mode' => [$isRequired, 'string', 'in:remote,on_site,hybrid'],
             'employment_type' => [$isRequired, 'string', 'in:full_time,part_time,short_term,contract,internship'],
@@ -848,7 +848,18 @@ class IndustryJobPostController extends Controller
             'level' => ['nullable', 'string', 'max:100'],
             'experience' => ['nullable', 'string', 'max:100'],
             'network_type' => [$isRequired, 'string', 'in:psychology,neuroscience'],
-            'employment_offering' => [$isRequired, 'string', 'in:state,private'],
+            'employment_offering' => [
+                $isRequired,
+                'string',
+                Rule::in([
+                    'state_institutions',
+                    'academic_institutions',
+                    'private_practice',
+                    'biotech_industry',
+                    'psychotropics_industry',
+                    'publications_industry',
+                ]),
+            ],
 
             'state_id' => [
                 Rule::requiredIf(! $isDraft && $request->input('work_mode') !== 'remote'),

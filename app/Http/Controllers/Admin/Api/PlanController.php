@@ -23,10 +23,14 @@ class PlanController extends Controller
     public function index(Request $request): JsonResponse
     {
         $billingCycle = $request->input('billing_cycle');
+        $planType = $request->input('plan_type', $request->input('type'));
 
         $plans = Plan::query()
             ->when($billingCycle, function ($query, $billingCycle) {
                 $query->where('billing_cycle', $billingCycle);
+            })
+            ->when($planType, function ($query, $planType) {
+                $query->where('plan_type', strtolower(trim((string) $planType)));
             })
             ->withCount('subscriptions')
             ->latest()

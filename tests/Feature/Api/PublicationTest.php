@@ -301,6 +301,8 @@ class PublicationTest extends TestCase
         $responseProf->assertStatus(200);
         $responseProf->assertJsonCount(1, 'data');
         $responseProf->assertJsonPath('data.0.publication_type', 'professional');
+        $responseProf->assertJsonPath('data.0.industry.name', $this->industry->name);
+        $responseProf->assertJsonPath('data.0.user', null);
         $responseProf->assertJsonStructure([
             'success',
             'message',
@@ -319,6 +321,9 @@ class PublicationTest extends TestCase
         $responseUni->assertStatus(200);
         $responseUni->assertJsonCount(1, 'data');
         $responseUni->assertJsonPath('data.0.publication_type', 'university');
+        $expectedUserName = trim($this->premiumUser->first_name.' '.$this->premiumUser->last_name);
+        $responseUni->assertJsonPath('data.0.user.name', $expectedUserName ?: $this->premiumUser->username);
+        $responseUni->assertJsonPath('data.0.industry', null);
     }
 
     public function test_public_feed_cursor_pagination_orders_latest_on_top(): void
@@ -413,6 +418,28 @@ class PublicationTest extends TestCase
         $this->assertEquals(2, $publication->fresh()->views_count);
     }
 
+    public function test_show_publication_details_returns_file_extensions(): void
+    {
+        $publication = Publication::create([
+            'creator_id' => $this->premiumUser->id,
+            'industry_id' => null,
+            'network_type' => 'psychology',
+            'publication_type' => 'university',
+            'title' => 'File Extension Test',
+            'slug' => 'file-extension-test',
+            'abstract' => 'Checking file extensions.',
+            'attachment' => 'publications/attachments/sample-paper.pdf',
+            'website_url' => 'https://example.com/study',
+            'status' => 'active',
+            'views_count' => 0,
+        ]);
+
+        $this->actingAs($this->premiumUser, 'api')
+            ->getJson("/api/publications/{$publication->id}/details")
+            ->assertStatus(200)
+            ->assertJsonPath('data.file_extension', 'pdf');
+    }
+
     public function test_toggle_like_updates_likes_count(): void
     {
         $publication = Publication::create([
@@ -467,5 +494,41 @@ class PublicationTest extends TestCase
         $deleteRes = $this->actingAs($this->premiumUser, 'api')->deleteJson("/api/publications/{$publication->id}/delete");
         $deleteRes->assertStatus(200);
         $this->assertSoftDeleted('publications', ['id' => $publication->id]);
+    }
+
+    public function test_my_listings_returns_cards_and_publications(): void
+    {
+        Publication::create([
+            'creator_id' => $this->industryUser->id,
+            'industry_id' => $this->industry->id,
+            'network_type' => 'psychology',
+            'publication_type' => 'professional',
+            'title' => 'Industry Study Title',
+            'slug' => 'industry-study-title',
+            'abstract' => 'Study abstract.',
+            'website_url' => 'https://example.com/study',
+            'status' => 'active',
+            'views_count' => 150,
+            'likes_count' => 12,
+        ]);
+
+        $res = $this->actingAs($this->industryUser, 'api')->getJson('/api/publications/my-listings');
+
+        $res->assertStatus(200);
+        $res->assertJsonStructure([
+            'success',
+            'message',
+            'cards' => [
+                'all_publications' => ['title', 'total', 'growth', 'growth_percentage', 'is_positive'],
+                'active_publications' => ['title', 'total', 'growth', 'growth_percentage', 'badge', 'is_positive'],
+                'publication_views' => ['title', 'total', 'growth', 'growth_percentage', 'is_positive'],
+                'total_likes' => ['title', 'total', 'growth', 'growth_percentage', 'is_positive'],
+            ],
+            'data',
+            'pagination',
+        ]);
+        $res->assertJsonPath('cards.all_publications.total', 1);
+        $res->assertJsonPath('cards.active_publications.total', 1);
+        $res->assertJsonPath('cards.publication_views.total', 150);
     }
 }

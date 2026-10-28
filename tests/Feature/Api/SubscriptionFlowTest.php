@@ -165,6 +165,34 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.plans.0.name', 'Pro Monthly');
     }
 
+    public function test_plans_filter_by_plan_type(): void
+    {
+        Plan::create([
+            'name' => 'Premium Plan', 'billing_rate' => 19.99, 'billing_cycle' => 'monthly',
+            'plan_type' => 'premium', 'status' => 'active', 'features' => ['search_profiles'],
+            'stripe_product_id' => 'prod_1', 'stripe_price_id' => 'price_1',
+        ]);
+        Plan::create([
+            'name' => 'Industry Plan', 'billing_rate' => 49.99, 'billing_cycle' => 'monthly',
+            'plan_type' => 'industry', 'status' => 'active', 'features' => ['search_profiles'],
+            'stripe_product_id' => 'prod_2', 'stripe_price_id' => 'price_2',
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')->getJson('/api/plans?plan_type=industry');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'data.plans')
+            ->assertJsonPath('data.plans.0.name', 'Industry Plan');
+
+        $responseFallbackParam = $this->actingAs($this->user, 'api')->getJson('/api/plans?type=premium');
+
+        $responseFallbackParam
+            ->assertOk()
+            ->assertJsonCount(1, 'data.plans')
+            ->assertJsonPath('data.plans.0.name', 'Premium Plan');
+    }
+
     public function test_plans_return_all_cycles_when_billing_cycle_not_provided(): void
     {
         Plan::create([

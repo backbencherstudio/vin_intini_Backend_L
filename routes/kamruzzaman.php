@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
 use App\Http\Controllers\Admin\Api\InstitutionReportController;
 use App\Http\Controllers\Admin\Api\PageController;
+use App\Http\Controllers\Admin\Api\PartnerManagementController;
 use App\Http\Controllers\Admin\Api\PublicationManagementController;
 use App\Http\Controllers\Admin\Api\UserManagementController;
 use App\Http\Controllers\Api\IndustryController;
@@ -18,6 +19,12 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('users/{id}', [UserManagementController::class, 'show']);
         Route::post('users/{id}/toggle-suspend', [UserManagementController::class, 'toggleSuspend']);
         Route::get('leave-request', [UserManagementController::class, 'getDeletedAccountLogs']);
+    });
+
+    // Partners (Pro Industry Companies) Management.....
+    Route::prefix('partners')->group(function () {
+        Route::get('/', [PartnerManagementController::class, 'index']);
+        Route::post('{id}/toggle-pause', [PartnerManagementController::class, 'togglePause']);
     });
 
     // Publications Management.....

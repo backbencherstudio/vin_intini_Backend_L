@@ -150,7 +150,7 @@ class IndustryJobPostIdTest extends TestCase
             'work_mode' => 'hybrid',
             'employment_type' => 'full_time',
             'network_type' => 'neuroscience',
-            'employment_offering' => 'private',
+            'employment_offering' => 'private_practice',
             'state_id' => $state->id,
             'city_id' => $city->id,
             'email' => 'careers@neural.io',
@@ -174,5 +174,103 @@ class IndustryJobPostIdTest extends TestCase
         $this->assertStringStartsWith($expectedPrefix, $createdJob->job_id);
         $this->assertEquals(6, strlen($createdJob->job_id));
         $this->assertStringEndsWith($createdJob->job_id, $createdJob->slug);
+    }
+
+    public function test_all_six_employment_offerings_are_accepted_on_create_and_update(): void
+    {
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+        $userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'api']);
+
+        $user = User::factory()->create(['is_verified' => true]);
+        $user->assignRole($userRole);
+
+        UserProfile::create([
+            'user_id' => $user->id,
+            'is_profile_completed' => true,
+        ]);
+
+        $plan = Plan::create([
+            'name' => 'Pro Industry Plan',
+            'plan_type' => PlanType::INDUSTRY->value,
+            'status' => 'active',
+            'billing_rate' => 99.99,
+            'billing_cycle' => 'monthly',
+            'features' => ['post_unlimited_jobs'],
+        ]);
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'ends_at' => now()->addMonth(),
+        ]);
+
+        $industry = Industry::create([
+            'created_by' => $user->id,
+            'name' => 'Biotech Labs',
+            'slug' => 'biotech-labs',
+            'status' => 'approved',
+        ]);
+
+        $offerings = [
+            'state_institutions',
+            'academic_institutions',
+            'private_practice',
+            'biotech_industry',
+            'psychotropics_industry',
+            'publications_industry',
+        ];
+
+        $basePayload = [
+            'job_title' => 'Lab Researcher',
+            'position' => 'Researcher',
+            'category' => 'Research',
+            'job_description' => 'Research description.',
+            'work_mode' => 'remote',
+            'employment_type' => 'full_time',
+            'network_type' => 'neuroscience',
+            'email' => 'hr@biotech.io',
+            'phone_number' => '+15551234567',
+            'salary_min' => 90000,
+            'salary_max' => 110000,
+            'salary_type' => 'Yearly',
+            'information_confirmed' => true,
+            'status' => 'published',
+        ];
+
+        // 1. Verify all 6 offerings succeed on create
+        foreach ($offerings as $index => $offering) {
+            $payload = array_merge($basePayload, [
+                'job_title' => "Job Offering {$index}",
+                'employment_offering' => $offering,
+            ]);
+
+            $response = $this->actingAs($user, 'api')->postJson('/api/industry/job-post/create', $payload);
+            $response->assertCreated()
+                ->assertJsonPath('success', true)
+                ->assertJsonPath('data.employment_offering', $offering);
+        }
+
+        // 2. Verify offering update
+        $firstJob = IndustryJobPost::where('created_by', $user->id)->first();
+        $this->assertNotNull($firstJob);
+
+        $updateResponse = $this->actingAs($user, 'api')->putJson("/api/industry/job-post/{$firstJob->id}/update", array_merge($basePayload, [
+            'job_title' => 'Updated Offering Job',
+            'employment_offering' => 'publications_industry',
+        ]));
+
+        $updateResponse->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.employment_offering', 'publications_industry');
+
+        // 3. Verify invalid offering is rejected with 422
+        $invalidResponse = $this->actingAs($user, 'api')->postJson('/api/industry/job-post/create', array_merge($basePayload, [
+            'job_title' => 'Invalid Offering Job',
+            'employment_offering' => 'unsupported_offering',
+        ]));
+
+        $invalidResponse->assertStatus(422)
+            ->assertJsonValidationErrors(['employment_offering']);
     }
 }

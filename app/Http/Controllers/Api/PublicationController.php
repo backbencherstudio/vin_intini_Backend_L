@@ -11,6 +11,7 @@ use App\Models\Publication;
 use App\Models\PublicationLike;
 use App\Models\PublicationView;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -248,9 +249,12 @@ class PublicationController extends Controller
         $perPage = min(max($request->integer('per_page', 10), 1), 100);
         $paginated = $query->paginate($perPage);
 
+        $cards = $this->calculatePublicationCards($user);
+
         return response()->json([
             'success' => true,
             'message' => 'My publications retrieved successfully.',
+            'cards' => $cards,
             'data' => PublicationResource::collection($paginated->items())->map(fn ($r) => (new PublicationResource($r->resource))->resolve()),
             'pagination' => [
                 'current_page' => $paginated->currentPage(),
@@ -503,5 +507,126 @@ class PublicationController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Calculate summary metric cards for the current user's or company's publications.
+     *
+     * @return array<string, mixed>
+     */
+    private function calculatePublicationCards(User $user): array
+    {
+        $now = Carbon::now();
+        $startOfCurrentMonth = $now->copy()->startOfMonth();
+        $endOfCurrentMonth = $now->copy()->endOfMonth();
+        $startOfLastMonth = $startOfCurrentMonth->copy()->subMonthNoOverflow();
+        $endOfLastMonth = $startOfLastMonth->copy()->endOfMonth();
+
+        $publicationScope = Publication::query();
+        if ($user->industry && $user->hasActiveSubscription(PlanType::INDUSTRY)) {
+            $publicationScope->where('industry_id', $user->industry->id);
+        } else {
+            $publicationScope->where('creator_id', $user->id)->whereNull('industry_id');
+        }
+
+        $publicationIds = (clone $publicationScope)->select('id');
+
+        // 1. Total Publications
+        $totalPublications = (clone $publicationScope)->count();
+        $lastMonthPublications = (clone $publicationScope)
+            ->where('created_at', '<=', $endOfLastMonth)
+            ->count();
+        $publicationsGrowth = $this->calculatePercentageChange($totalPublications, $lastMonthPublications);
+
+        // 2. Active Publications
+        $activePublications = (clone $publicationScope)
+            ->where('status', 'active')
+            ->count();
+        $lastMonthActive = (clone $publicationScope)
+            ->where('status', 'active')
+            ->where('created_at', '<=', $endOfLastMonth)
+            ->count();
+        $activeGrowth = $this->calculatePercentageChange($activePublications, $lastMonthActive);
+
+        // 3. Publications Views
+        $storedViewsCount = (int) (clone $publicationScope)->sum('views_count');
+        $logViewsCount = PublicationView::whereIn('publication_id', $publicationIds)->count();
+        $totalViews = max($storedViewsCount, $logViewsCount);
+
+        $currentMonthViews = PublicationView::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startOfCurrentMonth, $endOfCurrentMonth])
+            ->count();
+        $lastMonthViews = PublicationView::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth])
+            ->count();
+        $viewsGrowth = $this->calculatePercentageChange($currentMonthViews, $lastMonthViews);
+
+        // 4. Total Likes
+        $storedLikesCount = (int) (clone $publicationScope)->sum('likes_count');
+        $logLikesCount = PublicationLike::whereIn('publication_id', $publicationIds)->count();
+        $totalLikes = max($storedLikesCount, $logLikesCount);
+
+        $currentMonthLikes = PublicationLike::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startOfCurrentMonth, $endOfCurrentMonth])
+            ->count();
+        $lastMonthLikes = PublicationLike::whereIn('publication_id', $publicationIds)
+            ->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth])
+            ->count();
+        $likesGrowth = $this->calculatePercentageChange($currentMonthLikes, $lastMonthLikes);
+
+        $allPubCard = [
+            'title' => 'All Publications',
+            'total' => (int) $totalPublications,
+            'growth' => sprintf('%s%s%%', $publicationsGrowth >= 0 ? '+' : '-', abs($publicationsGrowth)),
+            'growth_text' => sprintf('%s%s%% from last month', $publicationsGrowth >= 0 ? '+' : '-', abs($publicationsGrowth)),
+            'growth_percentage' => abs($publicationsGrowth),
+            'is_positive' => $publicationsGrowth >= 0,
+        ];
+
+        $activePubCard = [
+            'title' => 'Active Publication',
+            'total' => (int) $activePublications,
+            'growth' => sprintf('%s%s%%', $activeGrowth >= 0 ? '+' : '-', abs($activeGrowth)),
+            'growth_text' => sprintf('%s%s%% from last month', $activeGrowth >= 0 ? '+' : '-', abs($activeGrowth)),
+            'growth_percentage' => abs($activeGrowth),
+            'badge' => $activeGrowth == 0.0 ? 'Scale' : sprintf('%s%s%%', $activeGrowth >= 0 ? '+' : '-', abs($activeGrowth)),
+            'is_positive' => $activeGrowth >= 0,
+        ];
+
+        $viewsCard = [
+            'title' => 'Publication Views',
+            'total' => (int) $totalViews,
+            'growth' => sprintf('%s%s%%', $viewsGrowth >= 0 ? '+' : '-', abs($viewsGrowth)),
+            'growth_text' => sprintf('%s%s%% from last month', $viewsGrowth >= 0 ? '+' : '-', abs($viewsGrowth)),
+            'growth_percentage' => abs($viewsGrowth),
+            'is_positive' => $viewsGrowth >= 0,
+        ];
+
+        $likesCard = [
+            'title' => 'Total Likes',
+            'total' => (int) $totalLikes,
+            'growth' => sprintf('%s%s%%', $likesGrowth >= 0 ? '+' : '-', abs($likesGrowth)),
+            'growth_text' => sprintf('%s%s%% from last month', $likesGrowth >= 0 ? '+' : '-', abs($likesGrowth)),
+            'growth_percentage' => abs($likesGrowth),
+            'is_positive' => $likesGrowth >= 0,
+        ];
+
+        return [
+            'all_publications' => $allPubCard,
+            'total_publications' => $allPubCard,
+            'active_publications' => $activePubCard,
+            'publication_views' => $viewsCard,
+            'publications_views' => $viewsCard,
+            'total_likes' => $likesCard,
+        ];
+    }
+
+    private function calculatePercentageChange(float $current, float $previous): float
+    {
+        if ($previous == 0.0) {
+            return $current > 0 ? 100.0 : 0.0;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
     }
 }

@@ -33,14 +33,6 @@ class PublicationResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $logo = null;
-        if ($this->industry) {
-            $rawLogo = $this->industry->logo ?? null;
-            if ($rawLogo) {
-                $logo = str_starts_with($rawLogo, 'http') ? $rawLogo : asset('storage/'.ltrim($rawLogo, '/'));
-            }
-        }
-
         $isLiked = false;
         if (! empty($this->likedPublicationIds)) {
             $isLiked = isset($this->likedPublicationIds[$this->id]);
@@ -48,22 +40,33 @@ class PublicationResource extends JsonResource
             $isLiked = $this->likes()->where('user_id', auth('api')->id())->exists();
         }
 
+        $user = null;
+        $industry = null;
+
+        if ($this->industry) {
+            $rawLogo = $this->industry->logo ?? null;
+            $logo = $rawLogo ? (str_starts_with($rawLogo, 'http') ? $rawLogo : asset('storage/' . ltrim($rawLogo, '/'))) : null;
+            $industry = [
+                'name' => $this->industry->name,
+                'image' => $logo,
+            ];
+        } elseif ($this->creator) {
+            $userName = trim(($this->creator->first_name ?? '') . ' ' . ($this->creator->last_name ?? ''));
+            $userImage = $this->creator->profile_image_url
+                ?? ($this->creator->profile_image ? asset('storage/' . ltrim($this->creator->profile_image, '/')) : null);
+            $user = [
+                'name' => $userName ?: ($this->creator->username ?? ''),
+                'image' => $userImage,
+            ];
+        }
+
         return [
             'id' => $this->id,
             'publication_id' => $this->publication_id,
             'creator_id' => $this->creator_id,
-            'creator' => $this->creator ? [
-                'id' => $this->creator->id,
-                'name' => trim(($this->creator->first_name ?? '').' '.($this->creator->last_name ?? '')),
-                'username' => $this->creator->username,
-                'profile_image' => $this->creator->profile_image_url ?? $this->creator->profile_image,
-            ] : null,
+            'user' => $user,
             'industry_id' => $this->industry_id,
-            'industry' => $this->industry ? [
-                'id' => $this->industry->id,
-                'name' => $this->industry->name,
-                'logo' => $logo,
-            ] : null,
+            'industry' => $industry,
             'network_type' => $this->network_type,
             'publication_type' => $this->publication_type,
             'title' => $this->title,
@@ -74,6 +77,7 @@ class PublicationResource extends JsonResource
             'website_url' => $this->website_url,
             'attachment' => $this->attachment,
             'attachment_url' => $this->attachment_url,
+            'file_extension' => $this->file_extension,
             'information_confirmed' => (bool) $this->information_confirmed,
             'status' => $this->status,
             'views_count' => (int) ($this->views_count ?? 0),

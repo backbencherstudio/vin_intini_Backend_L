@@ -95,6 +95,7 @@ Route::middleware(['auth:api', 'active_session'])->group(function () {
         // Recovery Email Setup Routes
         Route::post('/recovery-email/update', [TwoFactorController::class, 'updateRecoveryEmail']);
         Route::post('/recovery-email/confirm', [TwoFactorController::class, 'confirmRecoveryEmail']);
+        Route::post('/recovery-email/resend-otp', [TwoFactorController::class, 'resendRecoveryEmailOtp'])->middleware('throttle:3,1');
     });
 
     Route::middleware('role:user')->group(function () {

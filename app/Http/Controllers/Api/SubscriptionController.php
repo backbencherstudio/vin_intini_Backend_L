@@ -54,8 +54,13 @@ class SubscriptionController extends Controller
 
     public function plans(Request $request): JsonResponse
     {
+        $planType = $request->filled('plan_type')
+            ? $request->string('plan_type')->trim()->lower()->toString()
+            : ($request->filled('type') ? $request->string('type')->trim()->lower()->toString() : null);
+
         $plans = Plan::where('status', 'active')
             ->when($request->filled('billing_cycle'), fn ($query) => $query->where('billing_cycle', $request->string('billing_cycle')))
+            ->when($planType, fn ($query) => $query->where('plan_type', $planType))
             ->where(function ($query) {
                 $query->whereNotNull('stripe_price_id')
                     ->orWhereNotNull('revenuecat_store_identifier_ios')
@@ -333,11 +338,11 @@ class SubscriptionController extends Controller
 
             $cardLast4 = $transaction->card_last4;
             if ($formattedBrand && $cardLast4) {
-                $paymentMethod = "{$formattedBrand} ************{$cardLast4}";
+                $paymentMethod = "{$formattedBrand} ****{$cardLast4}";
             } elseif ($formattedBrand) {
                 $paymentMethod = $formattedBrand;
             } elseif ($cardLast4) {
-                $paymentMethod = "Card ************{$cardLast4}";
+                $paymentMethod = "Card ****{$cardLast4}";
             } else {
                 $paymentMethod = 'Credit/Debit Card';
             }
