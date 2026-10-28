@@ -179,10 +179,39 @@ class IndustryProduct extends Model implements BoostableInterface
     }
 
     /**
+     * Check if a given user is the creator or industry owner of this product.
+     */
+    public function isOwnedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ((int) $user->id === (int) $this->creator_id) {
+            return true;
+        }
+
+        if ($this->industry_id && $user->industry && (int) $user->industry->id === (int) $this->industry_id) {
+            return true;
+        }
+
+        if ($this->industry && (int) $this->industry->created_by === (int) $user->id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Record a product view with unique visitor deduplication and 30-second cooldown protection.
      */
     public function recordView(?User $user = null, ?string $ip = null): void
     {
+        // Anti-fraud self-view guard: Do not count view if user is the product creator or owner
+        if ($this->isOwnedBy($user)) {
+            return;
+        }
+
         $viewCriteria = [
             'industry_product_id' => $this->id,
             'user_id' => $user?->id,

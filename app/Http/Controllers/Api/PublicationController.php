@@ -465,6 +465,10 @@ class PublicationController extends Controller
      */
     private function recordView(Publication $publication, ?User $user, ?string $ip): void
     {
+        if ($user && ((int) $user->id === (int) $publication->creator_id || (int) $user->id === (int) ($publication->industry?->created_by ?? 0))) {
+            return;
+        }
+
         $viewCriteria = [
             'publication_id' => $publication->id,
             'user_id' => $user?->id,

@@ -314,3 +314,20 @@ test('visiting product details route increments clicks_count and ad campaign tot
     expect($this->product->fresh()->clicks_count)->toBe(1)
         ->and($this->campaign->fresh()->total_clicks)->toBe(1);
 });
+
+test('product creator viewing product details does not increment views or clicks', function () {
+    expect($this->campaign->fresh()->total_clicks)->toBe(0)
+        ->and($this->product->fresh()->clicks_count)->toBe(0)
+        ->and($this->product->fresh()->views_count)->toBe(0);
+
+    // Visiting product details as the product creator ($this->user)
+    $response = $this->actingAs($this->user, 'api')
+        ->getJson("/api/industry/products/{$this->product->id}/details");
+
+    $response->assertOk()
+        ->assertJsonPath('data.views_count', 0);
+
+    expect($this->product->fresh()->clicks_count)->toBe(0)
+        ->and($this->product->fresh()->views_count)->toBe(0)
+        ->and($this->campaign->fresh()->total_clicks)->toBe(0);
+});

@@ -248,6 +248,19 @@ class NewsfeedAdInjector
     protected function recordImpression(AdCampaign $campaign, ?User $user): void
     {
         try {
+            // Anti-fraud self-impression guard: Ignore impression if user is the product creator, industry creator, or campaign owner
+            $isOwner = $user && (
+                (int) $user->id === (int) $campaign->user_id
+                || (int) $user->id === (int) ($campaign->industry?->created_by ?? 0)
+                || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
+                || ($user->industry && (int) $user->industry->id === (int) $campaign->industry_id)
+                || ($campaign->boostable instanceof IndustryProduct && $campaign->boostable->isOwnedBy($user))
+            );
+
+            if ($isOwner) {
+                return;
+            }
+
             $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.(request()?->ip() ?: 'unknown');
             $throttleKey = "ad_impression_throttle_{$campaign->id}_{$userIdentifier}";
 

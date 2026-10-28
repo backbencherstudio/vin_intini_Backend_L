@@ -632,11 +632,13 @@ class ProductBoostController extends Controller
         $debouncedCount = 0;
 
         foreach ($campaigns as $campaign) {
-            // Anti-fraud self-impression guard: Ignore impression if user is the industry creator or campaign owner
+            // Anti-fraud self-impression guard: Ignore impression if user is the product creator, industry creator, or campaign owner
             $isOwner = $user && (
                 (int) $user->id === (int) $campaign->user_id
                 || (int) $user->id === (int) ($campaign->industry?->created_by ?? 0)
                 || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
+                || ($user->industry && (int) $user->industry->id === (int) $campaign->industry_id)
+                || ($campaign->boostable instanceof IndustryProduct && $campaign->boostable->isOwnedBy($user))
             );
 
             if ($isOwner) {
@@ -725,9 +727,11 @@ class ProductBoostController extends Controller
 
         // Organic product without an active ad campaign
         if (! $campaign && $product) {
-            $isOwner = ! app()->environment('local') && $user && (
-                (int) $user->id === (int) $product->creator_id
+            $isOwner = $user && (
+                $product->isOwnedBy($user)
+                || (int) $user->id === (int) $product->creator_id
                 || (int) $user->id === (int) ($product->industry?->created_by ?? 0)
+                || ($user->industry && (int) $user->industry->id === (int) $product->industry_id)
             );
 
             $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
@@ -758,11 +762,13 @@ class ProductBoostController extends Controller
             ? $campaign->boostable->getAdDestinationUrl()
             : ($campaign->boostable?->product_url ?? null);
 
-        // Anti-fraud self-click guard: Do not count clicks if user is the industry creator or campaign owner (bypassed in local env)
-        $isOwner = ! app()->environment('local') && $user && (
+        // Anti-fraud self-click guard: Do not count clicks if user is the product creator, industry creator, or campaign owner
+        $isOwner = $user && (
             (int) $user->id === (int) $campaign->user_id
             || (int) $user->id === (int) ($campaign->industry?->created_by ?? 0)
             || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
+            || ($user->industry && (int) $user->industry->id === (int) $campaign->industry_id)
+            || ($campaign->boostable instanceof IndustryProduct && $campaign->boostable->isOwnedBy($user))
         );
 
         if ($isOwner) {

@@ -419,7 +419,7 @@ class IndustryProductController extends Controller
         $product = $this->findProduct($id, ['creator', 'industry', 'section', 'category', 'activeCampaign']);
 
         $currentUser = auth('api')->user() ?? auth('web')->user();
-        if (! $currentUser && (app()->environment('local', 'testing') || $request->has('preview') || $request->header('X-Preview-Mode'))) {
+        if (! $currentUser && ($request->has('preview') || $request->header('X-Preview-Mode'))) {
             $currentUser = User::where('email', 'niaz.softvence@gmail.com')->first() ?? User::first();
         }
 
@@ -936,10 +936,12 @@ class IndustryProductController extends Controller
      */
     private function recordProductClick(IndustryProduct $product, ?User $user, ?string $ip, string $placement = 'industry_product_feed'): void
     {
-        // Anti-fraud self-click guard (disabled in local environment for seamless developer testing)
-        $isOwner = ! app()->environment('local') && $user && (
-            (int) $user->id === (int) $product->creator_id
+        // Anti-fraud self-click guard: Do not count clicks if user is the product creator or owner
+        $isOwner = $user && (
+            $product->isOwnedBy($user)
+            || (int) $user->id === (int) $product->creator_id
             || (int) $user->id === (int) ($product->industry?->created_by ?? 0)
+            || ($user->industry && (int) $user->industry->id === (int) $product->industry_id)
         );
 
         if ($isOwner) {
