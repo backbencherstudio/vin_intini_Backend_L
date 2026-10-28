@@ -30,8 +30,9 @@ class IndustryDashboardService
         // 2. Metrics Cards
         $cards = $this->calculateCards($industryId, $jobPostIds);
 
-        // 3. Recent Job Listings (Latest 3 jobs)
+        // 3. Recent Job Listings (Latest 3 jobs, excluding archive)
         $recentJobs = IndustryJobPost::where('industry_id', $industryId)
+            ->where('status', '!=', IndustryJobPostStatus::ARCHIVE->value)
             ->with([
                 'industry:id,name,logo',
                 'state:id,name',
