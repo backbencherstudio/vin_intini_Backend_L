@@ -203,12 +203,14 @@ class IndustryProfileController extends Controller
             ->where('status', 'active')
             ->with(['activeCampaign']);
 
-        // Optional search and filters
+        // Optional search and filters (optimized by product_name and product_id)
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
-            $query->where(function ($q) use ($search) {
-                $q->where('product_name', 'LIKE', "%{$search}%")
-                    ->orWhere('product_id', 'LIKE', "%{$search}%");
+            $sanitized = addcslashes($search, '%_');
+            $query->where(function ($q) use ($search, $sanitized) {
+                $q->where('product_id', $search)
+                    ->orWhere('product_id', 'LIKE', "{$sanitized}%")
+                    ->orWhere('product_name', 'LIKE', "%{$sanitized}%");
             });
         }
 

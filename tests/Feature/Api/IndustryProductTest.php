@@ -769,4 +769,58 @@ class IndustryProductTest extends TestCase
 
         $this->assertNotEmpty($page2Response->json('pagination.prev_cursor'));
     }
+
+    public function test_product_feed_searches_by_product_name_and_id_but_ignores_description(): void
+    {
+        $uniqueWordInDesc = 'XylophoneKeywordOnlyInDescription';
+        $product = IndustryProduct::create([
+            'creator_id' => $this->creator->id,
+            'industry_id' => $this->industry->id,
+            'section_id' => $this->section->id,
+            'category_id' => $this->subCategory1->id,
+            'network_type' => 'psychology',
+            'industry_type' => 'biotechnology',
+            'product_name' => 'Galvanic Skin Sensor G2',
+            'product_id' => '99SKIN',
+            'slug' => 'galvanic-skin-sensor-g2',
+            'description' => "This device contains {$uniqueWordInDesc} inside its text.",
+            'status' => 'active',
+            'information_confirmed' => true,
+        ]);
+
+        // 1. Search by product_name: matches
+        $nameSearch = $this->actingAs($this->creator, 'api')
+            ->getJson('/api/industry/product-feed?network_type=psychology&industry_type=biotechnology&search=Galvanic')
+            ->assertOk();
+        $this->assertTrue(collect($nameSearch->json('data'))->contains('id', $product->id));
+
+        // 2. Search by product_id: matches
+        $idSearch = $this->actingAs($this->creator, 'api')
+            ->getJson('/api/industry/product-feed?network_type=psychology&industry_type=biotechnology&search=99SKIN')
+            ->assertOk();
+        $this->assertTrue(collect($idSearch->json('data'))->contains('id', $product->id));
+
+        // 3. Search by description keyword: MUST NOT MATCH (description search removed for 1M+ scale)
+        $descSearch = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/product-feed?network_type=psychology&industry_type=biotechnology&search={$uniqueWordInDesc}")
+            ->assertOk();
+        $this->assertFalse(collect($descSearch->json('data'))->contains('id', $product->id));
+
+        // 4. Search with section_id specified: matches
+        $sectionSearch = $this->actingAs($this->creator, 'api')
+            ->getJson("/api/industry/product-feed?network_type=psychology&industry_type=biotechnology&section_id={$this->section->id}&search=Galvanic")
+            ->assertOk();
+        $this->assertTrue(collect($sectionSearch->json('data'))->contains('id', $product->id));
+
+        // 5. Search on alias routes (/api/industry/feed and /api/industry/products/feed): both work identically
+        $alias1 = $this->actingAs($this->creator, 'api')
+            ->getJson('/api/industry/feed?network_type=psychology&industry_type=biotechnology&search=Galvanic')
+            ->assertOk();
+        $this->assertTrue(collect($alias1->json('data'))->contains('id', $product->id));
+
+        $alias2 = $this->actingAs($this->creator, 'api')
+            ->getJson('/api/industry/products/feed?network_type=psychology&industry_type=biotechnology&search=Galvanic')
+            ->assertOk();
+        $this->assertTrue(collect($alias2->json('data'))->contains('id', $product->id));
+    }
 }

@@ -15,6 +15,7 @@ use App\Models\IndustrySections;
 use App\Models\User;
 use App\Services\BoostSettingService;
 use App\Services\OptimizedImageUploadService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -191,14 +192,9 @@ class IndustryProductController extends Controller
                 $query->where('category_id', $request->integer('category_id'));
             }
 
-            // Search by product name, product_id, or description
+            // Search by product name or product_id (description excluded for 1M+ scale)
             if ($request->filled('search')) {
-                $search = $request->input('search');
-                $query->where(function ($q) use ($search) {
-                    $q->where('product_name', 'LIKE', "%{$search}%")
-                        ->orWhere('product_id', 'LIKE', "%{$search}%")
-                        ->orWhere('description', 'LIKE', "%{$search}%");
-                });
+                $this->applyProductSearch($query, (string) $request->input('search'));
             }
 
             // Resolve target section and its categories if section_id or category_id is provided
@@ -573,12 +569,7 @@ class IndustryProductController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('product_name', 'LIKE', "%{$search}%")
-                    ->orWhere('product_id', 'LIKE', "%{$search}%")
-                    ->orWhere('description', 'LIKE', "%{$search}%");
-            });
+            $this->applyProductSearch($query, (string) $request->input('search'));
         }
 
         $paginated = $query->paginate($perPage);
@@ -1013,5 +1004,45 @@ class IndustryProductController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * High-performance search for product_name and product_id (Engineered for 1M+ rows scale).
+     * Excludes heavy TEXT description column to prevent disk table scanning.
+     */
+    private function applyProductSearch(Builder $query, string $rawSearch): void
+    {
+        $search = trim($rawSearch);
+        if ($search === '') {
+            return;
+        }
+
+        $sanitized = addcslashes($search, '%_');
+        $isMysql = DB::connection()->getDriverName() === 'mysql';
+
+        $query->where(function (Builder $q) use ($search, $sanitized, $isMysql) {
+            // 1. Direct or Prefix Match on indexed Unique product_id (Ultra-fast B-Tree O(1)/O(log N))
+            $q->where('product_id', $search)
+                ->orWhere('product_id', 'LIKE', "{$sanitized}%");
+
+            // 2. High-Performance Product Name Search
+            // If MySQL and search string has >= 3 chars, combine FULLTEXT with LIKE for maximum speed & accuracy
+            if ($isMysql && strlen($search) >= 3) {
+                $words = array_filter(preg_split('/\s+/', $search));
+                $booleanTerms = array_map(function ($word) {
+                    $cleaned = preg_replace('/[+\-><()~*\"@]+/', '', $word);
+
+                    return ! empty($cleaned) ? '+'.$cleaned.'*' : '';
+                }, $words);
+                $booleanQuery = trim(implode(' ', array_filter($booleanTerms)));
+
+                if (! empty($booleanQuery)) {
+                    $q->orWhereRaw('MATCH(product_name) AGAINST(? IN BOOLEAN MODE)', [$booleanQuery]);
+                }
+            }
+
+            // Substring match on product_name (uses in-memory buffer pool without touching text blobs)
+            $q->orWhere('product_name', 'LIKE', "%{$sanitized}%");
+        });
     }
 }
