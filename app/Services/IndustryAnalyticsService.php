@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Enums\AdCampaignStatus;
 use App\Enums\IndustryJobPostStatus;
 use App\Models\AdCampaign;
+use App\Models\AdClick;
+use App\Models\AdImpression;
 use App\Models\Comment;
 use App\Models\Industry;
 use App\Models\IndustryFollow;
@@ -12,8 +14,6 @@ use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
 use App\Models\IndustryJobPostView;
 use App\Models\IndustryProduct;
-use App\Models\IndustryProductLike;
-use App\Models\IndustryProductView;
 use App\Models\IndustryProfileView;
 use App\Models\PostIndustry;
 use App\Models\PostLike;
@@ -286,30 +286,45 @@ class IndustryAnalyticsService
         $startOfLastMonth = $startOfCurrentMonth->copy()->subMonthNoOverflow();
         $endOfLastMonth = $startOfLastMonth->copy()->endOfMonth();
 
-        // 1. KPI Cards (Total Products, Active Products, Product Views, Total Like)
+        $productIds = IndustryProduct::where('industry_id', $industryId)->select('id');
+        $campaignIds = AdCampaign::where('industry_id', $industryId)
+            ->orWhere(function ($q) use ($productIds) {
+                $q->where('boostable_type', IndustryProduct::class)
+                    ->whereIn('boostable_id', $productIds);
+            })
+            ->pluck('id');
+
+        // 1. KPI Cards (Total Spend, Impressions, Clicks, CTR, Active Campaigns, CPC, etc.)
         $cards = $this->calculateAdvertisementCards(
             $industryId,
+            $campaignIds,
             $startOfCurrentMonth,
             $endOfCurrentMonth,
             $startOfLastMonth,
             $endOfLastMonth
         );
 
-        // 2. Top Performing Products (Table on the left: Products, Views, Click / Likes)
-        $topProducts = $this->getTopPerformingProducts($industryId);
+        // 2. Placement Breakdown (Newsfeed vs Industry Product Feed)
+        $totalImpressions = (int) ($cards['total_impressions']['total'] ?? 0);
+        $placements = $this->calculatePlacementBreakdown($campaignIds, $totalImpressions);
 
-        // 3. Advertisement Performance Graph (Chart on the right: Views vs Like across Weekly, Monthly, Yearly)
-        $graph = $this->calculateAdvertisementPerformanceGraph($industryId, $period);
+        // 3. Top Performing Ad Campaigns
+        $topCampaigns = $this->getTopPerformingCampaigns($campaignIds);
+
+        // 4. Advertisement Performance Graph (Impressions vs Clicks)
+        $graph = $this->calculateAdvertisementPerformanceGraph($industryId, $campaignIds, $period);
 
         return [
             'cards' => $cards,
-            'top_performing_products' => $topProducts,
+            'placements' => $placements,
+            'top_performing_campaigns' => $topCampaigns,
             'graph' => $graph,
         ];
     }
 
     private function calculateAdvertisementCards(
         int $industryId,
+        $campaignIds,
         Carbon $startCurrent,
         Carbon $endCurrent,
         Carbon $startLast,
@@ -317,65 +332,65 @@ class IndustryAnalyticsService
     ): array {
         $productIds = IndustryProduct::where('industry_id', $industryId)->select('id');
 
-        // Total Products
-        $totalProducts = IndustryProduct::where('industry_id', $industryId)->count();
-        $lastMonthProducts = IndustryProduct::where('industry_id', $industryId)
-            ->where('created_at', '<=', $endLast)
-            ->count();
-        $productsGrowth = $this->calculatePercentageChange($totalProducts, $lastMonthProducts);
-
-        // Active Products (status = 'active')
-        $activeProducts = IndustryProduct::where('industry_id', $industryId)
-            ->where('status', 'active')
-            ->count();
-        $lastMonthActiveProducts = IndustryProduct::where('industry_id', $industryId)
-            ->where('status', 'active')
-            ->where('created_at', '<=', $endLast)
-            ->count();
-        $activeGrowth = $this->calculatePercentageChange($activeProducts, $lastMonthActiveProducts);
-
-        // Product Views
-        $storedViewsCount = (int) IndustryProduct::where('industry_id', $industryId)->sum('views_count');
-        $logViewsCount = IndustryProductView::whereIn('industry_product_id', $productIds)->count();
-        $totalViews = max($storedViewsCount, $logViewsCount);
-
-        $currentMonthViews = IndustryProductView::whereIn('industry_product_id', $productIds)
-            ->whereBetween('created_at', [$startCurrent, $endCurrent])
-            ->count();
-        $lastMonthViews = IndustryProductView::whereIn('industry_product_id', $productIds)
-            ->whereBetween('created_at', [$startLast, $endLast])
-            ->count();
-        $viewsGrowth = $this->calculatePercentageChange($currentMonthViews, $lastMonthViews);
-
-        // Total Likes
-        $storedLikesCount = (int) IndustryProduct::where('industry_id', $industryId)->sum('likes_count');
-        $logLikesCount = IndustryProductLike::whereIn('industry_product_id', $productIds)->count();
-        $totalLikes = max($storedLikesCount, $logLikesCount);
-
-        $currentMonthLikes = IndustryProductLike::whereIn('industry_product_id', $productIds)
-            ->whereBetween('created_at', [$startCurrent, $endCurrent])
-            ->count();
-        $lastMonthLikes = IndustryProductLike::whereIn('industry_product_id', $productIds)
-            ->whereBetween('created_at', [$startLast, $endLast])
-            ->count();
-        $likesGrowth = $this->calculatePercentageChange($currentMonthLikes, $lastMonthLikes);
-
         // Total Ad Spend / Investment
-        $totalSpend = (float) AdCampaign::where('industry_id', $industryId)
+        $totalSpend = (float) AdCampaign::whereIn('id', $campaignIds)
             ->whereIn('status', [AdCampaignStatus::ACTIVE, AdCampaignStatus::PAUSED, AdCampaignStatus::COMPLETED])
             ->sum('amount_paid');
 
-        $currentMonthSpend = (float) AdCampaign::where('industry_id', $industryId)
+        $currentMonthSpend = (float) AdCampaign::whereIn('id', $campaignIds)
             ->whereIn('status', [AdCampaignStatus::ACTIVE, AdCampaignStatus::PAUSED, AdCampaignStatus::COMPLETED])
             ->whereBetween('created_at', [$startCurrent, $endCurrent])
             ->sum('amount_paid');
 
-        $lastMonthSpend = (float) AdCampaign::where('industry_id', $industryId)
+        $lastMonthSpend = (float) AdCampaign::whereIn('id', $campaignIds)
             ->whereIn('status', [AdCampaignStatus::ACTIVE, AdCampaignStatus::PAUSED, AdCampaignStatus::COMPLETED])
             ->whereBetween('created_at', [$startLast, $endLast])
             ->sum('amount_paid');
 
         $spendGrowth = $this->calculatePercentageChange($currentMonthSpend, $lastMonthSpend);
+
+        // Total Impressions (Ad Impressions across Newsfeed & Product Feed)
+        $storedImpressionsCount = (int) AdCampaign::whereIn('id', $campaignIds)->sum('total_impressions');
+        $logImpressionsCount = AdImpression::whereIn('ad_campaign_id', $campaignIds)->count();
+        $totalImpressions = max($storedImpressionsCount, $logImpressionsCount);
+
+        $currentMonthImpressions = AdImpression::whereIn('ad_campaign_id', $campaignIds)
+            ->whereBetween('created_at', [$startCurrent, $endCurrent])
+            ->count();
+        $lastMonthImpressions = AdImpression::whereIn('ad_campaign_id', $campaignIds)
+            ->whereBetween('created_at', [$startLast, $endLast])
+            ->count();
+        $impressionsGrowth = $this->calculatePercentageChange($currentMonthImpressions, $lastMonthImpressions);
+
+        // Total Clicks (Ad Clicks across Newsfeed & Product Feed)
+        $storedClicksCount = (int) AdCampaign::whereIn('id', $campaignIds)->sum('total_clicks');
+        $logClicksCount = AdClick::whereIn('ad_campaign_id', $campaignIds)->count();
+        $totalClicks = max($storedClicksCount, $logClicksCount);
+
+        $currentMonthClicks = AdClick::whereIn('ad_campaign_id', $campaignIds)
+            ->whereBetween('created_at', [$startCurrent, $endCurrent])
+            ->count();
+        $lastMonthClicks = AdClick::whereIn('ad_campaign_id', $campaignIds)
+            ->whereBetween('created_at', [$startLast, $endLast])
+            ->count();
+        $clicksGrowth = $this->calculatePercentageChange($currentMonthClicks, $lastMonthClicks);
+
+        // Click-Through Rate (CTR %)
+        $totalCtr = $totalImpressions > 0 ? round(($totalClicks / $totalImpressions) * 100, 2) : 0.0;
+        $currentMonthCtr = $currentMonthImpressions > 0 ? round(($currentMonthClicks / $currentMonthImpressions) * 100, 2) : 0.0;
+        $lastMonthCtr = $lastMonthImpressions > 0 ? round(($lastMonthClicks / $lastMonthImpressions) * 100, 2) : 0.0;
+        $ctrGrowth = $this->calculatePercentageChange($currentMonthCtr, $lastMonthCtr);
+
+        // Active Campaigns
+        $activeCampaigns = AdCampaign::whereIn('id', $campaignIds)
+            ->where('status', AdCampaignStatus::ACTIVE)
+            ->where('ends_at', '>', now())
+            ->count();
+        $lastMonthActiveCampaigns = AdCampaign::whereIn('id', $campaignIds)
+            ->where('status', AdCampaignStatus::ACTIVE)
+            ->where('created_at', '<=', $endLast)
+            ->count();
+        $campaignsGrowth = $this->calculatePercentageChange($activeCampaigns, $lastMonthActiveCampaigns);
 
         return [
             'total_spend' => [
@@ -385,68 +400,116 @@ class IndustryAnalyticsService
                 'growth' => ($spendGrowth >= 0 ? "+{$spendGrowth}%" : "{$spendGrowth}%").' from last month',
                 'is_positive' => $spendGrowth >= 0,
             ],
-            'total_products' => [
-                'total' => (int) $totalProducts,
-                'growth_percentage' => $productsGrowth,
-                'growth' => ($productsGrowth >= 0 ? "+{$productsGrowth}%" : "{$productsGrowth}%").' from last month',
-                'is_positive' => $productsGrowth >= 0,
+            'total_impressions' => [
+                'total' => (int) $totalImpressions,
+                'growth_percentage' => $impressionsGrowth,
+                'growth' => ($impressionsGrowth >= 0 ? "+{$impressionsGrowth}%" : "{$impressionsGrowth}%").' from last month',
+                'is_positive' => $impressionsGrowth >= 0,
             ],
-            'active_products' => [
-                'total' => (int) $activeProducts,
-                'growth_percentage' => $activeGrowth,
-                'growth' => ($activeGrowth >= 0 ? "+{$activeGrowth}%" : "{$activeGrowth}%").' from last month',
-                'is_positive' => $activeGrowth >= 0,
+            'total_clicks' => [
+                'total' => (int) $totalClicks,
+                'growth_percentage' => $clicksGrowth,
+                'growth' => ($clicksGrowth >= 0 ? "+{$clicksGrowth}%" : "{$clicksGrowth}%").' from last month',
+                'is_positive' => $clicksGrowth >= 0,
             ],
-            'product_views' => [
-                'total' => (int) $totalViews,
-                'growth_percentage' => $viewsGrowth,
-                'growth' => ($viewsGrowth >= 0 ? "+{$viewsGrowth}%" : "{$viewsGrowth}%").' from last month',
-                'is_positive' => $viewsGrowth >= 0,
+            'avg_ctr' => [
+                'total' => (float) $totalCtr,
+                'formatted' => $totalCtr.'%',
+                'growth_percentage' => $ctrGrowth,
+                'growth' => ($ctrGrowth >= 0 ? "+{$ctrGrowth}%" : "{$ctrGrowth}%").' from last month',
+                'is_positive' => $ctrGrowth >= 0,
             ],
-            'total_likes' => [
-                'total' => (int) $totalLikes,
-                'growth_percentage' => $likesGrowth,
-                'growth' => ($likesGrowth >= 0 ? "+{$likesGrowth}%" : "{$likesGrowth}%").' from last month',
-                'is_positive' => $likesGrowth >= 0,
+            'active_campaigns' => [
+                'total' => (int) $activeCampaigns,
+                'growth_percentage' => $campaignsGrowth,
+                'growth' => ($campaignsGrowth >= 0 ? "+{$campaignsGrowth}%" : "{$campaignsGrowth}%").' from last month',
+                'is_positive' => $campaignsGrowth >= 0,
             ],
         ];
     }
 
-    private function getTopPerformingProducts(int $industryId, int $limit = 7): array
+    private function calculatePlacementBreakdown($campaignIds, int $totalImpressions): array
     {
-        return IndustryProduct::where('industry_id', $industryId)
-            ->select([
-                'id',
-                'product_id',
-                'product_name',
-                'views_count',
-                'likes_count',
-            ])
-            ->orderByDesc('views_count')
-            ->orderByDesc('likes_count')
+        $placementImpressions = AdImpression::whereIn('ad_campaign_id', $campaignIds)
+            ->selectRaw('placement, COUNT(*) as count')
+            ->groupBy('placement')
+            ->pluck('count', 'placement')
+            ->toArray();
+
+        $placementClicks = AdClick::whereIn('ad_campaign_id', $campaignIds)
+            ->selectRaw('placement, COUNT(*) as count')
+            ->groupBy('placement')
+            ->pluck('count', 'placement')
+            ->toArray();
+
+        $newsfeedImp = (int) ($placementImpressions['newsfeed'] ?? 0);
+        $newsfeedClicks = (int) ($placementClicks['newsfeed'] ?? 0);
+        $feedImp = (int) ($placementImpressions['industry_product_feed'] ?? 0);
+        $feedClicks = (int) ($placementClicks['industry_product_feed'] ?? 0);
+
+        // Anti-anomaly guard: In real ads, clicks cannot exceed impressions.
+        if ($newsfeedClicks > $newsfeedImp) {
+            $newsfeedImp = $newsfeedClicks;
+        }
+        if ($feedClicks > $feedImp) {
+            $feedImp = $feedClicks;
+        }
+
+        $effectiveTotalImpressions = max($totalImpressions, $newsfeedImp + $feedImp);
+
+        $newsfeedCtr = $newsfeedImp > 0 ? min(100.0, round(($newsfeedClicks / $newsfeedImp) * 100, 2)) : 0.0;
+        $feedCtr = $feedImp > 0 ? min(100.0, round(($feedClicks / $feedImp) * 100, 2)) : 0.0;
+        $newsfeedShare = $effectiveTotalImpressions > 0 ? round(($newsfeedImp / $effectiveTotalImpressions) * 100, 1) : 0.0;
+        $feedShare = $effectiveTotalImpressions > 0 ? round(($feedImp / $effectiveTotalImpressions) * 100, 1) : 0.0;
+
+        return [
+            'newsfeed' => [
+                'placement' => 'newsfeed',
+                'label' => 'Newsfeed',
+                'impressions' => $newsfeedImp,
+                'clicks' => $newsfeedClicks,
+                'ctr' => $newsfeedCtr,
+                'percentage_share' => $newsfeedShare,
+            ],
+            'industry_product_feed' => [
+                'placement' => 'industry_product_feed',
+                'label' => 'Industry Product Feed',
+                'impressions' => $feedImp,
+                'clicks' => $feedClicks,
+                'ctr' => $feedCtr,
+                'percentage_share' => $feedShare,
+            ],
+        ];
+    }
+
+    private function getTopPerformingCampaigns($campaignIds, int $limit = 7): array
+    {
+        return AdCampaign::whereIn('id', $campaignIds)
+            ->with(['boostable'])
+            ->orderByDesc('total_impressions')
+            ->orderByDesc('total_clicks')
             ->take($limit)
             ->get()
-            ->map(function ($product) {
+            ->map(function (AdCampaign $campaign) {
+                $product = $campaign->boostable;
+                $impressions = (int) $campaign->total_impressions;
+                $clicks = (int) $campaign->total_clicks;
+
                 return [
-                    'id' => $product->id,
-                    'product_id' => $product->product_id,
-                    'product_name' => $product->product_name,
-                    'views_count' => (int) $product->views_count,
-                    'likes_count' => (int) $product->likes_count,
+                    'id' => $campaign->id,
+                    'product_id' => $product instanceof IndustryProduct ? $product->product_id : null,
+                    'product_name' => $product instanceof IndustryProduct ? $product->product_name : 'Boosted Product',
+                    'impressions' => $impressions,
+                    'clicks' => $clicks,
                 ];
             })
             ->values()
             ->all();
     }
 
-    private function calculateAdvertisementPerformanceGraph(int $industryId, string $period): array
+    private function calculateAdvertisementPerformanceGraph(int $industryId, $campaignIds, string $period): array
     {
-        $productIds = IndustryProduct::where('industry_id', $industryId)->select('id');
         $driver = DB::connection()->getDriverName();
-
-        // 1. Weekly Chart (Monday to Sunday, 7 days)
-        $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
-        $endOfWeek = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
         $dayDateFormat = match ($driver) {
             'sqlite' => "strftime('%Y-%m-%d', created_at)",
@@ -454,14 +517,24 @@ class IndustryAnalyticsService
             default => "DATE_FORMAT(created_at, '%Y-%m-%d')",
         };
 
-        $weeklyViewsData = IndustryProductView::whereIn('industry_product_id', $productIds)
+        $monthDateFormat = match ($driver) {
+            'sqlite' => "strftime('%Y-%m', created_at)",
+            'pgsql' => "to_char(created_at, 'YYYY-MM')",
+            default => "DATE_FORMAT(created_at, '%Y-%m')",
+        };
+
+        // 1. Weekly Chart (Monday to Sunday, 7 days)
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $endOfWeek = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+
+        $weeklyImpressionsData = AdImpression::whereIn('ad_campaign_id', $campaignIds)
             ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
             ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
             ->groupBy('period_key')
             ->pluck('count', 'period_key')
             ->toArray();
 
-        $weeklyLikesData = IndustryProductLike::whereIn('industry_product_id', $productIds)
+        $weeklyClicksData = AdClick::whereIn('ad_campaign_id', $campaignIds)
             ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
             ->selectRaw("{$dayDateFormat} as period_key, COUNT(*) as count")
             ->groupBy('period_key')
@@ -469,36 +542,38 @@ class IndustryAnalyticsService
             ->toArray();
 
         $weeklyChartData = [];
-
         for ($d = 0; $d < 7; $d++) {
             $dayCarbon = $startOfWeek->copy()->addDays($d);
             $key = $dayCarbon->format('Y-m-d');
 
+            $imp = (int) ($weeklyImpressionsData[$key] ?? 0);
+            $clk = (int) ($weeklyClicksData[$key] ?? 0);
+
+            if ($clk > $imp) {
+                $imp = $clk;
+            }
+
             $weeklyChartData[] = [
-                'label' => $dayCarbon->format('D'), // Mon, Tue, Wed, Thu, Fri, Sat, Sun
-                'views' => (int) ($weeklyViewsData[$key] ?? 0),
-                'likes' => (int) ($weeklyLikesData[$key] ?? 0),
+                'label' => $dayCarbon->format('D'),
+                'date' => $key,
+                'impressions' => $imp,
+                'clicks' => $clk,
+                'ctr' => $imp > 0 ? min(100.0, round(($clk / $imp) * 100, 2)) : 0.0,
             ];
         }
 
         // 2. Monthly Chart (Current year: Jan to Dec 12 months)
-        $monthDateFormat = match ($driver) {
-            'sqlite' => "strftime('%Y-%m', created_at)",
-            'pgsql' => "to_char(created_at, 'YYYY-MM')",
-            default => "DATE_FORMAT(created_at, '%Y-%m')",
-        };
-
         $startOfCurrentYear = Carbon::now()->startOfYear()->startOfDay();
         $endOfCurrentYear = Carbon::now()->endOfYear()->endOfDay();
 
-        $monthlyViewsData = IndustryProductView::whereIn('industry_product_id', $productIds)
+        $monthlyImpressionsData = AdImpression::whereIn('ad_campaign_id', $campaignIds)
             ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
             ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
             ->groupBy('period_key')
             ->pluck('count', 'period_key')
             ->toArray();
 
-        $monthlyLikesData = IndustryProductLike::whereIn('industry_product_id', $productIds)
+        $monthlyClicksData = AdClick::whereIn('ad_campaign_id', $campaignIds)
             ->whereBetween('created_at', [$startOfCurrentYear, $endOfCurrentYear])
             ->selectRaw("{$monthDateFormat} as period_key, COUNT(*) as count")
             ->groupBy('period_key')
@@ -506,20 +581,27 @@ class IndustryAnalyticsService
             ->toArray();
 
         $monthlyChartData = [];
-
         $currentYearNum = Carbon::now()->year;
         for ($m = 1; $m <= 12; $m++) {
             $monthCarbon = Carbon::create($currentYearNum, $m, 1);
             $key = $monthCarbon->format('Y-m');
 
+            $imp = (int) ($monthlyImpressionsData[$key] ?? 0);
+            $clk = (int) ($monthlyClicksData[$key] ?? 0);
+
+            if ($clk > $imp) {
+                $imp = $clk;
+            }
+
             $monthlyChartData[] = [
-                'label' => $monthCarbon->format('M'), // Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
-                'views' => (int) ($monthlyViewsData[$key] ?? 0),
-                'likes' => (int) ($monthlyLikesData[$key] ?? 0),
+                'label' => $monthCarbon->format('M'),
+                'month' => $key,
+                'impressions' => $imp,
+                'clicks' => $clk,
+                'ctr' => $imp > 0 ? min(100.0, round(($clk / $imp) * 100, 2)) : 0.0,
             ];
         }
 
-        // Active range selection (default: weekly)
         $activeRange = match ($period) {
             'monthly' => 'monthly',
             default => 'weekly',
@@ -527,7 +609,7 @@ class IndustryAnalyticsService
 
         return [
             'title' => 'Advertisement Performance',
-            'subtitle' => 'Views vs Like',
+            'subtitle' => 'Impressions vs Clicks',
             'period' => $activeRange,
             'active' => $activeRange,
             'weekly' => $weeklyChartData,

@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AdCampaignStatus;
+use App\Models\AdCampaign;
+use App\Models\AdClick;
+use App\Models\AdImpression;
 use App\Models\Industry;
 use App\Models\IndustryProduct;
-use App\Models\IndustryProductLike;
-use App\Models\IndustryProductView;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -136,19 +138,11 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
                 'message',
                 'data' => [
                     'cards' => [
-                        'total_products' => ['total', 'growth_percentage', 'growth', 'is_positive'],
-                        'active_products' => ['total', 'growth_percentage', 'growth', 'is_positive'],
-                        'product_views' => ['total', 'growth_percentage', 'growth', 'is_positive'],
-                        'total_likes' => ['total', 'growth_percentage', 'growth', 'is_positive'],
-                    ],
-                    'top_performing_products' => [
-                        '*' => [
-                            'id',
-                            'product_id',
-                            'product_name',
-                            'views_count',
-                            'likes_count',
-                        ],
+                        'total_spend' => ['total', 'growth_percentage', 'growth', 'is_positive'],
+                        'total_impressions' => ['total', 'growth_percentage', 'growth', 'is_positive'],
+                        'total_clicks' => ['total', 'growth_percentage', 'growth', 'is_positive'],
+                        'avg_ctr' => ['total', 'formatted', 'growth_percentage', 'growth', 'is_positive'],
+                        'active_campaigns' => ['total', 'growth_percentage', 'growth', 'is_positive'],
                     ],
                     'graph' => [
                         'title',
@@ -156,10 +150,10 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
                         'period',
                         'active',
                         'weekly' => [
-                            '*' => ['label', 'views', 'likes'],
+                            '*' => ['label', 'impressions', 'clicks', 'ctr'],
                         ],
                         'monthly' => [
-                            '*' => ['label', 'views', 'likes'],
+                            '*' => ['label', 'impressions', 'clicks', 'ctr'],
                         ],
                     ],
                 ],
@@ -167,31 +161,30 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
 
         $data = $response->json('data');
         $this->assertArrayNotHasKey('period', $data);
+        $this->assertArrayNotHasKey('top_performing_products', $data);
         $this->assertSame('weekly', $data['graph']['period']);
-        $this->assertSame(2, $data['cards']['total_products']['total']);
-        $this->assertSame(1, $data['cards']['active_products']['total']);
-        $this->assertSame(2300, $data['cards']['product_views']['total']);
-        $this->assertSame(370, $data['cards']['total_likes']['total']);
-
-        // Check top performing products order (Brain Scanner has 1500 views, Bio Sensor has 800 views)
-        $this->assertCount(2, $data['top_performing_products']);
-        $this->assertSame('Brain Scanner 3000', $data['top_performing_products'][0]['product_name']);
-        $this->assertSame(1500, $data['top_performing_products'][0]['views_count']);
-        $this->assertSame(250, $data['top_performing_products'][0]['likes_count']);
-        $this->assertSame('Bio Sensor Pro', $data['top_performing_products'][1]['product_name']);
-        $this->assertSame(800, $data['top_performing_products'][1]['views_count']);
-        $this->assertSame(120, $data['top_performing_products'][1]['likes_count']);
+        $this->assertArrayHasKey('total_spend', $data['cards']);
+        $this->assertArrayHasKey('total_impressions', $data['cards']);
+        $this->assertArrayHasKey('total_clicks', $data['cards']);
+        $this->assertArrayHasKey('avg_ctr', $data['cards']);
+        $this->assertArrayHasKey('active_campaigns', $data['cards']);
+        $this->assertArrayNotHasKey('total_products', $data['cards']);
+        $this->assertArrayNotHasKey('product_views', $data['cards']);
 
         // Check default weekly graph (7 days)
         $this->assertSame('weekly', $data['graph']['active']);
         $this->assertCount(7, $data['graph']['weekly']);
         $this->assertArrayHasKey('label', $data['graph']['weekly'][0]);
-        $this->assertArrayHasKey('views', $data['graph']['weekly'][0]);
-        $this->assertArrayHasKey('likes', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('impressions', $data['graph']['weekly'][0]);
+        $this->assertArrayHasKey('clicks', $data['graph']['weekly'][0]);
+        $this->assertArrayNotHasKey('views', $data['graph']['weekly'][0]);
+        $this->assertArrayNotHasKey('likes', $data['graph']['weekly'][0]);
         $this->assertCount(12, $data['graph']['monthly']);
         $this->assertArrayHasKey('label', $data['graph']['monthly'][0]);
-        $this->assertArrayHasKey('views', $data['graph']['monthly'][0]);
-        $this->assertArrayHasKey('likes', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('impressions', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('clicks', $data['graph']['monthly'][0]);
+        $this->assertArrayNotHasKey('views', $data['graph']['monthly'][0]);
+        $this->assertArrayNotHasKey('likes', $data['graph']['monthly'][0]);
     }
 
     public function test_user_can_filter_graph_by_monthly(): void
@@ -207,12 +200,14 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
         $this->assertSame('monthly', $data['graph']['active']);
         $this->assertCount(12, $data['graph']['monthly']);
         $this->assertArrayHasKey('label', $data['graph']['monthly'][0]);
-        $this->assertArrayHasKey('views', $data['graph']['monthly'][0]);
-        $this->assertArrayHasKey('likes', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('impressions', $data['graph']['monthly'][0]);
+        $this->assertArrayHasKey('clicks', $data['graph']['monthly'][0]);
+        $this->assertArrayNotHasKey('views', $data['graph']['monthly'][0]);
+        $this->assertArrayNotHasKey('likes', $data['graph']['monthly'][0]);
         $this->assertCount(7, $data['graph']['weekly']);
     }
 
-    public function test_logged_views_and_likes_are_counted_in_graph(): void
+    public function test_logged_impressions_and_clicks_are_counted_in_graph(): void
     {
         [$user, $industry, $sectionId, $categoryId] = $this->createTestUserWithIndustry();
 
@@ -231,16 +226,41 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
             'likes_count' => 0,
         ]);
 
-        // Record a view and a like for today
-        IndustryProductView::create([
-            'industry_product_id' => $product->id,
+        $campaign = AdCampaign::create([
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
             'user_id' => $user->id,
+            'industry_id' => $industry->id,
+            'ad_type' => 'product',
+            'network_type' => 'psychology',
+            'placements' => ['newsfeed'],
+            'amount_paid' => 50.00,
+            'currency' => 'USD',
+            'duration_days' => 7,
+            'status' => AdCampaignStatus::ACTIVE,
+            'total_impressions' => 1,
+            'total_clicks' => 1,
+        ]);
+
+        // Record an impression and a click for today
+        AdImpression::create([
+            'ad_campaign_id' => $campaign->id,
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
+            'user_id' => $user->id,
+            'placement' => 'newsfeed',
+            'ip_address' => '127.0.0.1',
+            'viewed_date' => now()->toDateString(),
             'created_at' => now(),
         ]);
 
-        IndustryProductLike::create([
-            'industry_product_id' => $product->id,
+        AdClick::create([
+            'ad_campaign_id' => $campaign->id,
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
             'user_id' => $user->id,
+            'placement' => 'newsfeed',
+            'ip_address' => '127.0.0.1',
             'created_at' => now(),
         ]);
 
@@ -248,14 +268,13 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
 
         $response->assertOk();
         $data = $response->json('data');
-        $this->assertSame(1, $data['cards']['product_views']['total']);
-        $this->assertSame(1, $data['cards']['total_likes']['total']);
+        $this->assertArrayHasKey('total_spend', $data['cards']);
 
-        // In weekly graph, sum of views and likes should be 1
-        $totalWeeklyViews = array_sum(array_column($data['graph']['weekly'], 'views'));
-        $totalWeeklyLikes = array_sum(array_column($data['graph']['weekly'], 'likes'));
-        $this->assertSame(1, $totalWeeklyViews);
-        $this->assertSame(1, $totalWeeklyLikes);
+        // In weekly graph, sum of impressions and clicks should be 1
+        $totalWeeklyImpressions = array_sum(array_column($data['graph']['weekly'], 'impressions'));
+        $totalWeeklyClicks = array_sum(array_column($data['graph']['weekly'], 'clicks'));
+        $this->assertSame(1, $totalWeeklyImpressions);
+        $this->assertSame(1, $totalWeeklyClicks);
     }
 
     public function test_cards_always_show_lifetime_data_regardless_of_graph_filter(): void
@@ -305,21 +324,11 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
         $monthlyData = $resMonthly->json('data');
 
         // In both requests, cards MUST show identical lifetime totals:
-        // Total products: 2 (lifetime)
-        $this->assertSame(2, $weeklyData['cards']['total_products']['total']);
-        $this->assertSame(2, $monthlyData['cards']['total_products']['total']);
-
-        // Active products: 1 (currently active)
-        $this->assertSame(1, $weeklyData['cards']['active_products']['total']);
-        $this->assertSame(1, $monthlyData['cards']['active_products']['total']);
-
-        // Product views: 700 (lifetime sum: 500 + 200)
-        $this->assertSame(700, $weeklyData['cards']['product_views']['total']);
-        $this->assertSame(700, $monthlyData['cards']['product_views']['total']);
-
-        // Total likes: 150 (lifetime sum: 100 + 50)
-        $this->assertSame(150, $weeklyData['cards']['total_likes']['total']);
-        $this->assertSame(150, $monthlyData['cards']['total_likes']['total']);
+        $this->assertSame($weeklyData['cards']['total_spend']['total'], $monthlyData['cards']['total_spend']['total']);
+        $this->assertSame($weeklyData['cards']['total_impressions']['total'], $monthlyData['cards']['total_impressions']['total']);
+        $this->assertSame($weeklyData['cards']['total_clicks']['total'], $monthlyData['cards']['total_clicks']['total']);
+        $this->assertSame($weeklyData['cards']['avg_ctr']['total'], $monthlyData['cards']['avg_ctr']['total']);
+        $this->assertSame($weeklyData['cards']['active_campaigns']['total'], $monthlyData['cards']['active_campaigns']['total']);
 
         // Meanwhile, only the graph adapts to the filter:
         $this->assertSame('weekly', $weeklyData['graph']['active']);
@@ -327,5 +336,145 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
 
         $this->assertSame('monthly', $monthlyData['graph']['active']);
         $this->assertCount(12, $monthlyData['graph']['monthly']);
+    }
+
+    public function test_advertisement_analytics_returns_real_ad_metrics_placements_and_campaigns(): void
+    {
+        [$user, $industry, $sectionId, $categoryId] = $this->createTestUserWithIndustry();
+
+        $viewer = User::factory()->create(['is_verified' => true]);
+
+        $product = IndustryProduct::create([
+            'creator_id' => $user->id,
+            'industry_id' => $industry->id,
+            'network_type' => 'psychology',
+            'industry_type' => 'biotechnology',
+            'section_id' => $sectionId,
+            'category_id' => $categoryId,
+            'product_name' => 'Advanced EEG Cap',
+            'slug' => 'advanced-eeg-cap-'.uniqid(),
+            'description' => 'Precision EEG recording cap',
+            'status' => 'active',
+            'is_boosted' => true,
+            'boost_expires_at' => now()->addDays(10),
+            'views_count' => 10,
+            'likes_count' => 2,
+        ]);
+
+        $campaign = AdCampaign::create([
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
+            'user_id' => $user->id,
+            'industry_id' => $industry->id,
+            'ad_type' => 'product',
+            'network_type' => 'psychology',
+            'placements' => ['newsfeed', 'industry_product_feed'],
+            'amount_paid' => 120.00,
+            'currency' => 'USD',
+            'duration_days' => 14,
+            'starts_at' => now()->subDays(2),
+            'ends_at' => now()->addDays(12),
+            'status' => AdCampaignStatus::ACTIVE,
+            'total_impressions' => 100,
+            'total_clicks' => 5,
+        ]);
+
+        // Log impressions for newsfeed and product feed
+        AdImpression::create([
+            'ad_campaign_id' => $campaign->id,
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
+            'user_id' => $viewer->id,
+            'placement' => 'newsfeed',
+            'ip_address' => '127.0.0.1',
+            'viewed_date' => now()->toDateString(),
+            'created_at' => now(),
+        ]);
+
+        AdImpression::create([
+            'ad_campaign_id' => $campaign->id,
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
+            'user_id' => $viewer->id,
+            'placement' => 'industry_product_feed',
+            'ip_address' => '127.0.0.1',
+            'viewed_date' => now()->toDateString(),
+            'created_at' => now(),
+        ]);
+
+        // Log click
+        AdClick::create([
+            'ad_campaign_id' => $campaign->id,
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
+            'user_id' => $viewer->id,
+            'placement' => 'newsfeed',
+            'ip_address' => '127.0.0.1',
+            'created_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user, 'api')->getJson('/api/industry/analytics/advertisements');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure([
+                'success',
+                'message',
+                'data' => [
+                    'cards' => [
+                        'total_spend',
+                        'total_impressions',
+                        'total_clicks',
+                        'avg_ctr',
+                        'active_campaigns',
+                    ],
+                    'placements' => [
+                        'newsfeed' => ['placement', 'label', 'impressions', 'clicks', 'ctr', 'percentage_share'],
+                        'industry_product_feed' => ['placement', 'label', 'impressions', 'clicks', 'ctr', 'percentage_share'],
+                    ],
+                    'top_performing_campaigns' => [
+                        '*' => [
+                            'id',
+                            'product_id',
+                            'product_name',
+                            'impressions',
+                            'clicks',
+                        ],
+                    ],
+                    'graph' => [
+                        'title',
+                        'subtitle',
+                        'period',
+                        'active',
+                        'weekly' => [
+                            '*' => ['label', 'impressions', 'clicks', 'ctr'],
+                        ],
+                        'monthly' => [
+                            '*' => ['label', 'impressions', 'clicks', 'ctr'],
+                        ],
+                    ],
+                ],
+            ]);
+
+        $data = $response->json('data');
+        $this->assertEquals(120.00, $data['cards']['total_spend']['total']);
+        $this->assertEquals(100, $data['cards']['total_impressions']['total']);
+        $this->assertEquals(5, $data['cards']['total_clicks']['total']);
+        $this->assertEquals(5.0, $data['cards']['avg_ctr']['total']);
+        $this->assertEquals(1, $data['cards']['active_campaigns']['total']);
+        $this->assertArrayNotHasKey('avg_cpc', $data['cards']);
+
+        // Check placement breakdown
+        $this->assertSame(1, $data['placements']['newsfeed']['impressions']);
+        $this->assertSame(1, $data['placements']['newsfeed']['clicks']);
+        $this->assertEquals(100.0, $data['placements']['newsfeed']['ctr']);
+        $this->assertSame(1, $data['placements']['industry_product_feed']['impressions']);
+
+        // Check top performing campaigns
+        $this->assertCount(1, $data['top_performing_campaigns']);
+        $this->assertSame($campaign->id, $data['top_performing_campaigns'][0]['id']);
+        $this->assertSame('Advanced EEG Cap', $data['top_performing_campaigns'][0]['product_name']);
+        $this->assertSame(100, $data['top_performing_campaigns'][0]['impressions']);
+        $this->assertSame(5, $data['top_performing_campaigns'][0]['clicks']);
     }
 }
