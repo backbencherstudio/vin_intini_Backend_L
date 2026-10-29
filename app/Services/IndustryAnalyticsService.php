@@ -402,12 +402,14 @@ class IndustryAnalyticsService
             ],
             'total_impressions' => [
                 'total' => (int) $totalImpressions,
+                'formatted' => number_format($totalImpressions),
                 'growth_percentage' => $impressionsGrowth,
                 'growth' => ($impressionsGrowth >= 0 ? "+{$impressionsGrowth}%" : "{$impressionsGrowth}%").' from last month',
                 'is_positive' => $impressionsGrowth >= 0,
             ],
             'total_clicks' => [
                 'total' => (int) $totalClicks,
+                'formatted' => number_format($totalClicks),
                 'growth_percentage' => $clicksGrowth,
                 'growth' => ($clicksGrowth >= 0 ? "+{$clicksGrowth}%" : "{$clicksGrowth}%").' from last month',
                 'is_positive' => $clicksGrowth >= 0,
@@ -421,6 +423,7 @@ class IndustryAnalyticsService
             ],
             'active_campaigns' => [
                 'total' => (int) $activeCampaigns,
+                'formatted' => number_format($activeCampaigns),
                 'growth_percentage' => $campaignsGrowth,
                 'growth' => ($campaignsGrowth >= 0 ? "+{$campaignsGrowth}%" : "{$campaignsGrowth}%").' from last month',
                 'is_positive' => $campaignsGrowth >= 0,
