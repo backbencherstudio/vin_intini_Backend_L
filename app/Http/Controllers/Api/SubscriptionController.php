@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AdCampaignStatus;
 use App\Enums\OtpType;
 use App\Enums\PlanFeature;
 use App\Enums\PlanType;
@@ -309,23 +310,32 @@ class SubscriptionController extends Controller
         $user = $request->user();
 
         $perPage = min(max($request->integer('per_page', 10), 1), 100);
+        $type = $request->string('type')->trim()->lower()->toString();
 
-        $paginated = Transaction::with(['plan', 'subscription'])
-            ->where('user_id', $user->id)
-            ->latest('id')
-            ->paginate($perPage);
+        $query = Transaction::query()->where('user_id', $user->id);
+
+        if ($type === 'boosting') {
+            $query->whereNotNull('ad_campaign_id')
+                ->with([
+                    'adCampaign.boostPackage',
+                    'adCampaign.boostable',
+                ]);
+        } elseif ($type === 'all') {
+            $query->with([
+                'plan',
+                'subscription',
+                'adCampaign.boostPackage',
+                'adCampaign.boostable',
+            ]);
+        } else {
+            // Default: 'subscription'
+            $query->whereNull('ad_campaign_id')
+                ->with(['plan', 'subscription']);
+        }
+
+        $paginated = $query->latest('id')->paginate($perPage);
 
         $transactions = $paginated->getCollection()->map(function (Transaction $transaction) {
-            $issueDate = $transaction->paid_at ?? $transaction->created_at;
-
-            $cycle = strtolower((string) ($transaction->plan?->billing_cycle ?? 'monthly'));
-
-            $dueDate = match ($cycle) {
-                'yearly' => $issueDate?->copy()->addYear(),
-                'weekly' => $issueDate?->copy()->addWeek(),
-                default => $issueDate?->copy()->addMonth(),
-            };
-
             $formattedBrand = match (strtolower((string) $transaction->card_brand)) {
                 'visa' => 'VISA',
                 'mastercard' => 'Mastercard',
@@ -365,6 +375,74 @@ class SubscriptionController extends Controller
                 'eur' => '€',
                 'gbp' => '£',
                 default => strtoupper($currency).' ',
+            };
+
+            $issueDate = $transaction->paid_at ?? $transaction->created_at;
+
+            // Boosting transaction representation (customized for Boosting Tab)
+            if ($transaction->ad_campaign_id !== null) {
+                $campaign = $transaction->adCampaign;
+                $durationDays = (int) ($campaign?->duration_days ?? 0);
+                $durationFormatted = $durationDays === 1 ? '1 day' : "{$durationDays} days";
+                $amountFormattedOnly = $currencySymbol.number_format($amount, 2);
+                $amountDurationFormatted = $durationDays > 0
+                    ? "{$amountFormattedOnly} / {$durationFormatted}"
+                    : $amountFormattedOnly;
+
+                $package = $campaign?->boostPackage;
+                $boostable = $campaign?->boostable;
+
+                $campaignStatus = $campaign?->status instanceof AdCampaignStatus
+                    ? $campaign->status->value
+                    : (string) ($campaign?->status ?? 'active');
+
+                return [
+                    'id' => $transaction->id,
+                    'type' => 'boosting',
+                    'invoice_no' => sprintf('#MU%06d', $transaction->id),
+                    'transaction_id' => $transaction->provider_transaction_id,
+                    'status' => $statusLabel,
+                    'payment_status' => $transaction->status,
+                    'payment_date' => $issueDate?->toIso8601String(),
+                    'payment_date_formatted' => $issueDate?->format('d M Y h:i A'),
+                    'payment_method' => $paymentMethod,
+                    'card_brand' => $transaction->card_brand,
+                    'card_last4' => $transaction->card_last4,
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'duration_days' => $durationDays,
+                    'amount_formatted' => $amountFormattedOnly,
+                    'duration_formatted' => $durationFormatted,
+                    'amount_duration_formatted' => $amountDurationFormatted,
+                    'package' => [
+                        'id' => $package?->id,
+                        'name' => $package?->name ?? ($durationDays > 0 ? "Custom ({$durationDays} Days)" : 'Custom Boost'),
+                        'duration_days' => $durationDays,
+                        'is_custom' => $campaign?->isCustom() ?? ($package === null),
+                    ],
+                    'product' => $boostable ? [
+                        'id' => $boostable->id,
+                        'product_id' => $boostable->product_id ?? null,
+                        'name' => $boostable->product_name ?? $boostable->name ?? null,
+                        'product_name' => $boostable->product_name ?? $boostable->name ?? null,
+                        'slug' => $boostable->slug ?? null,
+                        'image' => $boostable->image_url ?? $boostable->image ?? null,
+                    ] : null,
+                    'boost_period' => [
+                        'starts_at' => $campaign?->starts_at?->toIso8601String(),
+                        'ends_at' => $campaign?->ends_at?->toIso8601String(),
+                        'campaign_status' => $campaignStatus,
+                    ],
+                ];
+            }
+
+            // Subscription transaction representation (100% identical to existing response)
+            $cycle = strtolower((string) ($transaction->plan?->billing_cycle ?? 'monthly'));
+
+            $dueDate = match ($cycle) {
+                'yearly' => $issueDate?->copy()->addYear(),
+                'weekly' => $issueDate?->copy()->addWeek(),
+                default => $issueDate?->copy()->addMonth(),
             };
 
             $cycleLabel = match ($cycle) {

@@ -4,6 +4,12 @@ namespace Tests\Feature\Api;
 
 use App\Enums\OtpType;
 use App\Mail\SubscriptionOtpMail;
+use App\Models\AdCampaign;
+use App\Models\BoostPackage;
+use App\Models\Industry;
+use App\Models\IndustryCategory;
+use App\Models\IndustryProduct;
+use App\Models\IndustrySections;
 use App\Models\Otp;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -795,7 +801,7 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.0.payment_status', 'succeeded')
             ->assertJsonPath('data.0.plan.name', 'Pro User')
             ->assertJsonPath('data.0.plan.plan_type', 'premium')
-            ->assertJsonPath('data.0.payment_method', 'VISA ************5675')
+            ->assertJsonPath('data.0.payment_method', 'VISA ****5675')
             ->assertJsonPath('data.0.amount', 29.99)
             ->assertJsonPath('data.0.amount_formatted', '$29.99 / month')
             ->assertJsonPath('data.0.issue_date', $transaction->paid_at->toIso8601String())
@@ -871,5 +877,139 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.1.plan.name', 'Pro User')
             ->assertJsonPath('data.1.status', 'Paid')
             ->assertJsonPath('pagination.total', 2);
+    }
+
+    public function test_billing_history_filters_subscription_and_boosting_tabs(): void
+    {
+        $plan = $this->makePlan(['name' => 'Monthly Pro']);
+
+        $subscriptionTx = Transaction::create([
+            'provider_transaction_id' => 'pi_sub_101',
+            'user_id' => $this->user->id,
+            'plan_id' => $plan->id,
+            'amount' => 19.99,
+            'currency' => 'usd',
+            'card_brand' => 'visa',
+            'card_last4' => '4242',
+            'status' => 'succeeded',
+            'paid_at' => now(),
+        ]);
+
+        $industry = Industry::create([
+            'created_by' => $this->user->id,
+            'name' => 'NeuroTech Corp',
+            'slug' => 'neurotech-corp',
+            'industry' => 'biotechnology',
+        ]);
+
+        $section = IndustrySections::create([
+            'name' => 'Therapeutics',
+            'industry_type' => 'biotechnology',
+            'network_type' => 'neuroscience',
+        ]);
+
+        $category = IndustryCategory::create([
+            'section_id' => $section->id,
+            'category_name' => 'Nootropics',
+        ]);
+
+        $product = IndustryProduct::create([
+            'product_id' => '108TNJ',
+            'creator_id' => $this->user->id,
+            'industry_id' => $industry->id,
+            'network_type' => 'neuroscience',
+            'industry_type' => 'biotechnology',
+            'section_id' => $section->id,
+            'category_id' => $category->id,
+            'product_name' => 'TachistoVision Engine',
+            'slug' => 'tachistovision-engine',
+            'description' => 'Test product description',
+            'image' => 'https://example.com/product.jpg',
+            'status' => 'active',
+        ]);
+
+        $package = BoostPackage::create([
+            'name' => 'Standard Boost',
+            'target_entity' => 'product',
+            'duration_days' => 14,
+            'price' => 34.99,
+            'estimated_impressions' => 5000,
+            'priority_weight' => 2,
+            'status' => 'active',
+        ]);
+
+        $campaign = AdCampaign::create([
+            'boostable_type' => IndustryProduct::class,
+            'boostable_id' => $product->id,
+            'user_id' => $this->user->id,
+            'industry_id' => $industry->id,
+            'boost_package_id' => $package->id,
+            'amount_paid' => 34.99,
+            'currency' => 'USD',
+            'duration_days' => 14,
+            'starts_at' => now(),
+            'ends_at' => now()->addDays(14),
+            'status' => 'active',
+            'payment_platform' => 'stripe',
+        ]);
+
+        $boostingTx = Transaction::create([
+            'provider_transaction_id' => 'pi_boost_102',
+            'user_id' => $this->user->id,
+            'ad_campaign_id' => $campaign->id,
+            'amount' => 34.99,
+            'currency' => 'usd',
+            'card_brand' => 'mastercard',
+            'card_last4' => '8888',
+            'status' => 'succeeded',
+            'paid_at' => now(),
+        ]);
+
+        // 1. Default (no type query): returns ONLY subscription transactions
+        $defaultResponse = $this->actingAs($this->user, 'api')
+            ->getJson('/api/billing-history');
+
+        $defaultResponse->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $subscriptionTx->id)
+            ->assertJsonPath('data.0.plan.name', 'Monthly Pro')
+            ->assertJsonPath('data.0.amount_formatted', '$19.99 / month')
+            ->assertJsonMissing(['type' => 'boosting']);
+
+        // 2. type=subscription: returns ONLY subscription transactions in identical structure
+        $subResponse = $this->actingAs($this->user, 'api')
+            ->getJson('/api/billing-history?type=subscription');
+
+        $subResponse->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $subscriptionTx->id)
+            ->assertJsonPath('data.0.plan.name', 'Monthly Pro')
+            ->assertJsonPath('data.0.invoice_no', sprintf('#MU%06d', $subscriptionTx->id))
+            ->assertJsonPath('data.0.payment_method', 'VISA ****4242')
+            ->assertJsonPath('data.0.amount', 19.99)
+            ->assertJsonPath('data.0.amount_formatted', '$19.99 / month');
+
+        // 3. type=boosting: returns ONLY boosting transactions with 5-column table format
+        $boostResponse = $this->actingAs($this->user, 'api')
+            ->getJson('/api/billing-history?type=boosting');
+
+        $boostResponse->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $boostingTx->id)
+            ->assertJsonPath('data.0.type', 'boosting')
+            ->assertJsonPath('data.0.invoice_no', sprintf('#MU%06d', $boostingTx->id))
+            ->assertJsonPath('data.0.status', 'Paid')
+            ->assertJsonPath('data.0.payment_method', 'Mastercard ****8888')
+            ->assertJsonPath('data.0.amount', 34.99)
+            ->assertJsonPath('data.0.duration_days', 14)
+            ->assertJsonPath('data.0.amount_formatted', '$34.99')
+            ->assertJsonPath('data.0.duration_formatted', '14 days')
+            ->assertJsonPath('data.0.amount_duration_formatted', '$34.99 / 14 days')
+            ->assertJsonPath('data.0.package_name', 'Standard Boost')
+            ->assertJsonPath('data.0.product_id', '108TNJ')
+            ->assertJsonPath('data.0.package.name', 'Standard Boost')
+            ->assertJsonPath('data.0.product.product_name', 'TachistoVision Engine')
+            ->assertJsonPath('data.0.product.product_id', '108TNJ')
+            ->assertJsonPath('data.0.boost_period.campaign_status', 'active');
     }
 }
