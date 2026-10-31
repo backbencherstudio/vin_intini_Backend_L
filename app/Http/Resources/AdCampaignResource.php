@@ -42,6 +42,17 @@ class AdCampaignResource extends JsonResource
         }
 
         $remainingDays = (int) ceil($remainingSeconds / 86400);
+        $remainingHours = (int) ceil($remainingSeconds / 3600);
+
+        if ($isCompleted || $remainingSeconds <= 0) {
+            $remainingText = 'Expired';
+        } elseif ($remainingDays > 1) {
+            $remainingText = $isPaused ? "{$remainingDays} days left (paused)" : "{$remainingDays} days left";
+        } elseif ($remainingSeconds > 3600) {
+            $remainingText = $isPaused ? "{$remainingHours} hours left (paused)" : "{$remainingHours} hours left";
+        } else {
+            $remainingText = $isPaused ? '1 hour left (paused)' : '1 hour left';
+        }
 
         if ($isCompleted) {
             $progressPercentage = 100.0;
@@ -85,7 +96,11 @@ class AdCampaignResource extends JsonResource
             'starts_at_formatted' => $this->starts_at?->format('M d, Y'),
             'ends_at_formatted' => $this->ends_at?->format('M d, Y'),
             'remaining_days' => $remainingDays,
+            'remaining_hours' => $remainingHours,
             'remaining_seconds' => $remainingSeconds,
+            'remaining_text' => $remainingText,
+            'boost_remaining_text' => $remainingText,
+            'boost_days_left' => $remainingDays,
             'progress_percentage' => $progressPercentage,
             'freeze_days_remaining' => $freezeDaysRemaining,
             'total_impressions' => $totalImpressions,
@@ -101,16 +116,22 @@ class AdCampaignResource extends JsonResource
                     'price' => (float) $this->boostPackage->price,
                 ];
             }),
-            'boostable' => $this->whenLoaded('boostable', function () {
+            'boostable' => $this->whenLoaded('boostable', function () use ($remainingDays, $remainingText) {
                 if ($this->boostable instanceof IndustryProduct) {
                     return [
                         'id' => $this->boostable->id,
+                        'product_id' => $this->boostable->product_id,
                         'product_name' => $this->boostable->product_name,
                         'slug' => $this->boostable->slug,
                         'image_url' => $this->boostable->image_url,
                         'network_type' => $this->boostable->network_type,
                         'industry_type' => $this->boostable->industry_type,
                         'status' => $this->boostable->status,
+                        'is_boosted' => $this->boostable->isBoosted(),
+                        'boost_status' => $this->boostable->getBoostStatus(),
+                        'boost_expires_at' => $this->boostable->boost_expires_at?->toIso8601String(),
+                        'boost_days_left' => $remainingDays,
+                        'boost_remaining_text' => $remainingText,
                     ];
                 }
 

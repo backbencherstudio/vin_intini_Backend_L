@@ -109,6 +109,56 @@ class AdCampaign extends Model
         return $this->boost_package_id === null;
     }
 
+    /**
+     * Get remaining time in seconds (considering pause freeze).
+     */
+    public function getRemainingSeconds(): int
+    {
+        if ($this->isPaused() && $this->paused_at && $this->ends_at) {
+            return max(0, (int) $this->paused_at->diffInSeconds($this->ends_at, false));
+        }
+
+        if ($this->ends_at && $this->ends_at->isFuture()) {
+            return max(0, (int) now()->diffInSeconds($this->ends_at, false));
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get remaining days left (rounded up).
+     */
+    public function getRemainingDays(): int
+    {
+        return (int) ceil($this->getRemainingSeconds() / 86400);
+    }
+
+    /**
+     * Get human-readable remaining time text matching product listings (e.g. '5 days left', '9 hours left', '1 hour left').
+     */
+    public function getRemainingText(): string
+    {
+        $seconds = $this->getRemainingSeconds();
+
+        if ($this->status === AdCampaignStatus::COMPLETED || $seconds <= 0) {
+            return 'Expired';
+        }
+
+        $days = (int) ceil($seconds / 86400);
+        $hours = (int) ceil($seconds / 3600);
+        $isPaused = $this->isPaused();
+
+        if ($days > 1) {
+            return $isPaused ? "{$days} days left (paused)" : "{$days} days left";
+        }
+
+        if ($seconds > 3600) {
+            return $isPaused ? "{$hours} hours left (paused)" : "{$hours} hours left";
+        }
+
+        return $isPaused ? '1 hour left (paused)' : '1 hour left';
+    }
+
     public function scopeCustom($query)
     {
         return $query->whereNull('boost_package_id');

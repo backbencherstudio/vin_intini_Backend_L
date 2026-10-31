@@ -998,3 +998,61 @@ test('my listings returns boost_status active, paused, and inactive with campaig
         ->and($expiredResponse->json('data.1.id'))->toBe($pausedProduct->id)
         ->and($expiredResponse->json('data.2.id'))->toBe($this->product->id);
 });
+
+test('advertiser boost campaigns returns accurate remaining hours text when under 24 hours matching product listings', function () {
+    $plan = Plan::create([
+        'name' => 'Pro Industry Plan',
+        'plan_type' => PlanType::INDUSTRY->value,
+        'billing_rate' => 99.00,
+        'billing_cycle' => 'monthly',
+        'features' => ['advertisements'],
+        'status' => 'active',
+    ]);
+
+    Subscription::create([
+        'user_id' => $this->user->id,
+        'plan_id' => $plan->id,
+        'status' => 'active',
+        'current_period_start' => now()->subDay(),
+        'current_period_end' => now()->addMonth(),
+    ]);
+
+    // Set product with 9 hours left
+    $this->product->update([
+        'is_boosted' => true,
+        'boost_expires_at' => now()->addHours(9),
+    ]);
+
+    $campaign = AdCampaign::create([
+        'boostable_type' => IndustryProduct::class,
+        'boostable_id' => $this->product->id,
+        'user_id' => $this->user->id,
+        'industry_id' => $this->industry->id,
+        'amount_paid' => 19.99,
+        'duration_days' => 3,
+        'starts_at' => now()->subDays(2)->subHours(15),
+        'ends_at' => now()->addHours(9),
+        'status' => AdCampaignStatus::ACTIVE,
+    ]);
+
+    // 1. Check Product Listings
+    $prodResponse = $this->actingAs($this->user, 'api')
+        ->getJson('/api/industry/products/my-listings')
+        ->assertOk();
+
+    $prodItem = collect($prodResponse->json('data'))->firstWhere('id', $this->product->id);
+    expect($prodItem['boost_remaining_text'])->toBe('9 hours left')
+        ->and($prodItem['boost_days_left'])->toBe(1);
+
+    // 2. Check Advertise Campaigns Listings
+    $adResponse = $this->actingAs($this->user, 'api')
+        ->getJson('/api/industry/boost-campaigns')
+        ->assertOk();
+
+    $campItem = collect($adResponse->json('data.campaigns.data'))->firstWhere('id', $campaign->id);
+    expect($campItem['remaining_hours'])->toBe(9)
+        ->and($campItem['remaining_days'])->toBe(1)
+        ->and($campItem['remaining_text'])->toBe('9 hours left')
+        ->and($campItem['boost_remaining_text'])->toBe('9 hours left')
+        ->and($campItem['boostable']['boost_remaining_text'])->toBe('9 hours left');
+});
