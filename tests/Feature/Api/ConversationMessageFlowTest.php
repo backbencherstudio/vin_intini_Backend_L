@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Events\ConversationUpdated;
+use App\Events\MessageDeleted;
 use App\Events\MessageReactionChanged;
 use App\Events\MessageSent;
 use App\Models\Connection;
@@ -156,6 +157,41 @@ class ConversationMessageFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.1.reply_to.id', $original->id)
             ->assertJsonPath('data.1.reply_to.message', 'Original message');
+    }
+
+    public function test_messages_can_be_fetched_after_a_known_message_id(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $knownMessage = $conversation->messages()->create([
+            'sender_id' => $user->id,
+            'type' => 'text',
+            'message' => 'Already received',
+        ]);
+        $newerMessages = collect([
+            $conversation->messages()->create([
+                'sender_id' => $connectedUser->id,
+                'type' => 'text',
+                'message' => 'Missed message one',
+            ]),
+            $conversation->messages()->create([
+                'sender_id' => $user->id,
+                'type' => 'text',
+                'message' => 'Missed message two',
+            ]),
+        ]);
+
+        $response = $this->actingAs($user, 'api')
+            ->getJson("/api/conversations/{$conversation->id}/messages?after_id={$knownMessage->id}");
+
+        $response->assertOk()->assertJsonCount(2, 'data');
+        self::assertSame(
+            $newerMessages->pluck('id')->all(),
+            collect($response->json('data'))->pluck('id')->all(),
+        );
     }
 
     public function test_user_can_send_file_message(): void
@@ -646,6 +682,31 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('success', true);
 
         $this->assertSoftDeleted('messages', ['id' => $message->id]);
+    }
+
+    public function test_deleting_a_message_broadcasts_its_removal_to_the_conversation(): void
+    {
+        $user = $this->makeUser();
+        $connectedUser = $this->makeUser();
+        $this->connectUsers($user, $connectedUser);
+
+        $conversation = Conversation::betweenUsers($user->id, $connectedUser->id);
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'type' => 'text',
+            'message' => 'Delete me',
+        ]);
+        Event::fake([MessageDeleted::class]);
+
+        $this->actingAs($user, 'api')->deleteJson("/api/messages/{$message->id}")
+            ->assertOk();
+
+        Event::assertDispatched(MessageDeleted::class, function (MessageDeleted $event) use ($message, $conversation) {
+            return $event->messageId === $message->id
+                && $event->conversationId === $conversation->id
+                && $event->broadcastOn()[0]->name === 'private-conversation.'.$conversation->id;
+        });
     }
 
     public function test_user_cannot_delete_others_message(): void

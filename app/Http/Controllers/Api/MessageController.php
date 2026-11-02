@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Events\ConversationUpdated;
+use App\Events\MessageDeleted;
 use App\Events\MessageReactionChanged;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
@@ -30,6 +31,11 @@ class MessageController extends Controller
             return $error;
         }
 
+        $validated = $request->validate([
+            'after_id' => 'sometimes|integer|min:0',
+        ]);
+        $afterId = $validated['after_id'] ?? null;
+
         $conversation->markAsReadFor($currentUser->id);
 
         $messages = $conversation->visibleMessagesFor($currentUser->id)
@@ -38,7 +44,11 @@ class MessageController extends Controller
                 'replyTo.sender' => fn ($q) => $q->select(['id', 'first_name', 'last_name'])->withTrashed(),
                 'reactions.user' => fn ($q) => $q->select(['id', 'first_name', 'last_name'])->withTrashed(),
             ])
-            ->orderBy('id', 'desc')
+            ->when(
+                $afterId !== null,
+                fn ($query) => $query->where('messages.id', '>', $afterId)->orderBy('messages.id'),
+                fn ($query) => $query->orderByDesc('messages.id')
+            )
             ->cursorPaginate(50);
 
         $conversation->load(['user1' => fn ($q) => $q->withTrashed(), 'user2' => fn ($q) => $q->withTrashed()]);
@@ -56,7 +66,13 @@ class MessageController extends Controller
                 ->exists();
         }
 
-        $data = $messages->reverse()->values()->map(fn (Message $message) => [
+        $messageItems = collect($messages->items());
+
+        if ($afterId === null) {
+            $messageItems = $messageItems->reverse();
+        }
+
+        $data = $messageItems->values()->map(fn (Message $message) => [
             'id' => $message->id,
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
@@ -418,6 +434,8 @@ class MessageController extends Controller
 
         $message->delete();
 
+        event(new MessageDeleted($message->id, $message->conversation_id));
+
         $conversation = $message->conversation;
 
         if ($conversation->last_message_id === $message->id) {
@@ -426,7 +444,7 @@ class MessageController extends Controller
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
-        if (! $conversation->isArchivedFor($otherUser->id)) {
+        if ($otherUser && ! $conversation->isArchivedFor($otherUser->id)) {
             $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
 
             event(new ConversationUpdated(
