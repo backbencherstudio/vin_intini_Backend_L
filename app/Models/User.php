@@ -404,4 +404,9 @@ class User extends Authenticatable implements JWTSubject
         return $this->belongsToMany(IndustryJobPost::class, 'industry_job_post_likes', 'user_id', 'industry_job_post_id')
             ->withTimestamps();
     }
+
+    public function jobPreference(): HasOne
+    {
+        return $this->hasOne(UserJobPreference::class);
+    }
 }
