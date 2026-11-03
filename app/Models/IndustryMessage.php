@@ -1,0 +1,102 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class IndustryMessage extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = [
+        'industry_conversation_id',
+        'sender_type',
+        'sender_id',
+        'reply_to_id',
+        'type',
+        'message',
+        'file_path',
+        'file_name',
+        'file_size',
+        'duration',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'file_size' => 'integer',
+            'duration' => 'integer',
+        ];
+    }
+
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(IndustryConversation::class, 'industry_conversation_id');
+    }
+
+    public function sender(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sender_id');
+    }
+
+    public function replyTo(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reply_to_id');
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(IndustryMessageReaction::class, 'industry_message_id');
+    }
+
+    public function getFileUrlAttribute(): ?string
+    {
+        if (! $this->file_path) {
+            return null;
+        }
+
+        return asset('storage/'.ltrim($this->file_path, '/'));
+    }
+
+    public function getFileExtensionAttribute(): ?string
+    {
+        if (! $this->file_name) {
+            return null;
+        }
+
+        return strtolower(pathinfo($this->file_name, PATHINFO_EXTENSION)) ?: null;
+    }
+
+    public function getFileCategoryAttribute(): ?string
+    {
+        $extension = $this->file_extension;
+
+        if (! $extension) {
+            return null;
+        }
+
+        return match ($extension) {
+            'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif' => 'image',
+            'mp4', 'mov', 'avi', 'mkv', 'webm', '3gp' => 'video',
+            'mp3', 'wav', 'm4a', 'aac', 'ogg', 'opus' => 'audio',
+            'pdf' => 'pdf',
+            'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'rtf' => 'document',
+            'zip', 'rar', '7z', 'tar', 'gz' => 'archive',
+            default => 'other',
+        };
+    }
+
+    public function getDisplayTypeAttribute(): string
+    {
+        return match ($this->type) {
+            'text' => 'text',
+            'voice' => 'audio',
+            'file' => $this->file_category ?? 'file',
+            default => $this->type,
+        };
+    }
+}
+
