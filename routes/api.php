@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\IndustryApiController;
 use App\Http\Controllers\Admin\PagesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
@@ -45,6 +46,9 @@ Route::post('/refresh', [AuthController::class, 'refresh']);
 
 // pages routes
 Route::get('/pages/{slug}', [PagesController::class, 'getPageData']);
+
+// Public partners route (all active Pro Industries)
+Route::get('/partners', [IndustryApiController::class, 'getAllPartners']);
 
 // Stripe webhook (must be public, no auth)
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);

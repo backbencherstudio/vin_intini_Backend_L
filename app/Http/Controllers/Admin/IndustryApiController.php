@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Industry;
 use App\Models\IndustryPartner;
 use App\Models\IndustrySections;
+use Illuminate\Http\JsonResponse;
 
 class IndustryApiController extends Controller
 {
@@ -119,60 +121,84 @@ class IndustryApiController extends Controller
     }
 
     /* ============================================================
-       SECTION 2: PARTNERS DATA (Separate APIs)
+       SECTION 2: PARTNERS DATA (Pro Industry Partners)
        ============================================================ */
 
-    // --- Psychology Network Partners ---
-    public function getPsychologyBiotechPartners()
-    {
-        return $this->getPartners('psychology', 'biotechnology');
-    }
-
-    public function getPsychologyPharmaPartners()
-    {
-        return $this->getPartners('psychology', 'psychotropics');
-    }
-
-    public function getPsychologyPubPartners()
-    {
-        return $this->getPartners('psychology', 'publications');
-    }
-
-    // --- Neuroscience Network Partners ---
-    public function getNeuroscienceBiotechPartners()
-    {
-        return $this->getPartners('neuroscience', 'biotechnology');
-    }
-
-    public function getNeurosciencePharmaPartners()
-    {
-        return $this->getPartners('neuroscience', 'psychotropics');
-    }
-
-    public function getNeurosciencePubPartners()
-    {
-        return $this->getPartners('neuroscience', 'publications');
-    }
-
-    // Common Partner Fetcher
-    private function getPartners($network, $industry)
+    /**
+     * Unified partners endpoint returning all active Pro Industries.
+     */
+    public function getAllPartners(): JsonResponse
     {
         try {
-            $partners = IndustryPartner::where('network_type', $network)
-                ->where('industry_type', $industry)
-                ->select('id', 'partner_name', 'partner_tag', 'partner_desc', 'partner_link', 'partner_logo')
-                ->get()
-                ->map(function ($partner) {
-                    $partner->partner_logo = $partner->partner_logo
-                        ? asset('storage/'.$partner->partner_logo)
-                        : null;
+            $partners = Industry::where(function ($query) {
+                $query->where('status', 'active')->orWhereNull('status');
+            })
+            ->whereNotNull('logo')
+            ->where('logo', '!=', '')
+            ->latest('id')
+            ->get()
+            ->map(function ($industry) {
+                $logoUrl = $industry->logo;
+                $website = $industry->website;
+                if ($website && ! str_starts_with($website, 'http://') && ! str_starts_with($website, 'https://')) {
+                    $website = 'https://'.$website;
+                }
 
-                    return $partner;
-                });
+                return [
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'title' => $industry->name,
+                    'partner_name' => $industry->name,
+                    'slug' => $industry->slug,
+                    'logo' => $logoUrl,
+                    'partner_logo' => $logoUrl,
+                    'image' => $logoUrl,
+                    'website' => $website,
+                    'website_url' => $website,
+                    'tagline' => $industry->tagline,
+                    'partner_tag' => $industry->tagline,
+                    'description' => $industry->description,
+                    'partner_desc' => $industry->description,
+                    'industry' => $industry->industry,
+                    'status' => $industry->status ?? 'active',
+                ];
+            });
 
             return response()->json(['success' => true, 'partners' => $partners], 200);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    // --- Psychology Network Partners ---
+    public function getPsychologyBiotechPartners()
+    {
+        return $this->getAllPartners();
+    }
+
+    public function getPsychologyPharmaPartners()
+    {
+        return $this->getAllPartners();
+    }
+
+    public function getPsychologyPubPartners()
+    {
+        return $this->getAllPartners();
+    }
+
+    // --- Neuroscience Network Partners ---
+    public function getNeuroscienceBiotechPartners()
+    {
+        return $this->getAllPartners();
+    }
+
+    public function getNeurosciencePharmaPartners()
+    {
+        return $this->getAllPartners();
+    }
+
+    public function getNeurosciencePubPartners()
+    {
+        return $this->getAllPartners();
     }
 }
