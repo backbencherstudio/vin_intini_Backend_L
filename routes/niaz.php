@@ -141,6 +141,7 @@ Route::prefix('industry')->group(function () {
     Route::get('jobsfeed', [JobsFeedController::class, 'jobsFeed']); // global route
     Route::get('jobsfeed/recommended', [JobsFeedController::class, 'recommendedJobs']); // recommended jobs based on preferences
     Route::get('jobs/recommended', [JobsFeedController::class, 'recommendedJobs']); // alias
+    Route::get('jobs/top-picks', [JobsFeedController::class, 'topJobPicks']); // top job picks
     Route::get('jobs-by-state-offering', [JobsFeedController::class, 'jobsByStateAndOffering']); // jobs filtered by state_id & employment_offering
     Route::get('jobs-count-by-state', [JobsFeedController::class, 'jobsCountByState']); // active jobs count by state (filterable by network_type)
     Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']); // global show route
