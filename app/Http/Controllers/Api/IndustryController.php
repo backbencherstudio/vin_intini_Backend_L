@@ -172,6 +172,13 @@ class IndustryController extends Controller
         ]);
         $industry->increment('views_count');
 
+        $existingConversation = null;
+        if ($viewerId && $viewerId !== (int) $industry->created_by) {
+            $existingConversation = \App\Models\IndustryConversation::where('industry_id', $industry->id)
+                ->where('user_id', $viewerId)
+                ->first();
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Company retrieved successfully.',
@@ -191,6 +198,8 @@ class IndustryController extends Controller
                 'views_count' => (int) $industry->views_count,
                 'is_owner' => (int) $industry->created_by === (int) auth()->id(),
                 'is_following' => $isFollowing,
+                'has_conversation' => $existingConversation !== null,
+                'conversation_id' => $existingConversation?->id,
             ],
         ], 200);
     }

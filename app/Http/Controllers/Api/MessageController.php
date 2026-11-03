@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PlanType;
 use App\Events\ConversationUpdated;
 use App\Events\MessageDeleted;
 use App\Events\MessageReactionChanged;
@@ -68,6 +69,9 @@ class MessageController extends Controller
 
         $messageItems = collect($messages->items());
 
+        $canDirectMessage = $this->isProIndustryUser($currentUser) || ($otherUser && $this->isProIndustryUser($otherUser));
+        $effectiveConnected = $isConnected || $canDirectMessage;
+
         if ($afterId === null) {
             $messageItems = $messageItems->reverse();
         }
@@ -113,7 +117,7 @@ class MessageController extends Controller
                 'profile_image_url' => $otherUser->profile_image_url,
                 'cover_image_url' => $otherUser->cover_image_url,
                 'has_premium' => $this->userHasActiveSubscription($otherUser->id),
-                'is_connected' => $isConnected,
+                'is_connected' => $effectiveConnected,
             ] : null,
             'data' => $data,
             'next_cursor' => $messages->nextCursor()?->encode(),
@@ -147,7 +151,9 @@ class MessageController extends Controller
             })
             ->exists();
 
-        if (! $isConnected) {
+        $canDirectMessage = $this->isProIndustryUser($currentUser) || $this->isProIndustryUser($otherUser);
+
+        if (! $isConnected && ! $canDirectMessage) {
             return response()->json(['success' => false, 'message' => 'You must be connected to message this user.'], 403);
         }
 
@@ -495,5 +501,16 @@ class MessageController extends Controller
         }
 
         return null;
+    }
+
+    protected function isProIndustryUser($user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->tier === 'pro_industry'
+            || $user->industry()->exists()
+            || $user->hasActiveSubscription(PlanType::INDUSTRY);
     }
 }

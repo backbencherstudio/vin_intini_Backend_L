@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PlanType;
 use App\Http\Controllers\Controller;
 use App\Models\Connection;
 use App\Models\Conversation;
@@ -201,7 +202,9 @@ class ConversationController extends Controller
             })
             ->exists();
 
-        if (! $connected) {
+        $canDirectMessage = $this->isProIndustryUser($currentUser) || $this->isProIndustryUser($user);
+
+        if (! $connected && ! $canDirectMessage) {
             return response()->json(['success' => false, 'message' => 'You must be connected to start a conversation.'], 403);
         }
 
@@ -340,6 +343,13 @@ class ConversationController extends Controller
         return Subscription::where('user_id', $userId)
             ->whereIn('status', ['active', 'trialing'])
             ->exists();
+    }
+
+    protected function isProIndustryUser(User $user): bool
+    {
+        return $user->tier === 'pro_industry'
+            || $user->industry()->exists()
+            || $user->hasActiveSubscription(PlanType::INDUSTRY);
     }
 
     /**
