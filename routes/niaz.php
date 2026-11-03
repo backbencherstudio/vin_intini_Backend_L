@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\ProductBoostController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\UserEducationController;
 use App\Http\Controllers\Api\UserExperienceController;
+use App\Http\Controllers\Api\UserJobPreferenceController;
 use App\Http\Controllers\Api\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -128,9 +129,16 @@ Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'upda
 // account deletion request route
 Route::post('/account/delete-request', [SecuritySettingsController::class, 'requestDelete']);
 
+// user job preference routes
+Route::get('/user/job-preference', [UserJobPreferenceController::class, 'getPreference']);
+Route::post('/user/job-preference', [UserJobPreferenceController::class, 'savePreference']);
+Route::delete('/user/job-preference', [UserJobPreferenceController::class, 'clearPreference']);
+
 // pro Industry job post
 Route::prefix('industry')->group(function () {
     Route::get('jobsfeed', [JobsFeedController::class, 'jobsFeed']); // global route
+    Route::get('jobsfeed/recommended', [JobsFeedController::class, 'recommendedJobs']); // recommended jobs based on preferences
+    Route::get('jobs/recommended', [JobsFeedController::class, 'recommendedJobs']); // alias
     Route::get('jobs-by-state-offering', [JobsFeedController::class, 'jobsByStateAndOffering']); // jobs filtered by state_id & employment_offering
     Route::get('jobs-count-by-state', [JobsFeedController::class, 'jobsCountByState']); // active jobs count by state (filterable by network_type)
     Route::get('job-post/{id_or_slug}', [IndustryJobPostController::class, 'show']); // global show route

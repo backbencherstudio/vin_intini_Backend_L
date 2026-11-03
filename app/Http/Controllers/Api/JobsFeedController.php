@@ -11,6 +11,7 @@ use App\Models\IndustryJobPost;
 use App\Models\IndustryJobPostLike;
 use App\Models\IndustryJobPostSave;
 use App\Models\State;
+use App\Models\UserJobPreference;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -347,6 +348,307 @@ class JobsFeedController extends Controller
     }
 
     /**
+     * Recommended jobs based on authenticated user's job preferences.
+     * Partial matching:
+     * - Any keyword in preferred title matching job_title or position
+     * - Any keyword in preferred position matching position or job_title
+     * - Category, network_type, work_mode, employment_type, level, location, salary matching
+     * - Highest matching scores ranked first
+     * - If no preference is set, falls back to latest active jobs with recommendation guidance
+     */
+    public function recommendedJobs(Request $request): JsonResponse
+    {
+        $currentUser = auth('api')->user();
+
+        $limit = min($request->integer('limit', 10), 100);
+        $offset = 0;
+        if ($request->filled('cursor')) {
+            $decoded = base64_decode((string) $request->query('cursor'), true);
+            if ($decoded !== false && is_numeric($decoded)) {
+                $offset = max(0, (int) $decoded);
+            }
+        }
+
+        $today = Carbon::today()->toDateString();
+
+        // JIT auto-sync expired jobs
+        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today) {
+            IndustryJobPost::where('status', IndustryJobPostStatus::PUBLISHED)
+                ->whereNotNull('announcement_end_date')
+                ->where('announcement_end_date', '<', $today)
+                ->update(['status' => IndustryJobPostStatus::EXPIRED]);
+
+            return true;
+        });
+
+        // Retrieve user's job preference
+        $preference = $currentUser
+            ? UserJobPreference::with(['state:id,name,code,slug', 'city:id,name,state_id'])
+                ->where('user_id', $currentUser->id)
+                ->first()
+            : null;
+
+        $hasPreference = (bool) ($preference && $preference->hasAnyPreference());
+
+        // Base query: published and active jobs
+        $query = IndustryJobPost::query()
+            ->select([
+                'industry_job_posts.id',
+                'industry_job_posts.job_id',
+                'industry_job_posts.industry_id',
+                'industry_job_posts.created_by',
+                'industry_job_posts.job_title',
+                'industry_job_posts.slug',
+                'industry_job_posts.position',
+                'industry_job_posts.work_mode',
+                'industry_job_posts.employment_type',
+                'industry_job_posts.level',
+                'industry_job_posts.experience',
+                'industry_job_posts.state_id',
+                'industry_job_posts.city_id',
+                'industry_job_posts.salary_min',
+                'industry_job_posts.salary_max',
+                'industry_job_posts.salary_type',
+                'industry_job_posts.employment_offering',
+                'industry_job_posts.network_type',
+                'industry_job_posts.category',
+                'industry_job_posts.sub_category',
+                'industry_job_posts.status',
+                'industry_job_posts.announcement_start_date',
+                'industry_job_posts.announcement_end_date',
+                'industry_job_posts.created_at',
+            ])
+            ->where('industry_job_posts.status', IndustryJobPostStatus::PUBLISHED)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('industry_job_posts.announcement_start_date')
+                    ->orWhere('industry_job_posts.announcement_start_date', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('industry_job_posts.announcement_end_date')
+                    ->orWhere('industry_job_posts.announcement_end_date', '>=', $today);
+            });
+
+        // Tab / employment type filter from UI
+        $tab = strtolower((string) $request->query('tab', $request->query('employment_type', 'all')));
+        if ($tab === 'remote') {
+            $query->where('industry_job_posts.work_mode', 'remote');
+        } elseif ($tab === 'hybrid') {
+            $query->where('industry_job_posts.work_mode', 'hybrid');
+        } elseif (in_array($tab, ['on_site', 'on-site'])) {
+            $query->where('industry_job_posts.work_mode', 'on_site');
+        } elseif (in_array($tab, ['full_time', 'full-time'])) {
+            $query->where('industry_job_posts.employment_type', 'full_time');
+        } elseif (in_array($tab, ['part_time', 'part-time'])) {
+            $query->where('industry_job_posts.employment_type', 'part_time');
+        } elseif (in_array($tab, ['short_term', 'short-term'])) {
+            $query->where('industry_job_posts.employment_type', 'short_term');
+        } elseif ($tab === 'contract') {
+            $query->where('industry_job_posts.employment_type', 'contract');
+        } elseif ($tab === 'internship') {
+            $query->where('industry_job_posts.employment_type', 'internship');
+        }
+
+        // Search filter
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('industry_job_posts.job_title', 'LIKE', "%{$search}%")
+                    ->orWhere('industry_job_posts.job_id', 'LIKE', "%{$search}%")
+                    ->orWhere('industry_job_posts.position', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $matchedPreference = false;
+
+        if ($hasPreference) {
+            $scoreExpressions = [];
+            $bindings = [];
+
+            // 1. Preferred Job Title keywords (words >= 3 letters)
+            if (! empty($preference->job_title)) {
+                $titleKeywords = $this->extractKeywords($preference->job_title);
+                foreach ($titleKeywords as $word) {
+                    $scoreExpressions[] = "(CASE WHEN LOWER(industry_job_posts.job_title) LIKE ? OR LOWER(COALESCE(industry_job_posts.position, '')) LIKE ? THEN 3 ELSE 0 END)";
+                    $bindings[] = '%'.strtolower($word).'%';
+                    $bindings[] = '%'.strtolower($word).'%';
+                }
+                // Exact title bonus
+                $scoreExpressions[] = "(CASE WHEN LOWER(industry_job_posts.job_title) = ? THEN 3 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->job_title));
+            }
+
+            // 2. Preferred Position keywords
+            if (! empty($preference->position)) {
+                $positionKeywords = $this->extractKeywords($preference->position);
+                foreach ($positionKeywords as $word) {
+                    $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.position, '')) LIKE ? OR LOWER(industry_job_posts.job_title) LIKE ? THEN 3 ELSE 0 END)";
+                    $bindings[] = '%'.strtolower($word).'%';
+                    $bindings[] = '%'.strtolower($word).'%';
+                }
+                // Exact position bonus
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.position, '')) = ? THEN 3 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->position));
+            }
+
+            // 3. Network type
+            if (! empty($preference->network_type)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.network_type, '')) = ? THEN 2 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->network_type));
+            }
+
+            // 4. Category
+            if (! empty($preference->category)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.category, '')) LIKE ? THEN 2 ELSE 0 END)";
+                $bindings[] = '%'.strtolower(trim($preference->category)).'%';
+            }
+
+            // 5. Employment offering
+            if (! empty($preference->employment_offering)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.employment_offering, '')) = ? THEN 2 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->employment_offering));
+            }
+
+            // 6. Work mode
+            if (! empty($preference->work_mode)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.work_mode, '')) = ? THEN 2 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->work_mode));
+            }
+
+            // 7. Employment type
+            if (! empty($preference->employment_type)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.employment_type, '')) = ? THEN 2 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->employment_type));
+            }
+
+            // 8. Level
+            if (! empty($preference->level)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.level, '')) LIKE ? THEN 1 ELSE 0 END)";
+                $bindings[] = '%'.strtolower(trim($preference->level)).'%';
+            }
+
+            // 9. Experience
+            if (! empty($preference->experience)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.experience, '')) LIKE ? THEN 1 ELSE 0 END)";
+                $bindings[] = '%'.strtolower(trim($preference->experience)).'%';
+            }
+
+            // 10. State & City
+            if (! empty($preference->state_id)) {
+                $scoreExpressions[] = "(CASE WHEN industry_job_posts.state_id = ? THEN 2 ELSE 0 END)";
+                $bindings[] = (int) $preference->state_id;
+            }
+            if (! empty($preference->city_id)) {
+                $scoreExpressions[] = "(CASE WHEN industry_job_posts.city_id = ? THEN 2 ELSE 0 END)";
+                $bindings[] = (int) $preference->city_id;
+            }
+
+            // 11. Salary overlap
+            if ($preference->salary_min !== null && $preference->salary_max !== null) {
+                $scoreExpressions[] = "(CASE WHEN (industry_job_posts.salary_max IS NULL OR industry_job_posts.salary_max >= ?) AND (industry_job_posts.salary_min IS NULL OR industry_job_posts.salary_min <= ?) THEN 2 ELSE 0 END)";
+                $bindings[] = $preference->salary_min;
+                $bindings[] = $preference->salary_max;
+            } elseif ($preference->salary_min !== null) {
+                $scoreExpressions[] = "(CASE WHEN industry_job_posts.salary_max >= ? OR (industry_job_posts.salary_max IS NULL AND industry_job_posts.salary_min >= ?) THEN 2 ELSE 0 END)";
+                $bindings[] = $preference->salary_min;
+                $bindings[] = $preference->salary_min;
+            } elseif ($preference->salary_max !== null) {
+                $scoreExpressions[] = "(CASE WHEN industry_job_posts.salary_min <= ? OR (industry_job_posts.salary_min IS NULL AND industry_job_posts.salary_max <= ?) THEN 2 ELSE 0 END)";
+                $bindings[] = $preference->salary_max;
+                $bindings[] = $preference->salary_max;
+            }
+
+            if (! empty($scoreExpressions)) {
+                $scoreSql = implode(' + ', $scoreExpressions);
+                $query->selectRaw("({$scoreSql}) as match_score", $bindings);
+
+                // Clone query to check if any scored jobs exist
+                $testQuery = (clone $query)->having('match_score', '>', 0);
+                $matchedCount = $testQuery->count();
+
+                if ($matchedCount > 0) {
+                    $matchedPreference = true;
+                    $query->having('match_score', '>', 0);
+                    $query->orderByDesc('match_score')->orderByDesc('industry_job_posts.id');
+                } else {
+                    $query->orderByDesc('industry_job_posts.id');
+                }
+            } else {
+                $query->selectRaw('0 as match_score');
+                $query->orderByDesc('industry_job_posts.id');
+            }
+        } else {
+            $query->selectRaw('0 as match_score');
+            $query->orderByDesc('industry_job_posts.id');
+        }
+
+        $totalJobsCount = (clone $query)->count();
+
+        $jobs = $query->with([
+            'industry:id,name,slug,logo,website,created_by',
+            'state:id,name,code,slug',
+            'city:id,name,state_id',
+        ])
+            ->withCount('applications')
+            ->skip($offset)
+            ->take($limit + 1)
+            ->get();
+
+        $hasMorePages = $jobs->count() > $limit;
+        $paginatedItems = $jobs->take($limit);
+
+        $formattedData = $this->formatJobCollection($paginatedItems, $currentUser, $preference);
+
+        $nextCursor = $hasMorePages ? base64_encode((string) ($offset + $limit)) : null;
+        $prevCursor = $offset > 0 ? base64_encode((string) max(0, $offset - $limit)) : null;
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'has_preference' => $hasPreference,
+            'matched_preference' => $matchedPreference,
+            'preference' => $preference ? [
+                'id' => $preference->id,
+                'job_title' => $preference->job_title,
+                'position' => $preference->position,
+                'network_type' => $preference->network_type,
+                'category' => $preference->category,
+                'sub_category' => $preference->sub_category,
+                'employment_offering' => $preference->employment_offering,
+                'work_mode' => $preference->work_mode,
+                'employment_type' => $preference->employment_type,
+                'level' => $preference->level,
+                'experience' => $preference->experience,
+                'salary_type' => $preference->salary_type,
+                'salary_min' => $preference->salary_min,
+                'salary_max' => $preference->salary_max,
+                'state_id' => $preference->state_id,
+                'state' => $preference->state ? [
+                    'id' => $preference->state->id,
+                    'name' => $preference->state->name,
+                    'code' => $preference->state->code,
+                ] : null,
+                'city_id' => $preference->city_id,
+                'city' => $preference->city ? [
+                    'id' => $preference->city->id,
+                    'name' => $preference->city->name,
+                ] : null,
+            ] : null,
+            'data' => $formattedData,
+            'total_jobs' => $totalJobsCount,
+            'stats' => [
+                'total_jobs' => $totalJobsCount,
+            ],
+            'pagination' => [
+                'limit' => $limit,
+                'per_page' => $limit,
+                'next_cursor' => $nextCursor,
+                'prev_cursor' => $prevCursor,
+                'has_more_pages' => $hasMorePages,
+            ],
+        ], 200);
+    }
+
+    /**
      * Get active jobs filtered by state_id and employment_offering
      */
     public function jobsByStateAndOffering(Request $request): JsonResponse
@@ -662,7 +964,7 @@ class JobsFeedController extends Controller
     /**
      * Job list formatter
      */
-    private function formatJobCollection($jobs, $currentUser): array
+    private function formatJobCollection($jobs, $currentUser, ?UserJobPreference $preference = null): array
     {
         if ($jobs->isEmpty()) {
             return [];
@@ -697,8 +999,8 @@ class JobsFeedController extends Controller
                 ->all()
             : [];
 
-        return $jobs->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser) {
-            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser);
+        return $jobs->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser, $preference) {
+            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser, $preference);
         })->values()->all();
     }
 
@@ -711,7 +1013,8 @@ class JobsFeedController extends Controller
         array $savedJobIds = [],
         array $appliedJobs = [],
         array $userIndustryIds = [],
-        $currentUser = null
+        $currentUser = null,
+        ?UserJobPreference $preference = null
     ): array {
         $locationParts = array_filter([
             $job->city?->name,
@@ -767,6 +1070,8 @@ class JobsFeedController extends Controller
             'state_name' => $job->state?->name,
             'city_id' => $job->city_id,
             'city_name' => $job->city?->name,
+            'match_score' => (int) ($job->match_score ?? 0),
+            'matched_criteria' => $this->determineMatchedCriteria($job, $preference),
 
             'industry' => [
                 'id' => $job->industry?->id,
@@ -777,6 +1082,135 @@ class JobsFeedController extends Controller
                 'is_own_industry' => $isOwnIndustry,
             ],
         ];
+    }
+
+    /**
+     * Extract meaningful keywords from a title or phrase (ignoring short words and common stopwords).
+     *
+     * @return string[]
+     */
+    private function extractKeywords(?string $text): array
+    {
+        if (empty($text)) {
+            return [];
+        }
+
+        $stopwords = [
+            'and', 'the', 'of', 'for', 'with', 'in', 'at', 'by', 'from', 'to',
+            'a', 'an', 'is', 'are', 'or', 'on', 'as', 'into', 'like', 'than',
+        ];
+
+        $clean = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $text);
+        $words = preg_split('/\s+/', strtolower($clean), -1, PREG_SPLIT_NO_EMPTY);
+
+        $meaningful = array_filter($words, function ($w) use ($stopwords) {
+            return mb_strlen($w) >= 3 && ! in_array($w, $stopwords, true);
+        });
+
+        return array_values(array_unique($meaningful));
+    }
+
+    /**
+     * Determine which preference criteria matched a specific job.
+     */
+    private function determineMatchedCriteria(IndustryJobPost $job, ?UserJobPreference $preference): array
+    {
+        if (! $preference || ! $preference->hasAnyPreference()) {
+            return [];
+        }
+
+        $matches = [];
+
+        // Title match
+        if (! empty($preference->job_title)) {
+            $keywords = $this->extractKeywords($preference->job_title);
+            foreach ($keywords as $kw) {
+                if (
+                    stripos($job->job_title ?? '', $kw) !== false ||
+                    stripos($job->position ?? '', $kw) !== false
+                ) {
+                    $matches[] = 'Title: '.$job->job_title;
+                    break;
+                }
+            }
+        }
+
+        // Position match
+        if (! empty($preference->position)) {
+            $keywords = $this->extractKeywords($preference->position);
+            foreach ($keywords as $kw) {
+                if (
+                    stripos($job->position ?? '', $kw) !== false ||
+                    stripos($job->job_title ?? '', $kw) !== false
+                ) {
+                    $matches[] = 'Position: '.($job->position ?? $job->job_title);
+                    break;
+                }
+            }
+        }
+
+        // Network
+        if (! empty($preference->network_type) && strcasecmp($job->network_type ?? '', $preference->network_type) === 0) {
+            $matches[] = ucfirst($job->network_type);
+        }
+
+        // Work mode
+        if (! empty($preference->work_mode) && strcasecmp($job->work_mode ?? '', $preference->work_mode) === 0) {
+            $modeLabel = match (strtolower($job->work_mode)) {
+                'remote' => 'Remote',
+                'hybrid' => 'Hybrid',
+                'on_site', 'on-site' => 'On-site',
+                default => ucfirst($job->work_mode),
+            };
+            $matches[] = $modeLabel;
+        }
+
+        // Employment type
+        if (! empty($preference->employment_type) && strcasecmp($job->employment_type ?? '', $preference->employment_type) === 0) {
+            $typeLabel = match (strtolower($job->employment_type)) {
+                'full_time', 'full-time' => 'Full-time',
+                'part_time', 'part-time' => 'Part-time',
+                'short_term', 'short-term' => 'Short-term',
+                'contract' => 'Contract',
+                'internship' => 'Internship',
+                default => ucfirst($job->employment_type),
+            };
+            $matches[] = $typeLabel;
+        }
+
+        // Category
+        if (! empty($preference->category) && stripos($job->category ?? '', $preference->category) !== false) {
+            $matches[] = $job->category;
+        }
+
+        // Level
+        if (! empty($preference->level) && stripos($job->level ?? '', $preference->level) !== false) {
+            $matches[] = $job->level;
+        }
+
+        // Location
+        if (! empty($preference->state_id) && (int) $job->state_id === (int) $preference->state_id) {
+            $matches[] = $job->state?->name ?? 'State Match';
+        }
+        if (! empty($preference->city_id) && (int) $job->city_id === (int) $preference->city_id) {
+            $matches[] = $job->city?->name ?? 'City Match';
+        }
+
+        // Salary
+        if ($preference->salary_min !== null || $preference->salary_max !== null) {
+            $salaryOverlaps = true;
+            if ($preference->salary_min !== null && $job->salary_max !== null && $job->salary_max < $preference->salary_min) {
+                $salaryOverlaps = false;
+            }
+            if ($preference->salary_max !== null && $job->salary_min !== null && $job->salary_min > $preference->salary_max) {
+                $salaryOverlaps = false;
+            }
+            if ($salaryOverlaps && ($job->salary_min !== null || $job->salary_max !== null)) {
+                $matches[] = 'Salary Match';
+            }
+        }
+
+        return array_values(array_unique($matches));
     }
 
     /**
