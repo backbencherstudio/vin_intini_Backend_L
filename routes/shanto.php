@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\ConversationController;
+use App\Http\Controllers\Api\IndustryConversationController;
+use App\Http\Controllers\Api\IndustryMessageController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NewsfeedController;
@@ -63,6 +65,25 @@ Route::post('/conversations/{conversation}/messages', [MessageController::class,
 Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
 Route::post('/messages/{message}/react', [MessageController::class, 'react']);
 Route::delete('/messages/{message}/react', [MessageController::class, 'unreact']);
+
+// industry conversation routes
+Route::get('/industry-conversations', [IndustryConversationController::class, 'index']);
+Route::get('/industry-conversations/unread-count', [IndustryConversationController::class, 'unreadCount']);
+Route::get('/industry-conversations/search-users', [IndustryConversationController::class, 'searchUsers']);
+Route::post('/industry-conversations/with-industry/{industry}', [IndustryConversationController::class, 'showOrCreateForUser']);
+Route::post('/industry-conversations/with-user/{user}', [IndustryConversationController::class, 'showOrCreateForIndustry']);
+Route::post('/industry-conversations/{conversation}/mark-read', [IndustryConversationController::class, 'markAsRead']);
+Route::post('/industry-conversations/{conversation}/mark-unread', [IndustryConversationController::class, 'markAsUnread']);
+Route::post('/industry-conversations/{conversation}/archive', [IndustryConversationController::class, 'archive']);
+Route::post('/industry-conversations/{conversation}/unarchive', [IndustryConversationController::class, 'unarchive']);
+Route::delete('/industry-conversations/{conversation}', [IndustryConversationController::class, 'destroy']);
+
+// industry message routes
+Route::get('/industry-conversations/{conversation}/messages', [IndustryMessageController::class, 'index']);
+Route::post('/industry-conversations/{conversation}/messages', [IndustryMessageController::class, 'store']);
+Route::delete('/industry-messages/{message}', [IndustryMessageController::class, 'destroy']);
+Route::post('/industry-messages/{message}/react', [IndustryMessageController::class, 'react']);
+Route::delete('/industry-messages/{message}/react', [IndustryMessageController::class, 'unreact']);
 
 // plans & subscription routes
 Route::get('/plans', [SubscriptionController::class, 'plans']);

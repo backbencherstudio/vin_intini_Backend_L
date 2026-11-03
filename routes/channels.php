@@ -17,6 +17,20 @@ Broadcast::channel('conversation.{id}', function ($user, $id) {
         ->exists();
 });
 
+Broadcast::channel('industry-conversation.{id}', function ($user, $id) {
+    $conversation = \App\Models\IndustryConversation::with('industry')->find($id);
+    if (! $conversation) {
+        return false;
+    }
+
+    return (int) $conversation->user_id === (int) $user->id
+        || ((int) $conversation->industry?->created_by === (int) $user->id);
+});
+
+Broadcast::channel('industry.{id}', function ($user, $id) {
+    return \App\Models\Industry::where('id', $id)->where('created_by', $user->id)->exists();
+});
+
 // Schedule::command('model:prune')->daily();
 Schedule::command('model:prune')->dailyAt('02:00')->timezone('America/New_York');
 
