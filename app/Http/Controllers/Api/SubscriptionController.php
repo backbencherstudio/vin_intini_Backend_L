@@ -196,6 +196,8 @@ class SubscriptionController extends Controller
             'success' => true,
             'data' => [
                 'isActive' => true,
+                'id' => $subscription->id,
+                'subscription_id' => $subscription->id,
                 'plan' => $plan ? [
                     'id' => $plan->id,
                     'name' => $plan->name,
