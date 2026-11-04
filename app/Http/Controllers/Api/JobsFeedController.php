@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class JobsFeedController extends Controller
 {
@@ -649,6 +650,151 @@ class JobsFeedController extends Controller
     }
 
     /**
+     * Top job picks for the current user based on preferences, engagement, and activity.
+     */
+    public function topJobPicks(Request $request): JsonResponse
+    {
+        $currentUser = auth('api')->user();
+        $limit = min($request->integer('limit', 4), 20);
+        $today = Carbon::today()->toDateString();
+
+        // JIT auto-sync expired jobs
+        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today) {
+            IndustryJobPost::where('status', IndustryJobPostStatus::PUBLISHED)
+                ->whereNotNull('announcement_end_date')
+                ->where('announcement_end_date', '<', $today)
+                ->update(['status' => IndustryJobPostStatus::EXPIRED]);
+
+            return true;
+        });
+
+        // Retrieve user's job preference
+        $preference = $currentUser
+            ? UserJobPreference::with(['state:id,name,code,slug', 'city:id,name,state_id'])
+                ->where('user_id', $currentUser->id)
+                ->first()
+            : null;
+
+        $hasPreference = (bool) ($preference && $preference->hasAnyPreference());
+
+        // Base query: published and active jobs
+        $query = IndustryJobPost::query()
+            ->select([
+                'industry_job_posts.id',
+                'industry_job_posts.job_id',
+                'industry_job_posts.industry_id',
+                'industry_job_posts.created_by',
+                'industry_job_posts.job_title',
+                'industry_job_posts.slug',
+                'industry_job_posts.position',
+                'industry_job_posts.work_mode',
+                'industry_job_posts.employment_type',
+                'industry_job_posts.level',
+                'industry_job_posts.experience',
+                'industry_job_posts.state_id',
+                'industry_job_posts.city_id',
+                'industry_job_posts.salary_min',
+                'industry_job_posts.salary_max',
+                'industry_job_posts.salary_type',
+                'industry_job_posts.employment_offering',
+                'industry_job_posts.network_type',
+                'industry_job_posts.category',
+                'industry_job_posts.sub_category',
+                'industry_job_posts.status',
+                'industry_job_posts.job_description',
+                'industry_job_posts.announcement_start_date',
+                'industry_job_posts.announcement_end_date',
+                'industry_job_posts.created_at',
+            ])
+            ->where('industry_job_posts.status', IndustryJobPostStatus::PUBLISHED)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('industry_job_posts.announcement_start_date')
+                    ->orWhere('industry_job_posts.announcement_start_date', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('industry_job_posts.announcement_end_date')
+                    ->orWhere('industry_job_posts.announcement_end_date', '>=', $today);
+            });
+
+        // Exclude specific job ID (e.g. current job being viewed)
+        if ($request->filled('exclude_id')) {
+            $query->where('industry_job_posts.id', '!=', (int) $request->query('exclude_id'));
+        }
+
+        // Scoring based on user preferences
+        if ($hasPreference) {
+            $scoreExpressions = [];
+            $bindings = [];
+
+            if (! empty($preference->job_title)) {
+                $titleKeywords = $this->extractKeywords($preference->job_title);
+                foreach ($titleKeywords as $word) {
+                    $scoreExpressions[] = "(CASE WHEN LOWER(industry_job_posts.job_title) LIKE ? OR LOWER(COALESCE(industry_job_posts.position, '')) LIKE ? THEN 3 ELSE 0 END)";
+                    $bindings[] = '%'.strtolower($word).'%';
+                    $bindings[] = '%'.strtolower($word).'%';
+                }
+                $scoreExpressions[] = "(CASE WHEN LOWER(industry_job_posts.job_title) = ? THEN 3 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->job_title));
+            }
+
+            if (! empty($preference->position)) {
+                $posKeywords = $this->extractKeywords($preference->position);
+                foreach ($posKeywords as $word) {
+                    $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.position, '')) LIKE ? OR LOWER(industry_job_posts.job_title) LIKE ? THEN 3 ELSE 0 END)";
+                    $bindings[] = '%'.strtolower($word).'%';
+                    $bindings[] = '%'.strtolower($word).'%';
+                }
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.position, '')) = ? THEN 3 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->position));
+            }
+
+            if (! empty($preference->network_type)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.network_type, '')) = ? THEN 2 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->network_type));
+            }
+
+            if (! empty($preference->work_mode)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.work_mode, '')) = ? THEN 2 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->work_mode));
+            }
+
+            if (! empty($preference->employment_type)) {
+                $scoreExpressions[] = "(CASE WHEN LOWER(COALESCE(industry_job_posts.employment_type, '')) = ? THEN 2 ELSE 0 END)";
+                $bindings[] = strtolower(trim($preference->employment_type));
+            }
+
+            if (! empty($scoreExpressions)) {
+                $scoreSql = implode(' + ', $scoreExpressions);
+                $query->selectRaw("({$scoreSql}) as match_score", $bindings);
+                $query->orderByDesc('match_score');
+            } else {
+                $query->selectRaw('0 as match_score');
+            }
+        } else {
+            $query->selectRaw('0 as match_score');
+        }
+
+        // Secondary order: applications count (popularity) and newest
+        $jobs = $query->with([
+            'industry:id,name,slug,logo,website,created_by',
+            'state:id,name,code,slug',
+            'city:id,name,state_id',
+        ])
+            ->withCount('applications')
+            ->orderByDesc('applications_count')
+            ->orderByDesc('industry_job_posts.id')
+            ->take($limit)
+            ->get();
+
+        $formattedData = $this->formatJobCollection($jobs, $currentUser, $preference);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $formattedData,
+        ], 200);
+    }
+
+    /**
      * Get active jobs filtered by state_id and employment_offering
      */
     public function jobsByStateAndOffering(Request $request): JsonResponse
@@ -1051,6 +1197,7 @@ class JobsFeedController extends Controller
             'location' => $locationText,
             'applications_count' => $job->applications_count ?? 0,
             'created_at_human' => $job->created_at?->diffForHumans(),
+            'job_description' => $job->job_description ? Str::limit(strip_tags($job->job_description), 140) : null,
 
             'is_saved' => isset($savedJobIds[$job->id]),
             'is_liked' => isset($likedJobIds[$job->id]),
