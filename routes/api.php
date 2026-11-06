@@ -4,122 +4,38 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\IndustryApiController;
 use App\Http\Controllers\Admin\PagesController;
-use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactUsController;
-use App\Http\Controllers\Api\ForgotPasswordController;
-use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ProductBoostController;
 use App\Http\Controllers\Api\RevenueCatWebhookController;
-use App\Http\Controllers\Api\SecuritySettingsController;
-use App\Http\Controllers\Api\SocialController;
 use App\Http\Controllers\Api\StripeWebhookController;
-use App\Http\Controllers\Api\TwoFactorController;
-use App\Http\Controllers\Api\UserEducationController;
-use App\Http\Controllers\Api\UserExperienceController;
-use App\Http\Controllers\Api\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/login', fn () => response()->json([
-    'success' => false,
-    'message' => 'Please login to continue',
-], 401))->name('login');
-
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
-// Contact Us Route
+// Public Static & Information Pages
 Route::post('/contact-submit', [ContactUsController::class, 'store']);
-// User Forgot Password Routes
-Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp'])->middleware('throttle:5,1');
-Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->middleware('throttle:5,1');
-Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:5,1');
-// Account Restoration Routes
-Route::post('/account/restore', [SecuritySettingsController::class, 'restore'])->middleware('throttle:5,1');
-
-// User Register Routes
-Route::post('/register', [AuthController::class, 'register'])->name('api.register')->middleware('throttle:5,1');
-Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->middleware('throttle:5,1');
-Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])->middleware('throttle:3,1');
-// Social Authentication Routes
-Route::get('/auth/{provider}', [SocialController::class, 'redirect']);
-Route::match(['get', 'post'], '/auth/{provider}/callback', [SocialController::class, 'callback']);
-Route::post('/auth/social-login', [SocialController::class, 'socialLogin']);
-Route::post('/refresh', [AuthController::class, 'refresh']);
-
-// pages routes
 Route::get('/pages/{slug}', [PagesController::class, 'getPageData']);
-
-// Public partners route (all active Pro Industries)
 Route::get('/partners', [IndustryApiController::class, 'getAllPartners']);
 
-// Stripe webhook (must be public, no auth)
+// Public Webhooks
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
-
-// RevenueCat webhook (must be public, no auth, signature verified)
 Route::post('/webhooks/revenuecat', [RevenueCatWebhookController::class, 'handle'])
     ->middleware('verify_revenuecat_webhook');
 
-// Universal Ad Tracking (Client-side verified IAB viewable impressions & click recording)
+// Universal Ad Tracking (Client-side verified IAB impressions & clicks)
 Route::post('/advertisements/impressions', [ProductBoostController::class, 'recordImpressions']);
 Route::post('/advertisements/{id}/click', [ProductBoostController::class, 'recordClick']);
 
-Route::prefix('2fa')->group(function (): void {
-    // 2FA Verification during Login
-    Route::post('/verify-login', [TwoFactorController::class, 'verifyLogin'])->middleware('throttle:5,1');
-    // Account Recovery when Authenticator App is lost
-    Route::post('/recovery-init', [TwoFactorController::class, 'recoveryInit'])->middleware('throttle:5,1');
-    Route::post('/recovery-send-otp', [TwoFactorController::class, 'recoverySendOtp'])->middleware('throttle:3,1');
-    Route::post('/recovery-verify', [TwoFactorController::class, 'recoveryVerify'])->middleware('throttle:5,1');
-    Route::post('/recovery/resend-otp', [TwoFactorController::class, 'recoveryResendOtp'])->middleware('throttle:5,1');
-});
+// Authentication Routes (Public & Authenticated 2FA/Session Lifecycle)
+require __DIR__.'/api/auth.php';
 
+// Protected Endpoints
 Route::middleware(['auth:api', 'active_session'])->group(function (): void {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']);
-
-    // user login activities and active sessions routes
-    Route::prefix('security')->group(function (): void {
-        Route::get('/overview', [SecuritySettingsController::class, 'getSecurityOverview']); // security overview route
-        Route::get('/active-sessions', [SecuritySettingsController::class, 'getActiveSessions']);  // active sessions route
-        Route::get('/login-activities', [SecuritySettingsController::class, 'getLoginActivities']);  // user login activities
-        Route::get('/login-activity/{id}', [SecuritySettingsController::class, 'getLoginActivityDetails']); // user login activity details
-        Route::post('/sessions/revoke/{id}', [SecuritySettingsController::class, 'revokeSession']);   // remove active session
-        Route::post('/sessions/sign-out-all', [SecuritySettingsController::class, 'signOutAllSessions']);  // sign out all sessions
-        Route::get('/suspicious-activities-list', [SecuritySettingsController::class, 'getSuspiciousActivitiesList']); // get suspicious activities list
-        Route::post('/resolve-all', [SecuritySettingsController::class, 'resolveAllActivities']); // resolve all unresolved activities (Yes, it was me for all)
-        Route::post('/resolve/{id}', [SecuritySettingsController::class, 'resolveSuspiciousLogin']); // resolve suspicious login (Yes, it was me)
-        Route::post('/secure-account/{id}', [SecuritySettingsController::class, 'secureAccount']); // secure account (No, it wasn't me)
-        Route::delete('/login-activities/clear-all', [SecuritySettingsController::class, 'deleteAllLoginActivities']); // delete all login activities
-        Route::delete('/login-activities/{id}', [SecuritySettingsController::class, 'deleteLoginActivity']); // delete single login activity
-    });
-
-    Route::prefix('2fa')->group(function (): void {
-        Route::post('/setup', [TwoFactorController::class, 'setup']);
-        Route::post('/confirm', [TwoFactorController::class, 'confirm']);
-        Route::post('/disable', [TwoFactorController::class, 'disable']);
-        Route::post('/regenerate-codes', [TwoFactorController::class, 'regenerateRecoveryCodes']);
-        // Recovery Email Setup Routes
-        Route::post('/recovery-email/update', [TwoFactorController::class, 'updateRecoveryEmail']);
-        Route::post('/recovery-email/confirm', [TwoFactorController::class, 'confirmRecoveryEmail']);
-        Route::post('/recovery-email/resend-otp', [TwoFactorController::class, 'resendRecoveryEmailOtp'])->middleware('throttle:3,1');
-    });
-
+    // Authenticated User Features
     Route::middleware('role:user')->group(function (): void {
-        // group, company, skill and institution suggestions for dropdown
-        Route::get('/company-suggestions', [UserExperienceController::class, 'companySuggestions']);
-        Route::get('/skill-suggestions', [UserExperienceController::class, 'skillSuggestions']);
-        Route::get('/institution-suggestions', [UserEducationController::class, 'institutionSuggestions']);
-        Route::get('/groups-suggestions', [GroupController::class, 'groupSuggestions']);
-
-        Route::post('/setup-profile', [UserProfileController::class, 'setupProfile'])->middleware('verified_user');
-
-        Route::middleware('profile_completed')->group(function (): void {
-            require __DIR__.'/niaz.php';
-            require __DIR__.'/shanto.php';
-        });
+        require __DIR__.'/api/user.php';
     });
 
+    // Admin API Endpoints
     Route::middleware('role:admin')->group(function (): void {
-        require __DIR__.'/admin.php';
+        require __DIR__.'/api/admin.php';
     });
-
-    require __DIR__.'/kamruzzaman.php';
 });
