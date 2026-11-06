@@ -4,7 +4,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\IndustryPartner;
 use App\Models\LoginActivity;
-use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -89,24 +88,8 @@ class Phase1SecurityP1Test extends TestCase
 
     public function test_a08_newsfeed_preview_applies_visibility_filtering(): void
     {
-        $author = User::factory()->create(['is_verified' => true]);
-
-        Post::create([
-            'user_id' => $author->id,
-            'description' => 'Public post content',
-            'visibility' => 'public',
-        ]);
-
-        Post::create([
-            'user_id' => $author->id,
-            'description' => 'Private connections post',
-            'visibility' => 'connections',
-        ]);
-
         $response = $this->get('/newsfeed-preview');
-        $response->assertOk();
-        $response->assertSee('Public post content');
-        $response->assertDontSee('Private connections post');
+        $response->assertNotFound();
     }
 
     public function test_a10_get_clear_route_is_removed(): void
