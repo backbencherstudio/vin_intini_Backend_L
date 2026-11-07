@@ -53,7 +53,7 @@ class IndustryJobPost extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (IndustryJobPost $jobPost) {
+        static::creating(function (IndustryJobPost $jobPost): void {
             if (empty($jobPost->job_id)) {
                 $jobPost->job_id = static::generateUniqueJobId((int) ($jobPost->industry_id ?: 1));
             }
@@ -136,7 +136,7 @@ class IndustryJobPost extends Model
 
     public function isSavedBy(?User $user): bool
     {
-        if (! $user) {
+        if (! $user instanceof User) {
             return false;
         }
 
@@ -149,7 +149,7 @@ class IndustryJobPost extends Model
 
     public function isLikedBy(?User $user): bool
     {
-        if (! $user) {
+        if (! $user instanceof User) {
             return false;
         }
 

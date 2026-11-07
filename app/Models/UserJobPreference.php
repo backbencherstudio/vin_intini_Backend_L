@@ -84,4 +84,3 @@ class UserJobPreference extends Model
         return false;
     }
 }
-

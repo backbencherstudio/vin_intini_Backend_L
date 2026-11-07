@@ -19,22 +19,22 @@ class State extends Model
         return $this->hasMany(IndustryJobPost::class);
     }
 
-    public function universities()
+    public function universities(): HasMany
     {
         return $this->hasMany(AcademiaUniversity::class);
     }
 
-    public function residencies()
+    public function residencies(): HasMany
     {
         return $this->hasMany(AcademiaMedicalResidency::class);
     }
 
-    public function facilities()
+    public function facilities(): HasMany
     {
         return $this->hasMany(AcademiaFacility::class);
     }
 
-    public function jobs()
+    public function jobs(): HasMany
     {
         return $this->hasMany(AcademiaJob::class);
     }

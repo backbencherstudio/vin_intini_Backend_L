@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property-read string|null $attachment_url
+ * @property-read string|null $file_extension
+ */
 class Publication extends Model
 {
     use HasFactory, SoftDeletes;
@@ -33,7 +37,7 @@ class Publication extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (Publication $publication) {
+        static::creating(function (Publication $publication): void {
             if (empty($publication->publication_id)) {
                 $seedId = (int) ($publication->industry_id ?: ($publication->creator_id ?: 1));
                 $publication->publication_id = static::generateUniquePublicationId($seedId);
@@ -78,7 +82,7 @@ class Publication extends Model
     protected function attachmentUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->attachment ? asset('storage/'.$this->attachment) : null,
+            get: fn (): ?string => $this->attachment ? asset('storage/'.$this->attachment) : null,
         );
     }
 
@@ -120,7 +124,7 @@ class Publication extends Model
 
     public function isLikedBy(?User $user): bool
     {
-        if (! $user) {
+        if (! $user instanceof User) {
             return false;
         }
 

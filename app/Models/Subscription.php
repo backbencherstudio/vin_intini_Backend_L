@@ -49,9 +49,27 @@ class Subscription extends Model
         return $this->hasMany(Transaction::class);
     }
 
-    public function isActive(): bool
+    public function isActive(int $gracePeriodDays = 0): bool
     {
-        return in_array($this->status, ['active', 'trialing']);
+        if (! in_array($this->status, ['active', 'trialing'], true)) {
+            return false;
+        }
+
+        if ($this->ends_at !== null && $this->ends_at->isPast()) {
+            return false;
+        }
+
+        if ($this->current_period_end !== null) {
+            $threshold = $gracePeriodDays > 0
+                ? $this->current_period_end->copy()->addDays($gracePeriodDays)
+                : $this->current_period_end;
+
+            if ($threshold->isPast()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function allows(PlanFeature $feature): bool

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AdCampaignStatus;
+use App\Services\Advertising\ProductBoostProjection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -184,7 +185,9 @@ class AdCampaign extends Model
             'paused_reminder_stage' => 0,
         ]);
 
-        if ($this->boostable && method_exists($this->boostable, 'update')) {
+        if ($this->boostable instanceof IndustryProduct) {
+            ProductBoostProjection::projectFor($this->boostable);
+        } elseif ($this->boostable && method_exists($this->boostable, 'update')) {
             $this->boostable->update(['is_boosted' => false]);
         }
 
@@ -210,7 +213,9 @@ class AdCampaign extends Model
             'paused_reminder_stage' => 0,
         ]);
 
-        if ($this->boostable && method_exists($this->boostable, 'update')) {
+        if ($this->boostable instanceof IndustryProduct) {
+            ProductBoostProjection::projectFor($this->boostable);
+        } elseif ($this->boostable && method_exists($this->boostable, 'update')) {
             $this->boostable->update([
                 'is_boosted' => true,
                 'boost_expires_at' => $newEndsAt,

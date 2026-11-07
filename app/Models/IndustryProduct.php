@@ -2,19 +2,24 @@
 
 namespace App\Models;
 
-use App\Contracts\BoostableInterface;
-use App\Traits\HasBoostableCampaigns;
+use App\Enums\AdCampaignStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 
-class IndustryProduct extends Model implements BoostableInterface
+/**
+ * @property-read string|null $image_url
+ */
+class IndustryProduct extends Model
 {
-    use HasBoostableCampaigns, HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'product_id',
@@ -50,7 +55,7 @@ class IndustryProduct extends Model implements BoostableInterface
 
     protected static function booted(): void
     {
-        static::creating(function (IndustryProduct $product) {
+        static::creating(function (IndustryProduct $product): void {
             if (empty($product->product_id)) {
                 $product->product_id = static::generateUniqueProductId((int) ($product->industry_id ?: 1));
             }
@@ -143,9 +148,111 @@ class IndustryProduct extends Model implements BoostableInterface
         return $this->hasMany(IndustryProductLike::class, 'industry_product_id');
     }
 
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');
+    }
+
+    public function campaigns(): MorphMany
+    {
+        return $this->morphMany(AdCampaign::class, 'boostable');
+    }
+
+    public function activeCampaign(): MorphOne
+    {
+        return $this->morphOne(AdCampaign::class, 'boostable')
+            ->where('status', 'active')
+            ->where('ends_at', '>', now());
+    }
+
+    public function latestCampaign(): MorphOne
+    {
+        return $this->morphOne(AdCampaign::class, 'boostable')
+            ->latestOfMany();
+    }
+
+    public function getBoostStatus(): string
+    {
+        if ($this->isBoosted()) {
+            return 'active';
+        }
+
+        $campaign = $this->relationLoaded('latestCampaign')
+            ? $this->latestCampaign
+            : ($this->relationLoaded('activeCampaign') && $this->activeCampaign ? $this->activeCampaign : $this->campaigns()->latest('id')->first());
+
+        if (! $campaign) {
+            return 'inactive';
+        }
+
+        $status = $campaign->status instanceof AdCampaignStatus
+            ? $campaign->status->value
+            : (string) $campaign->status;
+
+        if ($status === 'paused') {
+            return 'paused';
+        }
+
+        if ($status === 'active' && ($campaign->ends_at === null || $campaign->ends_at->isFuture())) {
+            return 'active';
+        }
+
+        if ($status === 'completed' || ($campaign->ends_at && $campaign->ends_at->isPast())) {
+            return 'completed';
+        }
+
+        if ($status === 'cancelled') {
+            return 'cancelled';
+        }
+
+        if ($status === 'pending') {
+            return 'pending';
+        }
+
+        return 'inactive';
+    }
+
+    public function isBoosted(): bool
+    {
+        return (bool) $this->is_boosted && ($this->boost_expires_at === null || $this->boost_expires_at->isFuture());
+    }
+
+    public function scopeBoosted(Builder $query): Builder
+    {
+        return $query->where('is_boosted', true)
+            ->where('boost_expires_at', '>', now());
+    }
+
+    public function scopeNewRelease(Builder $query): Builder
+    {
+        return $query->where('is_new_release', true)
+            ->where('new_release_expires_at', '>', now());
+    }
+
+    public function isNewRelease(): bool
+    {
+        return (bool) $this->is_new_release && ($this->new_release_expires_at === null || $this->new_release_expires_at->isFuture());
+    }
+
+    public function getAdBadge(): ?string
+    {
+        if ($this->isBoosted()) {
+            return 'Sponsored';
+        }
+
+        if ($this->isNewRelease()) {
+            return 'New Release';
+        }
+
+        return null;
+    }
+
+    public function scopeFeedOrder(Builder $query): Builder
+    {
+        return $query->orderByDesc('is_boosted')
+            ->orderBy('impressions_count', 'asc')
+            ->orderByDesc('is_new_release')
+            ->orderByDesc('id');
     }
 
     public function getAdTitle(): string
@@ -183,7 +290,7 @@ class IndustryProduct extends Model implements BoostableInterface
      */
     public function isOwnedBy(?User $user): bool
     {
-        if (! $user) {
+        if (! $user instanceof User) {
             return false;
         }
 
@@ -195,11 +302,7 @@ class IndustryProduct extends Model implements BoostableInterface
             return true;
         }
 
-        if ($this->industry && (int) $this->industry->created_by === (int) $user->id) {
-            return true;
-        }
-
-        return false;
+        return $this->industry && (int) $this->industry->created_by === (int) $user->id;
     }
 
     /**
@@ -217,7 +320,7 @@ class IndustryProduct extends Model implements BoostableInterface
             'user_id' => $user?->id,
         ];
 
-        if (! $user) {
+        if (! $user instanceof User) {
             $viewCriteria['ip_address'] = $ip;
         }
 
@@ -231,7 +334,7 @@ class IndustryProduct extends Model implements BoostableInterface
         }
 
         // Total views: increments on every view, protected by a 30s cache cooldown per user/IP
-        $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
+        $userIdentifier = $user instanceof User ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
         $cooldownKey = "product_view_throttle_{$this->id}_{$userIdentifier}";
 
         if (Cache::add($cooldownKey, true, now()->addSeconds(30))) {

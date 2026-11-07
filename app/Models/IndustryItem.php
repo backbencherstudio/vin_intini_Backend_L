@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class IndustryItem extends Model
 {
@@ -21,7 +24,7 @@ class IndustryItem extends Model
         'link',
     ];
 
-    public function IndustryCategory()
+    public function IndustryCategory(): BelongsTo
     {
         return $this->belongsTo(IndustryCategory::class, 'category_id');
     }
@@ -31,7 +34,7 @@ class IndustryItem extends Model
     protected function imageUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->image ? asset('storage/'.$this->image) : null,
+            get: fn (): ?string => $this->image ? asset('storage/'.$this->image) : null,
         );
     }
 

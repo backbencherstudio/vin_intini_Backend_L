@@ -35,7 +35,7 @@ class IndustryJobApplication extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (IndustryJobApplication $application) {
+        static::creating(function (IndustryJobApplication $application): void {
             if (empty($application->application_id)) {
                 $application->application_id = static::generateUniqueApplicationId((int) ($application->job_id ?: 1));
             }
