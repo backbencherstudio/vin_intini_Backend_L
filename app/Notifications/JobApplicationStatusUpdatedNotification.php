@@ -84,7 +84,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
 
             // Sender/Updater info
             'updater_id' => $this->updater?->id,
-            'updater_name' => $this->updater ? trim(($this->updater->first_name ?? '').' '.($this->updater->last_name ?? '')) : null,
+            'updater_name' => $this->updater instanceof User ? trim(($this->updater->first_name ?? '').' '.($this->updater->last_name ?? '')) : null,
 
             // Notification Meta
             'message' => "updated your application for {$this->jobPost->job_title} to {$formattedStatus}",
@@ -141,7 +141,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
                 'job_id' => (string) $this->jobPost->id,
                 'application_id' => (string) $this->application->id,
                 'application_unique_id' => (string) $this->application->application_id,
-                'status' => (string) $this->newStatus,
+                'status' => $this->newStatus,
                 'type' => class_basename(self::class),
                 'updated_at' => now()->toIso8601String(),
             ]);

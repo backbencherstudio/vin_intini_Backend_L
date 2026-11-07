@@ -11,22 +11,14 @@ class PostLikedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    protected $sender;
+    public function __construct(protected $sender, protected $post) {}
 
-    protected $post;
-
-    public function __construct($sender, $post)
-    {
-        $this->sender = $sender;
-        $this->post = $post;
-    }
-
-    public function via($notifiable)
+    public function via($notifiable): array
     {
         return ['database', 'broadcast'];
     }
 
-    protected function notificationData($notifiable)
+    protected function notificationData($notifiable): array
     {
         $unreadCount = $notifiable
             ->unreadNotifications()
@@ -44,12 +36,12 @@ class PostLikedNotification extends Notification implements ShouldQueue
         ];
     }
 
-    public function toDatabase($notifiable)
+    public function toDatabase($notifiable): array
     {
         return $this->notificationData($notifiable);
     }
 
-    public function toBroadcast($notifiable)
+    public function toBroadcast($notifiable): BroadcastMessage
     {
         return new BroadcastMessage(
             $this->notificationData($notifiable)

@@ -37,7 +37,7 @@ class ConnectionRequestReceivedNotification extends Notification implements Shou
         return $channels;
     }
 
-    private function notificationData($notifiable): array
+    private function notificationData(object $notifiable): array
     {
         $unreadCount = $notifiable
             ->unreadNotifications()

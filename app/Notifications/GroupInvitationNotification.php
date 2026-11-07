@@ -39,7 +39,7 @@ class GroupInvitationNotification extends Notification implements ShouldQueue
         return $channels;
     }
 
-    private function notificationData($notifiable): array
+    private function notificationData(object $notifiable): array
     {
         $unreadCount = $notifiable
             ->unreadNotifications()

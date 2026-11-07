@@ -1,15 +1,16 @@
 <?php
 
-namespace App\Mail;
+namespace App\Notifications;
 
 use App\Models\AdCampaign;
 use App\Services\BoostSettingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Mail\Mailable;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 use Illuminate\Queue\SerializesModels;
 
-class CampaignPauseReminderMail extends Mailable implements ShouldQueue
+class CampaignPauseReminderNotification extends Notification implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -23,12 +24,20 @@ class CampaignPauseReminderMail extends Mailable implements ShouldQueue
         $this->maxPauseDays = $maxPauseDays ?? (int) (app(BoostSettingService::class)->getPausePolicy()['max_days'] ?? 30);
     }
 
-    public function build(): self
+    public function via(object $notifiable): array
+    {
+        return ['mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
     {
         $label = $this->daysRemaining === 1 ? 'day' : 'days';
 
-        return $this->subject("Action Required: Your paused boost campaign expires in {$this->daysRemaining} {$label} - Mind Unite")
+        return (new MailMessage)
+            ->subject("Action Required: Your paused boost campaign expires in {$this->daysRemaining} {$label} - Mind Unite")
             ->view('emails.campaignPauseReminderMail', [
+                'campaign' => $this->campaign,
+                'daysRemaining' => $this->daysRemaining,
                 'maxPauseDays' => $this->maxPauseDays,
             ]);
     }
