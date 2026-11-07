@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'paths' => ['api/*'],
 
@@ -12,7 +14,7 @@ return [
         'https://vin-intini-web-frontend.vercel.app',
         'https://mindunite.pixelstack.cloud',
         'http://localhost:3000',
-        'https://cleared-month-virgin-murphy.trycloudflare.com'
+        'https://cleared-month-virgin-murphy.trycloudflare.com',
     ],
 
     'allowed_origins_patterns' => [],
