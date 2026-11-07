@@ -2,7 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Models\IndustryCategory;
+use App\Models\IndustryProduct;
+use App\Models\IndustrySections;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class UpdateIndustryProductRequest extends FormRequest
 {
@@ -48,5 +52,40 @@ class UpdateIndustryProductRequest extends FormRequest
             'information_confirmed' => ['nullable', 'boolean'],
             'status' => ['nullable', 'string', 'in:active,inactive,draft'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $productId = $this->route('id');
+            /** @var IndustryProduct|null $product */
+            $product = $productId
+                ? IndustryProduct::where('id', $productId)->orWhere('product_id', $productId)->first()
+                : null;
+
+            $sectionId = $this->input('section_id') ?? $product?->section_id;
+            $categoryId = $this->input('category_id') ?? $product?->category_id;
+            $networkType = $this->input('network_type') ?? $product?->network_type;
+            $industryType = $this->input('industry_type') ?? $product?->industry_type;
+
+            if ($sectionId) {
+                $section = IndustrySections::find($sectionId);
+                if ($section) {
+                    if ($networkType && $section->network_type !== $networkType) {
+                        $validator->errors()->add('section_id', 'The selected section does not match the chosen network type.');
+                    }
+                    if ($industryType && $section->industry_type !== $industryType) {
+                        $validator->errors()->add('section_id', 'The selected section does not match the chosen industry type.');
+                    }
+                }
+            }
+
+            if ($categoryId && $sectionId) {
+                $category = IndustryCategory::find($categoryId);
+                if ($category && (int) $category->section_id !== (int) $sectionId) {
+                    $validator->errors()->add('category_id', 'The selected category does not belong to the selected section.');
+                }
+            }
+        });
     }
 }

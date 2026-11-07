@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreServiceRequest extends FormRequest
 {
-    public function rules()
+    public function rules(): array
     {
         return [
             'title' => 'required|string|max:500|unique:services,title',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -7,7 +9,7 @@ use Illuminate\Validation\Rule;
 
 class UpdateServiceRequest extends FormRequest
 {
-    public function rules()
+    public function rules(): array
     {
         $serviceId = $this->route('service') ? $this->route('service')->id : null;
 

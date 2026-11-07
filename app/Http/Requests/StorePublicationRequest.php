@@ -70,7 +70,7 @@ class StorePublicationRequest extends FormRequest
 
     public function withValidator($validator): void
     {
-        $validator->after(function ($validator) {
+        $validator->after(function ($validator): void {
             /** @var User|null $user */
             $user = auth('api')->user();
 
