@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class VerifyRevenueCatWebhook
 {
-    public function __construct(private RevenueCatService $revenueCat) {}
+    public function __construct(private readonly RevenueCatService $revenueCat) {}
 
     public function handle(Request $request, Closure $next): Response
     {
