@@ -15,32 +15,9 @@ class LogLoginJob
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $userId;
+    public function __construct(protected $userId, protected $ip, protected $userAgent, protected $tokenId = null, protected $status = 'Successful', protected $customDevice = null, protected $customPlatform = null) {}
 
-    protected $ip;
-
-    protected $userAgent;
-
-    protected $tokenId;
-
-    protected $status;
-
-    protected $customDevice;
-
-    protected $customPlatform;
-
-    public function __construct($userId, $ip, $userAgent, $tokenId = null, $status = 'Successful', $customDevice = null, $customPlatform = null)
-    {
-        $this->userId = $userId;
-        $this->ip = $ip;
-        $this->userAgent = $userAgent;
-        $this->tokenId = $tokenId;
-        $this->status = $status;
-        $this->customDevice = $customDevice;
-        $this->customPlatform = $customPlatform;
-    }
-
-    public function handle()
+    public function handle(): void
     {
         $agent = new Agent;
         $agent->setUserAgent($this->userAgent);

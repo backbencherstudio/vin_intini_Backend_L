@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Listeners;
 
 use App\Jobs\LogLoginJob;
@@ -7,7 +9,7 @@ use Illuminate\Auth\Events\Login;
 
 class LogSuccessfulLogin
 {
-    public function handle(Login $event)
+    public function handle(Login $event): void
     {
         $tokenId = request('current_token_id') ?: (
             $event->guard === 'web' ? session()->getId() : null

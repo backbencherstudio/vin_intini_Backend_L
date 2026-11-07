@@ -2,14 +2,13 @@
 
 namespace App\Jobs;
 
-use App\Mail\NewLoginAlertMail;
 use App\Models\LoginActivity;
+use App\Notifications\NewLoginAlertNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 
 class SendLoginAlertEmailJob implements ShouldQueue
@@ -23,7 +22,7 @@ class SendLoginAlertEmailJob implements ShouldQueue
         $this->activity = $activity;
     }
 
-    public function handle()
+    public function handle(): void
     {
         $activity = $this->activity;
         $user = $activity->user;
@@ -44,6 +43,6 @@ class SendLoginAlertEmailJob implements ShouldQueue
             ['id' => $activity->id, 'action' => 'block']
         );
 
-        Mail::to($user->email)->send(new NewLoginAlertMail($activity, $trustUrl, $blockUrl));
+        $user->notify(new NewLoginAlertNotification($activity, $trustUrl, $blockUrl));
     }
 }
