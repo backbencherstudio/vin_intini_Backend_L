@@ -2,12 +2,11 @@
 
 namespace App\Console\Commands;
 
-use App\Mail\AccountDeletionReminderMail;
 use App\Models\DeletedAccountLog;
 use App\Models\User;
+use App\Notifications\AccountDeletionReminderNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 class SendAccountDeletionReminders extends Command
 {
@@ -15,7 +14,7 @@ class SendAccountDeletionReminders extends Command
 
     protected $description = 'Send a reminder email 3 days before permanent account deletion';
 
-    public function handle()
+    public function handle(): void
     {
         $targetDate = Carbon::now()->addDays(3)->toDateString();
 
@@ -25,7 +24,7 @@ class SendAccountDeletionReminders extends Command
             $user = User::withTrashed()->find($log->user_id);
 
             if ($user && $user->trashed()) {
-                Mail::to($user->email)->queue(new AccountDeletionReminderMail($user, $log->permanent_delete_at));
+                $user->notify(new AccountDeletionReminderNotification($user, $log->permanent_delete_at));
             }
         }
     }

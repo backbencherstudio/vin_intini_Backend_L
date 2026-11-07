@@ -3,13 +3,15 @@
 namespace App\Console\Commands;
 
 use App\Enums\AdCampaignStatus;
-use App\Mail\CampaignAutoExpiredMail;
-use App\Mail\CampaignPauseReminderMail;
 use App\Models\AdCampaign;
 use App\Models\IndustryProduct;
+use App\Notifications\CampaignAutoExpiredNotification;
+use App\Notifications\CampaignPauseReminderNotification;
+use App\Services\Advertising\ProductBoostProjection;
 use App\Services\BoostSettingService;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 class CleanExpiredBoosts extends Command
 {
@@ -17,7 +19,7 @@ class CleanExpiredBoosts extends Command
 
     protected $description = 'Clean expired ad boost campaigns, enforce 30-day pause policy, and clear free new releases';
 
-    public function handle(): int
+    public function handle(BoostSettingService $boostSettings): int
     {
         $now = now();
 
@@ -25,6 +27,7 @@ class CleanExpiredBoosts extends Command
         $expiredCampaigns = AdCampaign::where('status', AdCampaignStatus::ACTIVE)
             ->whereNotNull('ends_at')
             ->where('ends_at', '<=', $now)
+            ->with(['boostable'])
             ->get();
 
         $completedCampaignsCount = 0;
@@ -34,8 +37,10 @@ class CleanExpiredBoosts extends Command
             ]);
             $completedCampaignsCount++;
 
-            // If the boostable target has no other active campaigns, remove boosted flag
-            if ($campaign->boostable && method_exists($campaign->boostable, 'update')) {
+            // Recalculate boost projection for the boostable target
+            if ($campaign->boostable instanceof IndustryProduct) {
+                ProductBoostProjection::projectFor($campaign->boostable);
+            } elseif ($campaign->boostable && method_exists($campaign->boostable, 'update')) {
                 $hasOtherActive = AdCampaign::where('boostable_type', $campaign->boostable_type)
                     ->where('boostable_id', $campaign->boostable_id)
                     ->where('status', AdCampaignStatus::ACTIVE)
@@ -59,7 +64,7 @@ class CleanExpiredBoosts extends Command
             ]);
 
         // 3. Enforce 30-Day Enterprise Pause Policy on Paused Campaigns
-        $pausePolicy = app(BoostSettingService::class)->getPausePolicy();
+        $pausePolicy = $boostSettings->getPausePolicy();
         $maxPauseDays = (int) ($pausePolicy['max_days'] ?? 30);
         $firstReminderDays = (int) ($pausePolicy['first_reminder_days'] ?? 27);
         $finalReminderDays = (int) ($pausePolicy['final_reminder_days'] ?? 29);
@@ -73,7 +78,10 @@ class CleanExpiredBoosts extends Command
         $remindersSentCount = 0;
 
         foreach ($pausedCampaigns as $campaign) {
-            $pausedDays = (int) $campaign->paused_at->diffInDays($now);
+            $pausedAt = $campaign->paused_at instanceof CarbonInterface
+                ? $campaign->paused_at
+                : Carbon::parse($campaign->paused_at);
+            $pausedDays = (int) $pausedAt->diffInDays($now);
 
             // Auto-expire when reaching or exceeding max allowed pause duration (30 days)
             if ($pausedDays >= $maxPauseDays) {
@@ -82,8 +90,12 @@ class CleanExpiredBoosts extends Command
                     'paused_at' => null,
                 ]);
 
+                if ($campaign->boostable instanceof IndustryProduct) {
+                    ProductBoostProjection::projectFor($campaign->boostable);
+                }
+
                 if ($campaign->user?->email) {
-                    Mail::to($campaign->user->email)->queue(new CampaignAutoExpiredMail($campaign, $maxPauseDays));
+                    $campaign->user->notify(new CampaignAutoExpiredNotification($campaign, $maxPauseDays));
                 }
 
                 $autoExpiredPausedCount++;
@@ -97,7 +109,7 @@ class CleanExpiredBoosts extends Command
 
                 if ($campaign->user?->email) {
                     $daysRemaining = max(1, $maxPauseDays - $pausedDays);
-                    Mail::to($campaign->user->email)->queue(new CampaignPauseReminderMail($campaign, $daysRemaining, $maxPauseDays));
+                    $campaign->user->notify(new CampaignPauseReminderNotification($campaign, $daysRemaining, $maxPauseDays));
                 }
 
                 $remindersSentCount++;
@@ -111,7 +123,7 @@ class CleanExpiredBoosts extends Command
 
                 if ($campaign->user?->email) {
                     $daysRemaining = max(1, $maxPauseDays - $pausedDays);
-                    Mail::to($campaign->user->email)->queue(new CampaignPauseReminderMail($campaign, $daysRemaining, $maxPauseDays));
+                    $campaign->user->notify(new CampaignPauseReminderNotification($campaign, $daysRemaining, $maxPauseDays));
                 }
 
                 $remindersSentCount++;
