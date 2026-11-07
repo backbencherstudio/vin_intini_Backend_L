@@ -47,6 +47,9 @@ class InstitutionSeeder extends Seeder
                     ? trim((string) $institution['country'])
                     : null;
                 $country = $country === '' ? null : $country;
+                if ($country && strtolower($country) === 'united state') {
+                    $country = 'United States';
+                }
 
                 return [
                     'name' => $name,
