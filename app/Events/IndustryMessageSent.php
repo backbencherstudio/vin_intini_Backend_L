@@ -56,4 +56,3 @@ class IndustryMessageSent implements ShouldBroadcastNow
         return 'IndustryMessageSent';
     }
 }
-

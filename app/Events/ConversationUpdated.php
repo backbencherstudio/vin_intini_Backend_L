@@ -47,7 +47,7 @@ class ConversationUpdated implements ShouldBroadcastNow
             'last_message' => null,
         ];
 
-        if ($this->message) {
+        if ($this->message instanceof Message) {
             $otherUser = $this->conversation->getOtherUser($this->receiver->id);
 
             $payload['user'] = [

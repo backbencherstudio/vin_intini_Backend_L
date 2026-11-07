@@ -44,7 +44,7 @@ class IndustryConversationUpdated implements ShouldBroadcastNow
             'unread_count' => $this->unreadCount,
             'unread_conversation_count' => $this->unreadConversationCount,
             'total_unread_messages' => $this->totalUnreadMessages,
-            'last_message' => $this->message ? [
+            'last_message' => $this->message instanceof IndustryMessage ? [
                 'id' => $this->message->id,
                 'type' => $this->message->display_type,
                 'message' => $this->message->message,
@@ -57,4 +57,3 @@ class IndustryConversationUpdated implements ShouldBroadcastNow
         ];
     }
 }
-
