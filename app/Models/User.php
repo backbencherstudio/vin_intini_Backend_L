@@ -100,7 +100,7 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(SocialAccount::class);
     }
 
-    public function profile()
+    public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
     }
@@ -249,10 +249,21 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasOne(Otp::class)->where('type', OtpType::RECOVERY_EMAIL->value);
     }
 
-    public function hasActiveSubscription(?PlanType $type = null): bool
+    public function hasActiveSubscription(?PlanType $type = null, int $gracePeriodDays = 0): bool
     {
+        $now = now();
+        $periodEndThreshold = $gracePeriodDays > 0 ? $now->copy()->subDays($gracePeriodDays) : $now;
+
         return $this->subscriptions()
             ->whereIn('status', ['active', 'trialing'])
+            ->where(function ($query) use ($now): void {
+                $query->whereNull('ends_at')
+                    ->orWhere('ends_at', '>', $now);
+            })
+            ->where(function ($query) use ($periodEndThreshold): void {
+                $query->whereNull('current_period_end')
+                    ->orWhere('current_period_end', '>', $periodEndThreshold);
+            })
             ->when($type, fn ($query) => $query->whereHas('plan', fn ($query) => $query->where('plan_type', $type->value)))
             ->exists();
     }
@@ -276,7 +287,7 @@ class User extends Authenticatable implements JWTSubject
 
     protected static function booted()
     {
-        static::deleting(function ($user) {
+        static::deleting(function ($user): void {
             // Delete publications directly owned by this user (Premium user publications)
             $user->publications()->whereNull('industry_id')->delete();
 
@@ -291,7 +302,7 @@ class User extends Authenticatable implements JWTSubject
                     $filesToDelete[] = $user->cover_image;
                 }
 
-                $user->posts()->with(['media', 'comments.replies'])->each(function ($post) use (&$filesToDelete) {
+                $user->posts()->with(['media', 'comments.replies'])->each(function ($post) use (&$filesToDelete): void {
 
                     foreach ($post->media as $media) {
                         if ($media->file_path) {
@@ -311,21 +322,21 @@ class User extends Authenticatable implements JWTSubject
                     }
                 });
 
-                $user->comments()->each(function ($comment) use (&$filesToDelete) {
+                $user->comments()->each(function ($comment) use (&$filesToDelete): void {
                     if ($comment->image) {
                         $filesToDelete[] = $comment->image;
                     }
                 });
 
                 if (method_exists($user, 'replies')) {
-                    $user->replies()->each(function ($reply) use (&$filesToDelete) {
+                    $user->replies()->each(function ($reply) use (&$filesToDelete): void {
                         if ($reply->image) {
                             $filesToDelete[] = $reply->image;
                         }
                     });
                 }
 
-                if (! empty($filesToDelete)) {
+                if ($filesToDelete !== []) {
                     dispatch(new CleanupUserFiles(array_unique($filesToDelete)));
                 }
 
