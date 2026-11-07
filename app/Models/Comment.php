@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class Comment extends Model
@@ -20,22 +22,22 @@ class Comment extends Model
         'reply_count',
     ];
 
-    public function getImageUrlAttribute()
+    public function getImageUrlAttribute(): ?string
     {
         return $this->image ? asset('storage/'.$this->image) : null;
     }
 
-    public function post()
+    public function post(): BelongsTo
     {
         return $this->belongsTo(Post::class);
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function industry()
+    public function industry(): BelongsTo
     {
         return $this->belongsTo(Industry::class);
     }
@@ -45,24 +47,24 @@ class Comment extends Model
         return $this->industry_id !== null;
     }
 
-    public function replies()
+    public function replies(): HasMany
     {
         return $this->hasMany(Reply::class);
     }
 
-    public function likes()
+    public function likes(): HasMany
     {
         return $this->hasMany(CommentLike::class);
     }
 
-    public function group()
+    public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class);
     }
 
     protected static function booted()
     {
-        static::deleting(function ($comment) {
+        static::deleting(function ($comment): void {
             if ($comment->image) {
                 Storage::disk('public')->delete($comment->image);
             }
@@ -71,7 +73,7 @@ class Comment extends Model
                 ? $comment->replies
                 : $comment->replies()->get();
 
-            $replies->each(function ($reply) {
+            $replies->each(function ($reply): void {
                 $reply->delete();
             });
         });

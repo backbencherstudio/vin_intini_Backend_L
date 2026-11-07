@@ -5,7 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
@@ -47,7 +49,7 @@ class Post extends Model
      */
     public function isVisibleTo(?User $user): bool
     {
-        if ($user && (int) $this->user_id === (int) $user->id) {
+        if ($user instanceof User && (int) $this->user_id === (int) $user->id) {
             return true;
         }
 
@@ -76,7 +78,7 @@ class Post extends Model
             : $this->industryLink()->exists();
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -98,34 +100,34 @@ class Post extends Model
         return $this->belongsToMany(Industry::class, 'post_industry', 'post_id', 'industry_id');
     }
 
-    public function groups()
+    public function groups(): BelongsToMany
     {
         return $this->belongsToMany(Group::class, 'post_groups');
     }
 
-    public function likes()
+    public function likes(): HasMany
     {
         return $this->hasMany(PostLike::class);
     }
 
-    public function comments()
+    public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
     }
 
-    public function media()
+    public function media(): HasMany
     {
         return $this->hasMany(PostMedia::class)->orderBy('order');
     }
 
-    protected static function booted()
+    protected static function booted(): void
     {
-        static::deleting(function ($post) {
+        static::deleting(function ($post): void {
             $media = $post->relationLoaded('media')
                 ? $post->media
                 : $post->media()->get();
 
-            $media->each(function ($item) {
+            $media->each(function ($item): void {
                 if ($item->file_path) {
                     Storage::disk('public')->delete($item->file_path);
                 }
@@ -137,7 +139,7 @@ class Post extends Model
                 ? $post->comments
                 : $post->comments()->get();
 
-            $comments->each(function ($comment) {
+            $comments->each(function ($comment): void {
                 $comment->delete();
             });
 

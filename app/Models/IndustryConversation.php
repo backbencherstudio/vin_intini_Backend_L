@@ -262,18 +262,17 @@ class IndustryConversation extends Model
             ->whereNull('industry_conversations.industry_deleted_at')
             ->whereNull('industry_conversations.industry_archived_at')
             ->where('industry_messages.sender_type', '!=', 'industry')
-            ->where(function ($q) {
+            ->where(function ($q): void {
                 $q->whereColumn('industry_messages.created_at', '>', 'industry_conversations.industry_last_read_at')
                     ->orWhereNull('industry_conversations.industry_last_read_at');
             })
-            ->where(function ($q) {
+            ->where(function ($q): void {
                 $q->whereNull('industry_conversations.industry_cleared_message_id')
                     ->orWhereColumn('industry_messages.id', '>', 'industry_conversations.industry_cleared_message_id');
             })
             ->groupBy('industry_messages.industry_conversation_id')
-            ->selectRaw('industry_messages.industry_conversation_id, COUNT(*) as count')
-            ->get()
-            ->pluck('count', 'industry_conversation_id')
+            ->selectRaw('COUNT(*) as count, industry_messages.industry_conversation_id')
+            ->pluck('count', 'industry_messages.industry_conversation_id')
             ->toArray();
 
         return [
@@ -282,4 +281,3 @@ class IndustryConversation extends Model
         ];
     }
 }
-

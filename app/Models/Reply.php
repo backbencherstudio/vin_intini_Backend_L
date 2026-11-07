@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class Reply extends Model
@@ -20,27 +22,27 @@ class Reply extends Model
         'image',
     ];
 
-    public function getImageUrlAttribute()
+    public function getImageUrlAttribute(): ?string
     {
         return $this->image ? asset('storage/'.$this->image) : null;
     }
 
-    public function post()
+    public function post(): BelongsTo
     {
         return $this->belongsTo(Post::class);
     }
 
-    public function comment()
+    public function comment(): BelongsTo
     {
         return $this->belongsTo(Comment::class);
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function industry()
+    public function industry(): BelongsTo
     {
         return $this->belongsTo(Industry::class);
     }
@@ -50,14 +52,14 @@ class Reply extends Model
         return $this->industry_id !== null;
     }
 
-    public function likes()
+    public function likes(): HasMany
     {
         return $this->hasMany(ReplyLike::class);
     }
 
-    protected static function booted()
+    protected static function booted(): void
     {
-        static::deleting(function ($reply) {
+        static::deleting(function ($reply): void {
             if ($reply->image) {
                 Storage::disk('public')->delete($reply->image);
             }

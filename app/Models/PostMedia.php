@@ -23,7 +23,7 @@ class PostMedia extends Model
         return $this->belongsTo(Post::class);
     }
 
-    public function getUrlAttribute()
+    public function getUrlAttribute(): string
     {
         return asset('storage/'.ltrim($this->file_path, '/'));
     }

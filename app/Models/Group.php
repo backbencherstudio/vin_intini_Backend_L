@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -13,7 +15,7 @@ class Group extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (Group $group) {
+        static::creating(function (Group $group): void {
             if (empty($group->slug)) {
                 $baseSlug = Str::slug($group->name) ?: 'group';
                 $finalSlug = $baseSlug;
@@ -54,12 +56,12 @@ class Group extends Model
         'require_post_approval' => 'boolean',
     ];
 
-    public function members()
+    public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'group_users')->withPivot('role')->withTimestamps();
     }
 
-    public function creator()
+    public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id');
     }
@@ -74,7 +76,7 @@ class Group extends Model
         return $this->cover_photo ? Storage::disk('public')->url($this->cover_photo) : null;
     }
 
-    public function users()
+    public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'group_users')
             ->withPivot('status');
