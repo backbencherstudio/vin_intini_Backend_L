@@ -84,4 +84,8 @@ return [
         'retention_days' => env('WEBHOOK_RETENTION_DAYS', 30),
     ],
 
+    'ffmpeg' => [
+        'binary' => env('FFMPEG_BINARY', 'ffmpeg'),
+    ],
+
 ];
