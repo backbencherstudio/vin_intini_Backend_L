@@ -45,15 +45,15 @@ class PublicationResource extends JsonResource
 
         if ($this->industry) {
             $rawLogo = $this->industry->logo ?? null;
-            $logo = $rawLogo ? (str_starts_with($rawLogo, 'http') ? $rawLogo : asset('storage/' . ltrim($rawLogo, '/'))) : null;
+            $logo = $rawLogo ? (str_starts_with($rawLogo, 'http') ? $rawLogo : asset('storage/'.ltrim($rawLogo, '/'))) : null;
             $industry = [
                 'name' => $this->industry->name,
                 'image' => $logo,
             ];
         } elseif ($this->creator) {
-            $userName = trim(($this->creator->first_name ?? '') . ' ' . ($this->creator->last_name ?? ''));
+            $userName = trim(($this->creator->first_name ?? '').' '.($this->creator->last_name ?? ''));
             $userImage = $this->creator->profile_image_url
-                ?? ($this->creator->profile_image ? asset('storage/' . ltrim($this->creator->profile_image, '/')) : null);
+                ?? ($this->creator->profile_image ? asset('storage/'.ltrim($this->creator->profile_image, '/')) : null);
             $user = [
                 'name' => $userName ?: ($this->creator->username ?? ''),
                 'image' => $userImage,

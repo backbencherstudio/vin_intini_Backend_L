@@ -29,7 +29,7 @@ class IndustryJobCardResource extends JsonResource
         }
 
         $location = array_filter([$this->state?->name, $this->city?->name]);
-        $locationString = ! empty($location) ? implode(', ', $location) : 'N/A';
+        $locationString = $location !== [] ? implode(', ', $location) : 'N/A';
 
         $status = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
         if ($status === IndustryJobPostStatus::PUBLISHED->value && $this->isExpired()) {
@@ -37,12 +37,10 @@ class IndustryJobCardResource extends JsonResource
         }
 
         $currentUser = auth('api')->user();
-        $isOwnIndustry = (bool) (
-            $currentUser && (
-                ((int) $this->created_by === (int) $currentUser->id) ||
-                ($this->industry && (int) $this->industry->created_by === (int) $currentUser->id) ||
-                ($this->industry_id && $currentUser->industry && (int) $this->industry_id === (int) $currentUser->industry->id)
-            )
+        $isOwnIndustry = $currentUser && (
+            ((int) $this->created_by === (int) $currentUser->id) ||
+            ($this->industry && (int) $this->industry->created_by === (int) $currentUser->id) ||
+            ($this->industry_id && $currentUser->industry && (int) $this->industry_id === (int) $currentUser->industry->id)
         );
 
         return [

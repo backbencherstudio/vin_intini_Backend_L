@@ -3,10 +3,14 @@
 namespace App\Http\Resources;
 
 use App\Enums\AdCampaignStatus;
+use App\Models\AdCampaign;
 use App\Models\IndustryProduct;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin AdCampaign
+ */
 class AdCampaignResource extends JsonResource
 {
     /**
@@ -107,16 +111,14 @@ class AdCampaignResource extends JsonResource
             'total_clicks' => $totalClicks,
             'ctr' => $ctr,
             'ctr_formatted' => $ctr.'%',
-            'boost_package' => $this->whenLoaded('boostPackage', function () {
-                return [
-                    'id' => $this->boostPackage->id,
-                    'name' => $this->boostPackage->name,
-                    'badge' => $this->boostPackage->badge,
-                    'duration_days' => (int) $this->boostPackage->duration_days,
-                    'price' => (float) $this->boostPackage->price,
-                ];
-            }),
-            'boostable' => $this->whenLoaded('boostable', function () use ($remainingDays, $remainingText) {
+            'boost_package' => $this->whenLoaded('boostPackage', fn (): array => [
+                'id' => $this->boostPackage->id,
+                'name' => $this->boostPackage->name,
+                'badge' => $this->boostPackage->badge,
+                'duration_days' => (int) $this->boostPackage->duration_days,
+                'price' => (float) $this->boostPackage->price,
+            ]),
+            'boostable' => $this->whenLoaded('boostable', function () use ($remainingDays, $remainingText): array {
                 if ($this->boostable instanceof IndustryProduct) {
                     return [
                         'id' => $this->boostable->id,

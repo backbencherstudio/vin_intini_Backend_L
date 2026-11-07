@@ -70,12 +70,10 @@ class IndustryJobPostResource extends JsonResource
             }
         }
 
-        $isOwnIndustry = (bool) (
-            $currentUser && (
-                ((int) $this->created_by === (int) $currentUser->id) ||
-                ($this->industry && (int) $this->industry->created_by === (int) $currentUser->id) ||
-                ($this->industry_id && $currentUser->industry && (int) $this->industry_id === (int) $currentUser->industry->id)
-            )
+        $isOwnIndustry = $currentUser && (
+            ((int) $this->created_by === (int) $currentUser->id) ||
+            ($this->industry && (int) $this->industry->created_by === (int) $currentUser->id) ||
+            ($this->industry_id && $currentUser->industry && (int) $this->industry_id === (int) $currentUser->industry->id)
         );
 
         return [
@@ -109,9 +107,9 @@ class IndustryJobPostResource extends JsonResource
             'views_count' => (int) ($this->views_count ?? 0),
             'likes_count' => (int) ($this->likes_count ?? 0),
             'applications_count' => (int) ($this->applications_count ?? 0),
-            'is_liked' => (bool) $isLiked,
-            'is_saved' => (bool) $isSaved,
-            'is_applied' => (bool) $isApplied,
+            'is_liked' => $isLiked,
+            'is_saved' => $isSaved,
+            'is_applied' => $isApplied,
             'application_status' => $applicationStatus,
 
             'state' => $this->state ? [

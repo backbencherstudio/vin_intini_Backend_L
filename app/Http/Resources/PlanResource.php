@@ -1,10 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
+use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin Plan
+ */
 class PlanResource extends JsonResource
 {
     /**
@@ -29,8 +35,8 @@ class PlanResource extends JsonResource
             'revenuecat_store_identifier_ios' => $this->revenuecat_store_identifier_ios,
             'revenuecat_store_identifier_android' => $this->revenuecat_store_identifier_android,
             'revenuecat_entitlement_identifier' => $this->revenuecat_entitlement_identifier,
-            'total_subscribers' => $this->subscriptions_count ?? 0,
-            'subscribers' => $this->subscriptions_count ?? 0,
+            'total_subscribers' => (int) ($this->subscriptions_count ?? 0),
+            'subscribers' => (int) ($this->subscriptions_count ?? 0),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
