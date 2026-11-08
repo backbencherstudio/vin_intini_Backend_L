@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\OtpType;
 use App\Http\Controllers\Controller;
-use App\Mail\AccountDeletionRequestedMail;
 use App\Models\DeletedAccountLog;
 use App\Models\LoginActivity;
+use App\Models\Otp;
 use App\Models\User;
+use App\Notifications\AccountDeletionRequestedNotification;
 use Carbon\Carbon;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password;
 
@@ -44,7 +48,7 @@ class SecuritySettingsController extends Controller
             ->select('device', 'location')
             ->distinct()
             ->get()
-            ->map(fn ($item) => $item->device.'|'.$item->location)
+            ->map(fn ($item): string => $item->device.'|'.$item->location)
             ->toArray();
 
         foreach ($unresolvedLogins as $login) {
@@ -103,7 +107,7 @@ class SecuritySettingsController extends Controller
             if ($user->two_factor_recovery_codes) {
                 try {
                     $recoveryCodes = json_decode(decrypt($user->two_factor_recovery_codes), true) ?: [];
-                } catch (\Throwable $e) {
+                } catch (\Throwable) {
                     $recoveryCodes = [];
                 }
             }
@@ -138,10 +142,10 @@ class SecuritySettingsController extends Controller
                 // 'suspicious_id' => $suspiciousId,
                 'is_suspicious' => $isSuspicious,
                 'can_resolve_from_here' => $canResolveFromHere,
-                'two_factor_enabled' => $user->two_factor_confirmed_at ? true : false,
+                'two_factor_enabled' => (bool) $user->two_factor_confirmed_at,
                 'backup_codes_count' => $backupCodesCountText,
                 'recovery_email' => $user->recovery_email,
-                'recovery_email_verified' => $user->recovery_email_verified_at ? true : false,
+                'recovery_email_verified' => (bool) $user->recovery_email_verified_at,
             ],
         ]);
     }
@@ -163,7 +167,7 @@ class SecuritySettingsController extends Controller
             ->select('device', 'location')
             ->distinct()
             ->get()
-            ->map(fn ($item) => $item->device.'|'.$item->location)
+            ->map(fn ($item): string => $item->device.'|'.$item->location)
             ->toArray();
 
         $suspiciousList = [];
@@ -210,7 +214,7 @@ class SecuritySettingsController extends Controller
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        $items = $sessions->map(function ($activity) use ($currentTokenId) {
+        $items = $sessions->map(function ($activity) use ($currentTokenId): array {
             $isCurrent = $activity->token_id === $currentTokenId;
 
             $isMobile = ($activity->browser === 'Native Mobile App');
@@ -248,7 +252,7 @@ class SecuritySettingsController extends Controller
             ->select('device', 'location')
             ->distinct()
             ->get()
-            ->map(fn ($item) => $item->device.'|'.$item->location)
+            ->map(fn ($item): string => $item->device.'|'.$item->location)
             ->toArray();
 
         $paginator = LoginActivity::where('user_id', $user->id)
@@ -264,7 +268,7 @@ class SecuritySettingsController extends Controller
             ->orderBy('login_at', 'desc')
             ->paginate($perPage);
 
-        $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId, $trustedCombinations) {
+        $items = collect($paginator->items())->map(function ($activity) use ($currentTokenId, $trustedCombinations): array {
             $isCurrent = $activity->token_id === $currentTokenId;
             $isActive = (bool) $activity->is_active;
             $isTrusted = (bool) $activity->is_trusted;
@@ -426,7 +430,7 @@ class SecuritySettingsController extends Controller
             : session()->getId();
 
         LoginActivity::where('user_id', auth()->id())
-            ->where(function ($query) use ($currentTokenId) {
+            ->where(function ($query) use ($currentTokenId): void {
                 $query->where('token_id', '!=', $currentTokenId)
                     ->orWhereNull('token_id');
             })
@@ -479,7 +483,7 @@ class SecuritySettingsController extends Controller
             : session()->getId();
 
         LoginActivity::where('user_id', $user->id)
-            ->where(function ($query) use ($currentTokenId) {
+            ->where(function ($query) use ($currentTokenId): void {
                 $query->where('token_id', '!=', $currentTokenId)
                     ->orWhereNull('token_id');
             })
@@ -567,7 +571,7 @@ class SecuritySettingsController extends Controller
         ]);
     }
 
-    public function resolveFromEmail(Request $request, $id)
+    public function resolveFromEmail(Request $request, $id): Factory|View|null
     {
         $activity = LoginActivity::findOrFail($id);
 
@@ -600,10 +604,12 @@ class SecuritySettingsController extends Controller
                 'user_id' => $activity->user_id,
             ]);
         }
+
+        return null;
     }
 
     // This method handles the password update after the user clicks "No, it wasn't me" in the email alert.
-    public function updatePasswordFromAlert(Request $request)
+    public function updatePasswordFromAlert(Request $request): Factory|View
     {
         $activityId = $request->query('activity_id');
         $activity = LoginActivity::findOrFail($activityId);
@@ -677,13 +683,13 @@ class SecuritySettingsController extends Controller
             'permanent_delete_at' => $permanentDeleteAt,
         ]);
 
-        Mail::to($user->email)->queue(new AccountDeletionRequestedMail($user, $permanentDeleteAt));
+        $user->notify(new AccountDeletionRequestedNotification($user, $permanentDeleteAt));
 
         try {
             LoginActivity::where('user_id', $user->id)
                 ->where('is_active', true)
                 ->update(['is_active' => false]);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             //
         }
 
@@ -706,8 +712,14 @@ class SecuritySettingsController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            // 'password' => 'required',
         ]);
+
+        if (! $request->filled('password') && ! $request->filled('otp')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Credentials or recovery verification code is required to restore your account.',
+            ], 422);
+        }
 
         try {
             $user = User::withTrashed()->where('email', $request->email)->first();
@@ -719,38 +731,77 @@ class SecuritySettingsController extends Controller
                 ], 404);
             }
 
-            // if (! Hash::check($request->password, $user->password)) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'The provided password is incorrect. Restoration failed.',
-            //     ], 401);
-            // }
+            if ($user->is_suspended) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your account has been suspended. Please contact support.',
+                ], 403);
+            }
 
-            $user->restore();
+            $deletionLog = DeletedAccountLog::where('user_id', $user->id)->latest()->first();
+            if ($deletionLog && now()->gt($deletionLog->permanent_delete_at)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The restoration period for this account has expired.',
+                ], 410);
+            }
 
-            DeletedAccountLog::where('user_id', $user->id)->delete();
+            if ($request->filled('password')) {
+                if (! Hash::check($request->password, $user->password)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The provided password is incorrect. Restoration failed.',
+                    ], 401);
+                }
+            } elseif ($request->filled('otp')) {
+                $otpRecord = Otp::where('user_id', $user->id)
+                    ->where('type', OtpType::RECOVERY->value)
+                    ->first();
 
-            $token = auth('api')->login($user);
+                if (! $otpRecord || (string) $otpRecord->otp !== (string) $request->otp) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid recovery code.',
+                    ], 401);
+                }
 
-            $payload = auth('api')->setToken($token)->getPayload();
-            $tokenId = $payload->get('jti');
-            request()->merge(['current_token_id' => $tokenId]);
-            event(new Login('api', $user, false));
+                if (! $otpRecord->expires_at || now()->gt($otpRecord->expires_at)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Recovery code has expired.',
+                    ], 401);
+                }
 
-            $roleName = $user->getRoleNames()->first();
-            $user->makeHidden('roles');
-            $user->role = $roleName;
+                $otpRecord->delete();
+            }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Welcome back! Your account has been successfully reactivated.',
-                'data' => [
-                    'is_onboarding' => $user->profile()->exists(),
-                    'user' => $user,
-                    'token' => $token,
-                    'token_type' => 'bearer',
-                ],
-            ]);
+            return DB::transaction(function () use ($user) {
+                $user->restore();
+
+                DeletedAccountLog::where('user_id', $user->id)->delete();
+
+                $token = auth('api')->login($user);
+
+                $payload = auth('api')->setToken($token)->getPayload();
+                $tokenId = $payload->get('jti');
+                request()->merge(['current_token_id' => $tokenId]);
+                event(new Login('api', $user, false));
+
+                $roleName = $user->getRoleNames()->first();
+                $user->makeHidden('roles');
+                $user->role = $roleName;
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Welcome back! Your account has been successfully reactivated.',
+                    'data' => [
+                        'is_onboarding' => $user->profile()->exists(),
+                        'user' => $user,
+                        'token' => $token,
+                        'token_type' => 'bearer',
+                    ],
+                ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
