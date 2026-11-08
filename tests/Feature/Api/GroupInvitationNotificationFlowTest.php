@@ -92,7 +92,7 @@ class GroupInvitationNotificationFlowTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Group invitation sent successfully.');
 
-        $invitation = GroupInvitation::where('group_id', $this->group->id)
+        GroupInvitation::where('group_id', $this->group->id)
             ->where('invited_user_id', $this->invitee->id)
             ->firstOrFail();
 

@@ -120,7 +120,7 @@ class IndustryCategoryTest extends TestCase
 
     public function test_get_neuroscience_sections(): void
     {
-        $section = IndustrySections::create([
+        IndustrySections::create([
             'name' => 'Neuro Section 1',
             'industry_type' => 'biotechnology',
             'network_type' => 'neuroscience',

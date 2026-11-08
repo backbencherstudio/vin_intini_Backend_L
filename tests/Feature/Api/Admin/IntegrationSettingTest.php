@@ -155,7 +155,7 @@ class IntegrationSettingTest extends TestCase
 
         $lines = explode("\n", $stored);
         foreach ($lines as $i => $line) {
-            if ($line === '' || $line === '-----BEGIN PRIVATE KEY-----' || $line === '-----END PRIVATE KEY-----') {
+            if (in_array($line, ['', '-----BEGIN PRIVATE KEY-----', '-----END PRIVATE KEY-----'], true)) {
                 continue;
             }
 
@@ -163,7 +163,7 @@ class IntegrationSettingTest extends TestCase
             $this->assertMatchesRegularExpression('/^[A-Za-z0-9+\/=]+$/', $line, "Line {$i} is not base64");
         }
 
-        $this->assertCount(5, array_filter($lines, fn ($line) => $line !== ''));
+        $this->assertCount(5, array_filter($lines, fn ($line): bool => $line !== ''));
 
         $this->assertNotFalse(openssl_pkey_get_private($stored));
     }

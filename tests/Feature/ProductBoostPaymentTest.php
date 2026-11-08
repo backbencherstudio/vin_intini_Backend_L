@@ -3,10 +3,6 @@
 use App\Enums\AdCampaignStatus;
 use App\Enums\OtpType;
 use App\Enums\PlanType;
-use App\Mail\BoostOtpMail;
-use App\Mail\CampaignActivatedMail;
-use App\Mail\CampaignAutoExpiredMail;
-use App\Mail\CampaignPauseReminderMail;
 use App\Models\AdCampaign;
 use App\Models\BoostPackage;
 use App\Models\Industry;
@@ -19,10 +15,14 @@ use App\Models\Subscription;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Notifications\BoostOtpNotification;
+use App\Notifications\CampaignActivatedNotification;
+use App\Notifications\CampaignAutoExpiredNotification;
+use App\Notifications\CampaignPauseReminderNotification;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
 use Stripe\Customer;
@@ -31,7 +31,7 @@ use Stripe\PaymentMethod;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'api']);
 
     $this->user = User::factory()->create(['is_verified' => true]);
@@ -99,7 +99,7 @@ function seedBoostOtp(int $userId, string $otp = '1234', ?Carbon $expiresAt = nu
     ]);
 }
 
-test('advertiser can view packages with stripe key and custom slider config', function () {
+test('advertiser can view packages with stripe key and custom slider config', function (): void {
     $response = $this->actingAs($this->user, 'api')
         ->getJson('/api/industry/boost-packages')
         ->assertStatus(200);
@@ -123,7 +123,7 @@ test('advertiser can view packages with stripe key and custom slider config', fu
     $response->assertJsonPath('data.custom_slider.channel', 'web_only');
 });
 
-test('advertiser can preview checkout order summary with product name', function () {
+test('advertiser can preview checkout order summary with product name', function (): void {
     $response = $this->actingAs($this->user, 'api')
         ->getJson("/api/industry/products/{$this->product->id}/boost/order-summary?boost_package_id={$this->package->id}")
         ->assertStatus(200);
@@ -138,8 +138,8 @@ test('advertiser can preview checkout order summary with product name', function
         ->assertJsonPath('data.order_summary.total', 19.99);
 });
 
-test('send otp dispatches email and rate limits subsequent requests', function () {
-    Mail::fake();
+test('send otp dispatches email and rate limits subsequent requests', function (): void {
+    Notification::fake();
 
     $response = $this->actingAs($this->user, 'api')
         ->postJson("/api/industry/products/{$this->product->id}/boost/send-otp", [
@@ -152,7 +152,7 @@ test('send otp dispatches email and rate limits subsequent requests', function (
         ->assertJsonPath('data.requires_verification', true)
         ->assertJsonPath('data.email', $this->user->email);
 
-    Mail::assertQueued(BoostOtpMail::class);
+    Notification::assertSentTo($this->user, BoostOtpNotification::class);
 
     $this->assertDatabaseHas('otps', [
         'user_id' => $this->user->id,
@@ -170,8 +170,8 @@ test('send otp dispatches email and rate limits subsequent requests', function (
         ->assertJsonPath('success', false);
 });
 
-test('advertiser can resend otp after cooldown', function () {
-    Mail::fake();
+test('advertiser can resend otp after cooldown', function (): void {
+    Notification::fake();
 
     seedBoostOtp($this->user->id, '1111');
     Carbon::setTestNow(now()->addSeconds(65));
@@ -185,12 +185,12 @@ test('advertiser can resend otp after cooldown', function () {
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.cooldown_seconds', 60);
 
-    Mail::assertQueued(BoostOtpMail::class);
+    Notification::assertSentTo($this->user, BoostOtpNotification::class);
 
     Carbon::setTestNow();
 });
 
-test('send otp with revenuecat returns 422 info message', function () {
+test('send otp with revenuecat returns 422 info message', function (): void {
     $response = $this->actingAs($this->user, 'api')
         ->postJson("/api/industry/products/{$this->product->id}/boost/send-otp", [
             'checkout_type' => 'revenuecat',
@@ -201,7 +201,7 @@ test('send otp with revenuecat returns 422 info message', function () {
         ->assertJsonPath('success', false);
 });
 
-test('mobile revenuecat purchase prohibits custom days slider', function () {
+test('mobile revenuecat purchase prohibits custom days slider', function (): void {
     $response = $this->actingAs($this->user, 'api')
         ->postJson("/api/industry/products/{$this->product->id}/boost/purchase", [
             'checkout_type' => 'revenuecat',
@@ -214,7 +214,7 @@ test('mobile revenuecat purchase prohibits custom days slider', function () {
         ->assertJsonPath('errors.custom_days.0', 'Custom duration boosting is only available for web checkout via Stripe. Mobile app purchases must select a preset boost package.');
 });
 
-test('boost purchase validates required fields including otp for stripe', function () {
+test('boost purchase validates required fields including otp for stripe', function (): void {
     $response = $this->actingAs($this->user, 'api')
         ->postJson("/api/industry/products/{$this->product->id}/boost/purchase", [
             'checkout_type' => 'stripe',
@@ -226,7 +226,7 @@ test('boost purchase validates required fields including otp for stripe', functi
         ->assertJsonValidationErrors(['otp']);
 });
 
-test('boost purchase with invalid or expired otp returns 400', function () {
+test('boost purchase with invalid or expired otp returns 400', function (): void {
     seedBoostOtp($this->user->id, '9999');
 
     $response = $this->actingAs($this->user, 'api')
@@ -242,7 +242,7 @@ test('boost purchase with invalid or expired otp returns 400', function () {
         ->assertJsonPath('message', 'Invalid OTP.');
 });
 
-test('unauthorized user cannot boost someone else product', function () {
+test('unauthorized user cannot boost someone else product', function (): void {
     $response = $this->actingAs($this->otherUser, 'api')
         ->postJson("/api/industry/products/{$this->product->id}/boost/purchase", [
             'checkout_type' => 'stripe',
@@ -256,11 +256,11 @@ test('unauthorized user cannot boost someone else product', function () {
         ->assertJsonPath('message', 'You are not authorized to boost this product.');
 });
 
-test('advertiser can purchase boost with direct stripe elements card payment and otp', function () {
-    Mail::fake();
+test('advertiser can purchase boost with direct stripe elements card payment and otp', function (): void {
+    Notification::fake();
     seedBoostOtp($this->user->id, '1234');
 
-    $this->mock(StripeService::class, function (MockInterface $mock) {
+    $this->mock(StripeService::class, function (MockInterface $mock): void {
         $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
             Customer::constructFrom(['id' => 'cus_mock_adv']),
         );
@@ -340,13 +340,13 @@ test('advertiser can purchase boost with direct stripe elements card payment and
         ->and($this->product->boost_score)->toBe(2)
         ->and($this->product->boost_expires_at)->not->toBeNull();
 
-    Mail::assertQueued(CampaignActivatedMail::class);
+    Notification::assertSentTo($this->user, CampaignActivatedNotification::class);
 });
 
-test('stripe payment returning requires_action yields client secret and pending campaign', function () {
+test('stripe payment returning requires_action yields client secret and pending campaign', function (): void {
     seedBoostOtp($this->user->id, '1234');
 
-    $this->mock(StripeService::class, function (MockInterface $mock) {
+    $this->mock(StripeService::class, function (MockInterface $mock): void {
         $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
             Customer::constructFrom(['id' => 'cus_mock_3ds']),
         );
@@ -387,8 +387,8 @@ test('stripe payment returning requires_action yields client secret and pending 
     ]);
 });
 
-test('advertiser can confirm 3ds payment intent after modal authentication', function () {
-    Mail::fake();
+test('advertiser can confirm 3ds payment intent after modal authentication', function (): void {
+    Notification::fake();
 
     // Seed pending campaign and transaction
     $campaign = AdCampaign::create([
@@ -416,7 +416,7 @@ test('advertiser can confirm 3ds payment intent after modal authentication', fun
         'status' => 'pending',
     ]);
 
-    $this->mock(StripeService::class, function (MockInterface $mock) {
+    $this->mock(StripeService::class, function (MockInterface $mock): void {
         $mock->shouldReceive('retrievePaymentIntent')
             ->once()
             ->with('pi_3ds_confirmed_789')
@@ -454,14 +454,14 @@ test('advertiser can confirm 3ds payment intent after modal authentication', fun
         'card_last4' => '8888',
     ]);
 
-    Mail::assertQueued(CampaignActivatedMail::class);
+    Notification::assertSentTo($this->user, CampaignActivatedNotification::class);
 });
 
-test('advertiser can purchase custom duration slider boost plan with otp', function () {
-    Mail::fake();
+test('advertiser can purchase custom duration slider boost plan with otp', function (): void {
+    Notification::fake();
     seedBoostOtp($this->user->id, '1234');
 
-    $this->mock(StripeService::class, function (MockInterface $mock) {
+    $this->mock(StripeService::class, function (MockInterface $mock): void {
         $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
             Customer::constructFrom(['id' => 'cus_mock_slider']),
         );
@@ -508,11 +508,11 @@ test('advertiser can purchase custom duration slider boost plan with otp', funct
         'status' => AdCampaignStatus::ACTIVE->value,
     ]);
 
-    Mail::assertQueued(CampaignActivatedMail::class);
+    Notification::assertSentTo($this->user, CampaignActivatedNotification::class);
 });
 
-test('mobile app can activate boost via revenuecat in-app purchase without email otp', function () {
-    Mail::fake();
+test('mobile app can activate boost via revenuecat in-app purchase without email otp', function (): void {
+    Notification::fake();
 
     $response = $this->actingAs($this->user, 'api')
         ->postJson("/api/industry/products/{$this->product->id}/boost/purchase", [
@@ -542,7 +542,7 @@ test('mobile app can activate boost via revenuecat in-app purchase without email
         'amount' => 19.99,
     ]);
 
-    Mail::assertQueued(CampaignActivatedMail::class);
+    Notification::assertSentTo($this->user, CampaignActivatedNotification::class);
 
     // Test idempotency: Sending the same transaction id again should not create a duplicate
     $secondResponse = $this->actingAs($this->user, 'api')
@@ -556,7 +556,7 @@ test('mobile app can activate boost via revenuecat in-app purchase without email
     expect(AdCampaign::where('revenuecat_transaction_id', 'rc_store_trans_987654321')->count())->toBe(1);
 });
 
-test('advertiser can view product boost campaigns list and metrics', function () {
+test('advertiser can view product boost campaigns list and metrics', function (): void {
     AdCampaign::create([
         'boostable_type' => IndustryProduct::class,
         'boostable_id' => $this->product->id,
@@ -601,7 +601,7 @@ test('advertiser can view product boost campaigns list and metrics', function ()
         ->assertJsonPath('data.metrics.total_spend', 19.99);
 });
 
-test('advertiser can pause and resume campaign with clock freeze', function () {
+test('advertiser can pause and resume campaign with clock freeze', function (): void {
     $this->product->update(['is_boosted' => true, 'boost_expires_at' => now()->addDays(5)]);
 
     $campaign = AdCampaign::create([
@@ -643,7 +643,7 @@ test('advertiser can pause and resume campaign with clock freeze', function () {
     expect($this->product->is_boosted)->toBeTrue();
 });
 
-test('clean expired boosts command marks expired campaigns completed and unsets product boost', function () {
+test('clean expired boosts command marks expired campaigns completed and unsets product boost', function (): void {
     $this->product->update(['is_boosted' => true, 'boost_expires_at' => now()->subMinute(), 'is_new_release' => true, 'new_release_expires_at' => now()->subMinute()]);
 
     $campaign = AdCampaign::create([
@@ -672,8 +672,8 @@ test('clean expired boosts command marks expired campaigns completed and unsets 
         ->and($this->product->is_new_release)->toBeFalse();
 });
 
-test('paused campaign triggers 3-day reminder email at day 27', function () {
-    Mail::fake();
+test('paused campaign triggers 3-day reminder email at day 27', function (): void {
+    Notification::fake();
 
     $campaign = AdCampaign::create([
         'boostable_type' => IndustryProduct::class,
@@ -695,17 +695,15 @@ test('paused campaign triggers 3-day reminder email at day 27', function () {
 
     $this->artisan('boost:clean-expired')->assertExitCode(0);
 
-    Mail::assertQueued(CampaignPauseReminderMail::class, function ($mail) {
-        return $mail->daysRemaining === 3;
-    });
+    Notification::assertSentTo($this->user, CampaignPauseReminderNotification::class, fn ($notification): bool => $notification->daysRemaining === 3);
 
     $campaign->refresh();
     expect($campaign->paused_reminder_stage)->toBe(1)
         ->and($campaign->status)->toEqual(AdCampaignStatus::PAUSED);
 });
 
-test('paused campaign triggers final 24-hour reminder email at day 29', function () {
-    Mail::fake();
+test('paused campaign triggers final 24-hour reminder email at day 29', function (): void {
+    Notification::fake();
 
     $campaign = AdCampaign::create([
         'boostable_type' => IndustryProduct::class,
@@ -727,16 +725,14 @@ test('paused campaign triggers final 24-hour reminder email at day 29', function
 
     $this->artisan('boost:clean-expired')->assertExitCode(0);
 
-    Mail::assertQueued(CampaignPauseReminderMail::class, function ($mail) {
-        return $mail->daysRemaining === 1;
-    });
+    Notification::assertSentTo($this->user, CampaignPauseReminderNotification::class, fn ($notification): bool => $notification->daysRemaining === 1);
 
     $campaign->refresh();
     expect($campaign->paused_reminder_stage)->toBe(2);
 });
 
-test('paused campaign exceeding 30-day enterprise pause policy is auto-completed and user is emailed', function () {
-    Mail::fake();
+test('paused campaign exceeding 30-day enterprise pause policy is auto-completed and user is emailed', function (): void {
+    Notification::fake();
 
     $campaign = AdCampaign::create([
         'boostable_type' => IndustryProduct::class,
@@ -758,14 +754,14 @@ test('paused campaign exceeding 30-day enterprise pause policy is auto-completed
 
     $this->artisan('boost:clean-expired')->assertExitCode(0);
 
-    Mail::assertQueued(CampaignAutoExpiredMail::class);
+    Notification::assertSentTo($this->user, CampaignAutoExpiredNotification::class);
 
     $campaign->refresh();
     expect($campaign->status)->toEqual(AdCampaignStatus::COMPLETED)
         ->and($campaign->paused_at)->toBeNull();
 });
 
-test('all boost email templates share identical header logo, footer, and styling', function () {
+test('all boost email templates share identical header logo, footer, and styling', function (): void {
     $campaign = AdCampaign::create([
         'boostable_type' => IndustryProduct::class,
         'boostable_id' => $this->product->id,
@@ -783,7 +779,7 @@ test('all boost email templates share identical header logo, footer, and styling
     ]);
 
     // 1. Activation Confirmation Mail
-    $activatedHtml = (new CampaignActivatedMail($campaign))->render();
+    $activatedHtml = (new CampaignActivatedNotification($campaign))->toMail($this->user)->render();
     expect($activatedHtml)->toContain('assets/img/logo.png')
         ->and($activatedHtml)->toContain('Your Boost Campaign is Now Live!')
         ->and($activatedHtml)->toContain('SynapseBoost Pro')
@@ -791,27 +787,27 @@ test('all boost email templates share identical header logo, footer, and styling
         ->and($activatedHtml)->toContain('Psychology and Neuroscience Community');
 
     // 2. OTP Mail
-    $otpHtml = (new BoostOtpMail('4321'))->render();
+    $otpHtml = (new BoostOtpNotification('4321'))->toMail($this->user)->render();
     expect($otpHtml)->toContain('assets/img/logo.png')
         ->and($otpHtml)->toContain('Confirm Your Boost Campaign')
         ->and($otpHtml)->toContain('4321')
         ->and($otpHtml)->toContain('Psychology and Neuroscience Community');
 
     // 3. Pause Reminder Mail
-    $reminderHtml = (new CampaignPauseReminderMail($campaign, 3))->render();
+    $reminderHtml = (new CampaignPauseReminderNotification($campaign, 3))->toMail($this->user)->render();
     expect($reminderHtml)->toContain('assets/img/logo.png')
         ->and($reminderHtml)->toContain('Your Boost Campaign is Paused')
         ->and($reminderHtml)->toContain('3 days remaining')
         ->and($reminderHtml)->toContain('Psychology and Neuroscience Community');
 
     // 4. Auto Expired Mail
-    $expiredHtml = (new CampaignAutoExpiredMail($campaign))->render();
+    $expiredHtml = (new CampaignAutoExpiredNotification($campaign))->toMail($this->user)->render();
     expect($expiredHtml)->toContain('assets/img/logo.png')
         ->and($expiredHtml)->toContain('Boost Campaign Expired')
         ->and($expiredHtml)->toContain('Psychology and Neuroscience Community');
 });
 
-test('industry advertiser can list all their boost campaigns with aggregate metrics', function () {
+test('industry advertiser can list all their boost campaigns with aggregate metrics', function (): void {
     $campaign1 = AdCampaign::create([
         'boostable_type' => IndustryProduct::class,
         'boostable_id' => $this->product->id,
@@ -872,7 +868,7 @@ test('industry advertiser can list all their boost campaigns with aggregate metr
         ->and($activeResponse->json('data.campaigns.data.0.id'))->toBe($campaign1->id);
 });
 
-test('my listings returns boost_status active, paused, and inactive with campaign id', function () {
+test('my listings returns boost_status active, paused, and inactive with campaign id', function (): void {
     $plan = Plan::create([
         'name' => 'Pro Industry Plan',
         'plan_type' => PlanType::INDUSTRY->value,
@@ -999,7 +995,7 @@ test('my listings returns boost_status active, paused, and inactive with campaig
         ->and($expiredResponse->json('data.2.id'))->toBe($this->product->id);
 });
 
-test('advertiser boost campaigns returns accurate remaining hours text when under 24 hours matching product listings', function () {
+test('advertiser boost campaigns returns accurate remaining hours text when under 24 hours matching product listings', function (): void {
     $plan = Plan::create([
         'name' => 'Pro Industry Plan',
         'plan_type' => PlanType::INDUSTRY->value,

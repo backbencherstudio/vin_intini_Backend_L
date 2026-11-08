@@ -3,7 +3,6 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\OtpType;
-use App\Mail\SubscriptionOtpMail;
 use App\Models\AdCampaign;
 use App\Models\BoostPackage;
 use App\Models\Industry;
@@ -16,10 +15,11 @@ use App\Models\Subscription;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Notifications\SubscriptionOtpNotification;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -298,7 +298,7 @@ class SubscriptionFlowTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('cancelSubscription')
                 ->once()
                 ->with('sub_mock', true)
@@ -324,7 +324,7 @@ class SubscriptionFlowTest extends TestCase
 
     public function test_send_otp_sends_otp_and_requires_verification(): void
     {
-        Mail::fake();
+        Notification::fake();
 
         $plan = $this->makePlan();
 
@@ -339,7 +339,7 @@ class SubscriptionFlowTest extends TestCase
             ->assertJsonPath('data.requires_verification', true)
             ->assertJsonPath('data.email', $this->user->email);
 
-        Mail::assertQueued(SubscriptionOtpMail::class);
+        Notification::assertSentTo($this->user, SubscriptionOtpNotification::class);
 
         $this->assertDatabaseHas('otps', [
             'user_id' => $this->user->id,
@@ -420,7 +420,7 @@ class SubscriptionFlowTest extends TestCase
 
         $this->seedSubscriptionOtp();
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($plan) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($plan): void {
             $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
                 Customer::constructFrom(['id' => 'cus_mock']),
             );
@@ -428,7 +428,7 @@ class SubscriptionFlowTest extends TestCase
                 ->with('pm_mock', 'cus_mock')
                 ->andReturn(PaymentMethod::constructFrom(['id' => 'pm_mock']));
             $mock->shouldReceive('createSubscription')->once()
-                ->withArgs(fn ($planArg, $customerId, $userId, $pmId) => $planArg->is($plan) && $customerId === 'cus_mock' && $pmId === 'pm_mock')
+                ->withArgs(fn ($planArg, $customerId, $userId, $pmId): bool => $planArg->is($plan) && $customerId === 'cus_mock' && $pmId === 'pm_mock')
                 ->andReturn($this->fakeStripeSubscription());
             $mock->shouldReceive('periodDatesFromSubscription')->once()
                 ->andReturn([now()->subMonth(), now()->addMonth()]);
@@ -476,7 +476,7 @@ class SubscriptionFlowTest extends TestCase
 
         $this->seedSubscriptionOtp();
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($plan) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($plan): void {
             $mock->shouldReceive('getOrCreateCustomer')->once()->andReturn(
                 Customer::constructFrom(['id' => 'cus_mock']),
             );
@@ -484,7 +484,7 @@ class SubscriptionFlowTest extends TestCase
                 ->with('pm_mock', 'cus_mock')
                 ->andReturn(PaymentMethod::constructFrom(['id' => 'pm_mock']));
             $mock->shouldReceive('createSubscription')->once()
-                ->withArgs(fn ($planArg, $customerId, $userId, $pmId) => $planArg->is($plan) && $customerId === 'cus_mock' && $pmId === 'pm_mock')
+                ->withArgs(fn ($planArg, $customerId, $userId, $pmId): bool => $planArg->is($plan) && $customerId === 'cus_mock' && $pmId === 'pm_mock')
                 ->andReturn($this->fakeStripeSubscription([
                     'id' => 'sub_3ds',
                     'status' => 'incomplete',
@@ -534,7 +534,7 @@ class SubscriptionFlowTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getOrCreateCustomer')->never();
             $mock->shouldReceive('attachPaymentMethod')->never();
             $mock->shouldReceive('createSubscription')->never();
@@ -554,7 +554,7 @@ class SubscriptionFlowTest extends TestCase
 
         $this->seedSubscriptionOtp();
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getOrCreateCustomer')->once()->andThrow(
                 new ApiConnectionException('Stripe is down'),
             );
@@ -586,7 +586,7 @@ class SubscriptionFlowTest extends TestCase
             'stripe_price_id' => 'price_1',
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getOrCreateCustomer')->never();
             $mock->shouldReceive('attachPaymentMethod')->never();
             $mock->shouldReceive('createSubscription')->never();
@@ -610,7 +610,7 @@ class SubscriptionFlowTest extends TestCase
 
         $this->seedSubscriptionOtp();
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getOrCreateCustomer')->never();
             $mock->shouldReceive('attachPaymentMethod')->never();
             $mock->shouldReceive('createSubscription')->never();
@@ -647,7 +647,7 @@ class SubscriptionFlowTest extends TestCase
 
         $this->seedSubscriptionOtp();
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getOrCreateCustomer')->never();
             $mock->shouldReceive('attachPaymentMethod')->never();
             $mock->shouldReceive('createSubscription')->never();

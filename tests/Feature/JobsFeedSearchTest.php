@@ -338,7 +338,7 @@ class JobsFeedSearchTest extends TestCase
             'employment_type' => 'full_time',
         ]);
 
-        $nonMatchingJob = $this->createJob([
+        $this->createJob([
             'state_id' => $state1->id,
             'city_id' => $city2->id,
             'network_type' => 'engineering',
@@ -379,9 +379,9 @@ class JobsFeedSearchTest extends TestCase
         $phoenix = City::create(['name' => 'Phoenix', 'state_id' => $state->id]);
 
         // Create 3 jobs in Phoenix
-        $job1 = $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
-        $job2 = $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
-        $job3 = $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
+        $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
+        $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
+        $this->createJob(['state_id' => $state->id, 'city_id' => $phoenix->id]);
 
         // 1. Grouped preview with per_city_limit=2 (Shows 2 preview cards and has_more = true)
         $previewRes = $this->actingAs($user, 'api')->getJson('/api/industry/jobsfeed?'.http_build_query([
@@ -421,7 +421,7 @@ class JobsFeedSearchTest extends TestCase
             'employment_type' => 'internship',
         ]);
 
-        $fullTimeJob = $this->createJob([
+        $this->createJob([
             'employment_type' => 'full_time',
         ]);
 

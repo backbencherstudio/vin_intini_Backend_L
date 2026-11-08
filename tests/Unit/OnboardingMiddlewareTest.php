@@ -18,7 +18,7 @@ class OnboardingMiddlewareTest extends TestCase
 
         $user = new User(['is_verified' => false]);
         $request = Request::create('/api/setup-profile', 'POST');
-        $request->setUserResolver(fn () => $user);
+        $request->setUserResolver(fn (): User => $user);
 
         $response = $middleware->handle($request, fn () => response()->json(['ok' => true]));
 
@@ -34,9 +34,9 @@ class OnboardingMiddlewareTest extends TestCase
         $user->setRelation('profile', null);
 
         $request = Request::create('/api/groups', 'GET');
-        $request->setUserResolver(fn () => $user);
+        $request->setUserResolver(fn (): User => $user);
 
-        $response = $middleware->handle($request, fn () => new Response('ok', 200));
+        $response = $middleware->handle($request, fn (): Response => new Response('ok', 200));
 
         $this->assertSame(403, $response->getStatusCode());
         $this->assertStringContainsString('Profile setup required', (string) $response->getContent());
@@ -50,9 +50,9 @@ class OnboardingMiddlewareTest extends TestCase
         $user->setRelation('profile', new UserProfile);
 
         $request = Request::create('/api/groups', 'GET');
-        $request->setUserResolver(fn () => $user);
+        $request->setUserResolver(fn (): User => $user);
 
-        $response = $middleware->handle($request, fn () => new Response('ok', 200));
+        $response = $middleware->handle($request, fn (): Response => new Response('ok', 200));
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('ok', (string) $response->getContent());

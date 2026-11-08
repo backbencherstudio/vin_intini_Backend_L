@@ -33,7 +33,7 @@ class PlanManagementTest extends TestCase
         $this->admin = User::factory()->create();
         $this->admin->assignRole($role);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('createProduct')->andReturn(Product::constructFrom(['id' => 'prod_mock']));
             $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_mock']));
             $mock->shouldReceive('updateProduct')->andReturn(Product::constructFrom(['id' => 'prod_mock']));

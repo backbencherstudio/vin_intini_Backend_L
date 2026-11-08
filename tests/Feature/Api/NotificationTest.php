@@ -4,6 +4,8 @@ namespace Tests\Feature\Api;
 
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Notifications\ConnectionRequestAcceptedNotification;
+use App\Notifications\ConnectionRequestReceivedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
@@ -42,7 +44,7 @@ class NotificationTest extends TestCase
             ->assertJsonCount(1, 'data');
 
         $notification = $response->json('data')[0];
-        $this->assertSame('App\Notifications\ConnectionRequestReceivedNotification', $notification['type']);
+        $this->assertSame(ConnectionRequestReceivedNotification::class, $notification['type']);
         $this->assertFalse($notification['is_read']);
     }
 
@@ -92,8 +94,8 @@ class NotificationTest extends TestCase
             ->assertJsonPath('data.pusher.cluster', 'mt1')
             ->assertJsonPath('data.auth_endpoint', url('/api/broadcasting/auth'))
             ->assertJsonPath('data.user_channel', 'App.Models.User.{id}')
-            ->assertJsonPath('data.notifications.received', 'App\\Notifications\\ConnectionRequestReceivedNotification')
-            ->assertJsonPath('data.notifications.accepted', 'App\\Notifications\\ConnectionRequestAcceptedNotification')
+            ->assertJsonPath('data.notifications.received', ConnectionRequestReceivedNotification::class)
+            ->assertJsonPath('data.notifications.accepted', ConnectionRequestAcceptedNotification::class)
             ->assertJsonPath('data.api.list', url('/api/notifications'))
             ->assertJsonPath('data.api.unread_count', url('/api/notifications/unread-count'));
     }
@@ -131,7 +133,7 @@ class NotificationTest extends TestCase
         config()->set('broadcasting.connections.pusher.key', 'test-key');
         config()->set('broadcasting.connections.pusher.secret', 'test-secret');
 
-        $sender = $this->makeUser();
+        $this->makeUser();
         $receiver = $this->makeUser();
 
         // Create multiple notifications
@@ -182,7 +184,7 @@ class NotificationTest extends TestCase
         config()->set('broadcasting.connections.pusher.key', 'test-key');
         config()->set('broadcasting.connections.pusher.secret', 'test-secret');
 
-        $sender = $this->makeUser();
+        $this->makeUser();
         $receiver = $this->makeUser();
 
         for ($i = 0; $i < 3; $i++) {
@@ -207,7 +209,7 @@ class NotificationTest extends TestCase
         config()->set('broadcasting.connections.pusher.key', 'test-key');
         config()->set('broadcasting.connections.pusher.secret', 'test-secret');
 
-        $sender = $this->makeUser();
+        $this->makeUser();
         $receiver = $this->makeUser();
 
         for ($i = 0; $i < 3; $i++) {

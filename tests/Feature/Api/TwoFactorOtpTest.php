@@ -3,11 +3,11 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\OtpType;
-use App\Mail\RecoveryOtpMail;
 use App\Models\Otp;
 use App\Models\User;
+use App\Notifications\RecoveryOtpNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -26,7 +26,7 @@ class TwoFactorOtpTest extends TestCase
 
     public function test_user_can_request_and_confirm_recovery_email_otp(): void
     {
-        Mail::fake();
+        Notification::fake();
 
         $user = User::factory()->create([
             'email' => 'primary@example.com',
@@ -43,7 +43,7 @@ class TwoFactorOtpTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('status', true);
 
-        Mail::assertQueued(RecoveryOtpMail::class);
+        Notification::assertSentOnDemand(RecoveryOtpNotification::class);
 
         $otpRecord = Otp::where('user_id', $user->id)
             ->where('type', OtpType::RECOVERY_EMAIL->value)
@@ -70,7 +70,7 @@ class TwoFactorOtpTest extends TestCase
 
     public function test_user_can_receive_and_verify_recovery_otp(): void
     {
-        Mail::fake();
+        Notification::fake();
 
         $user = User::factory()->create([
             'email' => 'account@example.com',
@@ -87,7 +87,7 @@ class TwoFactorOtpTest extends TestCase
         $sendResponse->assertOk()
             ->assertJsonPath('status', true);
 
-        Mail::assertQueued(RecoveryOtpMail::class);
+        Notification::assertSentOnDemand(RecoveryOtpNotification::class);
 
         $otpRecord = Otp::where('user_id', $user->id)
             ->where('type', OtpType::RECOVERY->value)
@@ -113,7 +113,7 @@ class TwoFactorOtpTest extends TestCase
 
     public function test_user_can_resend_otp_for_unverified_recovery_email_and_confirm(): void
     {
-        Mail::fake();
+        Notification::fake();
 
         $user = User::factory()->create([
             'email' => 'primary@example.com',
@@ -135,7 +135,7 @@ class TwoFactorOtpTest extends TestCase
         $resendResponse->assertOk()
             ->assertJsonPath('status', true);
 
-        Mail::assertQueued(RecoveryOtpMail::class);
+        Notification::assertSentOnDemand(RecoveryOtpNotification::class);
 
         $newOtpRecord = Otp::where('user_id', $user->id)
             ->where('type', OtpType::RECOVERY_EMAIL->value)

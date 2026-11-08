@@ -429,7 +429,7 @@ class IndustryProfileTabsTest extends TestCase
         // Visited industry has industry = 'biotechnology' (set in setUp as $this->industry)
 
         // Related industry 1 (same industry, unfollowed)
-        $rel1 = Industry::create([
+        Industry::create([
             'created_by' => User::factory()->create()->id,
             'name' => 'BioTech Alpha',
             'slug' => 'biotech-alpha',
@@ -438,7 +438,7 @@ class IndustryProfileTabsTest extends TestCase
         ]);
 
         // Related industry 2 (same industry, unfollowed)
-        $rel2 = Industry::create([
+        Industry::create([
             'created_by' => User::factory()->create()->id,
             'name' => 'BioTech Beta',
             'slug' => 'biotech-beta',

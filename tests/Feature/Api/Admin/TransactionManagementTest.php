@@ -44,7 +44,7 @@ class TransactionManagementTest extends TestCase
         $plan = $this->makePlan();
         $user = User::factory()->create(['first_name' => 'John', 'last_name' => 'Doe']);
 
-        $transaction = Transaction::create([
+        Transaction::create([
             'provider_transaction_id' => 'pi_123',
             'user_id' => $user->id,
             'plan_id' => $plan->id,

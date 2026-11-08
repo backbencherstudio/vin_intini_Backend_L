@@ -70,7 +70,7 @@ class StripeWebhookTest extends TestCase
             'data' => ['object' => $sessionData],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
             $mock->shouldReceive('retrieveSession')->once()->andReturn(
@@ -132,7 +132,7 @@ class StripeWebhookTest extends TestCase
             'data' => ['object' => $sessionData],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData): void {
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('retrieveSession')->once()->andReturn(
@@ -184,7 +184,7 @@ class StripeWebhookTest extends TestCase
             'data' => ['object' => $sessionData],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
             $mock->shouldReceive('retrieveSession')->once()->andReturn(
@@ -232,7 +232,7 @@ class StripeWebhookTest extends TestCase
             'data' => ['object' => $sessionData],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
             $mock->shouldReceive('retrieveSession')->once()->andReturn(
@@ -296,7 +296,7 @@ class StripeWebhookTest extends TestCase
             ],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
         });
@@ -333,7 +333,7 @@ class StripeWebhookTest extends TestCase
             ],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
         });
@@ -370,7 +370,7 @@ class StripeWebhookTest extends TestCase
             ],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
         });
@@ -419,7 +419,7 @@ class StripeWebhookTest extends TestCase
             ],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event, $sessionData): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
             $mock->shouldReceive('retrieveSession')->once()->with('cs_4')->andReturn(
@@ -482,7 +482,7 @@ class StripeWebhookTest extends TestCase
             ],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
             $mock->shouldReceive('findPaymentIntentBySession')->once()
@@ -525,7 +525,7 @@ class StripeWebhookTest extends TestCase
             ],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
             $mock->shouldReceive('retrievePaymentIntent')->once()->with('pi_6')->andReturn(
@@ -588,7 +588,7 @@ class StripeWebhookTest extends TestCase
             ],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
         });
@@ -628,7 +628,7 @@ class StripeWebhookTest extends TestCase
             ],
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($event) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($event): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andReturn($event);
             $mock->shouldReceive('retrievePaymentIntent')->once()->andReturn(
@@ -651,7 +651,7 @@ class StripeWebhookTest extends TestCase
 
     public function test_webhook_rejects_invalid_signature(): void
     {
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('constructEvent')->once()->andThrow(
                 new SignatureVerificationException('Signature verification failed'),

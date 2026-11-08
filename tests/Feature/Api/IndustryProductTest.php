@@ -181,7 +181,7 @@ class IndustryProductTest extends TestCase
         ]);
 
         // Product in Sub-Category 2
-        $prod2 = IndustryProduct::create([
+        IndustryProduct::create([
             'creator_id' => $this->creator->id,
             'industry_id' => $this->industry->id,
             'network_type' => 'psychology',

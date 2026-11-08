@@ -98,7 +98,7 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
         [$user, $industry, $sectionId, $categoryId] = $this->createTestUserWithIndustry();
 
         // Create sample products
-        $product1 = IndustryProduct::create([
+        IndustryProduct::create([
             'creator_id' => $user->id,
             'industry_id' => $industry->id,
             'network_type' => 'psychology',
@@ -113,7 +113,7 @@ class IndustryAdvertisementAnalyticsTest extends TestCase
             'likes_count' => 250,
         ]);
 
-        $product2 = IndustryProduct::create([
+        IndustryProduct::create([
             'creator_id' => $user->id,
             'industry_id' => $industry->id,
             'network_type' => 'psychology',

@@ -3,11 +3,11 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\OtpType;
-use App\Mail\RegisterOtpMail;
 use App\Models\Otp;
 use App\Models\User;
+use App\Notifications\RegisterOtpNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -27,7 +27,7 @@ class RegisterTest extends TestCase
 
     public function test_new_user_registers_with_email_and_password(): void
     {
-        Mail::fake();
+        Notification::fake();
 
         $response = $this->postJson('/api/register', [
             'email' => 'john@example.com',
@@ -48,9 +48,8 @@ class RegisterTest extends TestCase
             'is_verified' => false,
         ]);
 
-        Mail::assertQueued(RegisterOtpMail::class);
-
         $user = User::where('email', 'john@example.com')->first();
+        Notification::assertSentTo($user, RegisterOtpNotification::class);
         $this->assertTrue($user->hasRole('user'));
 
         $otpRecord = Otp::where('user_id', $user->id)
@@ -65,7 +64,7 @@ class RegisterTest extends TestCase
 
     public function test_registration_resends_otp_for_existing_unverified_user(): void
     {
-        Mail::fake();
+        Notification::fake();
 
         $user = User::create([
             'email' => 'john@example.com',

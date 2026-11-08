@@ -205,7 +205,7 @@ class IndustryJobPostIdTest extends TestCase
             'ends_at' => now()->addMonth(),
         ]);
 
-        $industry = Industry::create([
+        Industry::create([
             'created_by' => $user->id,
             'name' => 'Biotech Labs',
             'slug' => 'biotech-labs',

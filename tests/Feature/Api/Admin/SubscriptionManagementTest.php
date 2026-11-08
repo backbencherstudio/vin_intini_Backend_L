@@ -81,7 +81,7 @@ class SubscriptionManagementTest extends TestCase
             'provider_subscription_id' => 'sub_2', 'status' => 'canceled',
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('hydrateSubscriptionDates')->zeroOrMoreTimes();
         });
 
@@ -116,7 +116,7 @@ class SubscriptionManagementTest extends TestCase
             'provider_subscription_id' => 'sub_recent', 'status' => 'active',
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('hydrateSubscriptionDates')->zeroOrMoreTimes();
         });
 
@@ -154,7 +154,7 @@ class SubscriptionManagementTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('hydrateSubscriptionDates')->passthru();
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('retrieveSubscription')->once()->with('sub_live')->andReturn(
@@ -202,7 +202,7 @@ class SubscriptionManagementTest extends TestCase
             'current_period_end' => $anchor,
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) use ($anchor) {
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($anchor): void {
             $mock->shouldReceive('hydrateSubscriptionDates')->passthru();
             $mock->shouldReceive('periodDatesFromSubscription')->passthru();
             $mock->shouldReceive('retrieveSubscription')->once()->with('sub_anchor')->andReturn(
@@ -240,7 +240,7 @@ class SubscriptionManagementTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('cancelSubscription')->once()
                 ->with('sub_1', true)
                 ->andReturn(StripeSubscription::constructFrom(['id' => 'sub_1', 'cancel_at_period_end' => true]));
@@ -277,7 +277,7 @@ class SubscriptionManagementTest extends TestCase
             'status' => 'canceled',
         ]);
 
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('cancelSubscription')->never();
         });
 
@@ -308,7 +308,7 @@ class SubscriptionManagementTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->mock(RevenueCatService::class, function (MockInterface $mock) {
+        $this->mock(RevenueCatService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('appUserIdFor')->andReturn('1');
             $mock->shouldReceive('revokeEntitlements')
                 ->once()

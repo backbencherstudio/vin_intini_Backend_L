@@ -18,7 +18,7 @@ class ProvisionPlanJobTest extends TestCase
 
     public function test_job_provisions_stripe_product_and_price(): void
     {
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('createProduct')->once()->andReturn(Product::constructFrom(['id' => 'prod_job']));
             $mock->shouldReceive('createPrice')->once()->andReturn(Price::constructFrom(['id' => 'price_job']));
         });
@@ -40,7 +40,7 @@ class ProvisionPlanJobTest extends TestCase
 
     public function test_job_updates_stripe_product_when_name_changes(): void
     {
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('updateProduct')
                 ->once()
                 ->with('prod_x', ['name' => 'New Name'])
@@ -62,7 +62,7 @@ class ProvisionPlanJobTest extends TestCase
 
     public function test_job_recreates_stripe_price_when_billing_changes(): void
     {
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('archivePrice')->once()->with('price_x')->andReturn(Price::constructFrom(['id' => 'price_x']));
             $mock->shouldReceive('createPrice')->once()->with(2000, 'usd', 'month', 'prod_x', Mockery::type('array'))->andReturn(Price::constructFrom(['id' => 'price_new']));
         });

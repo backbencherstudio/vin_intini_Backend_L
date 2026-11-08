@@ -167,7 +167,7 @@ class UserManagementTest extends TestCase
             'current_period_end' => now()->addMonth(),
         ]);
 
-        $industry = Industry::create([
+        Industry::create([
             'name' => 'Acme Pharma',
             'slug' => 'acme-pharma',
             'created_by' => $industryOwner->id,

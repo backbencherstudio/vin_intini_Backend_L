@@ -15,7 +15,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
+beforeEach(function (): void {
     Storage::fake('public');
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
@@ -61,14 +61,14 @@ beforeEach(function () {
     ]);
 });
 
-test('product feed requires network_type and industry_type', function () {
+test('product feed requires network_type and industry_type', function (): void {
     $response = $this->actingAs($this->user, 'api')->getJson('/api/industry/product-feed');
 
     $response->assertStatus(422)
         ->assertJsonValidationErrors(['network_type', 'industry_type']);
 });
 
-test('product feed returns section-wise overview by default', function () {
+test('product feed returns section-wise overview by default', function (): void {
     IndustryProduct::create([
         'creator_id' => $this->user->id,
         'industry_id' => $this->industry->id,
@@ -108,7 +108,7 @@ test('product feed returns section-wise overview by default', function () {
     expect($response->json('data.0.products.0.product_name'))->toBe('Organic EEG Headset');
 });
 
-test('boosted products appear first in feedOrder with badge and campaign data', function () {
+test('boosted products appear first in feedOrder with badge and campaign data', function (): void {
     $organic = IndustryProduct::create([
         'creator_id' => $this->user->id,
         'industry_id' => $this->industry->id,
@@ -171,7 +171,7 @@ test('boosted products appear first in feedOrder with badge and campaign data', 
         ->and($products[1]['is_boosted'])->toBeFalse();
 });
 
-test('view=all or flat=1 returns flat cursor-paginated list of products', function () {
+test('view=all or flat=1 returns flat cursor-paginated list of products', function (): void {
     for ($i = 1; $i <= 5; $i++) {
         IndustryProduct::create([
             'creator_id' => $this->user->id,
@@ -218,7 +218,7 @@ test('view=all or flat=1 returns flat cursor-paginated list of products', functi
     expect($response2->json('data'))->toHaveCount(2);
 });
 
-test('section_id filter returns products for that specific section with cursor pagination', function () {
+test('section_id filter returns products for that specific section with cursor pagination', function (): void {
     $sectionB = IndustrySections::create([
         'name' => 'Brain Scanners',
         'network_type' => 'psychology',
@@ -266,7 +266,7 @@ test('section_id filter returns products for that specific section with cursor p
         ->and($response->json('data.0.product_name'))->toBe('Device in Section A');
 });
 
-test('search query filters products across name and description', function () {
+test('search query filters products across name and description', function (): void {
     IndustryProduct::create([
         'creator_id' => $this->user->id,
         'industry_id' => $this->industry->id,

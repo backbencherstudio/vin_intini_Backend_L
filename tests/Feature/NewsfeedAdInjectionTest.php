@@ -19,7 +19,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
+beforeEach(function (): void {
     Storage::fake('public');
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
@@ -94,7 +94,7 @@ function createNewsfeedProduct(array $overrides = []): IndustryProduct
     ], $overrides));
 }
 
-test('newsfeed returns regular posts unmodified when no boosted ad campaigns exist', function () {
+test('newsfeed returns regular posts unmodified when no boosted ad campaigns exist', function (): void {
     // Create 6 public posts
     for ($i = 1; $i <= 6; $i++) {
         Post::create([
@@ -119,7 +119,7 @@ test('newsfeed returns regular posts unmodified when no boosted ad campaigns exi
     }
 });
 
-test('active boosted product ad is injected at slot 4 with sponsored badge and metrics tracked', function () {
+test('active boosted product ad is injected at slot 4 with sponsored badge and metrics tracked', function (): void {
     // Create 6 posts so feed qualifies for first ad slot (>= 4 posts)
     for ($i = 1; $i <= 6; $i++) {
         Post::create([
@@ -208,7 +208,7 @@ test('active boosted product ad is injected at slot 4 with sponsored badge and m
         ->and($product->fresh()->impressions_count)->toBe(1);
 });
 
-test('session deduplication prevents same campaign from appearing twice in the same feed page', function () {
+test('session deduplication prevents same campaign from appearing twice in the same feed page', function (): void {
     // Create 15 posts (enough for 2 ad slots: slot 4 and slot 13)
     for ($i = 1; $i <= 15; $i++) {
         Post::create([
@@ -247,11 +247,11 @@ test('session deduplication prevents same campaign from appearing twice in the s
     $data = $response->json('data');
 
     // Count how many times this campaign was injected
-    $adOccurrences = collect($data)->filter(fn ($item) => ($item['is_sponsored'] ?? false) && $item['ad_campaign_id'] === $campaign->id);
+    $adOccurrences = collect($data)->filter(fn ($item): bool => ($item['is_sponsored'] ?? false) && $item['ad_campaign_id'] === $campaign->id);
     expect($adOccurrences)->toHaveCount(1); // Exactly 1, NOT duplicated!
 });
 
-test('fair play rotation prioritizes under-served campaigns over over-served campaigns', function () {
+test('fair play rotation prioritizes under-served campaigns over over-served campaigns', function (): void {
     $rotationService = app(FairPlayAdRotationService::class);
 
     $productA = createNewsfeedProduct([
@@ -307,7 +307,7 @@ test('fair play rotation prioritizes under-served campaigns over over-served cam
     expect($chosenCampaign->id)->toBe($campaignB->id);
 });
 
-test('frequency capping prevents showing the same ad to a user who reached max daily impressions', function () {
+test('frequency capping prevents showing the same ad to a user who reached max daily impressions', function (): void {
     $rotationService = app(FairPlayAdRotationService::class);
 
     $product = createNewsfeedProduct([
@@ -370,7 +370,7 @@ test('frequency capping prevents showing the same ad to a user who reached max d
     expect($resolvedForMarketplaceUser?->id)->toBe($campaign->id);
 });
 
-test('paused and expired campaigns are never served in newsfeed', function () {
+test('paused and expired campaigns are never served in newsfeed', function (): void {
     $rotationService = app(FairPlayAdRotationService::class);
 
     $product = createNewsfeedProduct([
@@ -409,7 +409,7 @@ test('paused and expired campaigns are never served in newsfeed', function () {
     expect($rotationService->resolveAdForFeed('product', 'both', 'newsfeed'))->toBeNull();
 });
 
-test('ad rotation alternates campaigns across consecutive feed batches using excludeCampaignIds and sliding window round-robin', function () {
+test('ad rotation alternates campaigns across consecutive feed batches using excludeCampaignIds and sliding window round-robin', function (): void {
     $rotationService = app(FairPlayAdRotationService::class);
 
     $productA = createNewsfeedProduct(['product_name' => 'Rotating Product A', 'slug' => 'rotating-product-a']);

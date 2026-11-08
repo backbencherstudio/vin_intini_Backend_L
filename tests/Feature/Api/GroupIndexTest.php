@@ -79,7 +79,7 @@ class GroupIndexTest extends TestCase
 
         $returnedGroups = collect($response->json('data'));
 
-        $this->assertFalse($returnedGroups->contains(fn (array $group) => (int) $group['id'] === $joinedGroup->id));
+        $this->assertFalse($returnedGroups->contains(fn (array $group): bool => (int) $group['id'] === $joinedGroup->id));
 
         $returnedGroups->each(function (array $group) use ($eligibleGroups): void {
             $this->assertArrayHasKey('name', $group);
@@ -130,8 +130,8 @@ class GroupIndexTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Group images updated successfully!')
-            ->assertJsonPath('data.logo', fn (?string $value) => is_string($value) && str_starts_with($value, 'group_logos/'))
-            ->assertJsonPath('data.cover_photo', fn (?string $value) => is_string($value) && str_starts_with($value, 'group_covers/'));
+            ->assertJsonPath('data.logo', fn (?string $value): bool => is_string($value) && str_starts_with($value, 'group_logos/'))
+            ->assertJsonPath('data.cover_photo', fn (?string $value): bool => is_string($value) && str_starts_with($value, 'group_covers/'));
 
         $group->refresh();
 

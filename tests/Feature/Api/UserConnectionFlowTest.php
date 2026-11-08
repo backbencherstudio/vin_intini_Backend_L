@@ -93,9 +93,9 @@ class UserConnectionFlowTest extends TestCase
         ]);
 
         config()->set('broadcasting.default', 'pusher');
-        config()->set('broadcasting.connections.pusher.app_id', null);
-        config()->set('broadcasting.connections.pusher.key', null);
-        config()->set('broadcasting.connections.pusher.secret', null);
+        config()->set('broadcasting.connections.pusher.app_id');
+        config()->set('broadcasting.connections.pusher.key');
+        config()->set('broadcasting.connections.pusher.secret');
 
         $notification = new ConnectionRequestReceivedNotification($connectionRequest, $sender);
 
@@ -313,9 +313,7 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonCount(0, 'data');
 
         $followingItems = collect($followingResponse->json('data'));
-        $followedItem = $followingItems->first(function (array $item) use ($secondUser): bool {
-            return (int) $item['user']['id'] === $secondUser->id;
-        });
+        $followedItem = $followingItems->first(fn (array $item): bool => (int) $item['user']['id'] === $secondUser->id);
 
         $this->assertNotNull($followedItem);
         $this->assertTrue($followedItem['is_followed_back']);
@@ -475,14 +473,12 @@ class UserConnectionFlowTest extends TestCase
             ->assertJsonPath('data.is_connected', false)
             ->assertJsonPath('data.is_following', false);
 
-        Event::assertDispatched(ConnectionRemoved::class, function (ConnectionRemoved $event) use ($conversation, $firstUser, $secondUser): bool {
-            return $event->conversation->id === $conversation->id
-                && $event->removedUser->id === $secondUser->id
-                && $event->removedById === $firstUser->id
-                && collect($event->broadcastOn())->contains(
-                    fn ($channel) => $channel->name === 'private-conversation.'.$conversation->id
-                );
-        });
+        Event::assertDispatched(ConnectionRemoved::class, fn (ConnectionRemoved $event): bool => $event->conversation->id === $conversation->id
+            && $event->removedUser->id === $secondUser->id
+            && $event->removedById === $firstUser->id
+            && collect($event->broadcastOn())->contains(
+                fn ($channel): bool => $channel->name === 'private-conversation.'.$conversation->id
+            ));
 
         $this->assertDatabaseMissing('connections', [
             'id' => $connectionRequest->id,
@@ -616,9 +612,9 @@ class UserConnectionFlowTest extends TestCase
         $response->assertOk();
 
         $alice = collect($response->json('data'))
-            ->first(fn (array $item) => $item['user']['id'] === $premiumConnection->id);
+            ->first(fn (array $item): bool => $item['user']['id'] === $premiumConnection->id);
         $bob = collect($response->json('data'))
-            ->first(fn (array $item) => $item['user']['id'] === $freeConnection->id);
+            ->first(fn (array $item): bool => $item['user']['id'] === $freeConnection->id);
 
         $this->assertSame(true, $alice['user']['has_premium']);
         $this->assertSame(false, $bob['user']['has_premium']);
@@ -675,25 +671,25 @@ class UserConnectionFlowTest extends TestCase
 
         $suggestions = collect($response->json('data'));
 
-        $this->assertFalse($suggestions->contains(fn (array $item) => (int) $item['user']['id'] === $connectedUser->id));
-        $this->assertFalse($suggestions->contains(fn (array $item) => (int) $item['user']['id'] === $userWithoutProfile->id));
-        $this->assertTrue($suggestions->contains(fn (array $item) => (int) $item['user']['id'] === $unverifiedWithProfile->id));
+        $this->assertFalse($suggestions->contains(fn (array $item): bool => (int) $item['user']['id'] === $connectedUser->id));
+        $this->assertFalse($suggestions->contains(fn (array $item): bool => (int) $item['user']['id'] === $userWithoutProfile->id));
+        $this->assertTrue($suggestions->contains(fn (array $item): bool => (int) $item['user']['id'] === $unverifiedWithProfile->id));
 
-        $pendingSentItem = $suggestions->first(fn (array $item) => (int) $item['user']['id'] === $pendingSentUser->id);
+        $pendingSentItem = $suggestions->first(fn (array $item): bool => (int) $item['user']['id'] === $pendingSentUser->id);
         $this->assertNotNull($pendingSentItem);
         $this->assertSame('pending_sent', $pendingSentItem['state']);
         $this->assertSame('Pending', $pendingSentItem['action_label']);
         $this->assertSame($pendingSentRequest->id, $pendingSentItem['pending_request_id']);
         $this->assertFalse($pendingSentItem['is_connectable']);
 
-        $pendingReceivedItem = $suggestions->first(fn (array $item) => (int) $item['user']['id'] === $pendingReceivedUser->id);
+        $pendingReceivedItem = $suggestions->first(fn (array $item): bool => (int) $item['user']['id'] === $pendingReceivedUser->id);
         $this->assertNotNull($pendingReceivedItem);
         $this->assertSame('pending_received', $pendingReceivedItem['state']);
         $this->assertSame('Accept', $pendingReceivedItem['action_label']);
         $this->assertSame($pendingReceivedRequest->id, $pendingReceivedItem['pending_request_id']);
         $this->assertFalse($pendingReceivedItem['is_connectable']);
 
-        $newSuggestionItem = $suggestions->first(fn (array $item) => (int) $item['user']['id'] === $newSuggestionUser->id);
+        $newSuggestionItem = $suggestions->first(fn (array $item): bool => (int) $item['user']['id'] === $newSuggestionUser->id);
         $this->assertNotNull($newSuggestionItem);
         $this->assertSame('not_connected', $newSuggestionItem['state']);
         $this->assertSame('Connect', $newSuggestionItem['action_label']);

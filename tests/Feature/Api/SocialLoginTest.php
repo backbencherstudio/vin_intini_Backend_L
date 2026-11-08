@@ -114,7 +114,7 @@ class SocialLoginTest extends TestCase
             }
         };
 
-        Socialite::extend('google', fn () => $provider);
+        Socialite::extend('google', fn (): object => $provider);
 
         $this->postJson('/api/auth/social-login', [
             'provider' => 'google',

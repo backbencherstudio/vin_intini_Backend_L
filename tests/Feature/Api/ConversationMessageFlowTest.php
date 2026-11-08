@@ -404,10 +404,8 @@ class ConversationMessageFlowTest extends TestCase
             'message' => 'Test event',
         ]);
 
-        Event::assertDispatched(MessageSent::class, function ($event) use ($conversation, $user) {
-            return $event->message->conversation_id === $conversation->id
-                && $event->message->sender_id === $user->id;
-        });
+        Event::assertDispatched(MessageSent::class, fn ($event): bool => $event->message->conversation_id === $conversation->id
+            && $event->message->sender_id === $user->id);
     }
 
     public function test_unread_count_tracks_correctly(): void
@@ -595,15 +593,13 @@ class ConversationMessageFlowTest extends TestCase
             'message' => 'Hello!',
         ])->assertCreated();
 
-        Event::assertDispatched(ConversationUpdated::class, function (ConversationUpdated $event) use ($conversation, $connectedUser, $user) {
-            return $event->conversation->is($conversation)
-                && $event->receiver->id === $connectedUser->id
-                && $event->unreadCount === 1
-                && $event->unreadConversationCount === 1
-                && $event->totalUnreadMessages === 1
-                && $event->message->sender_id === $user->id
-                && $event->broadcastOn()[0]->name === 'private-App.Models.User.'.$connectedUser->id;
-        });
+        Event::assertDispatched(ConversationUpdated::class, fn (ConversationUpdated $event): bool => $event->conversation->is($conversation)
+            && $event->receiver->id === $connectedUser->id
+            && $event->unreadCount === 1
+            && $event->unreadConversationCount === 1
+            && $event->totalUnreadMessages === 1
+            && $event->message->sender_id === $user->id
+            && $event->broadcastOn()[0]->name === 'private-App.Models.User.'.$connectedUser->id);
     }
 
     public function test_no_event_or_notification_when_receiver_archived_conversation(): void
@@ -623,9 +619,7 @@ class ConversationMessageFlowTest extends TestCase
             'message' => 'Hello!',
         ])->assertCreated();
 
-        Event::assertNotDispatched(ConversationUpdated::class, function (ConversationUpdated $event) use ($connectedUser) {
-            return $event->receiver->id === $connectedUser->id;
-        });
+        Event::assertNotDispatched(ConversationUpdated::class, fn (ConversationUpdated $event): bool => $event->receiver->id === $connectedUser->id);
 
         Notification::assertNotSentTo($connectedUser, NewMessageNotification::class);
     }
@@ -649,15 +643,13 @@ class ConversationMessageFlowTest extends TestCase
         $this->actingAs($connectedUser, 'api')->getJson("/api/conversations/{$conversation->id}/messages")
             ->assertOk();
 
-        Event::assertDispatched(ConversationUpdated::class, function (ConversationUpdated $event) use ($conversation, $connectedUser) {
-            return $event->conversation->is($conversation)
-                && $event->receiver->id === $connectedUser->id
-                && $event->unreadCount === 0
-                && $event->unreadConversationCount === 0
-                && $event->totalUnreadMessages === 0
-                && $event->message === null
-                && $event->broadcastOn()[0]->name === 'private-App.Models.User.'.$connectedUser->id;
-        });
+        Event::assertDispatched(ConversationUpdated::class, fn (ConversationUpdated $event): bool => $event->conversation->is($conversation)
+            && $event->receiver->id === $connectedUser->id
+            && $event->unreadCount === 0
+            && $event->unreadConversationCount === 0
+            && $event->totalUnreadMessages === 0
+            && ! $event->message instanceof Message
+            && $event->broadcastOn()[0]->name === 'private-App.Models.User.'.$connectedUser->id);
     }
 
     public function test_user_can_delete_own_message(): void
@@ -702,11 +694,9 @@ class ConversationMessageFlowTest extends TestCase
         $this->actingAs($user, 'api')->deleteJson("/api/messages/{$message->id}")
             ->assertOk();
 
-        Event::assertDispatched(MessageDeleted::class, function (MessageDeleted $event) use ($message, $conversation) {
-            return $event->messageId === $message->id
-                && $event->conversationId === $conversation->id
-                && $event->broadcastOn()[0]->name === 'private-conversation.'.$conversation->id;
-        });
+        Event::assertDispatched(MessageDeleted::class, fn (MessageDeleted $event): bool => $event->messageId === $message->id
+            && $event->conversationId === $conversation->id
+            && $event->broadcastOn()[0]->name === 'private-conversation.'.$conversation->id);
     }
 
     public function test_user_cannot_delete_others_message(): void
@@ -834,10 +824,8 @@ class ConversationMessageFlowTest extends TestCase
         Notification::assertSentTo(
             $connectedUser,
             NewMessageNotification::class,
-            function (NewMessageNotification $notification) use ($user, $conversation) {
-                return $notification->message->conversation_id === $conversation->id
-                    && $notification->message->sender_id === $user->id;
-            }
+            fn (NewMessageNotification $notification): bool => $notification->message->conversation_id === $conversation->id
+                && $notification->message->sender_id === $user->id
         );
     }
 
@@ -872,10 +860,8 @@ class ConversationMessageFlowTest extends TestCase
         Notification::assertSentTo(
             $connectedUser,
             NewMessageNotification::class,
-            function (NewMessageNotification $notification) use ($user, $conversation) {
-                return $notification->message->conversation_id === $conversation->id
-                    && $notification->message->sender_id === $user->id;
-            }
+            fn (NewMessageNotification $notification): bool => $notification->message->conversation_id === $conversation->id
+                && $notification->message->sender_id === $user->id
         );
 
         Notification::assertNotSentTo($user, NewMessageNotification::class);
@@ -1024,7 +1010,7 @@ class ConversationMessageFlowTest extends TestCase
             ->assertJsonPath('reactions.0.users.0.id', $user->id)
             ->assertJsonPath('reactions.0.users.0.name', trim(($user->first_name).' '.($user->last_name)));
 
-        Event::assertDispatched(MessageReactionChanged::class, fn (MessageReactionChanged $event) => $event->message->is($message)
+        Event::assertDispatched(MessageReactionChanged::class, fn (MessageReactionChanged $event): bool => $event->message->is($message)
             && $event->reaction === '👍'
             && $event->userId === $user->id);
 
@@ -1168,7 +1154,7 @@ class ConversationMessageFlowTest extends TestCase
 
         Event::assertDispatched(
             MessageReactionChanged::class,
-            fn (MessageReactionChanged $event) => $event->message->is($message)
+            fn (MessageReactionChanged $event): bool => $event->message->is($message)
                 && $event->reaction === null
                 && $event->userId === $user->id
         );

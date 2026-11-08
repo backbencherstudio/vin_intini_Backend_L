@@ -35,7 +35,7 @@ class PlanRevenueCatTest extends TestCase
 
     private function mockStripe(): void
     {
-        $this->mock(StripeService::class, function (MockInterface $mock) {
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('createProduct')->andReturn(Product::constructFrom(['id' => 'prod_x']));
             $mock->shouldReceive('createPrice')->andReturn(Price::constructFrom(['id' => 'price_x']));
         });

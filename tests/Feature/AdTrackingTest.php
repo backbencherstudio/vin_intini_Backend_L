@@ -18,7 +18,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
+beforeEach(function (): void {
     Storage::fake('public');
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
@@ -98,7 +98,7 @@ beforeEach(function () {
     ]);
 });
 
-test('client can batch report verified viewable impressions', function () {
+test('client can batch report verified viewable impressions', function (): void {
     $response = $this->actingAs($this->viewer, 'api')
         ->postJson('/api/advertisements/impressions', [
             'campaign_ids' => [$this->campaign->id],
@@ -122,7 +122,7 @@ test('client can batch report verified viewable impressions', function () {
         ->and($this->product->fresh()->impressions_count)->toBe(1);
 });
 
-test('rapid repeated impressions within debounce window are throttled to prevent spam', function () {
+test('rapid repeated impressions within debounce window are throttled to prevent spam', function (): void {
     // First impression: recorded
     $firstResponse = $this->actingAs($this->viewer, 'api')
         ->postJson('/api/advertisements/impressions', [
@@ -157,7 +157,7 @@ test('rapid repeated impressions within debounce window are throttled to prevent
         ->and($this->product->fresh()->impressions_count)->toBe(1);
 });
 
-test('client can record ad clicks and receive product destination url', function () {
+test('client can record ad clicks and receive product destination url', function (): void {
     $response = $this->actingAs($this->viewer, 'api')
         ->postJson("/api/advertisements/{$this->campaign->id}/click", [
             'placement' => 'newsfeed',
@@ -188,12 +188,12 @@ test('client can record ad clicks and receive product destination url', function
         ->and($this->product->fresh()->unique_views_count)->toBe(1);
 });
 
-test('click recording returns 404 for non-existent campaign', function () {
+test('click recording returns 404 for non-existent campaign', function (): void {
     $response = $this->postJson('/api/advertisements/999999/click');
     $response->assertNotFound();
 });
 
-test('rapid repeated ad clicks within debounce window are throttled to prevent spam', function () {
+test('rapid repeated ad clicks within debounce window are throttled to prevent spam', function (): void {
     // First click: recorded
     $firstResponse = $this->actingAs($this->viewer, 'api')
         ->postJson("/api/advertisements/{$this->campaign->id}/click", [
@@ -228,7 +228,7 @@ test('rapid repeated ad clicks within debounce window are throttled to prevent s
         ->and($this->product->fresh()->clicks_count)->toBe(1);
 });
 
-test('industry creator or campaign owner cannot generate self impressions or clicks', function () {
+test('industry creator or campaign owner cannot generate self impressions or clicks', function (): void {
     // Attempting impression as owner/creator:
     $impressionResponse = $this->actingAs($this->user, 'api')
         ->postJson('/api/advertisements/impressions', [
@@ -262,7 +262,7 @@ test('industry creator or campaign owner cannot generate self impressions or cli
         ->and($this->product->fresh()->clicks_count)->toBe(0);
 });
 
-test('client can record clicks by product id, product code or slug on advertisements click route', function () {
+test('client can record clicks by product id, product code or slug on advertisements click route', function (): void {
     $thirdPartyViewer = User::factory()->create();
     $thirdPartyViewer->assignRole('user');
     UserProfile::create(['user_id' => $thirdPartyViewer->id]);
@@ -287,7 +287,7 @@ test('client can record clicks by product id, product code or slug on advertisem
         ->and($this->product->fresh()->clicks_count)->toBe(1);
 });
 
-test('visiting product details route increments clicks_count and ad campaign total_clicks for boosted products', function () {
+test('visiting product details route increments clicks_count and ad campaign total_clicks for boosted products', function (): void {
     $viewer = User::factory()->create();
     $viewer->assignRole('user');
     UserProfile::create(['user_id' => $viewer->id]);
@@ -315,7 +315,7 @@ test('visiting product details route increments clicks_count and ad campaign tot
         ->and($this->campaign->fresh()->total_clicks)->toBe(1);
 });
 
-test('product creator viewing product details does not increment views or clicks', function () {
+test('product creator viewing product details does not increment views or clicks', function (): void {
     expect($this->campaign->fresh()->total_clicks)->toBe(0)
         ->and($this->product->fresh()->clicks_count)->toBe(0)
         ->and($this->product->fresh()->views_count)->toBe(0);

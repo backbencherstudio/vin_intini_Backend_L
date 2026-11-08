@@ -120,7 +120,7 @@ class UserJobPreferenceAndRecommendationTest extends TestCase
         ]);
 
         // Job B matches only work_mode ("remote") -> moderate score
-        $jobB = IndustryJobPost::create([
+        IndustryJobPost::create([
             'job_id' => 'JOB-'.uniqid(),
             'industry_id' => $industry->id,
             'created_by' => $owner->id,
@@ -136,7 +136,7 @@ class UserJobPreferenceAndRecommendationTest extends TestCase
         ]);
 
         // Job C matches position word ("Psychologist") -> moderate score
-        $jobC = IndustryJobPost::create([
+        IndustryJobPost::create([
             'job_id' => 'JOB-'.uniqid(),
             'industry_id' => $industry->id,
             'created_by' => $owner->id,
@@ -186,7 +186,7 @@ class UserJobPreferenceAndRecommendationTest extends TestCase
         $owner = $this->makeUser();
         $industry = $this->makeIndustry($owner);
 
-        $job = IndustryJobPost::create([
+        IndustryJobPost::create([
             'job_id' => 'JOB-'.uniqid(),
             'industry_id' => $industry->id,
             'created_by' => $owner->id,

@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
     $this->userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'api']);
 
@@ -27,17 +27,17 @@ beforeEach(function () {
     UserProfile::create(['user_id' => $this->regularUser->id]);
 });
 
-test('guest cannot access admin boost package endpoints', function () {
+test('guest cannot access admin boost package endpoints', function (): void {
     $this->getJson('/api/admin/boost-packages')->assertStatus(401);
 });
 
-test('non-admin user is forbidden from admin boost package endpoints', function () {
+test('non-admin user is forbidden from admin boost package endpoints', function (): void {
     $this->actingAs($this->regularUser, 'api')
         ->getJson('/api/admin/boost-packages')
         ->assertStatus(403);
 });
 
-test('admin can list boost packages with filtering', function () {
+test('admin can list boost packages with filtering', function (): void {
     $this->seed(BoostPackageSeeder::class);
 
     // Create an inactive job package
@@ -110,7 +110,7 @@ test('admin can list boost packages with filtering', function () {
         ->and($inactiveResponse->json('data.0.name'))->toBe('3-Day Urgent Job');
 });
 
-test('admin can view single boost package', function () {
+test('admin can view single boost package', function (): void {
     $package = BoostPackage::create([
         'name' => '14-Day Growth',
         'target_entity' => 'product',
@@ -138,7 +138,7 @@ test('admin can view single boost package', function () {
         ]);
 });
 
-test('admin can create a new boost package', function () {
+test('admin can create a new boost package', function (): void {
     $payload = [
         'name' => '60-Day Enterprise Visibility',
         'target_entity' => 'product',
@@ -182,7 +182,7 @@ test('admin can create a new boost package', function () {
     ]);
 });
 
-test('admin cannot create a boost package with invalid data', function () {
+test('admin cannot create a boost package with invalid data', function (): void {
     $invalidPayload = [
         'name' => '',
         'target_entity' => 'invalid_entity_type',
@@ -196,7 +196,7 @@ test('admin cannot create a boost package with invalid data', function () {
         ->assertJsonValidationErrors(['name', 'target_entity', 'duration_days', 'price']);
 });
 
-test('admin can update a boost package', function () {
+test('admin can update a boost package', function (): void {
     $package = BoostPackage::create([
         'name' => 'Old Title',
         'target_entity' => 'product',
@@ -234,7 +234,7 @@ test('admin can update a boost package', function () {
     ]);
 });
 
-test('admin can toggle boost package status', function () {
+test('admin can toggle boost package status', function (): void {
     $package = BoostPackage::create([
         'name' => 'Toggleable Package',
         'target_entity' => 'product',
@@ -274,7 +274,7 @@ test('admin can toggle boost package status', function () {
     expect($package->fresh()->status)->toBe('active');
 });
 
-test('admin cannot delete a boost package if active campaigns exist', function () {
+test('admin cannot delete a boost package if active campaigns exist', function (): void {
     $user = User::factory()->create();
     $industry = Industry::create(['name' => 'Test Corp', 'slug' => 'test-corp']);
     $section = IndustrySections::create(['network_type' => 'psychology', 'industry_type' => 'biotechnology', 'name' => 'Section']);
@@ -324,7 +324,7 @@ test('admin cannot delete a boost package if active campaigns exist', function (
     $this->assertDatabaseHas('boost_packages', ['id' => $package->id]);
 });
 
-test('admin can delete a boost package if no active campaigns exist', function () {
+test('admin can delete a boost package if no active campaigns exist', function (): void {
     $package = BoostPackage::create([
         'name' => 'Unused Package',
         'target_entity' => 'product',
@@ -344,7 +344,7 @@ test('admin can delete a boost package if no active campaigns exist', function (
     $this->assertDatabaseMissing('boost_packages', ['id' => $package->id]);
 });
 
-test('advertiser can view active boost packages and custom slider configuration', function () {
+test('advertiser can view active boost packages and custom slider configuration', function (): void {
     $this->seed(BoostPackageSeeder::class);
 
     // Add an inactive package to confirm it is excluded from advertiser view
@@ -393,12 +393,12 @@ test('advertiser can view active boost packages and custom slider configuration'
         ->and($slider['max_days'])->toBe(60);
 });
 
-test('guest cannot access admin boost settings endpoints', function () {
+test('guest cannot access admin boost settings endpoints', function (): void {
     $this->getJson('/api/admin/boost-settings')->assertStatus(401);
     $this->patchJson('/api/admin/boost-settings', ['daily_rate' => 5.00])->assertStatus(401);
 });
 
-test('non-admin user is forbidden from admin boost settings endpoints', function () {
+test('non-admin user is forbidden from admin boost settings endpoints', function (): void {
     $this->actingAs($this->regularUser, 'api')
         ->getJson('/api/admin/boost-settings')
         ->assertStatus(403);
@@ -408,7 +408,7 @@ test('non-admin user is forbidden from admin boost settings endpoints', function
         ->assertStatus(403);
 });
 
-test('admin can view boost system settings', function () {
+test('admin can view boost system settings', function (): void {
     $response = $this->actingAs($this->adminUser, 'api')
         ->getJson('/api/admin/boost-settings')
         ->assertStatus(200);
@@ -445,7 +445,7 @@ test('admin can view boost system settings', function () {
     expect((float) $response->json('data.custom_slider.daily_rate'))->toEqual(3.0);
 });
 
-test('admin can update daily_rate, min_days, max_days from admin dashboard and changes reflect on advertiser packages API', function () {
+test('admin can update daily_rate, min_days, max_days from admin dashboard and changes reflect on advertiser packages API', function (): void {
     // 1. Admin updates daily rate to $4.50 and max days to 90
     $updateResponse = $this->actingAs($this->adminUser, 'api')
         ->patchJson('/api/admin/boost-settings', [

@@ -183,7 +183,7 @@ class IndustryPublicationsAnalyticsTest extends TestCase
         ]);
 
         // 2. Draft/Inactive Publication
-        $pub2 = Publication::create([
+        Publication::create([
             'creator_id' => $user->id,
             'industry_id' => $industry->id,
             'network_type' => 'psychology',
@@ -234,9 +234,9 @@ class IndustryPublicationsAnalyticsTest extends TestCase
     public function test_cards_always_show_month_data_regardless_of_graph_filter(): void
     {
         [$user, $industry] = $this->createTestUserWithIndustry();
-        $viewer = User::factory()->create();
+        User::factory()->create();
 
-        $pub = Publication::create([
+        Publication::create([
             'creator_id' => $user->id,
             'industry_id' => $industry->id,
             'network_type' => 'psychology',

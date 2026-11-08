@@ -40,8 +40,8 @@ class IndustryConversationMessageTest extends TestCase
         $owner = $this->makeUser();
         $industry = Industry::create([
             'created_by' => $owner->id,
-            'name' => 'Bata Corp ' . uniqid(),
-            'slug' => 'bata-corp-' . uniqid(),
+            'name' => 'Bata Corp '.uniqid(),
+            'slug' => 'bata-corp-'.uniqid(),
             'industry' => 'biotechnology',
             'status' => 'approved',
         ]);

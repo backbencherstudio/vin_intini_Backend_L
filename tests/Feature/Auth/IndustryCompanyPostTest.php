@@ -388,7 +388,7 @@ class IndustryCompanyPostTest extends TestCase
         $mediaPath = PostMedia::sole()->file_path;
 
         $commentId = $this->createComment($owner, $postId, 'A comment');
-        $this->createReply($owner, $postId, $commentId, 'A reply');
+        $this->createReply($owner, $commentId, 'A reply');
 
         $this->actingAs($owner, 'api')
             ->deleteJson("/api/industry/post/delete/{$postId}")
@@ -598,7 +598,7 @@ class IndustryCompanyPostTest extends TestCase
         $commentId = $this->createComment($owner, $postId, 'Thread');
 
         for ($index = 1; $index <= 5; $index++) {
-            $this->createReply($owner, $postId, $commentId, "Reply {$index}");
+            $this->createReply($owner, $commentId, "Reply {$index}");
         }
 
         $this->actingAs($owner, 'api')
@@ -620,7 +620,7 @@ class IndustryCompanyPostTest extends TestCase
         $commentId = $this->createComment($owner, $postId, 'Thread');
 
         for ($index = 1; $index <= 5; $index++) {
-            $this->createReply($owner, $postId, $commentId, "Reply {$index}");
+            $this->createReply($owner, $commentId, "Reply {$index}");
         }
 
         $this->actingAs($owner, 'api')
@@ -679,7 +679,7 @@ class IndustryCompanyPostTest extends TestCase
 
         $postId = $this->createPost($owner, 'Discuss', 'public');
         $commentId = $this->createComment($owner, $postId, 'Thread');
-        $replyId = $this->createReply($owner, $postId, $commentId, 'Agreed');
+        $replyId = $this->createReply($owner, $commentId, 'Agreed');
 
         $this->actingAs($owner, 'api')
             ->postJson("/api/industry/post/comment/reply/like/{$replyId}")
@@ -709,7 +709,7 @@ class IndustryCompanyPostTest extends TestCase
             ->assertCreated();
 
         $comment = Comment::sole();
-        $this->createReply($commenter, $postId, $comment->id, 'My reply');
+        $this->createReply($commenter, $comment->id, 'My reply');
 
         $this->actingAs($commenter, 'api')
             ->deleteJson("/api/industry/post/comment/{$comment->id}")
@@ -760,7 +760,7 @@ class IndustryCompanyPostTest extends TestCase
 
         $mediaPath = PostMedia::sole()->file_path;
         $commentId = $this->createComment($owner, $postId, 'Doomed comment');
-        $this->createReply($owner, $postId, $commentId, 'Doomed reply');
+        $this->createReply($owner, $commentId, 'Doomed reply');
 
         $this->actingAs($owner, 'api')
             ->deleteJson('/api/industry/delete')
@@ -1006,7 +1006,7 @@ class IndustryCompanyPostTest extends TestCase
     public function test_a_post_can_only_be_linked_to_one_company_page(): void
     {
         $owner = $this->makeUser('Single', 'Company');
-        $industry = $this->makeIndustry($owner);
+        $this->makeIndustry($owner);
         $postId = $this->createPost($owner, 'Belongs to one company only', 'public');
 
         $otherOwner = $this->makeUser('Other', 'Owner');
@@ -1164,7 +1164,7 @@ class IndustryCompanyPostTest extends TestCase
         $this->makeIndustry($owner);
         $postId = $this->createPost($owner, 'Private company post', 'private');
         $commentId = $this->createComment($owner, $postId, 'A private comment');
-        $replyId = $this->createReply($owner, $postId, $commentId, 'A private reply');
+        $replyId = $this->createReply($owner, $commentId, 'A private reply');
 
         $intruder = $this->makeUser('Nosy', 'Liker');
 
@@ -1181,7 +1181,7 @@ class IndustryCompanyPostTest extends TestCase
         $this->makeIndustry($owner);
         $postId = $this->createPost($owner, 'Private company post', 'private');
         $commentId = $this->createComment($owner, $postId, 'A private comment');
-        $this->createReply($owner, $postId, $commentId, 'A private reply');
+        $this->createReply($owner, $commentId, 'A private reply');
 
         $intruder = $this->makeUser('Nosy', 'Reader');
 
@@ -1250,7 +1250,7 @@ class IndustryCompanyPostTest extends TestCase
         string $visibility,
         array $media = []
     ): int {
-        $industry = Industry::where('created_by', $owner->id)->firstOrFail();
+        Industry::where('created_by', $owner->id)->firstOrFail();
 
         $response = $this->actingAs($owner, 'api')->postJson('/api/industry/post/create', [
             'content' => $content,
@@ -1275,7 +1275,7 @@ class IndustryCompanyPostTest extends TestCase
         return (int) $response->json('data.id');
     }
 
-    private function createReply(User $user, int $postId, int $commentId, string $body): int
+    private function createReply(User $user, int $commentId, string $body): int
     {
         $response = $this->actingAs($user, 'api')->postJson(
             "/api/industry/post/comment/reply/{$commentId}",
@@ -1429,7 +1429,7 @@ class IndustryCompanyPostTest extends TestCase
     public function test_company_owner_reply_defaults_to_personal_user_reply_on_company_post(): void
     {
         $owner = $this->makeUser('John', 'Doe');
-        $industry = $this->makeIndustry($owner);
+        $this->makeIndustry($owner);
         $commenter = $this->makeUser();
 
         $postId = $this->createPost($owner, 'Company announcement', 'public');
@@ -1487,7 +1487,7 @@ class IndustryCompanyPostTest extends TestCase
     public function test_third_party_user_reply_defaults_to_personal_user_reply(): void
     {
         $owner = $this->makeUser();
-        $industry = $this->makeIndustry($owner);
+        $this->makeIndustry($owner);
         $commenter = $this->makeUser();
         $thirdParty = $this->makeUser('Bob', 'Smith');
 
@@ -1602,7 +1602,7 @@ class IndustryCompanyPostTest extends TestCase
     public function test_company_owner_comment_defaults_to_personal_user_comment(): void
     {
         $owner = $this->makeUser('Jane', 'Doe');
-        $industry = $this->makeIndustry($owner);
+        $this->makeIndustry($owner);
 
         $postId = $this->createPost($owner, 'Company announcement', 'public');
 

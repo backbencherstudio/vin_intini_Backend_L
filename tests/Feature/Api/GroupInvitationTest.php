@@ -69,7 +69,7 @@ class GroupInvitationTest extends TestCase
             ->assertJsonPath('total_page', 1)
             ->assertJsonPath('last_page', 1);
 
-        $returnedIds = collect($response->json('data'))->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $returnedIds = collect($response->json('data'))->pluck('id')->map(fn ($id): int => (int) $id)->all();
 
         $this->assertContains($inviteeOne->id, $returnedIds);
         $this->assertContains($inviteeTwo->id, $returnedIds);
@@ -152,7 +152,7 @@ class GroupInvitationTest extends TestCase
             ->assertJsonPath('status', 'error')
             ->assertJsonPath('message', 'Some selected users are not eligible for invitation.');
 
-        $invalidIds = collect($response->json('data.invalid_user_ids'))->map(fn ($id) => (int) $id)->all();
+        $invalidIds = collect($response->json('data.invalid_user_ids'))->map(fn ($id): int => (int) $id)->all();
 
         $this->assertContains($alreadyMember->id, $invalidIds);
         $this->assertContains($unrelatedUser->id, $invalidIds);

@@ -54,7 +54,7 @@ class MyJobApplicationsTest extends TestCase
         ]);
 
         return IndustryJobPost::create([
-            'job_id' => 'JOB-'.rand(100, 999),
+            'job_id' => 'JOB-'.random_int(100, 999),
             'industry_id' => $industry->id,
             'created_by' => $creator->id,
             'job_title' => $title,

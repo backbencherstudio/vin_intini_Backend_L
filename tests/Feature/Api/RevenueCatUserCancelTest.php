@@ -57,7 +57,7 @@ class RevenueCatUserCancelTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->mock(RevenueCatService::class, function (MockInterface $mock) {
+        $this->mock(RevenueCatService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('appUserIdFor')->andReturn('1');
             $mock->shouldReceive('revokeEntitlements')
                 ->once()

@@ -17,7 +17,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
+beforeEach(function (): void {
     Storage::fake('public');
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
@@ -64,7 +64,7 @@ beforeEach(function () {
     ]);
 });
 
-test('creating a product automatically grants 24h new release perk based on config', function () {
+test('creating a product automatically grants 24h new release perk based on config', function (): void {
     config(['boosting.new_release_hours' => 24]);
 
     $payload = [
@@ -103,7 +103,7 @@ test('creating a product automatically grants 24h new release perk based on conf
         ->and((int) round(abs(now()->diffInHours($product->new_release_expires_at))))->toEqual(24);
 });
 
-test('marketplace feed places boosted products first, new releases second, organic third', function () {
+test('marketplace feed places boosted products first, new releases second, organic third', function (): void {
     // 1. Organic Product (Standard)
     $organic = IndustryProduct::create([
         'creator_id' => $this->creator->id,
@@ -184,7 +184,7 @@ test('marketplace feed places boosted products first, new releases second, organ
         ->and($items[2]['is_new_release'])->toBeFalse();
 });
 
-test('section-wise feed window query also respects boost and new release ranking', function () {
+test('section-wise feed window query also respects boost and new release ranking', function (): void {
     // 1. Organic
     $organic = IndustryProduct::create([
         'creator_id' => $this->creator->id,
@@ -246,7 +246,7 @@ test('section-wise feed window query also respects boost and new release ranking
         ->and($sectionData[2]['id'])->toBe($organic->id);
 });
 
-test('expired boost automatically drops down ranking', function () {
+test('expired boost automatically drops down ranking', function (): void {
     // 1. Expired Boosted product (boost expired 1 hour ago)
     $expiredBoost = IndustryProduct::create([
         'creator_id' => $this->creator->id,

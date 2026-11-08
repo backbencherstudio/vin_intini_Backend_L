@@ -1,6 +1,5 @@
 <?php
 
-use App\Contracts\BoostableInterface;
 use App\Enums\AdCampaignStatus;
 use App\Enums\BoostTargetEntity;
 use App\Models\AdCampaign;
@@ -13,11 +12,12 @@ use App\Models\IndustryProduct;
 use App\Models\IndustrySections;
 use App\Models\User;
 use Database\Seeders\BoostPackageSeeder;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('boost packages can be seeded and queried correctly', function () {
+test('boost packages can be seeded and queried correctly', function (): void {
     $this->seed(BoostPackageSeeder::class);
 
     expect(BoostPackage::count())->toBe(3);
@@ -31,7 +31,7 @@ test('boost packages can be seeded and queried correctly', function () {
         ->and($starter->features)->toBeArray();
 });
 
-test('industry product implements boostable interface and trait', function () {
+test('industry product provides ad title, types, campaign relationships, and boost scopes', function (): void {
     $user = User::factory()->create();
     $industry = Industry::create([
         'name' => 'BioTech Corp',
@@ -63,16 +63,16 @@ test('industry product implements boostable interface and trait', function () {
         'new_release_expires_at' => now()->addHours(24),
     ]);
 
-    expect($product)->toBeInstanceOf(BoostableInterface::class)
-        ->and($product->getAdTitle())->toBe('Wireless EEG Cap')
+    expect($product->getAdTitle())->toBe('Wireless EEG Cap')
         ->and($product->getAdType())->toBe('product')
         ->and($product->getAdNetworkType())->toBe('psychology')
-        ->and($product->isBoosted())->toBeFalse();
+        ->and($product->isBoosted())->toBeFalse()
+        ->and($product->campaigns())->toBeInstanceOf(MorphMany::class);
 
     expect(IndustryProduct::newRelease()->count())->toBe(1);
 });
 
-test('ad campaign supports pause and resume with clock freeze mechanism', function () {
+test('ad campaign supports pause and resume with clock freeze mechanism', function (): void {
     $user = User::factory()->create();
     $industry = Industry::create([
         'name' => 'Neuro Labs',
@@ -153,7 +153,7 @@ test('ad campaign supports pause and resume with clock freeze mechanism', functi
         ->and($product->fresh()->is_boosted)->toBeTrue();
 });
 
-test('impressions and clicks can be logged for an ad campaign', function () {
+test('impressions and clicks can be logged for an ad campaign', function (): void {
     $user = User::factory()->create();
     $industry = Industry::create([
         'name' => 'Pharma Corp',
@@ -220,7 +220,7 @@ test('impressions and clicks can be logged for an ad campaign', function () {
         ->and($campaign->clicks()->count())->toBe(1);
 });
 
-test('ad campaign history is preserved under industry even if creator user account is deleted', function () {
+test('ad campaign history is preserved under industry even if creator user account is deleted', function (): void {
     $user = User::factory()->create();
     $industry = Industry::create([
         'name' => 'Legacy Health Corp',
