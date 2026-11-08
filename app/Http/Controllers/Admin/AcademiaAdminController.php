@@ -8,12 +8,14 @@ use App\Models\AcademiaJob;
 use App\Models\AcademiaMedicalResidency;
 use App\Models\AcademiaUniversity;
 use App\Models\State;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
 class AcademiaAdminController extends Controller
 {
     // University List
-    public function indexUniversities(Request $request)
+    public function indexUniversities(Request $request): Factory|View
     {
         $query = AcademiaUniversity::with('state');
 
@@ -28,7 +30,7 @@ class AcademiaAdminController extends Controller
         $data = $query->paginate(20)->withQueryString();
         $states = State::orderBy('name')->get();
 
-        return view('admin.academia.universities.index', compact('data', 'states'));
+        return view('admin.academia.universities.index', ['data' => $data, 'states' => $states]);
     }
 
     public function storeUniversity(Request $request)
@@ -38,9 +40,9 @@ class AcademiaAdminController extends Controller
             'state_id' => 'required|exists:states,id',
         ]);
 
-        $psychDegrees = $request->psychology_degrees ? array_map('trim', explode(',', $request->psychology_degrees)) : [];
-        $counselingDegrees = $request->counseling_degrees ? array_map('trim', explode(',', $request->counseling_degrees)) : [];
-        $neuroDegrees = $request->neuroscience_degrees ? array_map('trim', explode(',', $request->neuroscience_degrees)) : [];
+        $psychDegrees = $request->psychology_degrees ? array_map(trim(...), explode(',', $request->psychology_degrees)) : [];
+        $counselingDegrees = $request->counseling_degrees ? array_map(trim(...), explode(',', $request->counseling_degrees)) : [];
+        $neuroDegrees = $request->neuroscience_degrees ? array_map(trim(...), explode(',', $request->neuroscience_degrees)) : [];
 
         AcademiaUniversity::create([
             'name' => $request->name,
@@ -66,15 +68,15 @@ class AcademiaAdminController extends Controller
 
         // String to Array Conversion
         $psych = $request->psychology_degrees
-            ? array_filter(array_map('trim', explode(',', $request->psychology_degrees)))
+            ? array_filter(array_map(trim(...), explode(',', $request->psychology_degrees)))
             : [];
 
         $neuro = $request->neuroscience_degrees
-            ? array_filter(array_map('trim', explode(',', $request->neuroscience_degrees)))
+            ? array_filter(array_map(trim(...), explode(',', $request->neuroscience_degrees)))
             : [];
 
         $counseling = $request->counseling_degrees
-            ? array_filter(array_map('trim', explode(',', $request->counseling_degrees)))
+            ? array_filter(array_map(trim(...), explode(',', $request->counseling_degrees)))
             : [];
 
         $uni->update([
@@ -103,13 +105,13 @@ class AcademiaAdminController extends Controller
     }
 
     // Facility/Hospital List
-    public function indexFacilities(Request $request)
+    public function indexFacilities(Request $request): Factory|View
     {
         $query = AcademiaFacility::with('state');
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('name', 'LIKE', "%$search%")
                     ->orWhere('location', 'LIKE', "%$search%");
             });
@@ -126,7 +128,7 @@ class AcademiaAdminController extends Controller
         $data = $query->paginate(20)->withQueryString();
         $states = State::orderBy('name')->get();
 
-        return view('admin.academia.facilities.index', compact('data', 'states'));
+        return view('admin.academia.facilities.index', ['data' => $data, 'states' => $states]);
     }
 
     public function updateFacility(Request $request, $id)
@@ -178,13 +180,13 @@ class AcademiaAdminController extends Controller
     }
 
     // Residencies List
-    public function indexResidencies(Request $request)
+    public function indexResidencies(Request $request): Factory|View
     {
         $query = AcademiaMedicalResidency::with('state');
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('program_name', 'LIKE', "%$search%")
                     ->orWhere('location', 'LIKE', "%$search%");
             });
@@ -197,7 +199,7 @@ class AcademiaAdminController extends Controller
         $data = $query->paginate(20)->withQueryString();
         $states = State::orderBy('name')->get();
 
-        return view('admin.academia.residencies.index', compact('data', 'states'));
+        return view('admin.academia.residencies.index', ['data' => $data, 'states' => $states]);
     }
 
     public function storeResidency(Request $request)
@@ -208,7 +210,7 @@ class AcademiaAdminController extends Controller
             'phone' => 'nullable|string|max:255',
         ]);
 
-        $degrees = $request->degree_types ? array_map('trim', explode(',', $request->degree_types)) : [];
+        $degrees = $request->degree_types ? array_map(trim(...), explode(',', $request->degree_types)) : [];
 
         AcademiaMedicalResidency::create([
             'program_name' => $request->program_name,
@@ -234,7 +236,7 @@ class AcademiaAdminController extends Controller
 
         $item = AcademiaMedicalResidency::findOrFail($id);
 
-        $degrees = $request->degree_types ? array_map('trim', explode(',', $request->degree_types)) : [];
+        $degrees = $request->degree_types ? array_map(trim(...), explode(',', $request->degree_types)) : [];
 
         $item->update([
             'program_name' => $request->program_name,
@@ -259,14 +261,14 @@ class AcademiaAdminController extends Controller
     }
 
     // Jobs List
-    public function indexJobs(Request $request)
+    public function indexJobs(Request $request): Factory|View
     {
         $query = AcademiaJob::with('state');
 
         // Search by Title or Company Name
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('title', 'LIKE', "%$search%")
                     ->orWhere('company_name', 'LIKE', "%$search%");
             });
@@ -285,7 +287,7 @@ class AcademiaAdminController extends Controller
         $data = $query->latest()->paginate(20)->withQueryString();
         $states = State::orderBy('name')->get();
 
-        return view('admin.academia.employment.index', compact('data', 'states'));
+        return view('admin.academia.employment.index', ['data' => $data, 'states' => $states]);
     }
 
     // Store New Job

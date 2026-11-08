@@ -11,7 +11,11 @@ use App\Models\Post;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Auth\Events\Failed;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -86,7 +90,7 @@ class AdminAuthController extends Controller
     //     return back()->withErrors(['email' => 'The provided credentials do not match our records.']);
     // }
 
-    public function adminLogout(Request $request)
+    public function adminLogout(Request $request): Redirector|RedirectResponse
     {
         $sessionId = $request->session()->getId();
         LoginActivity::where('token_id', $sessionId)
@@ -100,7 +104,7 @@ class AdminAuthController extends Controller
         return redirect('/admin/login');
     }
 
-    public function userManagement(Request $request)
+    public function userManagement(Request $request): Factory|View
     {
         $baseQuery = User::where('is_verified', true)
             ->where('email', '!=', 'admin@gmail.com')
@@ -116,7 +120,7 @@ class AdminAuthController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $userQuery->where(function ($q) use ($search) {
+            $userQuery->where(function ($q) use ($search): void {
                 $q->where('first_name', 'like', "%$search%")
                     ->orWhere('last_name', 'like', "%$search%")
                     ->orWhere('email', 'like', "%$search%");
@@ -130,7 +134,7 @@ class AdminAuthController extends Controller
         $filterCount = (clone $userQuery)->count();
         $users = $userQuery->latest()->paginate(10);
 
-        return view('admin.user_management.index', compact('totalUsers', 'todayUsers', 'currentMonthUsers', 'previousMonthUsers', 'users', 'filterCount'));
+        return view('admin.user_management.index', ['totalUsers' => $totalUsers, 'todayUsers' => $todayUsers, 'currentMonthUsers' => $currentMonthUsers, 'previousMonthUsers' => $previousMonthUsers, 'users' => $users, 'filterCount' => $filterCount]);
     }
 
     // user management functions
