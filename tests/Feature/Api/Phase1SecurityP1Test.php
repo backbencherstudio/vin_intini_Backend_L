@@ -27,6 +27,7 @@ class Phase1SecurityP1Test extends TestCase
 
     public function test_a05_2fa_login_requires_first_factor_challenge_and_blocks_direct_code(): void
     {
+        /** @var User $user */
         $user = User::factory()->create([
             'email' => '2fa_user@example.com',
             'password' => Hash::make('password123'),
@@ -56,6 +57,7 @@ class Phase1SecurityP1Test extends TestCase
         $this->assertNotEmpty($challenge);
 
         // Challenge for another user fails
+        /** @var User $otherUser */
         $otherUser = User::factory()->create([
             'email' => 'other2fa@example.com',
             'password' => Hash::make('password123'),
@@ -101,9 +103,11 @@ class Phase1SecurityP1Test extends TestCase
     public function test_a10_get_cannot_delete_admin_records(): void
     {
         $adminRole = Role::findByName('admin', 'web');
+        /** @var User $admin */
         $admin = User::factory()->create(['email' => 'admin@example.com']);
         $admin->assignRole($adminRole);
 
+        /** @var IndustryPartner $partner */
         $partner = IndustryPartner::create([
             'partner_name' => 'Acme Partner',
             'industry_type' => 'biotechnology',
