@@ -121,7 +121,8 @@ class AuthController extends Controller
 
         $user->educations->sortByDesc('id')->first();
 
-        $subscription = $user->subscriptions()->with('plan')->latest()->first();
+        $subscription = $user->activeSubscription()
+            ?? $user->subscriptions()->with('plan')->latest()->first();
         $isSubscribed = (bool) $subscription?->isActive();
 
         return response()->json([

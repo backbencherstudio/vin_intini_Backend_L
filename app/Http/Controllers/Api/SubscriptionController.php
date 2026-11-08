@@ -168,10 +168,13 @@ class SubscriptionController extends Controller
 
     public function status(Request $request): JsonResponse
     {
-        $subscription = Subscription::with('plan')
-            ->where('user_id', $request->user()->id)
-            ->latest()
-            ->first();
+        $user = $request->user();
+
+        $subscription = $user->activeSubscription()
+            ?? Subscription::with('plan')
+                ->where('user_id', $user->id)
+                ->latest()
+                ->first();
 
         if ($subscription) {
             $this->stripe->hydrateSubscriptionDates($subscription);
@@ -561,9 +564,7 @@ class SubscriptionController extends Controller
 
     private function hasActiveSubscription(User $user): bool
     {
-        return Subscription::where('user_id', $user->id)
-            ->whereIn('status', ['active', 'trialing'])
-            ->exists();
+        return $user->hasActiveSubscription();
     }
 
     private function verifyOtp(User $user, string $otp): bool

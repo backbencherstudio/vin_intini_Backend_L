@@ -169,8 +169,10 @@ class StripeService
 
     public function periodDatesFromSubscription(StripeObject $stripeSubscription): array
     {
-        $periodStart = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_start'));
-        $periodEnd = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_end'));
+        $periodStart = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_start'))
+            ?? $this->fromTimestamp(data_get($stripeSubscription, 'items.data.0.current_period_start'));
+        $periodEnd = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_end'))
+            ?? $this->fromTimestamp(data_get($stripeSubscription, 'items.data.0.current_period_end'));
 
         if (! $periodEnd instanceof Carbon) {
             $anchor = $this->fromTimestamp(data_get($stripeSubscription, 'billing_cycle_anchor'));
