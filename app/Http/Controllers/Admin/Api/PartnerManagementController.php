@@ -23,7 +23,7 @@ class PartnerManagementController extends Controller
         // Summary Statistics for top KPI cards
         $summary = [
             'total_partners' => Industry::count(),
-            'active_partners' => Industry::where(function (Builder $q) {
+            'active_partners' => Industry::where(function (Builder $q): void {
                 $q->where('status', 'active')->orWhereNull('status');
             })->count(),
             'paused_partners' => Industry::where('status', 'paused')->count(),
@@ -35,13 +35,13 @@ class PartnerManagementController extends Controller
 
         // Search Filter: Company Name, Tagline, Description, or Owner details
         if ($search !== '') {
-            $query->where(function (Builder $q) use ($search) {
+            $query->where(function (Builder $q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%")
                     ->orWhere('tagline', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
                     ->orWhere('website', 'like', "%{$search}%")
-                    ->orWhereHas('creator', function (Builder $userQ) use ($search) {
+                    ->orWhereHas('creator', function (Builder $userQ) use ($search): void {
                         $userQ->where('first_name', 'like', "%{$search}%")
                             ->orWhere('last_name', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%")
@@ -53,7 +53,7 @@ class PartnerManagementController extends Controller
         // Status Filter: active, paused
         if ($status !== 'all' && in_array($status, ['active', 'paused'], true)) {
             if ($status === 'active') {
-                $query->where(function (Builder $q) {
+                $query->where(function (Builder $q): void {
                     $q->where('status', 'active')->orWhereNull('status');
                 });
             } else {
@@ -68,7 +68,7 @@ class PartnerManagementController extends Controller
 
         $paginated = $query->paginate($perPage)->withQueryString();
 
-        $data = $paginated->getCollection()->map(function (Industry $industry, int $index) use ($paginated) {
+        $data = $paginated->getCollection()->map(function (Industry $industry, int $index) use ($paginated): array {
             $slNo = (($paginated->currentPage() - 1) * $paginated->perPage()) + $index + 1;
 
             return $this->formatPartnerRow($industry, $slNo);
@@ -183,7 +183,7 @@ class PartnerManagementController extends Controller
     {
         $query = Industry::withTrashed();
 
-        if (! empty($relations)) {
+        if ($relations !== []) {
             $query->with($relations);
         }
 
@@ -191,7 +191,7 @@ class PartnerManagementController extends Controller
             return $query->where('id', (int) $id)->firstOrFail();
         }
 
-        return $query->where('slug', (string) $id)->orWhere('id', (int) $id)->firstOrFail();
+        return $query->where('slug', $id)->orWhere('id', (int) $id)->firstOrFail();
     }
 
     /**

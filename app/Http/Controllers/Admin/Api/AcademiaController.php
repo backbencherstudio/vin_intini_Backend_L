@@ -36,24 +36,22 @@ class AcademiaController extends Controller
             ->withQueryString();
 
         $data = collect($universities->items())
-            ->map(function ($university) {
-                return [
-                    'id' => $university->id,
-                    'university_name' => $university->name,
-                    'location' => $university->location,
-                    'phone' => $university->phone,
-                    'state' => $university->state?->name,
-                    'psychology_degrees' => $university->psychology_degrees,
-                    'counseling_degrees' => $university->counseling_degrees,
-                    'neuroscience_degrees' => $university->neuroscience_degrees,
-                    'map_pin' => [
-                        'latitude' => $university->latitude,
-                        'longitude' => $university->longitude,
-                    ],
+            ->map(fn ($university): array => [
+                'id' => $university->id,
+                'university_name' => $university->name,
+                'location' => $university->location,
+                'phone' => $university->phone,
+                'state' => $university->state?->name,
+                'psychology_degrees' => $university->psychology_degrees,
+                'counseling_degrees' => $university->counseling_degrees,
+                'neuroscience_degrees' => $university->neuroscience_degrees,
+                'map_pin' => [
+                    'latitude' => $university->latitude,
+                    'longitude' => $university->longitude,
+                ],
 
-                    'website' => $university->website,
-                ];
-            })
+                'website' => $university->website,
+            ])
             ->values();
 
         return response()->json([
@@ -287,7 +285,7 @@ class AcademiaController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
 
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('program_name', 'LIKE', "%{$search}%")
                     ->orWhere('location', 'LIKE', "%{$search}%");
             });
@@ -302,21 +300,19 @@ class AcademiaController extends Controller
             ->withQueryString();
 
         $data = collect($residencies->items())
-            ->map(function ($residency) {
-                return [
-                    'id' => $residency->id,
-                    'program_name' => $residency->program_name,
-                    'location' => $residency->location,
-                    'phone' => $residency->phone,
-                    'state' => $residency->state?->name,
-                    'degree-types' => $residency->degree_types,
-                    'map_pin' => [
-                        'latitude' => $residency->latitude,
-                        'longitude' => $residency->longitude,
-                    ],
-                    'website' => $residency->website,
-                ];
-            })
+            ->map(fn ($residency): array => [
+                'id' => $residency->id,
+                'program_name' => $residency->program_name,
+                'location' => $residency->location,
+                'phone' => $residency->phone,
+                'state' => $residency->state?->name,
+                'degree-types' => $residency->degree_types,
+                'map_pin' => [
+                    'latitude' => $residency->latitude,
+                    'longitude' => $residency->longitude,
+                ],
+                'website' => $residency->website,
+            ])
             ->values();
 
         return response()->json([
@@ -351,7 +347,7 @@ class AcademiaController extends Controller
         ]);
 
         $degrees = ! empty($validated['degree_types'])
-            ? array_map('trim', explode(',', $validated['degree_types']))
+            ? array_map(trim(...), explode(',', $validated['degree_types']))
             : [];
 
         $residency = AcademiaMedicalResidency::create([
@@ -403,7 +399,7 @@ class AcademiaController extends Controller
 
         if (array_key_exists('degree_types', $validated)) {
             $validated['degree_types'] = ! empty($validated['degree_types'])
-                ? array_map('trim', explode(',', $validated['degree_types']))
+                ? array_map(trim(...), explode(',', $validated['degree_types']))
                 : [];
         }
 
@@ -458,7 +454,7 @@ class AcademiaController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
 
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('name', 'LIKE', "%{$search}%")
                     ->orWhere('location', 'LIKE', "%{$search}%");
             });
@@ -477,23 +473,21 @@ class AcademiaController extends Controller
             ->withQueryString();
 
         $data = collect($facilities->items())
-            ->map(function ($facility) {
-                return [
-                    'id' => $facility->id,
-                    'facility_details' => [
-                        'name' => $facility->name,
-                        'location' => $facility->location,
-                        'phone' => $facility->phone,
-                    ],
-                    'state' => $facility->state?->name,
-                    'category' => $facility->type,
-                    'map_pin' => [
-                        'latitude' => $facility->latitude,
-                        'longitude' => $facility->longitude,
-                    ],
-                    'website' => $facility->website,
-                ];
-            })
+            ->map(fn ($facility): array => [
+                'id' => $facility->id,
+                'facility_details' => [
+                    'name' => $facility->name,
+                    'location' => $facility->location,
+                    'phone' => $facility->phone,
+                ],
+                'state' => $facility->state?->name,
+                'category' => $facility->type,
+                'map_pin' => [
+                    'latitude' => $facility->latitude,
+                    'longitude' => $facility->longitude,
+                ],
+                'website' => $facility->website,
+            ])
             ->values();
 
         return response()->json([
@@ -625,7 +619,7 @@ class AcademiaController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
 
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('title', 'LIKE', "%{$search}%")
                     ->orWhere('company_name', 'LIKE', "%{$search}%");
             });
@@ -645,7 +639,7 @@ class AcademiaController extends Controller
             ->withQueryString();
 
         $data = collect($jobs->items())
-            ->map(function ($job) {
+            ->map(function ($job): array {
                 $salaryRange = null;
 
                 if ($job->salary_min !== null && $job->salary_max !== null) {

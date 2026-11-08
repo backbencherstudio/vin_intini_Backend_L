@@ -47,19 +47,19 @@ class PublicationManagementController extends Controller
 
         // Search filter (title, ID, slug, abstract, author, creator, industry)
         if (! empty($search)) {
-            $query->where(function (Builder $q) use ($search) {
+            $query->where(function (Builder $q) use ($search): void {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('publication_id', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%")
                     ->orWhere('abstract', 'like', "%{$search}%")
                     ->orWhere('website_url', 'like', "%{$search}%")
-                    ->orWhereHas('creator', function (Builder $creator) use ($search) {
+                    ->orWhereHas('creator', function (Builder $creator) use ($search): void {
                         $creator->where('first_name', 'like', "%{$search}%")
                             ->orWhere('last_name', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%")
                             ->orWhere('username', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('industry', function (Builder $industry) use ($search) {
+                    ->orWhereHas('industry', function (Builder $industry) use ($search): void {
                         $industry->where('name', 'like', "%{$search}%");
                     });
             });
@@ -90,7 +90,7 @@ class PublicationManagementController extends Controller
             return str_starts_with($logo, 'http') ? $logo : asset('storage/'.ltrim($logo, '/'));
         };
 
-        $rows = $paginated->getCollection()->map(function (Publication $pub, int $index) use ($paginated, $formatLogoUrl) {
+        $rows = $paginated->getCollection()->map(function (Publication $pub, int $index) use ($paginated, $formatLogoUrl): array {
             $slNo = (($paginated->currentPage() - 1) * $paginated->perPage()) + $index + 1;
             $creator = $pub->creator;
             $industry = $pub->industry;
@@ -249,11 +249,11 @@ class PublicationManagementController extends Controller
     public function destroy(Request $request, int|string $id): JsonResponse
     {
         $publication = Publication::withTrashed()
-            ->where(function ($q) use ($id) {
+            ->where(function ($q) use ($id): void {
                 if (is_numeric($id)) {
                     $q->where('id', (int) $id)->orWhere('publication_id', (string) $id);
                 } else {
-                    $q->where('publication_id', (string) $id);
+                    $q->where('publication_id', $id);
                 }
             })
             ->firstOrFail();
@@ -286,11 +286,11 @@ class PublicationManagementController extends Controller
     protected function findPublication(int|string $id): Publication
     {
         return Publication::query()
-            ->where(function ($q) use ($id) {
+            ->where(function ($q) use ($id): void {
                 if (is_numeric($id)) {
                     $q->where('id', (int) $id)->orWhere('publication_id', (string) $id);
                 } else {
-                    $q->where('publication_id', (string) $id);
+                    $q->where('publication_id', $id);
                 }
             })
             ->firstOrFail();
@@ -303,11 +303,11 @@ class PublicationManagementController extends Controller
     {
         return Publication::withTrashed()
             ->with(['creator', 'industry'])
-            ->where(function ($q) use ($id) {
+            ->where(function ($q) use ($id): void {
                 if (is_numeric($id)) {
                     $q->where('id', (int) $id)->orWhere('publication_id', (string) $id);
                 } else {
-                    $q->where('publication_id', (string) $id);
+                    $q->where('publication_id', $id);
                 }
             })
             ->firstOrFail();
