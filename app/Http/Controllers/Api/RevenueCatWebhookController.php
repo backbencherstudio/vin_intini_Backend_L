@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 class RevenueCatWebhookController extends Controller
 {
     public function __construct(
-        private WebhookLoggerService $logger,
+        private readonly WebhookLoggerService $logger,
     ) {}
 
     public function handle(Request $request): JsonResponse

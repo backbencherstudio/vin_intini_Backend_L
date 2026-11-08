@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdCampaign;
 use App\Services\BillingWebhookService;
+use App\Services\ProductBoostPaymentService;
 use App\Services\StripeService;
 use App\Services\WebhookLoggerService;
 use Illuminate\Http\JsonResponse;
@@ -13,9 +15,10 @@ use Stripe\Exception\SignatureVerificationException;
 class StripeWebhookController extends Controller
 {
     public function __construct(
-        private StripeService $stripe,
-        private BillingWebhookService $billing,
-        private WebhookLoggerService $logger,
+        private readonly StripeService $stripe,
+        private readonly BillingWebhookService $billing,
+        private readonly WebhookLoggerService $logger,
+        private readonly ProductBoostPaymentService $boostPayment,
     ) {}
 
     public function handle(Request $request): JsonResponse
@@ -49,6 +52,7 @@ class StripeWebhookController extends Controller
                 'checkout.session.completed' => $this->billing->handleCheckoutCompleted($event->data->object),
                 'customer.subscription.updated' => $this->billing->handleSubscriptionUpdated($event->data->object),
                 'customer.subscription.deleted' => $this->billing->handleSubscriptionDeleted($event->data->object),
+                'payment_intent.succeeded' => $this->handlePaymentIntentSucceeded($event->data->object),
                 'payment_intent.payment_failed' => $this->billing->handlePaymentIntentFailed($event->data->object),
                 'charge.refunded' => $this->billing->handleChargeRefunded($event->data->object),
                 'invoice.paid' => $this->billing->handleInvoicePaid($event->data->object),
@@ -64,5 +68,18 @@ class StripeWebhookController extends Controller
         }
 
         return response()->json(['received' => true], 200);
+    }
+
+    protected function handlePaymentIntentSucceeded(object $paymentIntent): void
+    {
+        $intentId = $paymentIntent->id ?? null;
+        if (! $intentId) {
+            return;
+        }
+
+        $campaign = AdCampaign::where('stripe_payment_intent_id', $intentId)->first();
+        if ($campaign) {
+            $this->boostPayment->activatePendingStripeCampaign($campaign, $paymentIntent);
+        }
     }
 }

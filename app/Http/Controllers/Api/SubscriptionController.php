@@ -7,19 +7,18 @@ use App\Enums\OtpType;
 use App\Enums\PlanFeature;
 use App\Enums\PlanType;
 use App\Http\Controllers\Controller;
-use App\Mail\SubscriptionOtpMail;
 use App\Models\Otp;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\SubscriptionOtpNotification;
 use App\Services\RevenueCatException;
 use App\Services\RevenueCatService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\InvalidRequestException;
 use Stripe\Subscription as StripeSubscription;
@@ -27,8 +26,8 @@ use Stripe\Subscription as StripeSubscription;
 class SubscriptionController extends Controller
 {
     public function __construct(
-        private StripeService $stripe,
-        private RevenueCatService $revenueCat,
+        private readonly StripeService $stripe,
+        private readonly RevenueCatService $revenueCat,
     ) {}
 
     public function show(int $id): JsonResponse
@@ -62,7 +61,7 @@ class SubscriptionController extends Controller
         $plans = Plan::where('status', 'active')
             ->when($request->filled('billing_cycle'), fn ($query) => $query->where('billing_cycle', $request->string('billing_cycle')))
             ->when($planType, fn ($query) => $query->where('plan_type', $planType))
-            ->where(function ($query) {
+            ->where(function ($query): void {
                 $query->whereNotNull('stripe_price_id')
                     ->orWhereNotNull('revenuecat_store_identifier_ios')
                     ->orWhereNotNull('revenuecat_store_identifier_android');
@@ -70,7 +69,7 @@ class SubscriptionController extends Controller
             ->orderBy('billing_rate')
             ->get(['id', 'name', 'short_description', 'billing_cycle', 'plan_type', 'billing_rate', 'badge_color', 'features', 'stripe_price_id', 'revenuecat_store_identifier_ios', 'revenuecat_store_identifier_android']);
 
-        $plans->each(function (Plan $plan) {
+        $plans->each(function (Plan $plan): void {
             $plan->setAttribute('checkout_type', $plan->isRevenueCat() ? 'revenuecat' : 'stripe');
             $plan->setAttribute('features', $this->featureList($plan->features ?? []));
         });
@@ -337,7 +336,7 @@ class SubscriptionController extends Controller
 
         $paginated = $query->latest('id')->paginate($perPage);
 
-        $transactions = $paginated->getCollection()->map(function (Transaction $transaction) {
+        $transactions = $paginated->getCollection()->map(function (Transaction $transaction): array {
             $formattedBrand = match (strtolower((string) $transaction->card_brand)) {
                 'visa' => 'VISA',
                 'mastercard' => 'Mastercard',
@@ -398,6 +397,8 @@ class SubscriptionController extends Controller
                     ? $campaign->status->value
                     : (string) ($campaign?->status ?? 'active');
 
+                $packageName = $package?->name ?? ($durationDays > 0 ? "Custom ({$durationDays} Days)" : 'Custom Boost');
+
                 return [
                     'id' => $transaction->id,
                     'type' => 'boosting',
@@ -416,9 +417,11 @@ class SubscriptionController extends Controller
                     'amount_formatted' => $amountFormattedOnly,
                     'duration_formatted' => $durationFormatted,
                     'amount_duration_formatted' => $amountDurationFormatted,
+                    'package_name' => $packageName,
+                    'product_id' => $boostable?->product_id,
                     'package' => [
                         'id' => $package?->id,
-                        'name' => $package?->name ?? ($durationDays > 0 ? "Custom ({$durationDays} Days)" : 'Custom Boost'),
+                        'name' => $packageName,
                         'duration_days' => $durationDays,
                         'is_custom' => $campaign?->isCustom() ?? ($package === null),
                     ],
@@ -538,7 +541,7 @@ class SubscriptionController extends Controller
             ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
         );
 
-        Mail::to($user->email)->queue(new SubscriptionOtpMail($otp));
+        $user->notify(new SubscriptionOtpNotification($otp));
 
         $data = [
             'email' => $user->email,
@@ -573,11 +576,7 @@ class SubscriptionController extends Controller
             return false;
         }
 
-        if (! $otpRecord->expires_at || now()->greaterThan($otpRecord->expires_at)) {
-            return false;
-        }
-
-        return true;
+        return $otpRecord->expires_at && ! now()->greaterThan($otpRecord->expires_at);
     }
 
     private function invalidOtpResponse(User $user): JsonResponse
@@ -662,7 +661,7 @@ class SubscriptionController extends Controller
                 'message' => 'Subscription payment failed. Please try again.',
                 'errors' => ['error' => $exception->getMessage()],
             ], 422);
-        } catch (\Throwable $exception) {
+        } catch (\Throwable) {
             DB::rollBack();
 
             return response()->json([
