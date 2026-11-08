@@ -14,8 +14,8 @@ use Stripe\Exception\ApiErrorException;
 class SubscriptionManagementController extends Controller
 {
     public function __construct(
-        private StripeService $stripe,
-        private RevenueCatService $revenueCat,
+        private readonly StripeService $stripe,
+        private readonly RevenueCatService $revenueCat,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -40,7 +40,7 @@ class SubscriptionManagementController extends Controller
         }
 
         if (! empty($validated['search'])) {
-            $query->whereHas('user', function ($q) use ($validated) {
+            $query->whereHas('user', function ($q) use ($validated): void {
                 $q->whereRaw(
                     "CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?",
                     ['%'.$validated['search'].'%'],
@@ -59,7 +59,7 @@ class SubscriptionManagementController extends Controller
 
         $subscriptions = $query->paginate($validated['per_page'] ?? 15)->withQueryString();
 
-        $data = $subscriptions->map(function (Subscription $subscription) {
+        $data = $subscriptions->map(function (Subscription $subscription): array {
             $this->stripe->hydrateSubscriptionDates($subscription);
 
             return [

@@ -32,7 +32,7 @@ class TransactionController extends Controller
         }
 
         if (! empty($validated['search'])) {
-            $query->whereHas('user', function ($q) use ($validated) {
+            $query->whereHas('user', function ($q) use ($validated): void {
                 $q->whereRaw(
                     "CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?",
                     ['%'.$validated['search'].'%'],
@@ -51,7 +51,7 @@ class TransactionController extends Controller
 
         $transactions = $query->paginate($validated['per_page'] ?? 15)->withQueryString();
 
-        $data = $transactions->map(fn (Transaction $transaction) => [
+        $data = $transactions->map(fn (Transaction $transaction): array => [
             'id' => $transaction->id,
             'transaction_id' => $transaction->provider_transaction_id,
             'subscriber' => [
@@ -137,7 +137,7 @@ class TransactionController extends Controller
             ],
         ];
 
-        $data = collect($cards)->map(function (array $card) {
+        $data = collect($cards)->map(function (array $card): array {
             $current = $card['current'];
             $previous = $card['previous'];
             $difference = $current - $previous;

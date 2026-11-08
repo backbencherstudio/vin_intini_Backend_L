@@ -15,18 +15,18 @@ class InstitutionReportController extends Controller
         $search = $request->input('search');
 
         $institutions = Institution::query()
-            ->when($search, function ($query, $search) {
+            ->when($search, function ($query, $search): void {
                 $query->where('name', 'like', "%{$search}%");
             })
             ->withCount([
-                'educations as total_students' => function ($query) {
+                'educations as total_students' => function ($query): void {
                     $query->select(DB::raw('count(distinct(user_id))'));
                 },
-                'educations as present_students' => function ($query) {
+                'educations as present_students' => function ($query): void {
                     $query->where('is_current', true)
                         ->select(DB::raw('count(distinct(user_id))'));
                 },
-                'educations as completed_programs' => function ($query) {
+                'educations as completed_programs' => function ($query): void {
                     $query->where('is_current', false)
                         ->select(DB::raw('count(distinct(user_id))'));
                 },
@@ -34,16 +34,14 @@ class InstitutionReportController extends Controller
             ->orderBy('total_students', 'desc')
             ->paginate(20);
 
-        $data = $institutions->getCollection()->map(function ($institution, $index) use ($institutions) {
-            return [
-                'sl_no' => (($institutions->currentPage() - 1) * $institutions->perPage()) + $index + 1,
-                'id' => $institution->id,
-                'institution_name' => $institution->name,
-                'total_students' => $institution->total_students,
-                'completed_programs' => $institution->completed_programs,
-                'present_students' => $institution->present_students,
-            ];
-        });
+        $data = $institutions->getCollection()->map(fn ($institution, $index): array => [
+            'sl_no' => (($institutions->currentPage() - 1) * $institutions->perPage()) + $index + 1,
+            'id' => $institution->id,
+            'institution_name' => $institution->name,
+            'total_students' => $institution->total_students,
+            'completed_programs' => $institution->completed_programs,
+            'present_students' => $institution->present_students,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -68,7 +66,7 @@ class InstitutionReportController extends Controller
 
         $educations = Education::where('institution_id', $id)
             ->with('user')
-            ->whereHas('user', function ($q) use ($search) {
+            ->whereHas('user', function ($q) use ($search): void {
                 if ($search) {
                     $q->where(
                         DB::raw("CONCAT(first_name, ' ', last_name)"),
@@ -91,7 +89,7 @@ class InstitutionReportController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        $data = $educations->getCollection()->map(function ($education, $index) use ($educations) {
+        $data = $educations->getCollection()->map(function ($education, $index) use ($educations): array {
 
             $user = $education->user;
 

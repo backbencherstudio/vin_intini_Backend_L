@@ -20,7 +20,7 @@ class IndustryCategoryController extends Controller
         $query = IndustrySections::where('network_type', 'psychology')
             ->where('industry_type', '!=', 'publications')
             ->with([
-                'IndustryCategory' => function ($query) {
+                'IndustryCategory' => function ($query): void {
                     $query->select(
                         'id',
                         'section_id',
@@ -41,22 +41,18 @@ class IndustryCategoryController extends Controller
             'message' => 'Psychology sections fetched successfully.',
             'data' => [
                 'network' => 'psychology',
-                'sections' => $sections->getCollection()->map(function ($section) {
-                    return [
-                        'id' => $section->id,
-                        'industry_type' => $section->industry_type,
-                        'name' => $section->name,
-                        // 'network_type' => $section->network_type,
+                'sections' => $sections->getCollection()->map(fn ($section): array => [
+                    'id' => $section->id,
+                    'industry_type' => $section->industry_type,
+                    'name' => $section->name,
+                    // 'network_type' => $section->network_type,
 
-                        'categories' => $section->IndustryCategory->map(function ($category) {
-                            return [
-                                'id' => $category->id,
-                                // 'section_id' => $category->section_id,
-                                'category_name' => $category->category_name,
-                            ];
-                        })->values(),
-                    ];
-                })->values(),
+                    'categories' => $section->IndustryCategory->map(fn ($category): array => [
+                        'id' => $category->id,
+                        // 'section_id' => $category->section_id,
+                        'category_name' => $category->category_name,
+                    ])->values(),
+                ])->values(),
                 'pagination' => [
                     'current_page' => $sections->currentPage(),
 
@@ -86,7 +82,7 @@ class IndustryCategoryController extends Controller
         ]);
 
         $section->load([
-            'IndustryCategory' => function ($query) {
+            'IndustryCategory' => function ($query): void {
                 $query->select(
                     'id',
                     'section_id',
@@ -103,13 +99,11 @@ class IndustryCategoryController extends Controller
                 'name' => $section->name,
                 'network_type' => $section->network_type,
                 'industry_type' => $section->industry_type,
-                'categories' => $section->IndustryCategory->map(function ($category) {
-                    return [
-                        'id' => $category->id,
-                        'section_id' => $category->section_id,
-                        'category_name' => $category->category_name,
-                    ];
-                })->values(),
+                'categories' => $section->IndustryCategory->map(fn ($category): array => [
+                    'id' => $category->id,
+                    'section_id' => $category->section_id,
+                    'category_name' => $category->category_name,
+                ])->values(),
             ],
         ], 201);
     }
@@ -130,7 +124,7 @@ class IndustryCategoryController extends Controller
         ]);
 
         $section->load([
-            'IndustryCategory' => function ($query) {
+            'IndustryCategory' => function ($query): void {
                 $query->select(
                     'id',
                     'section_id',
@@ -147,13 +141,11 @@ class IndustryCategoryController extends Controller
                 'name' => $section->name,
                 'network_type' => $section->network_type,
                 'industry_type' => $section->industry_type,
-                'categories' => $section->IndustryCategory->map(function ($category) {
-                    return [
-                        'id' => $category->id,
-                        'section_id' => $category->section_id,
-                        'category_name' => $category->category_name,
-                    ];
-                })->values(),
+                'categories' => $section->IndustryCategory->map(fn ($category): array => [
+                    'id' => $category->id,
+                    'section_id' => $category->section_id,
+                    'category_name' => $category->category_name,
+                ])->values(),
             ],
         ]);
     }
@@ -169,7 +161,7 @@ class IndustryCategoryController extends Controller
         $query = IndustrySections::where('network_type', 'neuroscience')
             ->where('industry_type', '!=', 'publications')
             ->with([
-                'IndustryCategory' => function ($query) {
+                'IndustryCategory' => function ($query): void {
                     $query->select(
                         'id',
                         'section_id',
@@ -190,20 +182,16 @@ class IndustryCategoryController extends Controller
             'message' => 'Neuroscience sections fetched successfully.',
             'data' => [
                 'network' => 'neuroscience',
-                'sections' => $sections->getCollection()->map(function ($section) {
-                    return [
-                        'id' => $section->id,
-                        'industry_type' => $section->industry_type,
-                        'name' => $section->name,
+                'sections' => $sections->getCollection()->map(fn ($section): array => [
+                    'id' => $section->id,
+                    'industry_type' => $section->industry_type,
+                    'name' => $section->name,
 
-                        'categories' => $section->IndustryCategory->map(function ($category) {
-                            return [
-                                'id' => $category->id,
-                                'category_name' => $category->category_name,
-                            ];
-                        })->values(),
-                    ];
-                })->values(),
+                    'categories' => $section->IndustryCategory->map(fn ($category): array => [
+                        'id' => $category->id,
+                        'category_name' => $category->category_name,
+                    ])->values(),
+                ])->values(),
 
                 'pagination' => [
                     'current_page' => $sections->currentPage(),
@@ -234,7 +222,7 @@ class IndustryCategoryController extends Controller
         ]);
 
         $section->load([
-            'IndustryCategory' => function ($query) {
+            'IndustryCategory' => function ($query): void {
                 $query->select(
                     'id',
                     'section_id',
@@ -251,13 +239,11 @@ class IndustryCategoryController extends Controller
                 'name' => $section->name,
                 'network_type' => $section->network_type,
                 'industry_type' => $section->industry_type,
-                'categories' => $section->IndustryCategory->map(function ($category) {
-                    return [
-                        'id' => $category->id,
-                        'section_id' => $category->section_id,
-                        'category_name' => $category->category_name,
-                    ];
-                })->values(),
+                'categories' => $section->IndustryCategory->map(fn ($category): array => [
+                    'id' => $category->id,
+                    'section_id' => $category->section_id,
+                    'category_name' => $category->category_name,
+                ])->values(),
             ],
         ], 201);
     }
@@ -278,7 +264,7 @@ class IndustryCategoryController extends Controller
         ]);
 
         $section->load([
-            'IndustryCategory' => function ($query) {
+            'IndustryCategory' => function ($query): void {
                 $query->select(
                     'id',
                     'section_id',
@@ -295,13 +281,11 @@ class IndustryCategoryController extends Controller
                 'name' => $section->name,
                 'network_type' => $section->network_type,
                 'industry_type' => $section->industry_type,
-                'categories' => $section->IndustryCategory->map(function ($category) {
-                    return [
-                        'id' => $category->id,
-                        'section_id' => $category->section_id,
-                        'category_name' => $category->category_name,
-                    ];
-                })->values(),
+                'categories' => $section->IndustryCategory->map(fn ($category): array => [
+                    'id' => $category->id,
+                    'section_id' => $category->section_id,
+                    'category_name' => $category->category_name,
+                ])->values(),
             ],
         ]);
     }

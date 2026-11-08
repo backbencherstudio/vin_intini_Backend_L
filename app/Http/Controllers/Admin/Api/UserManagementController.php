@@ -185,51 +185,45 @@ class UserManagementController extends Controller
         $authorAvatar = $user->profile_image_url;
         $authorTitle = $user->title;
 
-        $postsData = $recentPosts->map(function (Post $post) use ($user, $authorName, $authorAvatar, $authorTitle) {
-            return [
-                'id' => $post->id,
-                'description' => $post->description,
-                'created_at' => $post->created_at?->diffForHumans(),
-                'created_at_formatted' => $post->created_at?->format('d M Y, h:i A'),
-                'created_at_iso' => $post->created_at?->toIso8601String(),
-                'total_like' => (int) ($post->total_like ?? 0),
-                'total_comment' => (int) ($post->total_comment ?? 0),
-                'author' => [
-                    'id' => $user->id,
-                    'name' => $authorName,
-                    'title' => $authorTitle,
-                    'avatar' => $authorAvatar,
-                ],
-                'media' => $post->media->map(function (PostMedia $media) {
-                    return [
-                        'id' => $media->id,
-                        'url' => $media->url,
-                        'type' => $media->type,
-                        'sort_order' => $media->order,
-                    ];
-                })->values()->toArray(),
-            ];
-        });
+        $postsData = $recentPosts->map(fn (Post $post): array => [
+            'id' => $post->id,
+            'description' => $post->description,
+            'created_at' => $post->created_at?->diffForHumans(),
+            'created_at_formatted' => $post->created_at?->format('d M Y, h:i A'),
+            'created_at_iso' => $post->created_at?->toIso8601String(),
+            'total_like' => (int) ($post->total_like ?? 0),
+            'total_comment' => (int) ($post->total_comment ?? 0),
+            'author' => [
+                'id' => $user->id,
+                'name' => $authorName,
+                'title' => $authorTitle,
+                'avatar' => $authorAvatar,
+            ],
+            'media' => $post->media->map(fn (PostMedia $media): array => [
+                'id' => $media->id,
+                'url' => $media->url,
+                'type' => $media->type,
+                'sort_order' => $media->order,
+            ])->values()->toArray(),
+        ]);
 
-        $commentsData = $recentComments->map(function (Comment $comment) {
-            return [
-                'id' => $comment->id,
-                'post_id' => $comment->post_id,
-                'comment' => $comment->comment,
-                'image_url' => $comment->image_url,
-                'like_count' => (int) ($comment->like_count ?? 0),
-                'reply_count' => (int) ($comment->reply_count ?? 0),
-                'created_at' => $comment->created_at?->diffForHumans(),
-                'created_at_formatted' => $comment->created_at?->format('d M Y, h:i A'),
-                'created_at_iso' => $comment->created_at?->toIso8601String(),
-                'post' => $comment->post ? [
-                    'id' => $comment->post->id,
-                    'description_snippet' => Str::limit($comment->post->description, 100),
-                ] : null,
-            ];
-        });
+        $commentsData = $recentComments->map(fn (Comment $comment): array => [
+            'id' => $comment->id,
+            'post_id' => $comment->post_id,
+            'comment' => $comment->comment,
+            'image_url' => $comment->image_url,
+            'like_count' => (int) ($comment->like_count ?? 0),
+            'reply_count' => (int) ($comment->reply_count ?? 0),
+            'created_at' => $comment->created_at?->diffForHumans(),
+            'created_at_formatted' => $comment->created_at?->format('d M Y, h:i A'),
+            'created_at_iso' => $comment->created_at?->toIso8601String(),
+            'post' => $comment->post ? [
+                'id' => $comment->post->id,
+                'description_snippet' => Str::limit($comment->post->description, 100),
+            ] : null,
+        ]);
 
-        $experiences = $user->experiences->map(function (Experience $exp) use ($user, $formatLogoUrl, $formatDuration) {
+        $experiences = $user->experiences->map(function (Experience $exp) use ($user, $formatLogoUrl, $formatDuration): array {
             $startFormatted = $exp->start_date ? Carbon::parse($exp->start_date)->format('M Y') : null;
             $endFormatted = $exp->is_current ? 'Still working' : ($exp->end_date ? Carbon::parse($exp->end_date)->format('M Y') : null);
             $duration = $formatDuration($exp->start_date, $exp->end_date, (bool) $exp->is_current);
@@ -272,7 +266,7 @@ class UserManagementController extends Controller
             ];
         });
 
-        $educations = $user->educations->map(function (Education $edu) use ($formatLogoUrl) {
+        $educations = $user->educations->map(function (Education $edu) use ($formatLogoUrl): array {
             $startYear = $edu->start_year;
             $endYear = $edu->is_current ? 'Present' : $edu->end_year;
             $formattedPeriod = trim(implode(' • ', array_filter([$startYear, $endYear])));
@@ -424,8 +418,8 @@ class UserManagementController extends Controller
         $search = $request->input('search');
 
         $deletedAccounts = DeletedAccountLog::query()
-            ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
+            ->when($search, function ($query, $search): void {
+                $query->where(function ($q) use ($search): void {
                     $q->where('user_name', 'like', "%{$search}%")
                         ->orWhere('user_email', 'like', "%{$search}%");
                 });
@@ -433,24 +427,22 @@ class UserManagementController extends Controller
             ->latest()
             ->paginate($request->input('per_page', 20));
 
-        $data = $deletedAccounts->getCollection()->map(function ($account, $index) use ($deletedAccounts) {
-            return [
-                'sl_no' => (($deletedAccounts->currentPage() - 1) * $deletedAccounts->perPage()) + $index + 1,
-                'id' => $account->id,
-                'user_id' => $account->user_id,
-                'full_name' => $account->user_name,
-                'email' => $account->user_email,
-                'reason' => $account->reason,
-                'request_date' => Carbon::parse($account->requested_at)->format('d M Y'),
-                'permanently_delete' => Carbon::parse($account->permanent_delete_at)->format('d M Y'),
-                'remaining_days' => $account->permanent_delete_at
-                    ? max(0, Carbon::now()->startOfDay()->diffInDays(
-                        Carbon::parse($account->permanent_delete_at)->startOfDay(),
-                        false
-                    )).' Days'
-                    : null,
-            ];
-        });
+        $data = $deletedAccounts->getCollection()->map(fn ($account, $index): array => [
+            'sl_no' => (($deletedAccounts->currentPage() - 1) * $deletedAccounts->perPage()) + $index + 1,
+            'id' => $account->id,
+            'user_id' => $account->user_id,
+            'full_name' => $account->user_name,
+            'email' => $account->user_email,
+            'reason' => $account->reason,
+            'request_date' => Carbon::parse($account->requested_at)->format('d M Y'),
+            'permanently_delete' => Carbon::parse($account->permanent_delete_at)->format('d M Y'),
+            'remaining_days' => $account->permanent_delete_at
+                ? max(0, Carbon::now()->startOfDay()->diffInDays(
+                    Carbon::parse($account->permanent_delete_at)->startOfDay(),
+                    false
+                )).' Days'
+                : null,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -490,7 +482,7 @@ class UserManagementController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        $rows = $paginated->getCollection()->map(function (User $user, int $index) use ($paginated, $tier) {
+        $rows = $paginated->getCollection()->map(function (User $user, int $index) use ($paginated, $tier): array {
             $slNo = (($paginated->currentPage() - 1) * $paginated->perPage()) + $index + 1;
 
             return $this->formatUserListRow($user, $slNo, $tier);
@@ -528,11 +520,11 @@ class UserManagementController extends Controller
     protected function applyTierScope(Builder $query, string $tier): void
     {
         if ($tier === 'pro_industry') {
-            $query->where(function (Builder $q) {
+            $query->where(function (Builder $q): void {
                 $q->whereHas('industry')
-                    ->orWhereHas('subscriptions', function (Builder $sub) {
+                    ->orWhereHas('subscriptions', function (Builder $sub): void {
                         $sub->whereIn('status', ['active', 'trialing'])
-                            ->where(function (Builder $period) {
+                            ->where(function (Builder $period): void {
                                 $period->whereNull('current_period_end')
                                     ->orWhere('current_period_end', '>', now());
                             })
@@ -541,17 +533,17 @@ class UserManagementController extends Controller
             });
         } elseif ($tier === 'premium') {
             $query->whereDoesntHave('industry')
-                ->whereDoesntHave('subscriptions', function (Builder $sub) {
+                ->whereDoesntHave('subscriptions', function (Builder $sub): void {
                     $sub->whereIn('status', ['active', 'trialing'])
-                        ->where(function (Builder $period) {
+                        ->where(function (Builder $period): void {
                             $period->whereNull('current_period_end')
                                 ->orWhere('current_period_end', '>', now());
                         })
                         ->whereHas('plan', fn (Builder $p) => $p->where('plan_type', PlanType::INDUSTRY->value));
                 })
-                ->whereHas('subscriptions', function (Builder $sub) {
+                ->whereHas('subscriptions', function (Builder $sub): void {
                     $sub->whereIn('status', ['active', 'trialing'])
-                        ->where(function (Builder $period) {
+                        ->where(function (Builder $period): void {
                             $period->whereNull('current_period_end')
                                 ->orWhere('current_period_end', '>', now());
                         })
@@ -559,9 +551,9 @@ class UserManagementController extends Controller
                 });
         } elseif ($tier === 'basic') {
             $query->whereDoesntHave('industry')
-                ->whereDoesntHave('subscriptions', function (Builder $sub) {
+                ->whereDoesntHave('subscriptions', function (Builder $sub): void {
                     $sub->whereIn('status', ['active', 'trialing'])
-                        ->where(function (Builder $period) {
+                        ->where(function (Builder $period): void {
                             $period->whereNull('current_period_end')
                                 ->orWhere('current_period_end', '>', now());
                         });
@@ -578,7 +570,7 @@ class UserManagementController extends Controller
             return;
         }
 
-        $query->where(function (Builder $q) use ($search) {
+        $query->where(function (Builder $q) use ($search): void {
             $q->where('first_name', 'like', "%{$search}%")
                 ->orWhere('last_name', 'like', "%{$search}%")
                 ->orWhere('username', 'like', "%{$search}%")

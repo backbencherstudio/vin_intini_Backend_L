@@ -17,7 +17,7 @@ use Illuminate\Validation\Rule;
 class PlanController extends Controller
 {
     public function __construct(
-        private StripeService $stripe,
+        private readonly StripeService $stripe,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -26,10 +26,10 @@ class PlanController extends Controller
         $planType = $request->input('plan_type', $request->input('type'));
 
         $plans = Plan::query()
-            ->when($billingCycle, function ($query, $billingCycle) {
+            ->when($billingCycle, function ($query, $billingCycle): void {
                 $query->where('billing_cycle', $billingCycle);
             })
-            ->when($planType, function ($query, $planType) {
+            ->when($planType, function ($query, $planType): void {
                 $query->where('plan_type', strtolower(trim((string) $planType)));
             })
             ->withCount('subscriptions')
@@ -48,7 +48,7 @@ class PlanController extends Controller
 
     public function features(): JsonResponse
     {
-        $features = collect(PlanFeature::cases())->map(fn (PlanFeature $f) => [
+        $features = collect(PlanFeature::cases())->map(fn (PlanFeature $f): array => [
             'value' => $f->value,
             'label' => PlanFeature::labels()[$f->value],
             'plan_types' => $f->planTypes(),

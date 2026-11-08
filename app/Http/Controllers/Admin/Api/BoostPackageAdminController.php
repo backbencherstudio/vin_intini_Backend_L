@@ -52,14 +52,14 @@ class BoostPackageAdminController extends Controller
         $search = $request->input('search');
 
         $packages = BoostPackage::query()
-            ->when($targetEntity, function ($query, $entity) {
+            ->when($targetEntity, function ($query, $entity): void {
                 $query->where('target_entity', $entity);
             })
-            ->when($status, function ($query, $status) {
+            ->when($status, function ($query, $status): void {
                 $query->where('status', $status);
             })
-            ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
+            ->when($search, function ($query, $search): void {
+                $query->where(function ($q) use ($search): void {
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('description', 'like', "%{$search}%");
                 });

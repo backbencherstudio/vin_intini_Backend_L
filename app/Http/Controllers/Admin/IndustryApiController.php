@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
-use App\Models\IndustryPartner;
 use App\Models\IndustrySections;
 use Illuminate\Http\JsonResponse;
 
@@ -19,9 +18,9 @@ class IndustryApiController extends Controller
         try {
             $sections = IndustrySections::where('network_type', 'psychology')
                 ->where('industry_type', 'biotechnology')
-                ->with(['IndustryCategory' => function ($query) {
+                ->with(['IndustryCategory' => function ($query): void {
                     $query->where('category_name', '!=', 'All')
-                        ->with(['IndustryItem' => function ($q) {
+                        ->with(['IndustryItem' => function ($q): void {
                             $q->select('id', 'category_id', 'title', 'tag', 'sub_title', 'description', 'image', 'link');
                         }]);
                 }])->get();
@@ -37,9 +36,9 @@ class IndustryApiController extends Controller
         try {
             $sections = IndustrySections::where('network_type', 'psychology')
                 ->where('industry_type', 'psychotropics')
-                ->with(['IndustryCategory' => function ($query) {
+                ->with(['IndustryCategory' => function ($query): void {
                     $query->where('category_name', '!=', 'All')
-                        ->with(['IndustryItem' => function ($q) {
+                        ->with(['IndustryItem' => function ($q): void {
                             $q->select('id', 'category_id', 'title', 'tag', 'sub_title', 'indication', 'moa', 'description', 'link', 'image');
                         }]);
                 }])->get();
@@ -55,8 +54,8 @@ class IndustryApiController extends Controller
         try {
             $sections = IndustrySections::where('network_type', 'psychology')
                 ->where('industry_type', 'publications')
-                ->with(['IndustryCategory' => function ($query) {
-                    $query->with(['IndustryItem' => function ($q) {
+                ->with(['IndustryCategory' => function ($query): void {
+                    $query->with(['IndustryItem' => function ($q): void {
                         $q->select('id', 'category_id', 'title', 'tag', 'pub_date', 'extra_tag', 'description', 'link');
                     }]);
                 }])->get();
@@ -72,9 +71,9 @@ class IndustryApiController extends Controller
         try {
             $sections = IndustrySections::where('network_type', 'neuroscience')
                 ->where('industry_type', 'biotechnology')
-                ->with(['IndustryCategory' => function ($query) {
+                ->with(['IndustryCategory' => function ($query): void {
                     $query->where('category_name', '!=', 'All')
-                        ->with(['IndustryItem' => function ($q) {
+                        ->with(['IndustryItem' => function ($q): void {
                             $q->select('id', 'category_id', 'title', 'tag', 'sub_title', 'description', 'image', 'link');
                         }]);
                 }])->get();
@@ -90,9 +89,9 @@ class IndustryApiController extends Controller
         try {
             $sections = IndustrySections::where('network_type', 'neuroscience')
                 ->where('industry_type', 'psychotropics')
-                ->with(['IndustryCategory' => function ($query) {
+                ->with(['IndustryCategory' => function ($query): void {
                     $query->where('category_name', '!=', 'All')
-                        ->with(['IndustryItem' => function ($q) {
+                        ->with(['IndustryItem' => function ($q): void {
                             $q->select('id', 'category_id', 'title', 'tag', 'sub_title', 'indication', 'moa', 'description', 'link', 'image');
                         }]);
                 }])->get();
@@ -108,8 +107,8 @@ class IndustryApiController extends Controller
         try {
             $sections = IndustrySections::where('network_type', 'neuroscience')
                 ->where('industry_type', 'publications')
-                ->with(['IndustryCategory' => function ($query) {
-                    $query->with(['IndustryItem' => function ($q) {
+                ->with(['IndustryCategory' => function ($query): void {
+                    $query->with(['IndustryItem' => function ($q): void {
                         $q->select('id', 'category_id', 'title', 'tag', 'pub_date', 'extra_tag', 'description', 'link');
                     }]);
                 }])->get();
@@ -130,39 +129,39 @@ class IndustryApiController extends Controller
     public function getAllPartners(): JsonResponse
     {
         try {
-            $partners = Industry::where(function ($query) {
+            $partners = Industry::where(function ($query): void {
                 $query->where('status', 'active')->orWhereNull('status');
             })
-            ->whereNotNull('logo')
-            ->where('logo', '!=', '')
-            ->latest('id')
-            ->get()
-            ->map(function ($industry) {
-                $logoUrl = $industry->logo;
-                $website = $industry->website;
-                if ($website && ! str_starts_with($website, 'http://') && ! str_starts_with($website, 'https://')) {
-                    $website = 'https://'.$website;
-                }
+                ->whereNotNull('logo')
+                ->where('logo', '!=', '')
+                ->latest('id')
+                ->get()
+                ->map(function ($industry): array {
+                    $logoUrl = $industry->logo;
+                    $website = $industry->website;
+                    if ($website && ! str_starts_with($website, 'http://') && ! str_starts_with($website, 'https://')) {
+                        $website = 'https://'.$website;
+                    }
 
-                return [
-                    'id' => $industry->id,
-                    'name' => $industry->name,
-                    'title' => $industry->name,
-                    'partner_name' => $industry->name,
-                    'slug' => $industry->slug,
-                    'logo' => $logoUrl,
-                    'partner_logo' => $logoUrl,
-                    'image' => $logoUrl,
-                    'website' => $website,
-                    'website_url' => $website,
-                    'tagline' => $industry->tagline,
-                    'partner_tag' => $industry->tagline,
-                    'description' => $industry->description,
-                    'partner_desc' => $industry->description,
-                    'industry' => $industry->industry,
-                    'status' => $industry->status ?? 'active',
-                ];
-            });
+                    return [
+                        'id' => $industry->id,
+                        'name' => $industry->name,
+                        'title' => $industry->name,
+                        'partner_name' => $industry->name,
+                        'slug' => $industry->slug,
+                        'logo' => $logoUrl,
+                        'partner_logo' => $logoUrl,
+                        'image' => $logoUrl,
+                        'website' => $website,
+                        'website_url' => $website,
+                        'tagline' => $industry->tagline,
+                        'partner_tag' => $industry->tagline,
+                        'description' => $industry->description,
+                        'partner_desc' => $industry->description,
+                        'industry' => $industry->industry,
+                        'status' => $industry->status ?? 'active',
+                    ];
+                });
 
             return response()->json(['success' => true, 'partners' => $partners], 200);
         } catch (\Exception $e) {
@@ -171,33 +170,33 @@ class IndustryApiController extends Controller
     }
 
     // --- Psychology Network Partners ---
-    public function getPsychologyBiotechPartners()
+    public function getPsychologyBiotechPartners(): JsonResponse
     {
         return $this->getAllPartners();
     }
 
-    public function getPsychologyPharmaPartners()
+    public function getPsychologyPharmaPartners(): JsonResponse
     {
         return $this->getAllPartners();
     }
 
-    public function getPsychologyPubPartners()
+    public function getPsychologyPubPartners(): JsonResponse
     {
         return $this->getAllPartners();
     }
 
     // --- Neuroscience Network Partners ---
-    public function getNeuroscienceBiotechPartners()
+    public function getNeuroscienceBiotechPartners(): JsonResponse
     {
         return $this->getAllPartners();
     }
 
-    public function getNeurosciencePharmaPartners()
+    public function getNeurosciencePharmaPartners(): JsonResponse
     {
         return $this->getAllPartners();
     }
 
-    public function getNeurosciencePubPartners()
+    public function getNeurosciencePubPartners(): JsonResponse
     {
         return $this->getAllPartners();
     }
