@@ -5,28 +5,30 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Education;
 use App\Models\Institution;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class InstitutionReportController extends Controller
 {
-    public function institutionReport(Request $request)
+    public function institutionReport(Request $request): Factory|View
     {
         $search = $request->input('search');
 
         $institutions = Institution::query()
-            ->when($search, function ($query, $search) {
+            ->when($search, function ($query, $search): void {
                 $query->where('name', 'like', "%{$search}%");
             })
             ->withCount([
-                'educations as total_students' => function ($query) {
+                'educations as total_students' => function ($query): void {
                     $query->select(DB::raw('count(distinct(user_id))'));
                 },
-                'educations as present_students' => function ($query) {
+                'educations as present_students' => function ($query): void {
                     $query->where('is_current', true)
                         ->select(DB::raw('count(distinct(user_id))'));
                 },
-                'educations as completed_students' => function ($query) {
+                'educations as completed_students' => function ($query): void {
                     $query->where('is_current', false)
                         ->select(DB::raw('count(distinct(user_id))'));
                 },
@@ -35,10 +37,10 @@ class InstitutionReportController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.institution_report.index', compact('institutions'));
+        return view('admin.institution_report.index', ['institutions' => $institutions]);
     }
 
-    public function showStudents(Request $request, $id)
+    public function showStudents(Request $request, $id): Factory|View
     {
         $institution = Institution::findOrFail($id);
 
@@ -47,19 +49,17 @@ class InstitutionReportController extends Controller
 
         $educations = Education::where('institution_id', $id)
             ->with('user')
-            ->whereHas('user', function ($q) use ($search) {
+            ->whereHas('user', function ($q) use ($search): void {
                 if ($search) {
                     $q->where(DB::raw("CONCAT(first_name, ' ', last_name)"), 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 }
             })
-            ->when($status !== null && $status !== '', function ($q) use ($status) {
-                return $q->where('is_current', $status);
-            })
+            ->when($status !== null && $status !== '', fn ($q) => $q->where('is_current', $status))
             ->latest()
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.institution_report.students', compact('institution', 'educations'));
+        return view('admin.institution_report.students', ['institution' => $institution, 'educations' => $educations]);
     }
 }

@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\IndustryPartner;
 use App\Services\OptimizedImageUploadService;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class PartnerController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Factory|View
     {
         $query = IndustryPartner::query();
 
@@ -28,7 +30,7 @@ class PartnerController extends Controller
 
         $partners = $query->latest()->paginate(20)->withQueryString();
 
-        return view('admin.industry.partner', compact('partners'));
+        return view('admin.industry.partner', ['partners' => $partners]);
     }
 
     public function store(Request $request, OptimizedImageUploadService $imageUploadService)

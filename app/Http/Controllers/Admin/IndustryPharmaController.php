@@ -6,24 +6,26 @@ use App\Http\Controllers\Controller;
 use App\Models\IndustryCategory;
 use App\Models\IndustryItem;
 use App\Models\IndustrySections;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class IndustryPharmaController extends Controller
 {
-    public function psychology(Request $request)
+    public function psychology(Request $request): Factory|View
     {
         return $this->renderView($request, 'psychology');
     }
 
-    public function neuroscience(Request $request)
+    public function neuroscience(Request $request): Factory|View
     {
         return $this->renderView($request, 'neuroscience');
     }
 
-    private function renderView($request, $network)
+    private function renderView(Request $request, string $network): Factory|View
     {
-        $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network) {
+        $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network): void {
             $q->where('industry_type', 'psychotropics')->where('network_type', $network);
         });
 
@@ -38,7 +40,7 @@ class IndustryPharmaController extends Controller
             ->with('IndustryCategory')
             ->get();
 
-        return view('admin.industry.pharma', compact('items', 'sections', 'network'));
+        return view('admin.industry.pharma', ['items' => $items, 'sections' => $sections, 'network' => $network]);
     }
 
     public function store(Request $request)

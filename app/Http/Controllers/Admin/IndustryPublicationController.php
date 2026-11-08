@@ -6,23 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Models\IndustryCategory;
 use App\Models\IndustryItem;
 use App\Models\IndustrySections;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
 class IndustryPublicationController extends Controller
 {
-    public function psychology(Request $request)
+    public function psychology(Request $request): Factory|View
     {
         return $this->renderView($request, 'psychology');
     }
 
-    public function neuroscience(Request $request)
+    public function neuroscience(Request $request): Factory|View
     {
         return $this->renderView($request, 'neuroscience');
     }
 
-    private function renderView($request, $network)
+    private function renderView(Request $request, string $network): Factory|View
     {
-        $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network) {
+        $query = IndustryItem::whereHas('IndustryCategory.IndustrySection', function ($q) use ($network): void {
             $q->where('industry_type', 'publications')->where('network_type', $network);
         });
 
@@ -32,7 +34,7 @@ class IndustryPublicationController extends Controller
 
         $items = $query->with('IndustryCategory.IndustrySection')->latest()->paginate(30)->withQueryString();
 
-        return view('admin.industry.publication', compact('items', 'network'));
+        return view('admin.industry.publication', ['items' => $items, 'network' => $network]);
     }
 
     public function store(Request $request)

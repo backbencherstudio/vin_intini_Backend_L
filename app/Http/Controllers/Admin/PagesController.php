@@ -17,15 +17,15 @@ class PagesController extends Controller
         $page = Page::where('slug', $slug)->firstOrFail();
 
         if ($slug == 'about-us') {
-            return view('admin.pages.about_us', compact('page'));
+            return view('admin.pages.about_us', ['page' => $page]);
         }
 
         if ($slug == 'privacy-policy') {
-            return view('admin.pages.privacy_policy', compact('page'));
+            return view('admin.pages.privacy_policy', ['page' => $page]);
         }
 
         if ($slug == 'terms-and-conditions') {
-            return view('admin.pages.terms_condition', compact('page'));
+            return view('admin.pages.terms_condition', ['page' => $page]);
         }
 
         abort(404);
@@ -232,7 +232,7 @@ class PagesController extends Controller
                 $newInstitutionsData[] = [
                     'name' => $item['name'] ?? '',
                     'logo' => $logoPath,
-                    'is_active' => isset($item['is_active']) ? true : false,
+                    'is_active' => isset($item['is_active']),
                 ];
             }
         }
@@ -303,12 +303,12 @@ class PagesController extends Controller
 
         $responseData = ['title' => $page->title];
 
-        if (empty($sections) || in_array('content', $sections)) {
+        if ($sections === [] || in_array('content', $sections)) {
             $responseData['content'] = $page->content;
         }
 
         // 1. Core Values (Vision, Mission, Strategy)
-        if (empty($sections) || in_array('core_values', $sections)) {
+        if ($sections === [] || in_array('core_values', $sections)) {
             $responseData['core_values'] = [
                 'vision' => $page->vision,
                 'mission' => $page->mission,
@@ -317,7 +317,7 @@ class PagesController extends Controller
         }
 
         // 2. Founder Info
-        if (empty($sections) || in_array('founder', $sections)) {
+        if ($sections === [] || in_array('founder', $sections)) {
             $founder = $page->founder_info ?? [];
             if (isset($founder['photo'])) {
                 $founder['photo_url'] = asset('storage/'.$founder['photo']);
@@ -326,53 +326,47 @@ class PagesController extends Controller
         }
 
         // 3. What We Do (Diagram)
-        if (empty($sections) || in_array('what_we_do', $sections)) {
+        if ($sections === [] || in_array('what_we_do', $sections)) {
             $responseData['what_we_do'] = [
                 'diagram_url' => $page->what_we_do_image ? asset('storage/'.$page->what_we_do_image) : null,
             ];
         }
 
         // 4. Team Members
-        if (empty($sections) || in_array('team', $sections)) {
-            $responseData['team'] = collect($page->team_members ?? [])->map(function ($member) {
-                return [
-                    'name' => $member['name'] ?? '',
-                    'title' => $member['title'] ?? '',
-                    'bio' => $member['bio'] ?? '',
-                    'photo_url' => ! empty($member['photo']) ? asset('storage/'.$member['photo']) : null,
-                ];
-            });
+        if ($sections === [] || in_array('team', $sections)) {
+            $responseData['team'] = collect($page->team_members ?? [])->map(fn ($member): array => [
+                'name' => $member['name'] ?? '',
+                'title' => $member['title'] ?? '',
+                'bio' => $member['bio'] ?? '',
+                'photo_url' => ! empty($member['photo']) ? asset('storage/'.$member['photo']) : null,
+            ]);
         }
 
         // 5. Videos
-        if (empty($sections) || in_array('videos', $sections)) {
-            $responseData['videos'] = collect($page->features_videos ?? [])->map(function ($video) {
-                return [
-                    'title' => $video['title'] ?? '',
-                    'source' => $video['source'] ?? '',
-                    'type' => $video['type'] ?? '',
-                    'url' => $video['url'] ?? null,
-                    'file_url' => isset($video['path']) ? asset('storage/'.$video['path']) : null,
-                    'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/'.$video['thumbnail']) : null,
-                ];
-            });
+        if ($sections === [] || in_array('videos', $sections)) {
+            $responseData['videos'] = collect($page->features_videos ?? [])->map(fn ($video): array => [
+                'title' => $video['title'] ?? '',
+                'source' => $video['source'] ?? '',
+                'type' => $video['type'] ?? '',
+                'url' => $video['url'] ?? null,
+                'file_url' => isset($video['path']) ? asset('storage/'.$video['path']) : null,
+                'thumbnail_url' => isset($video['thumbnail']) ? asset('storage/'.$video['thumbnail']) : null,
+            ]);
         }
 
         // 6. FAQs
-        if (empty($sections) || in_array('faqs', $sections)) {
+        if ($sections === [] || in_array('faqs', $sections)) {
             $responseData['faqs'] = $page->faqs ?? [];
         }
 
         // 7. Leading Institutions
-        if (empty($sections) || in_array('leading_institutions', $sections)) {
+        if ($sections === [] || in_array('leading_institutions', $sections)) {
             $responseData['leading_institutions'] = collect($page->leading_institutions ?? [])
                 ->where('is_active', true)
-                ->map(function ($item) {
-                    return [
-                        'name' => $item['name'],
-                        'logo_url' => ! empty($item['logo']) ? asset('storage/'.$item['logo']) : null,
-                    ];
-                })->values();
+                ->map(fn ($item): array => [
+                    'name' => $item['name'],
+                    'logo_url' => ! empty($item['logo']) ? asset('storage/'.$item['logo']) : null,
+                ])->values();
         }
 
         return response()->json([

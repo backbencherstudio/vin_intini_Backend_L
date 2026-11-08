@@ -5,21 +5,23 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\IndustryCategory;
 use App\Models\IndustrySections;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
 class IndustryCategoryController extends Controller
 {
-    public function psychology(Request $request)
+    public function psychology(Request $request): Factory|View
     {
         return $this->renderView($request, 'psychology');
     }
 
-    public function neuroscience(Request $request)
+    public function neuroscience(Request $request): Factory|View
     {
         return $this->renderView($request, 'neuroscience');
     }
 
-    private function renderView($request, $network)
+    private function renderView(Request $request, string $network): Factory|View
     {
         $query = IndustrySections::where('network_type', $network)
             ->where('industry_type', '!=', 'publications');
@@ -32,7 +34,7 @@ class IndustryCategoryController extends Controller
             ->latest()
             ->get();
 
-        return view('admin.industry.category', compact('sections', 'network'));
+        return view('admin.industry.category', ['sections' => $sections, 'network' => $network]);
     }
 
     // private function renderView($request, $network)
