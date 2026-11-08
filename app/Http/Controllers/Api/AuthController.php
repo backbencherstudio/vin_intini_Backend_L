@@ -4,26 +4,31 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\OtpType;
 use App\Http\Controllers\Controller;
-use App\Mail\RegisterOtpMail;
-use App\Models\DeletedAccountLog;
 use App\Models\FcmToken;
 use App\Models\Industry;
 use App\Models\LoginActivity;
 use App\Models\Otp;
 use App\Models\Skill;
 use App\Models\User;
-use Illuminate\Auth\Events\Failed;
+use App\Notifications\RegisterOtpNotification;
+use App\Services\Auth\ChallengeService;
+use App\Services\Auth\SessionIssuanceService;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Exceptions\TokenBlacklistedException;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        protected SessionIssuanceService $sessionService,
+        protected ChallengeService $challengeService,
+    ) {}
+
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -44,46 +49,14 @@ class AuthController extends Controller
 
         $user = User::withTrashed()->where('email', $credentials['email'])->first();
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-
-            // Trigger the Failed event to log the failed login activity--------------
-            // if ($user) {
-            //     event(new Failed('api', $user, $credentials));
-            // }
-            // ------------------------------------------------------------------------
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
             ], 401);
         }
 
-        // Check if the user is soft-deleted (account scheduled for deletion)
-        if ($user->trashed()) {
-            $deletionLog = DeletedAccountLog::where('user_id', $user->id)->latest()->first();
-
-            $daysRemaining = 0;
-            if ($deletionLog) {
-                $seconds = now()->diffInSeconds($deletionLog->permanent_delete_at, false);
-                $daysRemaining = ceil($seconds / (60 * 60 * 24));
-            }
-
-            if ($daysRemaining <= 0) {
-                $daysRemaining = 1;
-            }
-
-            return response()->json([
-                'status' => 'pending_deletion',
-                'days_left' => (int) $daysRemaining,
-                'name' => $user->first_name . ' ' . $user->last_name,
-                'email' => $user->email,
-                'message' => "Your account is scheduled for deletion in {$daysRemaining} days. Please restore it using your credentials.",
-            ], 200);
-        }
-
-        if ($user->is_suspended) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Your account has been suspended. Please contact support.',
-            ], 403);
+        if (($statusResponse = $this->sessionService->checkAccountStatus($user)) instanceof JsonResponse) {
+            return $statusResponse;
         }
 
         // Save the FCM token before the 2FA check so it persists even when
@@ -94,15 +67,17 @@ class AuthController extends Controller
 
         // Check if 2FA is enabled and confirmed
         if ($user->two_factor_confirmed_at) {
+            $challengeToken = $this->challengeService->createChallenge($user, '2fa', 5);
+
             return response()->json([
                 'status' => '2fa_required',
                 'two_factor_enabled' => true,
                 'email' => $user->email,
+                'challenge_token' => $challengeToken,
                 'message' => 'Two-factor authentication is required. Please provide your code.',
             ], 200);
         }
 
-        // if (! $user->is_verified) {
         if ($user->hasRole('user') && ! $user->is_verified) {
             return response()->json([
                 'success' => false,
@@ -112,10 +87,13 @@ class AuthController extends Controller
 
         // Attempt login (JWT token) — only pass actual auth columns,
         // fcm_token/device fields are handled separately below.
-        if (! $token = auth('api')->attempt([
+        /** @var string|false $token */
+        $token = auth('api')->attempt([
             'email' => $credentials['email'],
             'password' => $credentials['password'],
-        ])) {
+        ]);
+
+        if (! $token) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
@@ -124,15 +102,7 @@ class AuthController extends Controller
 
         $user = auth('api')->user();
 
-        // -----------------------------------------
-        // Trigger the Login event to log the successful login activity
-        $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
-        $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
-        request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
-        event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
-        // -----------------------------------------
-
-        return $this->respondWithToken($token, $user);
+        return $this->sessionService->respondWithSession($user, $token);
     }
 
     public function me()
@@ -149,14 +119,14 @@ class AuthController extends Controller
 
         $user->load(['roles', 'profile.currentPosition', 'educations.institution']);
 
-        $latestEducation = $user->educations->sortByDesc('id')->first();
+        $user->educations->sortByDesc('id')->first();
 
         $subscription = $user->subscriptions()->with('plan')->latest()->first();
         $isSubscribed = (bool) $subscription?->isActive();
 
         return response()->json([
             'success' => true,
-            'is_onboarding' => $user->profile ? true : false,
+            'is_onboarding' => (bool) $user->profile,
             'user' => [
                 'id' => $user->id,
                 'username' => $user->username,
@@ -170,10 +140,9 @@ class AuthController extends Controller
                 'role' => $user->roles->pluck('name')->implode(', '),
                 'member_since' => $user->created_at->toDateString(),
 
-                'two_factor_enabled' => $user->two_factor_confirmed_at ? true : false,
+                'two_factor_enabled' => (bool) $user->two_factor_confirmed_at,
                 'recovery_email' => $user->recovery_email,
-                'recovery_email_verified' => $user->recovery_email_verified_at ? true : false,
-                // 'recovery_email_pending' => !$user->recovery_email_verified_at && $user->recovery_email ? true : false,
+                'recovery_email_verified' => (bool) $user->recovery_email_verified_at,
 
                 'profile' => $user->profile ? [
                     'privacy_profile_activity' => $user->profile->privacy_profile_activity,
@@ -269,7 +238,7 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Successfully logged out',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return response()->json([
                 'success' => true,
                 'message' => 'Successfully logged out',
@@ -318,15 +287,19 @@ class AuthController extends Controller
             ]);
 
             return $this->respondWithToken($newToken, $user);
-        } catch (TokenBlacklistedException $e) {
+        } catch (TokenBlacklistedException) {
             return response()->json(['success' => false, 'message' => 'Session blacklisted. Please login again.'], 401);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return response()->json(['success' => false, 'message' => 'Invalid token or session error'], 401);
         }
     }
 
-    private function getJtiFromToken($token)
+    private function getJtiFromToken(?string $token): ?string
     {
+        if (! $token) {
+            return null;
+        }
+
         try {
             $parts = explode('.', $token);
             if (count($parts) !== 3) {
@@ -335,12 +308,12 @@ class AuthController extends Controller
             $payload = json_decode(base64_decode($parts[1]), true);
 
             return $payload['jti'] ?? null;
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return null;
         }
     }
 
-    protected function respondWithToken($token, $user)
+    protected function respondWithToken(string $token, User $user): JsonResponse
     {
         $roleName = $user->getRoleNames()->first();
         $user->makeHidden('roles');
@@ -379,7 +352,6 @@ class AuthController extends Controller
 
             $user = User::where('email', $request->email)->first();
 
-            // ================= EXISTING USER =================
             if ($user) {
 
                 if ($user->is_verified) {
@@ -404,7 +376,7 @@ class AuthController extends Controller
                     $user->assignRole($role);
                 }
 
-                Mail::to($user->email)->queue(new RegisterOtpMail($otp));
+                $user->notify(new RegisterOtpNotification($otp));
 
                 DB::commit();
 
@@ -414,7 +386,6 @@ class AuthController extends Controller
                 ], 200);
             }
 
-            // ================= NEW USER =================
             $user = User::create([
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
@@ -431,7 +402,7 @@ class AuthController extends Controller
                 $user->assignRole($role);
             }
 
-            Mail::to($user->email)->queue(new RegisterOtpMail($otp));
+            $user->notify(new RegisterOtpNotification($otp));
 
             DB::commit();
 
@@ -439,7 +410,7 @@ class AuthController extends Controller
                 'status' => true,
                 'message' => 'Registration successful. OTP sent to your email.',
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             DB::rollBack();
 
             return response()->json([
@@ -454,7 +425,7 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|exists:users,email',
-            'otp' => 'required|digits:4',
+            'otp' => 'required|string|digits:4',
         ]);
 
         if ($validator->fails()) {
@@ -467,18 +438,15 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if ($user->is_verified) {
-            $token = auth('api')->login($user);
+        if (($statusResponse = $this->sessionService->checkAccountStatus($user)) instanceof JsonResponse) {
+            return $statusResponse;
+        }
 
+        if ($user->is_verified) {
             return response()->json([
-                'status' => true,
-                'is_onboarding' => $user->profile()->exists(),
-                'message' => 'Email already verified.',
-                'user' => $user,
-                'token' => $token,
-                'token_type' => 'bearer',
-                'expires_in' => auth('api')->factory()->getTTL() * 60,
-            ]);
+                'status' => false,
+                'message' => 'Email is already verified. Please sign in.',
+            ], 400);
         }
 
         $otpRecord = Otp::where('user_id', $user->id)
@@ -500,31 +468,26 @@ class AuthController extends Controller
             ], 400);
         }
 
-        $user->forceFill([
-            'is_verified' => true,
-        ])->save();
+        return DB::transaction(function () use ($user, $otpRecord) {
+            $user->forceFill([
+                'is_verified' => true,
+            ])->save();
 
-        $otpRecord->delete();
+            $otpRecord->delete();
 
-        $token = auth('api')->login($user);
+            if ($user->is_suspended) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your account has been suspended. Please contact support.',
+                ], 403);
+            }
 
-        // -----------------------------------------
-        // Trigger the Login event to log the successful login activity
-        $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
-        $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
-        request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
-        event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
-        // -----------------------------------------
-
-        return response()->json([
-            'status' => true,
-            'is_onboarding' => $user->profile()->exists(),
-            'message' => 'Email verified successfully.',
-            'user' => $user,
-            'token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => auth('api')->factory()->getTTL() * 60,
-        ]);
+            return $this->sessionService->respondWithSession($user, null, [
+                'message' => 'Email verified successfully.',
+                'token_type' => 'bearer',
+                'expires_in' => auth('api')->factory()->getTTL() * 60,
+            ]);
+        });
     }
 
     public function resendRegisterOtp(Request $request)
@@ -571,20 +534,20 @@ class AuthController extends Controller
         }
 
         try {
-            $otp = rand(1000, 9999);
+            $otp = random_int(1000, 9999);
 
             Otp::updateOrCreate(
                 ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
                 ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
             );
 
-            Mail::to($user->email)->queue(new RegisterOtpMail($otp));
+            $user->notify(new RegisterOtpNotification($otp));
 
             return response()->json([
                 'status' => true,
                 'message' => 'OTP resent to your email.',
             ], 200);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to resend OTP.',
