@@ -243,31 +243,15 @@
             <div class="post-body-text" id="post-body-{{ $item['id'] }}">
                 @php
                     $rawDesc = $item['description'] ?? '';
-                    $hasHtml = strip_tags($rawDesc) !== $rawDesc;
                     $cleanText = trim(strip_tags(html_entity_decode($rawDesc, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
                     $isLong = mb_strlen($cleanText) > 220;
+                    $shortText = $isLong ? mb_substr($cleanText, 0, 220) . '...' : $cleanText;
                 @endphp
 
-                @if($hasHtml)
-                    @php
-                        $safeHtml = strip_tags($rawDesc, '<p><br><strong><b><em><i><u><a><span><ul><ol><li>');
-                        $safeHtml = preg_replace('/\s*(style|id|dir|class)="[^"]*"/i', '', $safeHtml);
-                    @endphp
-                    <div class="post-content-html {{ $isLong ? 'post-content-clamped' : '' }}" id="post-content-{{ $item['id'] }}">
-                        {!! $safeHtml !!}
-                    </div>
-                    @if($isLong)
-                        <a href="javascript:void(0)" class="see-more-link" onclick="togglePostContent({{ $item['id'] }}, this)">...see more</a>
-                    @endif
-                @else
-                    @php
-                        $shortText = $isLong ? mb_substr($cleanText, 0, 220) . '...' : $cleanText;
-                    @endphp
-                    <span id="post-text-trunc-{{ $item['id'] }}">{!! nl2br(e($shortText)) !!}</span>
-                    @if($isLong)
-                        <span id="post-text-full-{{ $item['id'] }}" style="display: none;">{!! nl2br(e($cleanText)) !!}</span>
-                        <a href="javascript:void(0)" class="see-more-link" onclick="togglePostText({{ $item['id'] }}, this)">see more</a>
-                    @endif
+                <span id="post-text-trunc-{{ $item['id'] }}">{!! nl2br(e($shortText)) !!}</span>
+                @if($isLong)
+                    <span id="post-text-full-{{ $item['id'] }}" style="display: none;">{!! nl2br(e($cleanText)) !!}</span>
+                    <a href="javascript:void(0)" class="see-more-link" onclick="togglePostText({{ $item['id'] }}, this)">see more</a>
                 @endif
             </div>
 

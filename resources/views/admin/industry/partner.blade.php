@@ -119,11 +119,15 @@
                                             onclick="editPartner({{ $partner }})">
                                             <i class="fa-solid fa-edit text-warning"></i>
                                         </button>
-                                        <a href="{{ route('admin.partners.delete', $partner->id) }}"
-                                            class="btn btn-sm btn-white border shadow-sm ms-1"
-                                            onclick="return confirm('Are you sure you want to delete this partner?')">
-                                            <i class="fa-solid fa-trash text-danger"></i>
-                                        </a>
+                                        <form action="{{ route('admin.partners.delete', $partner->id) }}"
+                                            method="POST" class="d-inline ms-1"
+                                            onsubmit="return confirm('Are you sure you want to delete this partner?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-white border shadow-sm">
+                                                <i class="fa-solid fa-trash text-danger"></i>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             @empty

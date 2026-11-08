@@ -59,7 +59,15 @@
                                 <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg">
                                     <li><a class="dropdown-item small fw-bold text-warning" href="javascript:void(0)" onclick="editSection({{ $section }})"><i class="fa-solid fa-pen-to-square me-2"></i>Rename Section</a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item small fw-bold text-danger" href="{{ route('admin.sections.delete', $section->id) }}" onclick="return confirm('Attention: Deleting this section will remove all associated tabs and products. Continue?')"><i class="fa-solid fa-trash me-2"></i>Delete Section</a></li>
+                                    <li>
+                                        <form action="{{ route('admin.sections.delete', $section->id) }}" method="POST" onsubmit="return confirm('Attention: Deleting this section will remove all associated tabs and products. Continue?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="dropdown-item small fw-bold text-danger">
+                                                <i class="fa-solid fa-trash me-2"></i>Delete Section
+                                            </button>
+                                        </form>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -80,7 +88,13 @@
                                         <span class="text-dark small fw-semibold">{{ $cat->category_name }}</span>
                                         <div class="ms-2 ps-2 border-start d-flex gap-2">
                                             <button class="btn btn-link btn-sm p-0 text-warning" onclick="editCategory({{ $cat }}, '{{ $section->name }}')" title="Edit Tab"><i class="fa-solid fa-pencil" style="font-size: 10px;"></i></button>
-                                            <a href="{{ route('admin.categories.delete', $cat->id) }}" class="btn btn-link btn-sm p-0 text-danger" onclick="return confirm('Delete this tab?')"><i class="fa-solid fa-xmark" style="font-size: 11px;"></i></a>
+                                            <form action="{{ route('admin.categories.delete', $cat->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this tab?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-link btn-sm p-0 text-danger" title="Delete Tab">
+                                                    <i class="fa-solid fa-xmark" style="font-size: 11px;"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </div>
                                 @empty

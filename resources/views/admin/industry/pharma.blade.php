@@ -89,9 +89,15 @@
                                 <div class="admin-btns">
                                     <button class="btn btn-sm btn-white shadow text-warning rounded-circle mb-1"
                                         onclick="editItem({{ $item }})"><i class="fa fa-pen"></i></button>
-                                    <a href="{{ route('admin.pharma.delete', $item->id) }}"
-                                        class="btn btn-sm btn-white shadow text-danger rounded-circle"
-                                        onclick="return confirm('Delete medication?')"><i class="fa fa-trash"></i></a>
+                                    <form action="{{ route('admin.pharma.delete', $item->id) }}"
+                                        method="POST" class="d-inline"
+                                        onsubmit="return confirm('Delete medication?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-white shadow text-danger rounded-circle">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </form>
                                 </div>
 
                                 <div class="card-body p-4 d-flex flex-column">

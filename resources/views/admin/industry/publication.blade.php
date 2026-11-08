@@ -91,10 +91,15 @@
                                             <button class="btn btn-sm btn-white text-warning border-end px-3"
                                                 onclick="editItem({{ $item }})" title="Edit"><i
                                                     class="fa fa-pen"></i></button>
-                                            <a href="{{ route('admin.publications.delete', $item->id) }}"
-                                                class="btn btn-sm btn-white text-danger px-3"
-                                                onclick="return confirm('Delete publication?')" title="Delete"><i
-                                                    class="fa fa-trash"></i></a>
+                                            <form action="{{ route('admin.publications.delete', $item->id) }}"
+                                                method="POST" class="d-inline"
+                                                onsubmit="return confirm('Delete publication?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-white text-danger px-3 border-0" title="Delete">
+                                                    <i class="fa fa-trash"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
