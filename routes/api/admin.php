@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\Api\AcademiaController;
+use App\Http\Controllers\Admin\Api\AdminDashboardController;
 use App\Http\Controllers\Admin\Api\BoostPackageAdminController;
 use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
@@ -19,6 +20,9 @@ use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->group(function (): void {
+    // Admin Dashboard
+    Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+
     // Admin password update
     Route::post('/update-password', [UserController::class, 'updatePass']);
 
