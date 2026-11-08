@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AdCampaignResource;
 use App\Http\Resources\BoostPackageResource;
 use App\Http\Resources\IndustryProductResource;
-use App\Mail\BoostOtpMail;
 use App\Models\AdCampaign;
 use App\Models\AdClick;
 use App\Models\AdImpression;
@@ -17,12 +16,12 @@ use App\Models\BoostPackage;
 use App\Models\IndustryProduct;
 use App\Models\Otp;
 use App\Models\User;
+use App\Notifications\BoostOtpNotification;
 use App\Services\BoostSettingService;
 use App\Services\ProductBoostPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
 
@@ -67,7 +66,7 @@ class ProductBoostController extends Controller
         $product = IndustryProduct::findOrFail($id);
         $user = $request->user();
 
-        if ($authError = $this->authorizeProductAction($user, $product)) {
+        if (($authError = $this->authorizeProductAction($user, $product)) instanceof JsonResponse) {
             return $authError;
         }
 
@@ -123,7 +122,7 @@ class ProductBoostController extends Controller
         $product = IndustryProduct::findOrFail($id);
         $user = $request->user();
 
-        if ($authError = $this->authorizeProductAction($user, $product)) {
+        if (($authError = $this->authorizeProductAction($user, $product)) instanceof JsonResponse) {
             return $authError;
         }
 
@@ -176,7 +175,7 @@ class ProductBoostController extends Controller
         $product = IndustryProduct::findOrFail($id);
         $user = $request->user();
 
-        if ($authError = $this->authorizeProductAction($user, $product)) {
+        if (($authError = $this->authorizeProductAction($user, $product)) instanceof JsonResponse) {
             return $authError;
         }
 
@@ -259,7 +258,7 @@ class ProductBoostController extends Controller
         $product = IndustryProduct::findOrFail($id);
         $user = $request->user();
 
-        if ($authError = $this->authorizeProductAction($user, $product)) {
+        if (($authError = $this->authorizeProductAction($user, $product)) instanceof JsonResponse) {
             return $authError;
         }
 
@@ -298,7 +297,7 @@ class ProductBoostController extends Controller
         $product = IndustryProduct::findOrFail($id);
         $user = $request->user();
 
-        if ($authError = $this->authorizeProductAction($user, $product)) {
+        if (($authError = $this->authorizeProductAction($user, $product)) instanceof JsonResponse) {
             return $authError;
         }
 
@@ -343,7 +342,7 @@ class ProductBoostController extends Controller
             ->latest('id');
 
         if ($industryId) {
-            $query->where(function ($q) use ($industryId, $user) {
+            $query->where(function ($q) use ($industryId, $user): void {
                 $q->where('industry_id', $industryId)
                     ->orWhere('user_id', $user->id);
             });
@@ -358,7 +357,7 @@ class ProductBoostController extends Controller
         }
 
         if ($search = $request->query('search')) {
-            $query->whereHasMorph('boostable', [IndustryProduct::class], function ($q) use ($search) {
+            $query->whereHasMorph('boostable', [IndustryProduct::class], function ($q) use ($search): void {
                 $q->where('product_name', 'like', "%{$search}%");
             });
         }
@@ -368,7 +367,7 @@ class ProductBoostController extends Controller
         // Base overview metrics across all industry campaigns
         $baseQuery = AdCampaign::query();
         if ($industryId) {
-            $baseQuery->where(function ($q) use ($industryId, $user) {
+            $baseQuery->where(function ($q) use ($industryId, $user): void {
                 $q->where('industry_id', $industryId)
                     ->orWhere('user_id', $user->id);
             });
@@ -410,7 +409,7 @@ class ProductBoostController extends Controller
         $campaign = AdCampaign::findOrFail($id);
         $user = $request->user();
 
-        if ($authError = $this->authorizeCampaignAction($user, $campaign)) {
+        if (($authError = $this->authorizeCampaignAction($user, $campaign)) instanceof JsonResponse) {
             return $authError;
         }
 
@@ -438,7 +437,7 @@ class ProductBoostController extends Controller
         $campaign = AdCampaign::findOrFail($id);
         $user = $request->user();
 
-        if ($authError = $this->authorizeCampaignAction($user, $campaign)) {
+        if (($authError = $this->authorizeCampaignAction($user, $campaign)) instanceof JsonResponse) {
             return $authError;
         }
 
@@ -513,7 +512,7 @@ class ProductBoostController extends Controller
             ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
         );
 
-        Mail::to($user->email)->queue(new BoostOtpMail($otp));
+        $user->notify(new BoostOtpNotification($otp));
 
         $data = [
             'email' => $user->email,
@@ -521,7 +520,7 @@ class ProductBoostController extends Controller
             'cooldown_seconds' => 60,
         ];
 
-        if ($product) {
+        if ($product instanceof IndustryProduct) {
             $data['product'] = [
                 'id' => $product->id,
                 'product_id' => $product->product_id,
@@ -559,11 +558,7 @@ class ProductBoostController extends Controller
             return false;
         }
 
-        if (! $otpRecord->expires_at || now()->greaterThan($otpRecord->expires_at)) {
-            return false;
-        }
-
-        return true;
+        return $otpRecord->expires_at && ! now()->greaterThan($otpRecord->expires_at);
     }
 
     /**
@@ -720,6 +715,31 @@ class ProductBoostController extends Controller
             ], 404);
         }
 
+        if ($campaign) {
+            if (! $campaign->boostable) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The target of this ad campaign is no longer available.',
+                ], 404);
+            }
+
+            if ($campaign->status !== AdCampaignStatus::ACTIVE || ($campaign->ends_at !== null && $campaign->ends_at->isPast())) {
+                $dest = method_exists($campaign->boostable, 'getAdDestinationUrl')
+                    ? $campaign->boostable->getAdDestinationUrl()
+                    : ($campaign->boostable?->product_url ?? null);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This ad campaign is not currently active.',
+                    'data' => [
+                        'ad_campaign_id' => $campaign->id,
+                        'status' => $campaign->status->value,
+                        'destination_url' => $dest,
+                    ],
+                ], 400);
+            }
+        }
+
         $user = auth('api')->user() ?? $request->user();
         $placement = $request->input('placement', 'newsfeed');
         $ip = $request->ip();
@@ -758,7 +778,7 @@ class ProductBoostController extends Controller
             ]);
         }
 
-        $destinationUrl = method_exists($campaign->boostable, 'getAdDestinationUrl')
+        $destinationUrl = ($campaign->boostable && method_exists($campaign->boostable, 'getAdDestinationUrl'))
             ? $campaign->boostable->getAdDestinationUrl()
             : ($campaign->boostable?->product_url ?? null);
 
