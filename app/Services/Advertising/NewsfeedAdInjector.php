@@ -36,15 +36,13 @@ class NewsfeedAdInjector
     ): Collection {
         $settings = $this->boostSettingService->getSettings();
         $newsfeedConfig = $settings['newsfeed_ads'] ?? [];
-
-        $isEnabled = (bool) ($newsfeedConfig['enabled'] ?? true);
         $minPostsBeforeAd = (int) ($newsfeedConfig['min_posts_before_ad'] ?? 4);
         $firstAdSlot = (int) ($newsfeedConfig['first_ad_slot'] ?? 4);
         $adInterval = (int) ($newsfeedConfig['ad_interval'] ?? 8);
         $maxAdsPerPage = $maxAds ?? (int) ($newsfeedConfig['max_ads_per_page'] ?? 2);
 
         // Normalize existing posts to explicitly have is_sponsored = false for consistent API typing
-        $items = $posts->map(function ($post) {
+        $items = $posts->map(function ($post): array {
             if (is_array($post)) {
                 $post['is_sponsored'] = false;
             }
@@ -53,11 +51,11 @@ class NewsfeedAdInjector
         })->values();
 
         // Guard: If disabled or feed has fewer posts than minimum threshold, return untouched
-        if (! $isEnabled || $items->count() < $minPostsBeforeAd) {
+        if ($items->count() < $minPostsBeforeAd) {
             return $items;
         }
 
-        $excludeCampaignIds = array_values(array_filter(array_map('intval', $excludeCampaignIds)));
+        $excludeCampaignIds = array_values(array_filter(array_map(intval(...), $excludeCampaignIds)));
         $injectedInBatch = [];
         $adsInjected = 0;
         $targetSlotIndex = $firstAdSlot;
@@ -77,7 +75,7 @@ class NewsfeedAdInjector
                 bypassFrequencyCapping: $bypassFrequencyCapping || $includeTestAnalytics
             );
 
-            if ($adCampaign && $adCampaign->boostable && ! in_array($adCampaign->id, $injectedInBatch, true)) {
+            if ($adCampaign instanceof AdCampaign && $adCampaign->boostable && ! in_array($adCampaign->id, $injectedInBatch, true)) {
                 $adCard = $this->formatSponsoredCard($adCampaign, $user, $includeTestAnalytics);
                 if ($recordServerImpressions) {
                     $this->recordImpression($adCampaign, $user);
@@ -153,12 +151,12 @@ class NewsfeedAdInjector
         $viewsCount = (int) ($boostable?->views_count ?? 0);
         $uniqueViewsCount = (int) ($boostable?->unique_views_count ?? 0);
         $isLiked = false;
-        if ($user && $boostable instanceof IndustryProduct) {
+        if ($user instanceof User && $boostable instanceof IndustryProduct) {
             $isLiked = $boostable->likes()->where('user_id', $user->id)->exists();
         }
 
         $isFollowingIndustry = false;
-        if ($user && $campaign->industry_id) {
+        if ($user instanceof User && $campaign->industry_id) {
             $isFollowingIndustry = IndustryFollow::where('industry_id', $campaign->industry_id)
                 ->where('user_id', $user->id)
                 ->exists();
@@ -249,7 +247,7 @@ class NewsfeedAdInjector
     {
         try {
             // Anti-fraud self-impression guard: Ignore impression if user is the product creator, industry creator, or campaign owner
-            $isOwner = $user && (
+            $isOwner = $user instanceof User && (
                 (int) $user->id === (int) $campaign->user_id
                 || (int) $user->id === (int) ($campaign->industry?->created_by ?? 0)
                 || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
@@ -261,7 +259,7 @@ class NewsfeedAdInjector
                 return;
             }
 
-            $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.(request()?->ip() ?: 'unknown');
+            $userIdentifier = $user instanceof User ? 'user_'.$user->id : 'ip_'.(request()?->ip() ?: 'unknown');
             $throttleKey = "ad_impression_throttle_{$campaign->id}_{$userIdentifier}";
 
             if (! Cache::add($throttleKey, true, now()->addSeconds(30))) {

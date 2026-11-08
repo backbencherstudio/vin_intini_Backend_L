@@ -49,7 +49,7 @@ class FairPlayAdRotationService
             ->with(['boostable', 'boostPackage', 'industry:id,created_by,name,slug,logo,tagline']);
 
         if ($placement !== 'newsfeed' && ! empty($networkType) && $networkType !== 'both') {
-            $query->where(function ($q) use ($networkType) {
+            $query->where(function ($q) use ($networkType): void {
                 $q->where('network_type', $networkType)
                     ->orWhere('network_type', 'both');
             });
@@ -63,7 +63,7 @@ class FairPlayAdRotationService
         }
 
         // Filter valid candidates in-memory for database engine independence
-        $eligibleCampaigns = $campaigns->filter(function (AdCampaign $campaign) use ($placement, $userId, $maxDailyImpressionsPerUser, $bypassFrequencyCapping) {
+        $eligibleCampaigns = $campaigns->filter(function (AdCampaign $campaign) use ($placement, $userId, $maxDailyImpressionsPerUser, $bypassFrequencyCapping): bool {
             // 1. Boostable entity must exist and be active
             if (! $campaign->boostable) {
                 return false;
@@ -89,9 +89,9 @@ class FairPlayAdRotationService
                     ->count();
 
                 $isOwner = (
-                    (int) $campaign->user_id === (int) $userId
-                    || (int) ($campaign->industry?->created_by ?? 0) === (int) $userId
-                    || (int) ($campaign->boostable?->creator_id ?? 0) === (int) $userId
+                    (int) $campaign->user_id === $userId
+                    || (int) ($campaign->industry?->created_by ?? 0) === $userId
+                    || (int) ($campaign->boostable?->creator_id ?? 0) === $userId
                 );
 
                 if ($isOwner) {
@@ -120,14 +120,14 @@ class FairPlayAdRotationService
             if (! is_array($cachedRecentIds)) {
                 $cachedRecentIds = [];
             }
-            if (empty($excludeCampaignIds) && ! empty($cachedRecentIds)) {
+            if ($excludeCampaignIds === [] && $cachedRecentIds !== []) {
                 $excludeCampaignIds = $cachedRecentIds;
             }
         }
 
         // 4. Stream & Session Deduplication: Prioritize unseen campaigns to prevent back-to-back duplicate ads
         $candidates = $eligibleCampaigns;
-        if (! empty($excludeCampaignIds)) {
+        if ($excludeCampaignIds !== []) {
             $unseenCandidates = $eligibleCampaigns->whereNotIn('id', $excludeCampaignIds);
             if ($unseenCandidates->isNotEmpty()) {
                 $candidates = $unseenCandidates;
@@ -151,7 +151,7 @@ class FairPlayAdRotationService
         }
 
         // 5. Impression-Balancing Round-Robin algorithm
-        $selectedCampaign = $candidates->sortBy(function (AdCampaign $campaign) {
+        $selectedCampaign = $candidates->sortBy(function (AdCampaign $campaign): int|float {
             $tierWeight = (int) ($campaign->boostPackage?->priority_weight ?? 1);
             $targetQuota = max($tierWeight * 1000, 1);
             $deliveredRatio = $campaign->total_impressions / $targetQuota;
