@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessRevenueCatWebhook;
-use App\Services\WebhookLoggerService;
+use App\Services\Billing\WebhookLoggerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

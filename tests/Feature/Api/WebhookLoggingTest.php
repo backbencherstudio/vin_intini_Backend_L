@@ -3,7 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\WebhookLog;
-use App\Services\StripeService;
+use App\Services\Billing\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
 use Stripe\Event;

@@ -4,7 +4,7 @@ namespace Tests\Feature\Api\Admin;
 
 use App\Models\IntegrationSetting;
 use App\Models\User;
-use App\Services\IntegrationSettingsService;
+use App\Services\Settings\IntegrationSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Spatie\Permission\Models\Role;

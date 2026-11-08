@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Billing;
 
 use App\Models\Plan;
 use App\Models\Subscription;

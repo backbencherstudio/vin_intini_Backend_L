@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\RevenueCatService;
+use App\Services\Billing\RevenueCatService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;

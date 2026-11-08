@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\AdCampaign;
-use App\Services\BoostSettingService;
+use App\Services\Advertising\BoostSettingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;

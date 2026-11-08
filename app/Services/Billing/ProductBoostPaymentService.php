@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Billing;
 
 use App\Enums\AdCampaignStatus;
 use App\Enums\BoostTargetEntity;
@@ -10,6 +10,7 @@ use App\Models\IndustryProduct;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\CampaignActivatedNotification;
+use App\Services\Advertising\BoostSettingService;
 use App\Services\Advertising\ProductBoostProjection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;

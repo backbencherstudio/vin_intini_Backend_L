@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\IndustryItem;
 use App\Models\IndustrySections;
-use App\Services\OptimizedImageUploadService;
+use App\Services\Media\OptimizedImageUploadService;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;

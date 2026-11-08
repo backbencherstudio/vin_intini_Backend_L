@@ -6,7 +6,7 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\StripeService;
+use App\Services\Billing\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Mockery\MockInterface;

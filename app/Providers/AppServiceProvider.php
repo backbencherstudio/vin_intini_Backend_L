@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Services\IntegrationSettingsService;
-use App\Services\RevenueCatService;
+use App\Services\Billing\RevenueCatService;
+use App\Services\Settings\IntegrationSettingsService;
 use App\Services\Socialite\AppleProvider;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Event;

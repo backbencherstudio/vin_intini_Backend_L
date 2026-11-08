@@ -7,7 +7,6 @@ use App\Models\AdImpression;
 use App\Models\IndustryFollow;
 use App\Models\IndustryProduct;
 use App\Models\User;
-use App\Services\BoostSettingService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 

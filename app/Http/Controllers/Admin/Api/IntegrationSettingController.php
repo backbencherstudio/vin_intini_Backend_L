@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\IntegrationSetting;
-use App\Services\IntegrationSettingsService;
+use App\Services\Settings\IntegrationSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

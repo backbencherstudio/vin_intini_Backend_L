@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PlanResource;
 use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
-use App\Services\StripeService;
+use App\Services\Billing\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

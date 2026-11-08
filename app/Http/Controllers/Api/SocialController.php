@@ -7,7 +7,7 @@ use App\Models\FcmToken;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Auth\SessionIssuanceService;
-use App\Services\ProfileImageService;
+use App\Services\Media\ProfileImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;

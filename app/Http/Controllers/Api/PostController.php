@@ -9,7 +9,7 @@ use App\Models\Post;
 use App\Models\PostGroup;
 use App\Models\PostLike;
 use App\Models\PostMedia;
-use App\Services\MediaUploadService;
+use App\Services\Media\MediaUploadService;
 use App\Services\Social\PostService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

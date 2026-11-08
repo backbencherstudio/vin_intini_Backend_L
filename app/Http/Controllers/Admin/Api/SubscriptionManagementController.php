@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
-use App\Services\RevenueCatException;
-use App\Services\RevenueCatService;
-use App\Services\StripeService;
+use App\Services\Billing\RevenueCatException;
+use App\Services\Billing\RevenueCatService;
+use App\Services\Billing\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Stripe\Exception\ApiErrorException;

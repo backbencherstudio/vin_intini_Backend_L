@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Industry;
 
 use App\Enums\IndustryJobPostStatus;
 use App\Http\Resources\IndustryJobCardResource;

@@ -10,7 +10,7 @@ use App\Models\Institution;
 use App\Models\LoginActivity;
 use App\Models\Skill;
 use App\Models\User;
-use App\Services\ProfileImageService;
+use App\Services\Media\ProfileImageService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;

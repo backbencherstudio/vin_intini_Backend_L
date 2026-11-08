@@ -7,7 +7,7 @@ use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
-use App\Services\StripeService;
+use App\Services\Billing\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Mockery\MockInterface;

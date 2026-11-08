@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Plan;
-use App\Services\StripeService;
+use App\Services\Billing\StripeService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

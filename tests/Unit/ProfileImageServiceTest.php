@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use App\Models\User;
-use App\Services\OptimizedImageUploadService;
-use App\Services\ProfileImageService;
+use App\Services\Media\OptimizedImageUploadService;
+use App\Services\Media\ProfileImageService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;

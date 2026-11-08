@@ -4,7 +4,7 @@ namespace App\Services\Social;
 
 use App\Models\Post;
 use App\Models\User;
-use App\Services\MediaUploadService;
+use App\Services\Media\MediaUploadService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

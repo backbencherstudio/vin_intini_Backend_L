@@ -8,7 +8,7 @@ use App\Models\Reply;
 use App\Models\User;
 use App\Notifications\CommentRepliedNotification;
 use App\Notifications\PostCommentedNotification;
-use App\Services\OptimizedImageUploadService;
+use App\Services\Media\OptimizedImageUploadService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

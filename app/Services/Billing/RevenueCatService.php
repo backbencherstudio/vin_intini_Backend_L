@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Billing;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Http;

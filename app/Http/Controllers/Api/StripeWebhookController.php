@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdCampaign;
-use App\Services\BillingWebhookService;
-use App\Services\ProductBoostPaymentService;
-use App\Services\StripeService;
-use App\Services\WebhookLoggerService;
+use App\Services\Billing\BillingWebhookService;
+use App\Services\Billing\ProductBoostPaymentService;
+use App\Services\Billing\StripeService;
+use App\Services\Billing\WebhookLoggerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Stripe\Exception\SignatureVerificationException;

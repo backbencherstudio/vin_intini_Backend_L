@@ -10,7 +10,7 @@ use App\Http\Requests\UpdateBoostSettingsRequest;
 use App\Http\Resources\BoostPackageResource;
 use App\Models\AdCampaign;
 use App\Models\BoostPackage;
-use App\Services\BoostSettingService;
+use App\Services\Advertising\BoostSettingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

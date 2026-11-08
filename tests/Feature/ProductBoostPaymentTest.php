@@ -19,7 +19,7 @@ use App\Notifications\BoostOtpNotification;
 use App\Notifications\CampaignActivatedNotification;
 use App\Notifications\CampaignAutoExpiredNotification;
 use App\Notifications\CampaignPauseReminderNotification;
-use App\Services\StripeService;
+use App\Services\Billing\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;

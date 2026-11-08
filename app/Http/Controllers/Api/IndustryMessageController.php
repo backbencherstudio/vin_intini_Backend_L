@@ -11,7 +11,7 @@ use App\Models\IndustryConversation;
 use App\Models\IndustryMessage;
 use App\Models\IndustryMessageReaction;
 use App\Models\Subscription;
-use App\Services\OptimizedImageUploadService;
+use App\Services\Media\OptimizedImageUploadService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

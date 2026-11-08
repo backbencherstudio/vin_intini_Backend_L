@@ -6,7 +6,7 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserProfile;
-use App\Services\RevenueCatService;
+use App\Services\Billing\RevenueCatService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;

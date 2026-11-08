@@ -14,7 +14,7 @@ use App\Models\IndustryProductLike;
 use App\Models\IndustrySections;
 use App\Models\User;
 use App\Services\Industry\IndustryProductService;
-use App\Services\OptimizedImageUploadService;
+use App\Services\Media\OptimizedImageUploadService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;

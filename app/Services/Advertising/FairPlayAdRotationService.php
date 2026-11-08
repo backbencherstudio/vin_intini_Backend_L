@@ -5,7 +5,6 @@ namespace App\Services\Advertising;
 use App\Enums\AdCampaignStatus;
 use App\Models\AdCampaign;
 use App\Models\AdImpression;
-use App\Services\BoostSettingService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 

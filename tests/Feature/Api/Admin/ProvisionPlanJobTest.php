@@ -4,7 +4,7 @@ namespace Tests\Feature\Api\Admin;
 
 use App\Jobs\ProvisionPlan;
 use App\Models\Plan;
-use App\Services\StripeService;
+use App\Services\Billing\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Mockery\MockInterface;
