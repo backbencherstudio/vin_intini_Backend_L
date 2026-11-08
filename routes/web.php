@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Admin\AcademiaAdminController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\BiotechController;
@@ -12,40 +14,26 @@ use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Models\SocialAccount;
 use App\Models\User;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Contracts\View\Factory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 Route::redirect('/', '/welcome');
-Route::get('/welcome', function () {
-    return view('welcome');
-})->name('welcome');
+Route::get('/welcome', fn (): Factory|\Illuminate\Contracts\View\View => view('welcome'))->name('welcome');
 
-Route::get('/payment/success', function () {
-    return view('payment-success');
-})->name('payment.success');
+Route::get('/payment/success', fn (): Factory|\Illuminate\Contracts\View\View => view('payment-success'))->name('payment.success');
 
-Route::get('/payment/cancel', function () {
-    return view('payment-cancel');
-})->name('payment.cancel');
+Route::get('/payment/cancel', fn (): Factory|\Illuminate\Contracts\View\View => view('payment-cancel'))->name('payment.cancel');
 
-Route::get('/subscription-test', function () {
-    return view('subscription-test');
-})->name('subscription.test');
+Route::get('/subscription-test', fn (): Factory|\Illuminate\Contracts\View\View => view('subscription-test'))->name('subscription.test');
 
-// Temporary Developer Preview & Test Routes for Boosting System (safe to delete anytime)
-if (file_exists(__DIR__.'/boosting_test.php')) {
+// Temporary Developer Preview & Test Routes for Boosting System (safe to delete anytime, restricted to local/testing)
+if (app()->environment('local', 'testing') && file_exists(__DIR__.'/boosting_test.php')) {
     require __DIR__.'/boosting_test.php';
 }
 
-Route::get('/clear', function () {
-    Artisan::call('optimize:clear');
-
-    return 'Cleared!';
-});
-
-Route::middleware('guest:web')->group(function () {
+Route::middleware('guest:web')->group(function (): void {
     // Admin Routes (Temporary admin dashboard routes)
     Route::get('admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
     Route::post('admin/login-submit', [AdminAuthController::class, 'adminLogin'])->name('admin.login.submit');
@@ -58,14 +46,14 @@ Route::get('/security/email-resolve/{id}', [SecuritySettingsController::class, '
 Route::post('/security/update-password', [SecuritySettingsController::class, 'updatePasswordFromAlert'])
     ->name('security.update-password')->middleware('signed');
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'active_session']], function () {
+Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'active_session']], function (): void {
 
     Route::get('/user-management', [AdminAuthController::class, 'userManagement'])->name('admin.user.management');
     // Institution Report Routes
     Route::get('/institution-report', [InstitutionReportController::class, 'institutionReport'])->name('institution.index');
     Route::get('/institution/{id}/students', [InstitutionReportController::class, 'showStudents'])->name('institution.students');
 
-    Route::prefix('/academia')->group(function () {
+    Route::prefix('/academia')->group(function (): void {
         // 1. Universities (List, Edit, Update)
         Route::get('/universities', [AcademiaAdminController::class, 'indexUniversities'])->name('admin.universities.index');
         Route::post('/universities', [AcademiaAdminController::class, 'storeUniversity'])->name('admin.universities.store');
@@ -91,43 +79,43 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth:web', 'role:admin', 'a
         Route::delete('/jobs/{id}', [AcademiaAdminController::class, 'destroyJob'])->name('admin.jobs.destroy');
     });
 
-    Route::prefix('partners')->group(function () {
+    Route::prefix('partners')->group(function (): void {
         Route::get('/', [PartnerController::class, 'index'])->name('admin.partners.index');
         Route::post('/store', [PartnerController::class, 'store'])->name('admin.partners.store'); // Create & Update handles here
-        Route::get('/delete/{id}', [PartnerController::class, 'destroy'])->name('admin.partners.delete');
+        Route::delete('/delete/{id}', [PartnerController::class, 'destroy'])->name('admin.partners.delete');
     });
 
-    Route::prefix('categories')->group(function () {
+    Route::prefix('categories')->group(function (): void {
         Route::get('/psychology', [IndustryCategoryController::class, 'psychology'])->name('admin.categories.psychology');
         Route::get('/neuroscience', [IndustryCategoryController::class, 'neuroscience'])->name('admin.categories.neuroscience');
         Route::post('/section/store', [IndustryCategoryController::class, 'storeSection'])->name('admin.sections.store');
         Route::post('/category/store', [IndustryCategoryController::class, 'storeCategory'])->name('admin.categories.store');
-        Route::get('/section/delete/{id}', [IndustryCategoryController::class, 'destroySection'])->name('admin.sections.delete');
-        Route::get('/category/delete/{id}', [IndustryCategoryController::class, 'destroyCategory'])->name('admin.categories.delete');
+        Route::delete('/section/delete/{id}', [IndustryCategoryController::class, 'destroySection'])->name('admin.sections.delete');
+        Route::delete('/category/delete/{id}', [IndustryCategoryController::class, 'destroyCategory'])->name('admin.categories.delete');
     });
 
-    Route::prefix('biotech')->group(function () {
+    Route::prefix('biotech')->group(function (): void {
         Route::get('/psychology', [BiotechController::class, 'psychology'])->name('admin.biotech.psychology');
         Route::get('/neuroscience', [BiotechController::class, 'neuroscience'])->name('admin.biotech.neuroscience');
         Route::post('/store', [BiotechController::class, 'store'])->name('admin.biotech.store');
-        Route::get('/delete/{id}', [BiotechController::class, 'destroy'])->name('admin.biotech.delete');
+        Route::delete('/delete/{id}', [BiotechController::class, 'destroy'])->name('admin.biotech.delete');
     });
 
-    Route::prefix('pharma')->group(function () {
+    Route::prefix('pharma')->group(function (): void {
         Route::get('/psychology', [IndustryPharmaController::class, 'psychology'])->name('admin.pharma.psychology');
         Route::get('/neuroscience', [IndustryPharmaController::class, 'neuroscience'])->name('admin.pharma.neuroscience');
         Route::post('/store', [IndustryPharmaController::class, 'store'])->name('admin.pharma.store');
-        Route::get('/delete/{id}', [IndustryPharmaController::class, 'destroy'])->name('admin.pharma.delete');
+        Route::delete('/delete/{id}', [IndustryPharmaController::class, 'destroy'])->name('admin.pharma.delete');
     });
 
-    Route::prefix('publications')->group(function () {
+    Route::prefix('publications')->group(function (): void {
         Route::get('/psychology', [IndustryPublicationController::class, 'psychology'])->name('admin.publications.psychology');
         Route::get('/neuroscience', [IndustryPublicationController::class, 'neuroscience'])->name('admin.publications.neuroscience');
         Route::post('/store', [IndustryPublicationController::class, 'store'])->name('admin.publications.store');
-        Route::get('/delete/{id}', [IndustryPublicationController::class, 'destroy'])->name('admin.publications.delete');
+        Route::delete('/delete/{id}', [IndustryPublicationController::class, 'destroy'])->name('admin.publications.delete');
     });
 
-    Route::prefix('pages')->group(function () {
+    Route::prefix('pages')->group(function (): void {
         Route::get('/{slug}', [PagesController::class, 'edit'])->name('admin.pages.edit');
         Route::post('/update/{id}', [PagesController::class, 'update'])->name('admin.pages.update');
     });

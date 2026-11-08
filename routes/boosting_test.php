@@ -10,6 +10,7 @@ use App\Models\IndustrySections;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\Advertising\NewsfeedAdInjector;
+use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +37,7 @@ Route::get('/newsfeed-preview', function (Request $request) {
     $cursor = $request->input('cursor');
 
     $posts = Post::query()
+        ->where('visibility', 'public')
         ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
         ->with([
             'user:id,username,first_name,last_name,profile_image,title',
@@ -46,28 +48,26 @@ Route::get('/newsfeed-preview', function (Request $request) {
         ->orderByDesc('id')
         ->cursorPaginate(perPage: $perPage, cursor: $cursor);
 
-    $feedItems = collect($posts->items())->map(function ($post) {
-        return [
-            'id' => $post->id,
-            'is_sponsored' => false,
-            'user' => $post->user,
-            'description' => $post->description,
-            'visibility' => $post->visibility ?? 'public',
-            'total_like' => $post->total_like ?? 0,
-            'total_comment' => $post->total_comment ?? 0,
-            'media' => $post->media,
-            'created_at' => $post->created_at,
-        ];
-    });
+    $feedItems = collect($posts->items())->map(fn ($post): array => [
+        'id' => $post->id,
+        'is_sponsored' => false,
+        'user' => $post->user,
+        'description' => $post->description,
+        'visibility' => $post->visibility ?? 'public',
+        'total_like' => $post->total_like ?? 0,
+        'total_comment' => $post->total_comment ?? 0,
+        'media' => $post->media,
+        'created_at' => $post->created_at,
+    ]);
 
     $injector = app(NewsfeedAdInjector::class);
     // Client-side IAB viewable tracking: do not record impressions on blind page reload
     // For cursor batch of 8 posts, inject 1 ad per batch to maintain clean cadence
     $previewUser = auth()->user() ?? User::where('email', 'niaz.softvence@gmail.com')->first() ?? User::first();
     $maxAds = $perPage >= 15 ? 2 : 1;
-    $seenCampaignIds = array_filter(array_map('intval', explode(',', (string) $request->input('seen_campaign_ids', ''))));
+    $seenCampaignIds = array_filter(array_map(intval(...), explode(',', (string) $request->input('seen_campaign_ids', ''))));
     $sessionSeen = session('newsfeed_seen_campaigns', []);
-    if (empty($seenCampaignIds) && ! empty($sessionSeen)) {
+    if ($seenCampaignIds === [] && ! empty($sessionSeen)) {
         $seenCampaignIds = $sessionSeen;
     }
 
@@ -162,7 +162,7 @@ Route::get('/product-feed-preview', function (Request $request) {
                 $secQuery->where('category_id', (int) $categoryId);
             }
             if ($search) {
-                $secQuery->where(function ($q) use ($search) {
+                $secQuery->where(function ($q) use ($search): void {
                     $q->where('product_name', 'LIKE', "%{$search}%")
                         ->orWhere('description', 'LIKE', "%{$search}%")
                         ->orWhere('product_id', 'LIKE', "%{$search}%");
@@ -180,9 +180,7 @@ Route::get('/product-feed-preview', function (Request $request) {
                     ->all()
                 : [];
 
-            $transformed = $paginated->getCollection()->map(function ($p) use ($likedIds) {
-                return (new IndustryProductResource($p, $likedIds))->resolve();
-            });
+            $transformed = $paginated->getCollection()->map(fn ($p) => (new IndustryProductResource($p, $likedIds))->resolve());
             $paginated->setCollection($transformed);
 
             $html = '';
@@ -213,7 +211,7 @@ Route::get('/product-feed-preview', function (Request $request) {
             ->feedOrder();
 
         if ($search) {
-            $allQuery->where(function ($q) use ($search) {
+            $allQuery->where(function ($q) use ($search): void {
                 $q->where('product_name', 'LIKE', "%{$search}%")
                     ->orWhere('description', 'LIKE', "%{$search}%")
                     ->orWhere('product_id', 'LIKE', "%{$search}%");
@@ -231,9 +229,7 @@ Route::get('/product-feed-preview', function (Request $request) {
                 ->all()
             : [];
 
-        $transformed = $paginated->getCollection()->map(function ($p) use ($likedIds) {
-            return (new IndustryProductResource($p, $likedIds))->resolve();
-        });
+        $transformed = $paginated->getCollection()->map(fn ($p) => (new IndustryProductResource($p, $likedIds))->resolve());
         $paginated->setCollection($transformed);
 
         $html = '';
@@ -284,16 +280,8 @@ Route::get('/product-feed-preview', function (Request $request) {
         ->orderBy('id')
         ->get();
 
-    // Auto-expire products whose boost or new release expired
-    IndustryProduct::where('is_boosted', true)
-        ->whereNotNull('boost_expires_at')
-        ->where('boost_expires_at', '<=', now())
-        ->update(['is_boosted' => false]);
-
-    IndustryProduct::where('is_new_release', true)
-        ->whereNotNull('new_release_expires_at')
-        ->where('new_release_expires_at', '<=', now())
-        ->update(['is_new_release' => false]);
+    // Expiration cleanup is handled by scheduled tasks (CleanExpiredBoosts)
+    // Read-only GET requests must not mutate database state
 
     $currentUser = auth('api')->user() ?? auth('web')->user() ?? User::where('email', 'niaz.softvence@gmail.com')->first();
 
@@ -319,7 +307,7 @@ Route::get('/product-feed-preview', function (Request $request) {
                 $secQuery->where('category_id', (int) $categoryId);
             }
             if ($search) {
-                $secQuery->where(function ($q) use ($search) {
+                $secQuery->where(function ($q) use ($search): void {
                     $q->where('product_name', 'LIKE', "%{$search}%")
                         ->orWhere('description', 'LIKE', "%{$search}%")
                         ->orWhere('product_id', 'LIKE', "%{$search}%");
@@ -338,13 +326,11 @@ Route::get('/product-feed-preview', function (Request $request) {
                     ->all()
                 : [];
 
-            $transformedSec = $sectionPaginated->getCollection()->map(function ($p) use ($likedIds) {
-                return (new IndustryProductResource($p, $likedIds))->resolve();
-            });
+            $transformedSec = $sectionPaginated->getCollection()->map(fn ($p) => (new IndustryProductResource($p, $likedIds))->resolve());
             $sectionPaginated->setCollection($transformedSec);
             $sectionPaginatedProducts = $sectionPaginated;
 
-            if ($request->ajax() || $request->wantsJson() || $request->has('ajax')) {
+            if ($request->has('ajax')) {
                 $html = '';
                 foreach ($sectionPaginatedProducts as $prod) {
                     $html .= view('partials.product-feed-card', [
@@ -391,9 +377,7 @@ Route::get('/product-feed-preview', function (Request $request) {
                 ->all()
             : [];
 
-        $transformedTop = $secTopProds->map(function ($p) use ($secLikedIds) {
-            return (new IndustryProductResource($p, $secLikedIds))->resolve();
-        });
+        $transformedTop = $secTopProds->map(fn ($p) => (new IndustryProductResource($p, $secLikedIds))->resolve());
 
         $groupedBySection[] = [
             'section' => $sec,
@@ -413,7 +397,7 @@ Route::get('/product-feed-preview', function (Request $request) {
         ->feedOrder();
 
     if ($search) {
-        $allQuery->where(function ($q) use ($search) {
+        $allQuery->where(function ($q) use ($search): void {
             $q->where('product_name', 'LIKE', "%{$search}%")
                 ->orWhere('description', 'LIKE', "%{$search}%")
                 ->orWhere('product_id', 'LIKE', "%{$search}%");
@@ -432,12 +416,10 @@ Route::get('/product-feed-preview', function (Request $request) {
             ->all()
         : [];
 
-    $transformedAll = $allPaginated->getCollection()->map(function ($p) use ($allLikedIds) {
-        return (new IndustryProductResource($p, $allLikedIds))->resolve();
-    });
+    $transformedAll = $allPaginated->getCollection()->map(fn ($p) => (new IndustryProductResource($p, $allLikedIds))->resolve());
     $allPaginated->setCollection($transformedAll);
 
-    if ($request->ajax() || $request->wantsJson() || $request->has('ajax')) {
+    if ($request->has('ajax')) {
         $html = '';
         foreach ($allPaginated as $prod) {
             $html .= view('partials.product-feed-card', [
@@ -511,17 +493,11 @@ Route::get('/boosting-showcase', function () {
     abort(404, 'Boosting showcase documentation file not found.');
 })->name('boosting.showcase');
 
-Route::get('/admin/boosting-showcase', function () {
-    return view('admin.boosting-showcase');
-})->name('admin.boosting.showcase');
+Route::get('/admin/boosting-showcase', fn (): Factory|\Illuminate\Contracts\View\View => view('admin.boosting-showcase'))->name('admin.boosting.showcase');
 
 // =========================================================================
 // 4. Product Details & Like Simulation Endpoints (for Blade Preview)
 // =========================================================================
-Route::get('/preview/products/{id}/details', function (Request $request, int|string $id) {
-    return app(IndustryProductController::class)->show($request, $id);
-})->name('preview.product.details');
+Route::get('/preview/products/{id}/details', fn (Request $request, int|string $id) => app(IndustryProductController::class)->show($request, $id))->name('preview.product.details');
 
-Route::post('/preview/products/{id}/like', function (Request $request, int|string $id) {
-    return app(IndustryProductController::class)->toggleLike($request, $id);
-})->name('preview.product.like');
+Route::post('/preview/products/{id}/like', fn (Request $request, int|string $id) => app(IndustryProductController::class)->toggleLike($request, $id))->name('preview.product.like');
