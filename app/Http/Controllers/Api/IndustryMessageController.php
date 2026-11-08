@@ -26,7 +26,7 @@ class IndustryMessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+        if (($error = $this->authorizeConversation($conversation, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -68,7 +68,7 @@ class IndustryMessageController extends Controller
             $messageItems = $messageItems->reverse();
         }
 
-        $data = $messageItems->values()->map(function (IndustryMessage $message) use ($currentUser, $isIndustryOwner) {
+        $data = $messageItems->values()->map(function (IndustryMessage $message) use ($currentUser, $isIndustryOwner): array {
             $isMine = $isIndustryOwner
                 ? ($message->sender_type === 'industry')
                 : ($message->sender_type === 'user');
@@ -135,7 +135,7 @@ class IndustryMessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+        if (($error = $this->authorizeConversation($conversation, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -150,8 +150,10 @@ class IndustryMessageController extends Controller
             'reply_to_id' => [
                 'nullable',
                 'integer',
-                function (string $attribute, mixed $value, Closure $fail) use ($conversation, $isIndustryOwner): void {
-                    $query = $isIndustryOwner
+                function (string $attribute, mixed $value, Closure $fail) use ($conversation, $request): void {
+                    $user = $request->user();
+                    $isOwner = $user && $this->isIndustryOwner($user, $conversation);
+                    $query = $isOwner
                         ? $conversation->visibleMessagesForIndustry()
                         : $conversation->visibleMessagesForUser();
                     if ($value && ! $query->where('id', $value)->exists()) {
@@ -240,7 +242,7 @@ class IndustryMessageController extends Controller
         $currentUser = $request->user();
         $conversation = $message->conversation;
 
-        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+        if (($error = $this->authorizeConversation($conversation, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -279,7 +281,7 @@ class IndustryMessageController extends Controller
         $currentUser = $request->user();
         $conversation = $message->conversation;
 
-        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+        if (($error = $this->authorizeConversation($conversation, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -320,7 +322,7 @@ class IndustryMessageController extends Controller
         $currentUser = $request->user();
         $conversation = $message->conversation;
 
-        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+        if (($error = $this->authorizeConversation($conversation, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -368,7 +370,7 @@ class IndustryMessageController extends Controller
 
     private function replyPreview(?IndustryMessage $replyTo): ?array
     {
-        if (! $replyTo) {
+        if (! $replyTo instanceof IndustryMessage) {
             return null;
         }
 
@@ -388,11 +390,11 @@ class IndustryMessageController extends Controller
     {
         return $message->reactions
             ->groupBy('reaction')
-            ->map(fn ($reactions, string $reaction) => [
+            ->map(fn ($reactions, string $reaction): array => [
                 'reaction' => $reaction,
                 'count' => $reactions->count(),
                 'users' => $reactions
-                    ->map(fn ($item) => [
+                    ->map(fn ($item): array => [
                         'id' => $item->user_id,
                         'name' => trim(($item->user?->first_name ?? '').' '.($item->user?->last_name ?? '')),
                     ])
@@ -418,6 +420,43 @@ class IndustryMessageController extends Controller
 
     private function extractMediaDuration(UploadedFile $file): ?int
     {
+        $path = $file->getRealPath();
+        if ($path && file_exists($path)) {
+            $fp = @fopen($path, 'rb');
+            if ($fp) {
+                $header = fread($fp, 12);
+                if (strlen($header) === 12 && str_starts_with($header, 'RIFF') && substr($header, 8, 4) === 'WAVE') {
+                    $byteRate = null;
+                    $dataSize = null;
+                    while (! feof($fp)) {
+                        $chunkHeader = fread($fp, 8);
+                        if (strlen($chunkHeader) < 8) {
+                            break;
+                        }
+                        $chunkId = substr($chunkHeader, 0, 4);
+                        $chunkSize = unpack('V', substr($chunkHeader, 4, 4))[1] ?? 0;
+                        if ($chunkId === 'fmt ') {
+                            $fmtData = fread($fp, $chunkSize);
+                            if (strlen($fmtData) >= 12) {
+                                $byteRate = unpack('V', substr($fmtData, 8, 4))[1] ?? null;
+                            }
+                        } elseif ($chunkId === 'data') {
+                            $dataSize = $chunkSize;
+                            break;
+                        } else {
+                            fseek($fp, $chunkSize, SEEK_CUR);
+                        }
+                    }
+                    fclose($fp);
+                    if ($byteRate && $dataSize) {
+                        return (int) round($dataSize / $byteRate);
+                    }
+                } else {
+                    fclose($fp);
+                }
+            }
+        }
+
         $command = sprintf(
             'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s 2>&1',
             escapeshellarg($file->getRealPath())
@@ -432,4 +471,3 @@ class IndustryMessageController extends Controller
         return (int) round((float) trim($output[0]));
     }
 }
-

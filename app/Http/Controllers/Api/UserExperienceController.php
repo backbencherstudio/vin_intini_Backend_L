@@ -35,13 +35,11 @@ class UserExperienceController extends Controller
 
         $grouped = $experiences
             ->groupBy('company_id')
-            ->map(function ($companyExperiences) {
+            ->map(function ($companyExperiences): array {
                 $company = $companyExperiences->first()->company;
                 $latestExperience = $companyExperiences->first();
 
-                $experiences = $companyExperiences->values()->map(function ($experience) {
-                    return $this->formatExperience($experience);
-                });
+                $experiences = $companyExperiences->values()->map(fn ($experience): array => $this->formatExperience($experience));
 
                 return [
                     'company' => $company,
@@ -68,7 +66,7 @@ class UserExperienceController extends Controller
         $viewer = auth('api')->user();
 
         $targetUser = User::with('profile:user_id,privacy_profile_activity')
-            ->where(function ($query) use ($identifier) {
+            ->where(function ($query) use ($identifier): void {
                 $query->where('username', $identifier)
                     ->orWhere('id', $identifier);
             })
@@ -93,10 +91,10 @@ class UserExperienceController extends Controller
                 $canSee = true;
             } elseif ($privacy === 'only_connected' && $viewer) {
                 $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
-                    ->where(function ($q) use ($viewer, $actualUserId) {
-                        $q->where(function ($q1) use ($viewer, $actualUserId) {
+                    ->where(function ($q) use ($viewer, $actualUserId): void {
+                        $q->where(function ($q1) use ($viewer, $actualUserId): void {
                             $q1->where('sender_id', $viewer->id)->where('receiver_id', $actualUserId);
-                        })->orWhere(function ($q2) use ($viewer, $actualUserId) {
+                        })->orWhere(function ($q2) use ($viewer, $actualUserId): void {
                             $q2->where('sender_id', $actualUserId)->where('receiver_id', $viewer->id);
                         });
                     })
@@ -136,13 +134,11 @@ class UserExperienceController extends Controller
 
         $grouped = $experiences
             ->groupBy('company_id')
-            ->map(function ($companyExperiences) {
+            ->map(function ($companyExperiences): array {
                 $company = $companyExperiences->first()->company;
                 $latestExperience = $companyExperiences->first();
 
-                $experiences = $companyExperiences->values()->map(function ($experience) {
-                    return $this->formatExperience($experience);
-                });
+                $experiences = $companyExperiences->values()->map(fn ($experience): array => $this->formatExperience($experience));
 
                 return [
                     'company' => $company,
@@ -208,7 +204,7 @@ class UserExperienceController extends Controller
 
     private function formatDuration(?Carbon $startDate, ?Carbon $endDate): ?string
     {
-        if (! $startDate || ! $endDate) {
+        if (! $startDate instanceof Carbon || ! $endDate instanceof Carbon) {
             return null;
         }
 
@@ -242,7 +238,7 @@ class UserExperienceController extends Controller
 
         $companies = Company::query()
             ->select(['id', 'name'])
-            ->when($search !== '', function ($query) use ($search) {
+            ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%");
             })
             ->orderBy('name')
@@ -265,7 +261,7 @@ class UserExperienceController extends Controller
 
         $skills = Skill::query()
             ->select(['id', 'name'])
-            ->when($search !== '', function ($query) use ($search) {
+            ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%");
             })
             ->orderBy('name')
@@ -293,7 +289,7 @@ class UserExperienceController extends Controller
                 'required',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $month = $request->input('start_month');
                     if ($value && $month) {
                         $startDate = Carbon::parse("1 {$month} {$value}");
@@ -314,7 +310,7 @@ class UserExperienceController extends Controller
                 'nullable',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $startYear = $request->input('start_year');
                     $startMonth = $request->input('start_month');
                     $endMonth = $request->input('end_month');
@@ -438,7 +434,7 @@ class UserExperienceController extends Controller
                 'required',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $month = $request->input('start_month');
                     if ($value && $month) {
                         $startDate = Carbon::parse("1 {$month} {$value}");
@@ -459,7 +455,7 @@ class UserExperienceController extends Controller
                 'nullable',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $startYear = $request->input('start_year');
                     $startMonth = $request->input('start_month');
                     $endMonth = $request->input('end_month');

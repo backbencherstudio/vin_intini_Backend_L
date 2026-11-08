@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Admin\IndustryApiController;
 use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\ConnectionController;
@@ -39,6 +41,7 @@ Route::post('/group/join', [GroupController::class, 'joinGroup']);
 Route::post('/group/leave', [GroupController::class, 'leaveGroup']);
 // group invite routes
 Route::get('/group-invite-users/{id}', [GroupController::class, 'inviteableUsers']);
+Route::post('/group-invite-users/{id}', [GroupController::class, 'sendInvitation']);
 Route::post('/group-invite-user/{id}', [GroupController::class, 'sendInvitation']);
 Route::get('/group-invitations/requests', [GroupController::class, 'invitationRequests']);
 Route::post('/group-invitations/{invitationId}/accept', [GroupController::class, 'acceptInvitation']);
@@ -103,7 +106,7 @@ Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFaciliti
 Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
 
 // industry routes
-Route::prefix('psychology-network/industry')->group(function () {
+Route::prefix('psychology-network/industry')->group(function (): void {
     Route::get('/biotech', [IndustryApiController::class, 'getPsychologyBiotech']);
     Route::get('/pharma', [IndustryApiController::class, 'getPsychologyPharma']);
     Route::get('/publications', [IndustryApiController::class, 'getPsychologyPublications']);
@@ -114,7 +117,7 @@ Route::prefix('psychology-network/industry')->group(function () {
     Route::get('/pub-partners', [IndustryApiController::class, 'getPsychologyPubPartners']);
 });
 
-Route::prefix('neuroscience-network/industry')->group(function () {
+Route::prefix('neuroscience-network/industry')->group(function (): void {
     Route::get('/biotech', [IndustryApiController::class, 'getNeuroscienceBiotech']);
     Route::get('/pharma', [IndustryApiController::class, 'getNeurosciencePharma']);
     Route::get('/publications', [IndustryApiController::class, 'getNeurosciencePublications']);
@@ -137,7 +140,7 @@ Route::post('/user/job-preference', [UserJobPreferenceController::class, 'savePr
 Route::delete('/user/job-preference', [UserJobPreferenceController::class, 'clearPreference']);
 
 // pro Industry job post
-Route::prefix('industry')->group(function () {
+Route::prefix('industry')->group(function (): void {
     Route::get('jobsfeed', [JobsFeedController::class, 'jobsFeed']); // global route
     Route::get('jobsfeed/recommended', [JobsFeedController::class, 'recommendedJobs']); // recommended jobs based on preferences
     Route::get('jobs/recommended', [JobsFeedController::class, 'recommendedJobs']); // alias
@@ -173,7 +176,7 @@ Route::prefix('industry')->group(function () {
 });
 
 // industry analytics routes
-Route::prefix('industry/analytics')->group(function () {
+Route::prefix('industry/analytics')->group(function (): void {
     Route::get('/job-overviews', [IndustryAnalyticsController::class, 'jobOverview']);
     Route::get('/advertisements', [IndustryAnalyticsController::class, 'advertisements']);
     Route::get('/profile-insights', [IndustryAnalyticsController::class, 'profileInsights']);
@@ -181,7 +184,7 @@ Route::prefix('industry/analytics')->group(function () {
 });
 
 // Pro Industry Products
-Route::prefix('industry')->group(function () {
+Route::prefix('industry')->group(function (): void {
     // Public / User Feed & Interactions
     Route::get('product-feed', [IndustryProductController::class, 'productFeed']);
     Route::get('feed', [IndustryProductController::class, 'productFeed']);
@@ -194,7 +197,7 @@ Route::prefix('industry')->group(function () {
     Route::get('boost-campaigns', [ProductBoostController::class, 'myCampaigns']);
 
     // Pro Industry Products Dashboard & Management
-    Route::prefix('products')->group(function () {
+    Route::prefix('products')->group(function (): void {
         Route::get('dashboard', [IndustryProductController::class, 'dashboard']);
         Route::get('my-listings', [IndustryProductController::class, 'myListings']);
         Route::get('sections', [IndustryProductController::class, 'dropdownSections']);
@@ -224,7 +227,7 @@ Route::prefix('industry')->group(function () {
 });
 
 // Industry Profile Tab Routes (Job Posts, Products Advertisement, Publications with Cursor Pagination)
-Route::prefix('industry')->group(function () {
+Route::prefix('industry')->group(function (): void {
     Route::get('{identifier}/jobs', [IndustryProfileController::class, 'jobs']);
     Route::get('{identifier}/products', [IndustryProfileController::class, 'products']);
     Route::get('{identifier}/publications', [IndustryProfileController::class, 'publications']);

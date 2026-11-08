@@ -69,7 +69,7 @@ class UserEducationController extends Controller
         $viewer = auth('api')->user();
 
         $targetUser = User::with('profile:user_id,privacy_profile_activity')
-            ->where(function ($query) use ($identifier) {
+            ->where(function ($query) use ($identifier): void {
                 $query->where('username', $identifier)
                     ->orWhere('id', $identifier);
             })
@@ -94,10 +94,10 @@ class UserEducationController extends Controller
                 $canSee = true;
             } elseif ($privacy === 'only_connected' && $viewer) {
                 $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
-                    ->where(function ($q) use ($viewer, $actualUserId) {
-                        $q->where(function ($q1) use ($viewer, $actualUserId) {
+                    ->where(function ($q) use ($viewer, $actualUserId): void {
+                        $q->where(function ($q1) use ($viewer, $actualUserId): void {
                             $q1->where('sender_id', $viewer->id)->where('receiver_id', $actualUserId);
-                        })->orWhere(function ($q2) use ($viewer, $actualUserId) {
+                        })->orWhere(function ($q2) use ($viewer, $actualUserId): void {
                             $q2->where('sender_id', $actualUserId)->where('receiver_id', $viewer->id);
                         });
                     })
@@ -157,7 +157,7 @@ class UserEducationController extends Controller
                 'required',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $month = $request->input('start_month');
                     if ($value && $month) {
                         $startDate = Carbon::parse("1 {$month} {$value}");
@@ -178,7 +178,7 @@ class UserEducationController extends Controller
                 'nullable',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $startYear = $request->input('start_year');
                     $startMonth = $request->input('start_month');
                     $endMonth = $request->input('end_month');
@@ -291,7 +291,7 @@ class UserEducationController extends Controller
                 'required',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $month = $request->input('start_month');
                     if ($value && $month) {
                         $startDate = Carbon::parse("1 {$month} {$value}");
@@ -312,7 +312,7 @@ class UserEducationController extends Controller
                 'nullable',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $startYear = $request->input('start_year');
                     $startMonth = $request->input('start_month');
                     $endMonth = $request->input('end_month');

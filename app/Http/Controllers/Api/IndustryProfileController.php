@@ -29,7 +29,7 @@ class IndustryProfileController extends Controller
     {
         $industry = $this->findIndustry($identifier);
 
-        if (! $industry) {
+        if (! $industry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Industry not found.',
@@ -41,11 +41,11 @@ class IndustryProfileController extends Controller
         $query = IndustryJobPost::query()
             ->where('industry_id', $industry->id)
             ->where('status', IndustryJobPostStatus::PUBLISHED)
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('announcement_start_date')
                     ->orWhere('announcement_start_date', '<=', $today);
             })
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('announcement_end_date')
                     ->orWhere('announcement_end_date', '>=', $today);
             });
@@ -53,7 +53,7 @@ class IndustryProfileController extends Controller
         // Optional search and filters
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('job_title', 'LIKE', "%{$search}%")
                     ->orWhere('job_id', $search)
                     ->orWhere('position', 'LIKE', "%{$search}%");
@@ -107,7 +107,7 @@ class IndustryProfileController extends Controller
                 ->all();
         }
 
-        $isOwnIndustry = (bool) ($currentUser && (int) $industry->created_by === (int) $currentUser->id);
+        $isOwnIndustry = $currentUser && (int) $industry->created_by === (int) $currentUser->id;
         $industryInfo = [
             'id' => $industry->id,
             'name' => $industry->name,
@@ -116,7 +116,7 @@ class IndustryProfileController extends Controller
             'is_own_industry' => $isOwnIndustry,
         ];
 
-        $data = $paginated->getCollection()->map(function ($job) use ($likedJobIds, $savedJobIds, $appliedJobs, $industryInfo) {
+        $data = $paginated->getCollection()->map(function ($job) use ($likedJobIds, $savedJobIds, $appliedJobs, $industryInfo): array {
             $isApplied = isset($appliedJobs[$job->id]);
             $applicationStatus = null;
             if ($isApplied) {
@@ -176,7 +176,7 @@ class IndustryProfileController extends Controller
     {
         $industry = $this->findIndustry($identifier);
 
-        if (! $industry) {
+        if (! $industry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Industry not found.',
@@ -207,7 +207,7 @@ class IndustryProfileController extends Controller
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
             $sanitized = addcslashes($search, '%_');
-            $query->where(function ($q) use ($search, $sanitized) {
+            $query->where(function ($q) use ($search, $sanitized): void {
                 $q->where('product_id', $search)
                     ->orWhere('product_id', 'LIKE', "{$sanitized}%")
                     ->orWhere('product_name', 'LIKE', "%{$sanitized}%");
@@ -248,7 +248,7 @@ class IndustryProfileController extends Controller
                 ->all();
         }
 
-        $isOwnIndustry = (bool) ($currentUser && (int) $industry->created_by === (int) $currentUser->id);
+        $isOwnIndustry = $currentUser && (int) $industry->created_by === (int) $currentUser->id;
         $industryInfo = [
             'id' => $industry->id,
             'name' => $industry->name,
@@ -257,7 +257,7 @@ class IndustryProfileController extends Controller
             'is_own_industry' => $isOwnIndustry,
         ];
 
-        $data = $paginated->getCollection()->map(function ($product) use ($likedProductIds, $industryInfo) {
+        $data = $paginated->getCollection()->map(function ($product) use ($likedProductIds, $industryInfo): array {
             $imageUrl = null;
             if ($product->image) {
                 $imageUrl = str_starts_with($product->image, 'http')
@@ -312,7 +312,7 @@ class IndustryProfileController extends Controller
     {
         $industry = $this->findIndustry($identifier);
 
-        if (! $industry) {
+        if (! $industry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Industry not found.',
@@ -320,7 +320,6 @@ class IndustryProfileController extends Controller
         }
 
         $currentUser = auth('api')->user() ?? auth()->user();
-        $isOwner = $currentUser && ((int) $industry->created_by === (int) $currentUser->id);
 
         $query = Publication::query()
             ->where('industry_id', $industry->id)
@@ -329,7 +328,7 @@ class IndustryProfileController extends Controller
         // Optional search and filters
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('title', 'LIKE', "%{$search}%")
                     ->orWhere('publication_id', 'LIKE', "%{$search}%");
             });
@@ -363,9 +362,7 @@ class IndustryProfileController extends Controller
                 ->all();
         }
 
-        $data = $paginated->getCollection()->map(function ($pub) use ($likedIds) {
-            return (new PublicationResource($pub, $likedIds))->resolve();
-        });
+        $data = $paginated->getCollection()->map(fn ($pub) => (new PublicationResource($pub, $likedIds))->resolve());
 
         return response()->json([
             'success' => true,
@@ -395,7 +392,7 @@ class IndustryProfileController extends Controller
     {
         $industry = $this->findIndustry($identifier);
 
-        if (! $industry) {
+        if (! $industry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Industry not found.',
@@ -412,7 +409,7 @@ class IndustryProfileController extends Controller
         }
 
         if ($currentUser) {
-            $query->whereDoesntHave('follows', function ($q) use ($currentUser) {
+            $query->whereDoesntHave('follows', function ($q) use ($currentUser): void {
                 $q->where('user_id', $currentUser->id);
             });
         }
@@ -420,7 +417,7 @@ class IndustryProfileController extends Controller
         // Optional search by name or tagline
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('name', 'LIKE', "%{$search}%")
                     ->orWhere('tagline', 'LIKE', "%{$search}%");
             });
@@ -451,9 +448,7 @@ class IndustryProfileController extends Controller
         $total = count($allIds);
 
         // Deterministic pseudo-random sorting based on seed
-        usort($allIds, function ($a, $b) use ($seed) {
-            return strcmp(md5($seed.'_'.$a), md5($seed.'_'.$b));
-        });
+        usort($allIds, fn ($a, $b): int => strcmp(md5($seed.'_'.$a), md5($seed.'_'.$b)));
 
         $slice = array_slice($allIds, $offset, $perPage);
         $hasMorePages = ($offset + count($slice)) < $total;
@@ -466,7 +461,7 @@ class IndustryProfileController extends Controller
             ? (new Cursor(['offset' => max(0, $offset - $perPage), 'seed' => $seed]))->encode()
             : null;
 
-        $industries = ! empty($slice)
+        $industries = $slice !== []
             ? Industry::whereIn('id', $slice)
                 ->withCount('followers')
                 ->get()
@@ -477,22 +472,20 @@ class IndustryProfileController extends Controller
             ->map(fn ($id) => $industries->get($id))
             ->filter()
             ->values()
-            ->map(function (Industry $ind) {
-                return [
-                    'id' => $ind->id,
-                    'name' => $ind->name,
-                    'slug' => $ind->slug,
-                    'industry' => $ind->industry,
-                    'tagline' => $ind->tagline,
-                    'address' => $ind->address,
-                    'website' => $ind->website,
-                    'company_size' => $ind->company_size,
-                    'logo' => $ind->logo,
-                    'cover_image' => $ind->cover_image,
-                    'followers_count' => (int) ($ind->followers_count ?? 0),
-                    'is_following' => false,
-                ];
-            });
+            ->map(fn (Industry $ind): array => [
+                'id' => $ind->id,
+                'name' => $ind->name,
+                'slug' => $ind->slug,
+                'industry' => $ind->industry,
+                'tagline' => $ind->tagline,
+                'address' => $ind->address,
+                'website' => $ind->website,
+                'company_size' => $ind->company_size,
+                'logo' => $ind->logo,
+                'cover_image' => $ind->cover_image,
+                'followers_count' => (int) ($ind->followers_count ?? 0),
+                'is_following' => false,
+            ]);
 
         return response()->json([
             'success' => true,
@@ -523,6 +516,6 @@ class IndustryProfileController extends Controller
             return Industry::find((int) $identifier);
         }
 
-        return Industry::where('slug', (string) $identifier)->first();
+        return Industry::where('slug', $identifier)->first();
     }
 }

@@ -4,20 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Events\ConnectionRemoved;
 use App\Http\Controllers\Controller;
-use App\Mail\ConnectionRequestMail;
 use App\Models\Connection;
 use App\Models\Conversation;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserFollow;
 use App\Notifications\ConnectionRequestAcceptedNotification;
+use App\Notifications\ConnectionRequestEmailNotification;
 use App\Notifications\ConnectionRequestReceivedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class ConnectionController extends Controller
@@ -29,7 +28,6 @@ class ConnectionController extends Controller
         $sort = strtolower(trim((string) $request->query('sort', 'recent')));
         $perPage = $request->integer('limit', $request->integer('per_page', 10));
         $perPage = max(1, min($perPage, 100));
-        // $perPage = max(1, min((int) $request->integer('per_page', 10), 50));
         $page = max(1, (int) $request->integer('page', 1));
 
         $connections = Connection::query()
@@ -68,11 +66,9 @@ class ConnectionController extends Controller
         }
 
         $counterpartIds = $connections
-            ->map(function (Connection $connectionRequest) use ($currentUser) {
-                return $connectionRequest->sender_id === $currentUser->id
-                    ? $connectionRequest->receiver_id
-                    : $connectionRequest->sender_id;
-            })
+            ->map(fn (Connection $connectionRequest) => $connectionRequest->sender_id === $currentUser->id
+                ? $connectionRequest->receiver_id
+                : $connectionRequest->sender_id)
             ->unique()
             ->values();
 
@@ -82,7 +78,7 @@ class ConnectionController extends Controller
             ->pluck('following_id')
             ->toArray();
 
-        $items = $connections->map(function (Connection $connectionRequest) use ($currentUser) {
+        $items = $connections->map(function (Connection $connectionRequest) use ($currentUser): array {
             $counterpart = $connectionRequest->sender_id === $currentUser->id
                 ? $connectionRequest->receiver
                 : $connectionRequest->sender;
@@ -97,9 +93,7 @@ class ConnectionController extends Controller
         if ($search !== '') {
             $normalizedSearch = mb_strtolower($search);
 
-            $items = $items->filter(function (array $item) use ($normalizedSearch) {
-                return str_contains(mb_strtolower($item['search_name']), $normalizedSearch);
-            });
+            $items = $items->filter(fn (array $item): bool => str_contains(mb_strtolower($item['search_name']), $normalizedSearch));
         }
 
         $items = (match ($sort) {
@@ -226,11 +220,9 @@ class ConnectionController extends Controller
 
         if ($search !== '') {
             $normalizedSearch = mb_strtolower($search);
-            $items = $items->filter(function (array $item) use ($normalizedSearch): bool {
-                return str_contains(mb_strtolower($item['search_name']), $normalizedSearch)
-                    || str_contains(mb_strtolower($item['search_title']), $normalizedSearch)
-                    || str_contains(mb_strtolower($item['username']), $normalizedSearch);
-            });
+            $items = $items->filter(fn (array $item): bool => str_contains(mb_strtolower($item['search_name']), $normalizedSearch)
+                || str_contains(mb_strtolower($item['search_title']), $normalizedSearch)
+                || str_contains(mb_strtolower($item['username']), $normalizedSearch));
         }
 
         $totalFiltered = $items->count();
@@ -238,11 +230,9 @@ class ConnectionController extends Controller
 
         $currentPageRequests = $paginatedItems->pluck('request')->values();
 
-        $counterpartIds = $currentPageRequests->map(function (Connection $connectionRequest) use ($currentUser) {
-            return $connectionRequest->sender_id === $currentUser->id
-                ? $connectionRequest->receiver_id
-                : $connectionRequest->sender_id;
-        })->unique()->values();
+        $counterpartIds = $currentPageRequests->map(fn (Connection $connectionRequest) => $connectionRequest->sender_id === $currentUser->id
+            ? $connectionRequest->receiver_id
+            : $connectionRequest->sender_id)->unique()->values();
 
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
 
@@ -274,9 +264,7 @@ class ConnectionController extends Controller
             'message' => 'Connection requests retrieved successfully.',
             'status' => 'success',
             'data' => $currentPageRequests
-                ->map(function (Connection $connectionRequest) use ($currentUser, $mutualConnections) {
-                    return $this->formatConnectionRequest($connectionRequest, $currentUser->id, $mutualConnections, true);
-                })
+                ->map(fn (Connection $connectionRequest): array => $this->formatConnectionRequest($connectionRequest, $currentUser->id, $mutualConnections, true))
                 ->values(),
             'stats' => [
                 'total_requests' => $requests->count(),
@@ -300,16 +288,14 @@ class ConnectionController extends Controller
         $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
 
         $excludedUserIds = Connection::query()
-            ->where(function ($query) use ($currentUser) {
+            ->where(function ($query) use ($currentUser): void {
                 $query->where('sender_id', $currentUser->id)
                     ->orWhere('receiver_id', $currentUser->id);
             })
             ->whereIn('status', [Connection::STATUS_ACCEPTED, Connection::STATUS_PENDING])
             ->get(['sender_id', 'receiver_id'])
             ->toBase()
-            ->map(function ($conn) use ($currentUser) {
-                return $conn->sender_id === $currentUser->id ? $conn->receiver_id : $conn->sender_id;
-            })
+            ->map(fn ($conn) => $conn->sender_id === $currentUser->id ? $conn->receiver_id : $conn->sender_id)
             ->unique()
             ->values();
 
@@ -319,22 +305,15 @@ class ConnectionController extends Controller
             ->where('user_profiles.privacy_profile_visibility', 'everyone')
             ->where('users.id', '!=', $currentUser->id)
             ->whereNull('users.deleted_at')
-            ->when($excludedUserIds->isNotEmpty(), function ($query) use ($excludedUserIds) {
+            ->when($excludedUserIds->isNotEmpty(), function ($query) use ($excludedUserIds): void {
                 $query->whereNotIn('users.id', $excludedUserIds->all());
             })
-            // ->when($search !== '', function ($query) use ($search) {
-            //     $query->where(function ($q) use ($search) {
-            //         $q->where('users.first_name', 'like', $search . '%')
-            //             ->orWhere('users.last_name', 'like', $search . '%')
-            //             ->orWhere('users.title', 'like', '%' . $search . '%');
-            //     });
-            // })
-            ->when($search !== '', function ($query) use ($search) {
+            ->when($search !== '', function ($query) use ($search): void {
                 $searchTerms = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY);
 
-                $query->where(function ($q) use ($searchTerms) {
+                $query->where(function ($q) use ($searchTerms): void {
                     foreach ($searchTerms as $term) {
-                        $q->where(function ($subQuery) use ($term) {
+                        $q->where(function ($subQuery) use ($term): void {
                             $subQuery
                                 ->where('users.first_name', 'like', $term.'%')
                                 ->orWhere('users.last_name', 'like', $term.'%')
@@ -356,7 +335,7 @@ class ConnectionController extends Controller
 
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $candidateIds);
 
-        $data = $paginator->getCollection()->map(function (User $candidate) use ($mutualConnections) {
+        $data = $paginator->getCollection()->map(function (User $candidate) use ($mutualConnections): array {
             $mutualConnectionData = $mutualConnections[$candidate->id] ?? ['count' => 0, 'preview' => []];
 
             return [
@@ -395,17 +374,16 @@ class ConnectionController extends Controller
         $search = trim((string) $request->query('search', ''));
         $perPage = $request->integer('limit', $request->integer('per_page', 10));
         $perPage = max(1, min($perPage, 100));
-        // $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
 
         $pendingQuery = Connection::query()
             ->pending()
             ->where('sender_id', $currentUser->id)
-            ->whereHas('receiver', function ($query) use ($search) {
+            ->whereHas('receiver', function ($query) use ($search): void {
 
                 $query->whereHas('profile');
                 $query->whereNull('deleted_at');
                 if ($search !== '') {
-                    $query->where(function ($q) use ($search) {
+                    $query->where(function ($q) use ($search): void {
                         $q->where('first_name', 'like', '%'.$search.'%')
                             ->orWhere('last_name', 'like', '%'.$search.'%')
                             ->orWhere('title', 'like', '%'.$search.'%');
@@ -420,7 +398,7 @@ class ConnectionController extends Controller
         $candidateIds = $paginator->getCollection()->pluck('receiver_id')->values();
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $candidateIds);
 
-        $data = $paginator->getCollection()->map(function (Connection $connection) use ($mutualConnections) {
+        $data = $paginator->getCollection()->map(function (Connection $connection) use ($mutualConnections): array {
             $candidate = $connection->receiver;
             $mutualConnectionData = $mutualConnections[$candidate->id] ?? ['count' => 0, 'preview' => []];
 
@@ -470,13 +448,13 @@ class ConnectionController extends Controller
 
         $targetUser = User::query()->findOrFail($validated['user_id']);
 
-        $result = DB::transaction(function () use ($currentUser, $targetUser) {
+        $result = DB::transaction(function () use ($currentUser, $targetUser): array {
             $alreadyConnected = Connection::query()
                 ->accepted()
-                ->where(function ($query) use ($currentUser, $targetUser) {
+                ->where(function ($query) use ($currentUser, $targetUser): void {
                     $query->where('sender_id', $currentUser->id)
                         ->where('receiver_id', $targetUser->id)
-                        ->orWhere(function ($query) use ($currentUser, $targetUser) {
+                        ->orWhere(function ($query) use ($currentUser, $targetUser): void {
                             $query->where('sender_id', $targetUser->id)
                                 ->where('receiver_id', $currentUser->id);
                         });
@@ -546,7 +524,7 @@ class ConnectionController extends Controller
             $targetUser->notify(new ConnectionRequestReceivedNotification($result['connection'], $currentUser));
 
             // Optionally, send an email notification for the connection request
-            Mail::to($targetUser->email)->queue(new ConnectionRequestMail($currentUser, $targetUser, $result['connection']));
+            $targetUser->notify(new ConnectionRequestEmailNotification($currentUser, $targetUser, $result['connection']));
         }
 
         return response()->json([
@@ -653,12 +631,12 @@ class ConnectionController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($currentUser, $user) {
+        DB::transaction(function () use ($currentUser, $user): void {
             Connection::query()
-                ->where(function ($query) use ($currentUser, $user) {
+                ->where(function ($query) use ($currentUser, $user): void {
                     $query->where('sender_id', $currentUser->id)
                         ->where('receiver_id', $user->id)
-                        ->orWhere(function ($query) use ($currentUser, $user) {
+                        ->orWhere(function ($query) use ($currentUser, $user): void {
                             $query->where('sender_id', $user->id)
                                 ->where('receiver_id', $currentUser->id);
                         });
@@ -666,10 +644,10 @@ class ConnectionController extends Controller
                 ->delete();
 
             UserFollow::query()
-                ->where(function ($query) use ($currentUser, $user) {
+                ->where(function ($query) use ($currentUser, $user): void {
                     $query->where('follower_id', $currentUser->id)
                         ->where('following_id', $user->id)
-                        ->orWhere(function ($query) use ($currentUser, $user) {
+                        ->orWhere(function ($query) use ($currentUser, $user): void {
                             $query->where('follower_id', $user->id)
                                 ->where('following_id', $currentUser->id);
                         });
@@ -677,10 +655,10 @@ class ConnectionController extends Controller
                 ->delete();
 
             $conversation = Conversation::query()
-                ->where(function ($query) use ($currentUser, $user) {
+                ->where(function ($query) use ($currentUser, $user): void {
                     $query->where('user_id_1', $currentUser->id)
                         ->where('user_id_2', $user->id)
-                        ->orWhere(function ($query) use ($currentUser, $user) {
+                        ->orWhere(function ($query) use ($currentUser, $user): void {
                             $query->where('user_id_1', $user->id)
                                 ->where('user_id_2', $currentUser->id);
                         });
@@ -729,7 +707,7 @@ class ConnectionController extends Controller
 
         return Subscription::whereIn('user_id', $userIds)
             ->get()
-            ->filter(fn (Subscription $subscription) => $subscription->isActive())
+            ->filter(fn (Subscription $subscription): bool => $subscription->isActive())
             ->pluck('user_id')
             ->all();
     }
@@ -742,18 +720,16 @@ class ConnectionController extends Controller
 
         $currentConnections = Connection::query()
             ->accepted()
-            ->where(function ($query) use ($currentUserId) {
+            ->where(function ($query) use ($currentUserId): void {
                 $query->where('sender_id', $currentUserId)
                     ->orWhere('receiver_id', $currentUserId);
             })
             ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
             ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->get(['sender_id', 'receiver_id'])
-            ->map(function (Connection $connectionRequest) use ($currentUserId) {
-                return $connectionRequest->sender_id === $currentUserId
-                    ? $connectionRequest->receiver_id
-                    : $connectionRequest->sender_id;
-            })
+            ->map(fn (Connection $connectionRequest) => $connectionRequest->sender_id === $currentUserId
+                ? $connectionRequest->receiver_id
+                : $connectionRequest->sender_id)
             ->unique()
             ->values();
 
@@ -763,7 +739,7 @@ class ConnectionController extends Controller
 
         $relatedConnections = Connection::query()
             ->accepted()
-            ->where(function ($query) use ($currentConnections) {
+            ->where(function ($query) use ($currentConnections): void {
                 $query->whereIn('sender_id', $currentConnections->all())
                     ->orWhereIn('receiver_id', $currentConnections->all());
             })
@@ -791,7 +767,7 @@ class ConnectionController extends Controller
         foreach ($counterpartIds as $counterpartId) {
             $mutualIds = collect($adjacency[$counterpartId] ?? [])
                 ->intersect($currentConnections)
-                ->reject(fn (int $userId) => $userId === $currentUserId || $userId === $counterpartId)
+                ->reject(fn (int $userId): bool => $userId === $currentUserId || $userId === $counterpartId)
                 ->unique()
                 ->values();
 
@@ -811,7 +787,7 @@ class ConnectionController extends Controller
             $formatted[$counterpartId] = [
                 'count' => $validMutualIds->count(),
                 'preview' => $validMutualIds->take(1)
-                    ->map(fn ($id) => $this->formatUser($mutualUsers->get($id)))
+                    ->map(fn ($id): array => $this->formatUser($mutualUsers->get($id)))
                     ->values()
                     ->toArray(),
             ];

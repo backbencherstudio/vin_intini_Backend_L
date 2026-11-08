@@ -88,7 +88,7 @@ class IndustryJobPostController extends Controller
 
         // 2. Global Text Search
         if ($search !== '') {
-            $baseQuery->where(function (Builder $q) use ($search) {
+            $baseQuery->where(function (Builder $q) use ($search): void {
                 $q->where('job_title', 'LIKE', "%{$search}%")
                     ->orWhere('job_id', $search)
                     ->orWhere('position', 'LIKE', "%{$search}%");
@@ -99,10 +99,10 @@ class IndustryJobPostController extends Controller
         $statuses = [];
         if (! $isArchived && ! empty($rawStatus)) {
             $statuses = is_array($rawStatus)
-                ? array_filter(array_map('trim', $rawStatus))
-                : array_filter(array_map('trim', explode(',', (string) $rawStatus)));
+                ? array_filter(array_map(trim(...), $rawStatus))
+                : array_filter(array_map(trim(...), explode(',', (string) $rawStatus)));
 
-            if (! empty($statuses)) {
+            if ($statuses !== []) {
                 $baseQuery->whereIn('status', $statuses);
             }
         }
@@ -160,7 +160,7 @@ class IndustryJobPostController extends Controller
         ];
 
         if (! $isArchived) {
-            $filters['status'] = ! empty($statuses) ? (count($statuses) === 1 ? reset($statuses) : $statuses) : null;
+            $filters['status'] = $statuses !== [] ? (count($statuses) === 1 ? reset($statuses) : $statuses) : null;
         }
 
         $emptyMessage = $isArchived ? 'No archived jobs found.' : 'No jobs found matching your criteria.';
@@ -198,12 +198,12 @@ class IndustryJobPostController extends Controller
         ])->withCount('applications');
 
         if (is_numeric($identifier)) {
-            $jobPost = $query->where(function (Builder $q) use ($identifier) {
+            $jobPost = $query->where(function (Builder $q) use ($identifier): void {
                 $q->where('id', (int) $identifier)->orWhere('job_id', (string) $identifier);
             })->first();
         } else {
-            $jobPost = $query->where(function (Builder $q) use ($identifier) {
-                $q->where('slug', (string) $identifier)->orWhere('job_id', (string) $identifier);
+            $jobPost = $query->where(function (Builder $q) use ($identifier): void {
+                $q->where('slug', $identifier)->orWhere('job_id', $identifier);
             })->first();
         }
 
@@ -285,7 +285,7 @@ class IndustryJobPostController extends Controller
         }
 
         // Verify active Pro Industry subscription & company profile
-        if ($accessError = $this->validateIndustryAccess($user)) {
+        if (($accessError = $this->validateIndustryAccess($user)) instanceof JsonResponse) {
             return $accessError;
         }
 
@@ -376,7 +376,7 @@ class IndustryJobPostController extends Controller
         }
 
         // Verify active Pro Industry subscription & company profile
-        if ($accessError = $this->validateIndustryAccess($user)) {
+        if (($accessError = $this->validateIndustryAccess($user)) instanceof JsonResponse) {
             return $accessError;
         }
 
@@ -514,11 +514,11 @@ class IndustryJobPostController extends Controller
         }
 
         $allowedStatuses = $isAdmin
-            ? 'draft,published,rejected,archive,expired'
-            : 'draft,published,archive,expired';
+            ? ['draft', 'published', 'rejected', 'archive', 'expired']
+            : ['draft', 'published', 'archive', 'expired'];
 
         $validated = $request->validate([
-            'status' => ['required', 'string', "in:{$allowedStatuses}"],
+            'status' => ['required', 'string', Rule::in($allowedStatuses)],
             'rejection_reason' => [
                 'required_if:status,rejected',
                 'nullable',
@@ -533,7 +533,7 @@ class IndustryJobPostController extends Controller
 
         // Enforce subscription & company profile check if a creator attempts to publish
         if (! $isAdmin && $newStatus === IndustryJobPostStatus::PUBLISHED->value) {
-            if ($accessError = $this->validateIndustryAccess($user)) {
+            if (($accessError = $this->validateIndustryAccess($user)) instanceof JsonResponse) {
                 return $accessError;
             }
         }
@@ -690,11 +690,11 @@ class IndustryJobPostController extends Controller
 
         // 2. Global Text Search (job_title, job_id, position, or company name)
         if ($search !== '') {
-            $query->where(function (Builder $q) use ($search) {
+            $query->where(function (Builder $q) use ($search): void {
                 $q->where('industry_job_posts.job_title', 'LIKE', "%{$search}%")
                     ->orWhere('industry_job_posts.job_id', 'LIKE', "%{$search}%")
                     ->orWhere('industry_job_posts.position', 'LIKE', "%{$search}%")
-                    ->orWhereHas('jobPost.industry', function ($sub) use ($search) {
+                    ->orWhereHas('jobPost.industry', function ($sub) use ($search): void {
                         $sub->where('name', 'LIKE', "%{$search}%");
                     });
             });
@@ -703,10 +703,10 @@ class IndustryJobPostController extends Controller
         // 3. Status Filter
         if (! empty($rawStatus)) {
             $statuses = is_array($rawStatus)
-                ? array_filter(array_map('trim', $rawStatus))
-                : array_filter(array_map('trim', explode(',', (string) $rawStatus)));
+                ? array_filter(array_map(trim(...), $rawStatus))
+                : array_filter(array_map(trim(...), explode(',', (string) $rawStatus)));
 
-            if (! empty($statuses)) {
+            if ($statuses !== []) {
                 $query->whereIn('industry_job_posts.status', $statuses);
             }
         }
@@ -748,7 +748,7 @@ class IndustryJobPostController extends Controller
 
         $paginated = $query
             ->with([
-                'jobPost' => function ($q) {
+                'jobPost' => function ($q): void {
                     $q->with([
                         'industry',
                         'state:id,name',
@@ -780,9 +780,7 @@ class IndustryJobPostController extends Controller
                 ->all()
             : [];
 
-        $formattedData = $jobs->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $currentUser) {
-            return (new IndustryJobPostResource($job, $likedJobIds, $savedJobIds, $appliedJobs, $currentUser))->resolve();
-        })->values();
+        $formattedData = $jobs->map(fn (IndustryJobPost $job) => (new IndustryJobPostResource($job, $likedJobIds, $savedJobIds, $appliedJobs, $currentUser))->resolve())->values();
 
         return response()->json([
             'success' => true,
@@ -805,7 +803,7 @@ class IndustryJobPostController extends Controller
      */
     private function validateIndustryAccess(?User $user): ?JsonResponse
     {
-        if (! $user) {
+        if (! $user instanceof User) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
@@ -871,9 +869,7 @@ class IndustryJobPostController extends Controller
                 Rule::requiredIf(! $isDraft && $request->input('work_mode') !== 'remote'),
                 'nullable',
                 'integer',
-                Rule::exists('cities', 'id')->when($request->filled('state_id'), function ($rule) use ($request) {
-                    return $rule->where('state_id', $request->input('state_id'));
-                }),
+                Rule::exists('cities', 'id')->when($request->filled('state_id'), fn ($rule) => $rule->where('state_id', $request->input('state_id'))),
             ],
 
             'email' => [$isRequired, 'email', 'max:255'],
@@ -904,13 +900,11 @@ class IndustryJobPostController extends Controller
     private function formatTags(mixed $tags): ?array
     {
         if (is_string($tags)) {
-            return array_values(array_filter(array_map('trim', explode(',', $tags))));
+            return array_values(array_filter(array_map(trim(...), explode(',', $tags))));
         }
 
         if (is_array($tags)) {
-            return array_values(array_filter(array_map(function ($item) {
-                return is_scalar($item) ? trim((string) $item) : null;
-            }, $tags)));
+            return array_values(array_filter(array_map(fn ($item): ?string => is_scalar($item) ? trim((string) $item) : null, $tags)));
         }
 
         return null;
@@ -922,26 +916,5 @@ class IndustryJobPostController extends Controller
     private function generateUniqueJobId(int $industryId): string
     {
         return IndustryJobPost::generateUniqueJobId($industryId);
-    }
-
-    /**
-     * Format a job card array (delegates to IndustryJobCardResource).
-     */
-    private function formatJobCard(IndustryJobPost $job): array
-    {
-        return (new IndustryJobCardResource($job))->resolve();
-    }
-
-    /**
-     * Format a full job post details array (delegates to IndustryJobPostResource).
-     */
-    private function formatJobPost(
-        IndustryJobPost $job,
-        ?array $likedJobIds = null,
-        ?array $savedJobIds = null,
-        ?array $appliedJobs = null,
-        $currentUser = null
-    ): array {
-        return (new IndustryJobPostResource($job, $likedJobIds, $savedJobIds, $appliedJobs, $currentUser))->resolve();
     }
 }

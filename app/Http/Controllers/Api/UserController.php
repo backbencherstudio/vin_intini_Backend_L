@@ -19,12 +19,10 @@ class UserController extends Controller
     {
         $roles = Role::where('guard_name', 'api')
             ->get(['id', 'name'])
-            ->map(function ($role) {
-                return [
-                    'id' => $role->id,
-                    'name' => Str::ucfirst($role->name),
-                ];
-            });
+            ->map(fn ($role): array => [
+                'id' => $role->id,
+                'name' => Str::ucfirst($role->name),
+            ]);
 
         return response()->json([
             'success' => true,
@@ -99,12 +97,10 @@ class UserController extends Controller
         $roles = Role::where('guard_name', 'api')
             ->select('id', 'name')
             ->get()
-            ->map(function ($role) {
-                return [
-                    'id' => $role->id,
-                    'name' => ucfirst($role->name),
-                ];
-            });
+            ->map(fn ($role): array => [
+                'id' => $role->id,
+                'name' => ucfirst($role->name),
+            ]);
 
         return response()->json([
             'status' => true,
@@ -187,24 +183,22 @@ class UserController extends Controller
 
     public function data()
     {
-        $users = User::whereHas('roles', function ($query) {
+        $users = User::whereHas('roles', function ($query): void {
             $query->where('guard_name', 'api');
         })
-            ->with(['roles' => function ($query) {
+            ->with(['roles' => function ($query): void {
                 $query->select('id', 'name', 'guard_name')
                     ->where('guard_name', 'api');
             }])
             ->select('id', 'name', 'email', 'mobile')
             ->get()
-            ->map(function ($user) {
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'mobile' => $user->mobile,
-                    'role' => $user->roles->map(fn ($r) => ucfirst($r->name))->implode(', '),
-                ];
-            });
+            ->map(fn ($user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'mobile' => $user->mobile,
+                'role' => $user->roles->map(fn ($r): string => ucfirst($r->name))->implode(', '),
+            ]);
 
         return response()->json([
             'status' => true,

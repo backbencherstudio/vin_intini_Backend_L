@@ -30,7 +30,7 @@ class UserJobPreferenceController extends Controller
         return response()->json([
             'success' => true,
             'data' => $preference,
-            'has_preference' => (bool) ($preference && $preference->hasAnyPreference()),
+            'has_preference' => $preference && $preference->hasAnyPreference(),
         ], 200);
     }
 
@@ -114,4 +114,3 @@ class UserJobPreferenceController extends Controller
         ], 200);
     }
 }
-

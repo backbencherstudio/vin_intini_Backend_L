@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\IndustryConversationController;
@@ -95,7 +97,7 @@ Route::post('/subscriptions/{subscription}/cancel', [SubscriptionController::cla
 Route::get('/billing-history', [SubscriptionController::class, 'billingHistory']);
 
 // Publications Feed & Management
-Route::prefix('publications')->group(function () {
+Route::prefix('publications')->group(function (): void {
     // Public Reader Endpoints & Interactions
     Route::get('feed', [PublicationController::class, 'feed']);
     Route::get('{id}/details', [PublicationController::class, 'show']);

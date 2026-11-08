@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Industry;
 use App\Models\IndustryConversation;
-use App\Models\IndustryMessage;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -46,7 +45,7 @@ class IndustryConversationController extends Controller
                 ->all();
 
             $data = $conversations
-                ->map(function (IndustryConversation $conv) use ($premiumUserIds) {
+                ->map(function (IndustryConversation $conv) use ($premiumUserIds): ?array {
                     $otherUser = $conv->user;
                     if (! $otherUser) {
                         return null;
@@ -88,10 +87,8 @@ class IndustryConversationController extends Controller
                     ];
                 })
                 ->filter()
-                ->when($status === 'unread', fn ($items) => $items->filter(fn ($item) => $item['unread_count'] > 0))
-                ->when($search !== '', fn ($items) => $items->filter(function ($item) use ($search) {
-                    return str_contains(mb_strtolower($item['_search_name']), mb_strtolower($search));
-                }))
+                ->when($status === 'unread', fn ($items) => $items->filter(fn ($item): bool => $item['unread_count'] > 0))
+                ->when($search !== '', fn ($items) => $items->filter(fn ($item): bool => str_contains(mb_strtolower($item['_search_name']), mb_strtolower($search))))
                 ->values()
                 ->map(fn ($item) => collect($item)->except('_search_name')->all());
 
@@ -120,7 +117,7 @@ class IndustryConversationController extends Controller
             ->get();
 
         $data = $conversations
-            ->map(function (IndustryConversation $conv) {
+            ->map(function (IndustryConversation $conv): ?array {
                 $ind = $conv->industry;
                 if (! $ind) {
                     return null;
@@ -158,10 +155,8 @@ class IndustryConversationController extends Controller
                 ];
             })
             ->filter()
-            ->when($status === 'unread', fn ($items) => $items->filter(fn ($item) => $item['unread_count'] > 0))
-            ->when($search !== '', fn ($items) => $items->filter(function ($item) use ($search) {
-                return str_contains(mb_strtolower($item['_search_name']), mb_strtolower($search));
-            }))
+            ->when($status === 'unread', fn ($items) => $items->filter(fn ($item): bool => $item['unread_count'] > 0))
+            ->when($search !== '', fn ($items) => $items->filter(fn ($item): bool => str_contains(mb_strtolower($item['_search_name']), mb_strtolower($search))))
             ->values()
             ->map(fn ($item) => collect($item)->except('_search_name')->all());
 
@@ -304,7 +299,7 @@ class IndustryConversationController extends Controller
         $users = User::query()
             ->where('id', '!=', $currentUser->id)
             ->whereNull('deleted_at')
-            ->where(function ($q) use ($search) {
+            ->where(function ($q) use ($search): void {
                 $q->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
@@ -319,7 +314,7 @@ class IndustryConversationController extends Controller
             ->pluck('user_id')
             ->all();
 
-        $data = $users->map(fn (User $u) => [
+        $data = $users->map(fn (User $u): array => [
             'id' => $u->id,
             'name' => trim(($u->first_name ?? '').' '.($u->last_name ?? '')),
             'first_name' => $u->first_name,
@@ -436,4 +431,3 @@ class IndustryConversationController extends Controller
         return (int) $conversation->industry?->created_by === (int) $user->id;
     }
 }
-

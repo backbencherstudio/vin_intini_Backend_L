@@ -13,7 +13,7 @@ use App\Models\IndustryProduct;
 use App\Models\IndustryProductLike;
 use App\Models\IndustrySections;
 use App\Models\User;
-use App\Services\BoostSettingService;
+use App\Services\Industry\IndustryProductService;
 use App\Services\OptimizedImageUploadService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -22,12 +22,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class IndustryProductController extends Controller
 {
     public function __construct(
-        protected OptimizedImageUploadService $imageUploadService
+        protected OptimizedImageUploadService $imageUploadService,
+        protected IndustryProductService $productService
     ) {}
 
     /**
@@ -81,7 +81,7 @@ class IndustryProductController extends Controller
     public function sectionCategories(int $id): JsonResponse
     {
         $section = IndustrySections::with([
-            'IndustryCategory' => function ($q) {
+            'IndustryCategory' => function ($q): void {
                 $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
             },
         ])->find($id);
@@ -93,13 +93,11 @@ class IndustryProductController extends Controller
             ], 404);
         }
 
-        $categories = $section->IndustryCategory->map(function ($cat) {
-            return [
-                'id' => $cat->id,
-                'section_id' => $cat->section_id,
-                'category_name' => $cat->category_name,
-            ];
-        })->values();
+        $categories = $section->IndustryCategory->map(fn ($cat): array => [
+            'id' => $cat->id,
+            'section_id' => $cat->section_id,
+            'category_name' => $cat->category_name,
+        ])->values();
 
         return response()->json([
             'success' => true,
@@ -209,18 +207,16 @@ class IndustryProductController extends Controller
             $sectionCategories = [];
             if ($targetSectionId) {
                 $sectionObj = IndustrySections::with([
-                    'IndustryCategory' => function ($q) {
+                    'IndustryCategory' => function ($q): void {
                         $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
                     },
                 ])->find($targetSectionId);
 
                 if ($sectionObj) {
-                    $sectionCategories = $sectionObj->IndustryCategory->map(function ($cat) {
-                        return [
-                            'id' => $cat->id,
-                            'category_name' => $cat->category_name,
-                        ];
-                    })->values();
+                    $sectionCategories = $sectionObj->IndustryCategory->map(fn ($cat): array => [
+                        'id' => $cat->id,
+                        'category_name' => $cat->category_name,
+                    ])->values();
                 }
             }
 
@@ -261,9 +257,7 @@ class IndustryProductController extends Controller
                 }
             }
 
-            $data = $paginated->getCollection()->map(function ($product) use ($likedProductIds, $request) {
-                return (new IndustryProductResource($product, $likedProductIds, isFeed: true))->resolve($request);
-            });
+            $data = $paginated->getCollection()->map(fn ($product) => (new IndustryProductResource($product, $likedProductIds, isFeed: true))->resolve($request));
 
             $responseData = [
                 'success' => true,
@@ -300,7 +294,7 @@ class IndustryProductController extends Controller
             ->where('network_type', $networkType)
             ->where('industry_type', $industryType)
             ->with([
-                'IndustryCategory' => function ($q) {
+                'IndustryCategory' => function ($q): void {
                     $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
                 },
             ])
@@ -356,7 +350,7 @@ class IndustryProductController extends Controller
             $rankedRows = DB::select($rankedSql, $bindings);
             $topProductIds = array_column($rankedRows, 'id');
 
-            if (! empty($topProductIds)) {
+            if ($topProductIds !== []) {
                 $products = IndustryProduct::query()
                     ->whereIn('id', $topProductIds)
                     ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
@@ -371,15 +365,13 @@ class IndustryProductController extends Controller
                         ->all();
                 }
 
-                $groupedProducts = $products->groupBy(fn ($item) => (int) $item->section_id);
+                $groupedProducts = $products->groupBy(fn ($item): int => (int) $item->section_id);
             }
         }
 
-        $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $productCounts, $limitPerSection, $request) {
+        $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $productCounts, $limitPerSection, $request): array {
             $sectionProducts = $groupedProducts->get((int) $section->id, collect())
-                ->map(function ($product) use ($likedProductIds, $request) {
-                    return (new IndustryProductResource($product, $likedProductIds, isFeed: true))->resolve($request);
-                })->values();
+                ->map(fn ($product) => (new IndustryProductResource($product, $likedProductIds, isFeed: true))->resolve($request))->values();
 
             $totalProducts = (int) ($productCounts->get($section->id, 0));
 
@@ -390,12 +382,10 @@ class IndustryProductController extends Controller
                 'industry_type' => $section->industry_type,
                 'total_products' => $totalProducts,
                 'has_more' => $totalProducts > $limitPerSection,
-                'categories' => $section->IndustryCategory->map(function ($cat) {
-                    return [
-                        'id' => $cat->id,
-                        'category_name' => $cat->category_name,
-                    ];
-                })->values(),
+                'categories' => $section->IndustryCategory->map(fn ($cat): array => [
+                    'id' => $cat->id,
+                    'category_name' => $cat->category_name,
+                ])->values(),
                 'products' => $sectionProducts,
             ];
         });
@@ -492,7 +482,7 @@ class IndustryProductController extends Controller
     public function dashboard(Request $request): JsonResponse
     {
         $user = auth('api')->user();
-        if ($accessError = $this->validateIndustryAccess($user)) {
+        if (($accessError = $this->validateIndustryAccess($user)) instanceof JsonResponse) {
             return $accessError;
         }
 
@@ -524,7 +514,7 @@ class IndustryProductController extends Controller
     public function myListings(Request $request): JsonResponse
     {
         $user = auth('api')->user();
-        if ($accessError = $this->validateIndustryAccess($user)) {
+        if (($accessError = $this->validateIndustryAccess($user)) instanceof JsonResponse) {
             return $accessError;
         }
 
@@ -554,15 +544,15 @@ class IndustryProductController extends Controller
         if ($request->filled('boost_status')) {
             $boostStatus = $request->input('boost_status');
             if ($boostStatus === 'active') {
-                $query->where('is_boosted', true)->where(function ($q) {
+                $query->where('is_boosted', true)->where(function ($q): void {
                     $q->whereNull('boost_expires_at')->orWhere('boost_expires_at', '>', now());
                 });
             } elseif ($boostStatus === 'paused') {
-                $query->whereHas('latestCampaign', function ($q) {
+                $query->whereHas('latestCampaign', function ($q): void {
                     $q->where('status', 'paused');
                 });
             } elseif ($boostStatus === 'inactive' || $boostStatus === 'not_boosted') {
-                $query->where(function ($q) {
+                $query->where(function ($q): void {
                     $q->where('is_boosted', false)->orWhereNull('is_boosted');
                 });
             }
@@ -605,53 +595,22 @@ class IndustryProductController extends Controller
     public function store(StoreIndustryProductRequest $request): JsonResponse
     {
         $user = auth('api')->user();
-        if ($accessError = $this->validateIndustryAccess($user)) {
+        if (($accessError = $this->validateIndustryAccess($user)) instanceof JsonResponse) {
             return $accessError;
         }
 
         $industry = $user->industry;
         $validated = $request->validated();
-
-        // Handle Image Upload with optimization
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $this->imageUploadService->store($request->file('image'), 'products');
+        if ($request->has('information_confirmed')) {
+            $validated['information_confirmed'] = (bool) $request->boolean('information_confirmed', true);
         }
 
-        // Format tags
-        $tags = $this->formatTags($request->input('tags'));
-
-        // Generate clean unique slug
-        $baseSlug = Str::slug($validated['product_name']);
-        $uniqueSlug = $baseSlug.'-'.Str::lower(Str::random(6));
-
-        $newReleaseHours = app(BoostSettingService::class)->getNewReleaseHours();
-
-        $product = IndustryProduct::create([
-            'creator_id' => $user->id,
-            'industry_id' => $industry->id,
-            'network_type' => $validated['network_type'],
-            'industry_type' => $validated['industry_type'],
-            'section_id' => $validated['section_id'],
-            'category_id' => $validated['category_id'],
-            'product_name' => $validated['product_name'],
-            'slug' => $uniqueSlug,
-            'description' => $validated['description'],
-            'product_url' => $validated['product_url'],
-            'image' => $imagePath,
-            'tags' => $tags,
-            'poc_name' => $validated['poc_name'] ?? null,
-            'poc_email' => $validated['poc_email'] ?? null,
-            'poc_phone' => $validated['poc_phone'] ?? null,
-            'information_confirmed' => (bool) $request->boolean('information_confirmed', true),
-            'status' => $validated['status'] ?? 'active',
-            'is_new_release' => $newReleaseHours > 0,
-            'new_release_expires_at' => $newReleaseHours > 0 ? now()->addHours($newReleaseHours) : null,
-            'views_count' => 0,
-            'likes_count' => 0,
-        ]);
-
-        $product->load(['creator', 'industry', 'section', 'category']);
+        $product = $this->productService->createProduct(
+            $user,
+            $industry,
+            $validated,
+            $request->file('image')
+        );
 
         return response()->json([
             'success' => true,
@@ -705,61 +664,15 @@ class IndustryProductController extends Controller
         }
 
         $validated = $request->validated();
-
-        // Handle Image Replacement
-        if ($request->hasFile('image')) {
-            $oldImage = $product->image;
-            $product->image = $this->imageUploadService->store($request->file('image'), 'products');
-
-            if ($oldImage && Storage::disk('public')->exists($oldImage)) {
-                Storage::disk('public')->delete($oldImage);
-            }
-        }
-
-        if (isset($validated['product_name']) && $validated['product_name'] !== $product->product_name) {
-            $product->product_name = $validated['product_name'];
-            $product->slug = Str::slug($validated['product_name']).'-'.Str::lower(Str::random(6));
-        }
-
-        if (isset($validated['network_type'])) {
-            $product->network_type = $validated['network_type'];
-        }
-        if (isset($validated['industry_type'])) {
-            $product->industry_type = $validated['industry_type'];
-        }
-        if (isset($validated['section_id'])) {
-            $product->section_id = $validated['section_id'];
-        }
-        if (isset($validated['category_id'])) {
-            $product->category_id = $validated['category_id'];
-        }
-        if (isset($validated['description'])) {
-            $product->description = $validated['description'];
-        }
-        if (isset($validated['product_url'])) {
-            $product->product_url = $validated['product_url'];
-        }
-        if ($request->has('tags')) {
-            $product->tags = $this->formatTags($request->input('tags'));
-        }
-        if ($request->has('poc_name')) {
-            $product->poc_name = $validated['poc_name'] ?? null;
-        }
-        if ($request->has('poc_email')) {
-            $product->poc_email = $validated['poc_email'] ?? null;
-        }
-        if ($request->has('poc_phone')) {
-            $product->poc_phone = $validated['poc_phone'] ?? null;
-        }
         if ($request->has('information_confirmed')) {
-            $product->information_confirmed = (bool) $request->boolean('information_confirmed');
-        }
-        if (isset($validated['status'])) {
-            $product->status = $validated['status'];
+            $validated['information_confirmed'] = (bool) $request->boolean('information_confirmed');
         }
 
-        $product->save();
-        $product->load(['creator', 'industry', 'section', 'category']);
+        $product = $this->productService->updateProduct(
+            $product,
+            $validated,
+            $request->file('image')
+        );
 
         return response()->json([
             'success' => true,
@@ -803,7 +716,7 @@ class IndustryProductController extends Controller
         // If activating, verify that user still has an active Pro Industry subscription
         $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
         if (! $isAdmin && $newStatus === 'active') {
-            if ($accessError = $this->validateIndustryAccess($user)) {
+            if (($accessError = $this->validateIndustryAccess($user)) instanceof JsonResponse) {
                 return $accessError;
             }
         }
@@ -862,13 +775,13 @@ class IndustryProductController extends Controller
     private function findProduct(int|string $id, array $relations = []): IndustryProduct
     {
         $query = IndustryProduct::query()
-            ->where(function ($q) use ($id) {
+            ->where(function ($q) use ($id): void {
                 $q->where('id', $id)
                     ->orWhere('product_id', (string) $id)
                     ->orWhere('slug', (string) $id);
             });
 
-        if (! empty($relations)) {
+        if ($relations !== []) {
             $query->with($relations);
         }
 
@@ -891,11 +804,7 @@ class IndustryProductController extends Controller
             return true;
         }
 
-        if ($user->industry && $user->industry->id === $product->industry_id) {
-            return true;
-        }
-
-        return false;
+        return $user->industry && $user->industry->id === $product->industry_id;
     }
 
     /**
@@ -903,7 +812,7 @@ class IndustryProductController extends Controller
      */
     private function validateIndustryAccess(?User $user): ?JsonResponse
     {
-        if (! $user) {
+        if (! $user instanceof User) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
@@ -939,7 +848,7 @@ class IndustryProductController extends Controller
     private function recordProductClick(IndustryProduct $product, ?User $user, ?string $ip, string $placement = 'industry_product_feed'): void
     {
         // Anti-fraud self-click guard: Do not count clicks if user is the product creator or owner
-        $isOwner = $user && (
+        $isOwner = $user instanceof User && (
             $product->isOwnedBy($user)
             || (int) $user->id === (int) $product->creator_id
             || (int) $user->id === (int) ($product->industry?->created_by ?? 0)
@@ -950,7 +859,7 @@ class IndustryProductController extends Controller
             return;
         }
 
-        $userIdentifier = $user ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
+        $userIdentifier = $user instanceof User ? 'user_'.$user->id : 'ip_'.($ip ?: 'unknown');
         $cooldown = 30; // 30-second anti-spam click debounce protection per user/IP
 
         $productThrottleKey = "product_click_throttle_{$product->id}_{$userIdentifier}";
@@ -982,31 +891,6 @@ class IndustryProductController extends Controller
     }
 
     /**
-     * Parse tags array/string into clean array.
-     */
-    private function formatTags(mixed $tags): ?array
-    {
-        if (empty($tags)) {
-            return null;
-        }
-
-        if (is_string($tags)) {
-            $decoded = json_decode($tags, true);
-            if (is_array($decoded)) {
-                $tags = $decoded;
-            } else {
-                $tags = explode(',', $tags);
-            }
-        }
-
-        if (is_array($tags)) {
-            return array_values(array_filter(array_map('trim', $tags)));
-        }
-
-        return null;
-    }
-
-    /**
      * High-performance search for product_name and product_id (Engineered for 1M+ rows scale).
      * Excludes heavy TEXT description column to prevent disk table scanning.
      */
@@ -1020,7 +904,7 @@ class IndustryProductController extends Controller
         $sanitized = addcslashes($search, '%_');
         $isMysql = DB::connection()->getDriverName() === 'mysql';
 
-        $query->where(function (Builder $q) use ($search, $sanitized, $isMysql) {
+        $query->where(function (Builder $q) use ($search, $sanitized, $isMysql): void {
             // 1. Direct or Prefix Match on indexed Unique product_id (Ultra-fast B-Tree O(1)/O(log N))
             $q->where('product_id', $search)
                 ->orWhere('product_id', 'LIKE', "{$sanitized}%");
@@ -1029,7 +913,7 @@ class IndustryProductController extends Controller
             // If MySQL and search string has >= 3 chars, combine FULLTEXT with LIKE for maximum speed & accuracy
             if ($isMysql && strlen($search) >= 3) {
                 $words = array_filter(preg_split('/\s+/', $search));
-                $booleanTerms = array_map(function ($word) {
+                $booleanTerms = array_map(function (string $word): string {
                     $cleaned = preg_replace('/[+\-><()~*\"@]+/', '', $word);
 
                     return ! empty($cleaned) ? '+'.$cleaned.'*' : '';

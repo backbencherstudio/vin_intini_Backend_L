@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Mail\ContactUsAutoResponseMail;
-use App\Mail\ContactUsNotificationMail;
 use App\Models\ContactUs;
+use App\Notifications\ContactUsAutoResponseNotification;
+use App\Notifications\ContactUsNotification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 
 class ContactUsController extends Controller
@@ -33,11 +33,10 @@ class ContactUsController extends Controller
         $contact = ContactUs::create($request->all());
 
         // Notification to admin
-        Mail::to('contact@mindunite.com')->send(new ContactUsNotificationMail($contact));
-        // Mail::to('niaz.softvence@gmail.com')->send(new ContactUsNotificationMail($contact));
+        Notification::route('mail', 'contact@mindunite.com')->notify(new ContactUsNotification($contact));
 
         // auto response to user
-        Mail::to($contact->email)->send(new ContactUsAutoResponseMail($contact));
+        Notification::route('mail', $contact->email)->notify(new ContactUsAutoResponseNotification($contact));
 
         return response()->json([
             'status' => 'success',

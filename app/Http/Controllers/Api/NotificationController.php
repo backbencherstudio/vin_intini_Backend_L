@@ -40,7 +40,7 @@ class NotificationController extends Controller
 
         // Search filter
         if ($search !== '') {
-            $query = $query->where(function ($notificationQuery) use ($search) {
+            $query = $query->where(function ($notificationQuery) use ($search): void {
                 $notificationQuery
                     ->where('type', 'like', '%'.$search.'%')
                     ->orWhere('data', 'like', '%'.$search.'%');
@@ -78,16 +78,16 @@ class NotificationController extends Controller
             }
         }
 
-        $preloadedUsers = ! empty($missingUserIds)
+        $preloadedUsers = $missingUserIds !== []
             ? User::whereIn('id', array_unique($missingUserIds))->get()->keyBy('id')
             : collect();
 
-        $preloadedIndustries = ! empty($missingIndustryIds)
+        $preloadedIndustries = $missingIndustryIds !== []
             ? Industry::whereIn('id', array_unique($missingIndustryIds))->get()->keyBy('id')
             : collect();
 
         $formattedNotifications = collect($items)
-            ->map(fn ($n) => $this->formatNotification($n, $preloadedUsers, $preloadedIndustries))
+            ->map(fn ($n): array => $this->formatNotification($n, $preloadedUsers, $preloadedIndustries))
             ->values();
 
         return response()->json([
@@ -193,10 +193,10 @@ class NotificationController extends Controller
         if ($userId && (empty($data['sender_name']) || empty($data['sender_username']) || empty($data['sender_profile_image_url']))) {
             $user = $preloadedUsers?->get($userId) ?? User::find($userId);
             if ($user) {
-                $data['sender_id'] = $data['sender_id'] ?? $user->id;
-                $data['sender_name'] = $data['sender_name'] ?? trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
-                $data['sender_username'] = $data['sender_username'] ?? $user->username;
-                $data['sender_profile_image_url'] = $data['sender_profile_image_url'] ?? $user->profile_image_url;
+                $data['sender_id'] ??= $user->id;
+                $data['sender_name'] ??= trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
+                $data['sender_username'] ??= $user->username;
+                $data['sender_profile_image_url'] ??= $user->profile_image_url;
             }
         }
 
@@ -217,11 +217,11 @@ class NotificationController extends Controller
         } elseif ($type === 'JobApplicationStatusUpdatedNotification' || (! empty($data['industry_id']) && empty($data['sender_name']))) {
             // Sender is the industry / company
             $industryId = $data['industry_id'] ?? null;
-            $industry = ($industryId && $preloadedIndustries) ? $preloadedIndustries->get($industryId) : null;
+            $industry = ($industryId && $preloadedIndustries instanceof Collection) ? $preloadedIndustries->get($industryId) : null;
 
             if ($industry) {
-                $data['industry_name'] = $data['industry_name'] ?? $industry->name;
-                $data['industry_slug'] = $data['industry_slug'] ?? $industry->slug;
+                $data['industry_name'] ??= $industry->name;
+                $data['industry_slug'] ??= $industry->slug;
             }
 
             $logoUrl = $data['sender_profile_image_url'] ?? $data['industry_logo_url'] ?? $data['industry_logo'] ?? $industry?->logo;

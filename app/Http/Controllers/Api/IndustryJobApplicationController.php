@@ -8,15 +8,18 @@ use App\Enums\PlanType;
 use App\Http\Controllers\Controller;
 use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
-use App\Models\Skill;
-use App\Notifications\JobApplicationReceivedNotification;
 use App\Notifications\JobApplicationStatusUpdatedNotification;
+use App\Services\Job\JobApplicationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class IndustryJobApplicationController extends Controller
 {
+    public function __construct(
+        protected JobApplicationService $jobApplicationService
+    ) {}
+
     public function myApplications(Request $request): JsonResponse
     {
         $user = auth('api')->user();
@@ -64,7 +67,7 @@ class IndustryJobApplicationController extends Controller
         $query = IndustryJobApplication::query()
             ->where('applicant_id', $user->id)
             ->with([
-                'job' => function ($q) {
+                'job' => function ($q): void {
                     $q->select('id', 'job_id', 'slug', 'job_title', 'position', 'work_mode', 'employment_type', 'salary_min', 'salary_max', 'industry_id', 'state_id', 'city_id', 'created_by')
                         ->with(['industry:id,name,slug,logo,created_by', 'state:id,name', 'city:id,name']);
                 },
@@ -77,15 +80,13 @@ class IndustryJobApplicationController extends Controller
 
         $paginated = $query->cursorPaginate($limit);
 
-        $formattedData = $paginated->getCollection()->map(function (IndustryJobApplication $application) use ($user, $userIndustryId) {
+        $formattedData = $paginated->getCollection()->map(function (IndustryJobApplication $application) use ($user, $userIndustryId): array {
             $job = $application->job;
 
-            $isOwnIndustry = (bool) (
-                $job && (
-                    ((int) $job->created_by === (int) $user->id) ||
-                    ($job->industry && (int) $job->industry->created_by === (int) $user->id) ||
-                    ($userIndustryId && (int) $job->industry_id === (int) $userIndustryId)
-                )
+            $isOwnIndustry = $job && (
+                ((int) $job->created_by === (int) $user->id) ||
+                ($job->industry && (int) $job->industry->created_by === (int) $user->id) ||
+                ($userIndustryId && (int) $job->industry_id === (int) $userIndustryId)
             );
 
             return [
@@ -217,13 +218,12 @@ class IndustryJobApplicationController extends Controller
             ], 422);
         }
 
-        $applicationType = $request->input('application_type', 'custom');
-        $isQuick = $applicationType === 'quick';
+        $request->input('application_type');
 
         // 3. Validation
         $validated = $request->validate([
             'application_type' => ['nullable', 'in:custom,quick'],
-            'full_name' => [$isQuick ? 'nullable' : 'required', 'string', 'max:255'],
+            'full_name' => ['required_unless:application_type,quick', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:30'],
             'experiences' => ['nullable', 'string', 'max:255'],
@@ -238,82 +238,12 @@ class IndustryJobApplicationController extends Controller
             'resume' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,png', 'max:10240'], // 10MB max
         ]);
 
-        // Resume upload kora
-        $resumePath = null;
-        if ($request->hasFile('resume')) {
-            $resumePath = $request->file('resume')->store('resumes/industry_jobs', 'public');
-        }
-
-        // Auto-generate unique job-scoped application_id
-        $applicationId = $this->generateUniqueApplicationId((int) $jobPost->id);
-
-        if ($isQuick) {
-            $user->loadMissing(['profile.state']);
-
-            // 1. Name: user er first_name + last_name
-            $profileName = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
-            $fullName = ! empty($profileName) ? $profileName : ($validated['full_name'] ?? $user->username);
-
-            // 2. About Me: user profile-er 'about' theke
-            $aboutYourself = $user->profile?->about ?? ($validated['about_yourself'] ?? null);
-
-            // 3. Skills: user profile-er skills_id theke skill names (string akare)
-            $rawSkillIds = $user->profile?->skills_id ?? [];
-            if (! empty($rawSkillIds)) {
-                $numericIds = array_filter($rawSkillIds, 'is_numeric');
-                $stringSkills = array_values(array_filter($rawSkillIds, fn ($s) => ! is_numeric($s)));
-                $fetchedSkills = ! empty($numericIds)
-                    ? Skill::whereIn('id', $numericIds)->pluck('name')->toArray()
-                    : [];
-                $skills = array_values(array_unique(array_merge($stringSkills, $fetchedSkills)));
-            } else {
-                $skills = $this->formatSkills($validated['skills'] ?? null);
-            }
-
-            // 4. Current Position: request input ?? user-er title
-            $currentPosition = $validated['current_position'] ?? $user->title;
-
-            // 5. Location: request input ?? user profile-er state name ebong country
-            $stateName = $user->profile?->state?->name;
-            $country = $user->profile?->country;
-            $profileLocation = implode(', ', array_filter([$stateName, $country])) ?: null;
-            $location = $validated['location'] ?? $profileLocation;
-        } else {
-            // Custom Application: strictly uses submitted form data
-            $fullName = $validated['full_name'];
-            $aboutYourself = $validated['about_yourself'] ?? null;
-            $skills = $this->formatSkills($validated['skills'] ?? null);
-            $currentPosition = $validated['current_position'] ?? null;
-            $location = $validated['location'] ?? null;
-        }
-
-        $application = IndustryJobApplication::create([
-            'application_id' => $applicationId,
-            'job_id' => $jobPost->id,
-            'applicant_id' => $user->id,
-            'application_type' => $validated['application_type'] ?? 'custom',
-            'full_name' => $fullName,
-            'email' => $validated['email'],
-            'phone_number' => $validated['phone_number'] ?? null,
-            'experiences' => $validated['experiences'] ?? null,
-            'current_position' => $currentPosition,
-            'expected_salary' => $validated['expected_salary'] ?? null,
-            'location' => $location,
-            'linkedin_url' => $validated['linkedin_url'] ?? null,
-            'portfolio_url' => $validated['portfolio_url'] ?? null,
-            'cover_letter' => $validated['cover_letter'] ?? null,
-            'about_yourself' => $aboutYourself,
-            'skills' => $skills,
-            'resume_path' => $resumePath,
-            'status' => JobApplicationStatus::PENDING->value,
-        ]);
-
-        // 1. Notification dispatch for creator and industry
-        $creator = $jobPost->creator;
-
-        if ($creator) {
-            $creator->notify(new JobApplicationReceivedNotification($application, $jobPost, $user));
-        }
+        $application = $this->jobApplicationService->apply(
+            $user,
+            $jobPost,
+            $validated,
+            $request->file('resume')
+        );
 
         return response()->json([
             'success' => true,
@@ -329,23 +259,6 @@ class IndustryJobApplicationController extends Controller
                 'created_at' => $application->created_at->toDateTimeString(),
             ],
         ], 201);
-    }
-
-    /**
-     * Generate unique application ID prefixed by job post ID.
-     */
-    private function generateUniqueApplicationId(int $jobId): string
-    {
-        return IndustryJobApplication::generateUniqueApplicationId($jobId);
-    }
-
-    private function formatSkills(mixed $skills): ?array
-    {
-        if (is_string($skills)) {
-            return array_values(array_filter(array_map('trim', explode(',', $skills))));
-        }
-
-        return is_array($skills) ? $skills : null;
     }
 
     /**
@@ -415,7 +328,7 @@ class IndustryJobApplicationController extends Controller
         }
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('full_name', 'LIKE', "%{$search}%")
                     ->orWhere('email', 'LIKE', "%{$search}%")
                     ->orWhere('application_id', 'LIKE', "%{$search}%");
@@ -424,7 +337,7 @@ class IndustryJobApplicationController extends Controller
 
         $paginated = $query->paginate($limit, ['*'], 'page', $page);
 
-        $formattedApplicants = $paginated->getCollection()->map(function (IndustryJobApplication $app) use ($jobPost) {
+        $formattedApplicants = $paginated->getCollection()->map(function (IndustryJobApplication $app) use ($jobPost): array {
             $avatar = null;
             if ($app->applicant) {
                 $rawImg = $app->applicant->profile_image_url ?? $app->applicant->profile_image;
@@ -456,7 +369,7 @@ class IndustryJobApplicationController extends Controller
         }
 
         $locationParts = array_filter([$jobPost->state?->name, $jobPost->city?->name]);
-        $locationStr = ! empty($locationParts) ? implode(', ', $locationParts) : 'Remote';
+        $locationStr = $locationParts !== [] ? implode(', ', $locationParts) : 'Remote';
 
         $jobSummary = [
             'id' => $jobPost->id,
@@ -498,7 +411,7 @@ class IndustryJobApplicationController extends Controller
         $application = IndustryJobApplication::with([
             'job.industry',
             'applicant:id,first_name,last_name,username,email,profile_image',
-        ])->where(function ($q) use ($id) {
+        ])->where(function ($q) use ($id): void {
             $q->where('id', $id)
                 ->orWhere('application_id', (string) $id);
         })->first();
@@ -672,7 +585,7 @@ class IndustryJobApplicationController extends Controller
 
         // Application er shathe job.industry ebong applicant relation load kora
         $application = IndustryJobApplication::with(['job.industry', 'applicant'])
-            ->where(function ($q) use ($applicationId) {
+            ->where(function ($q) use ($applicationId): void {
                 $q->where('id', $applicationId)
                     ->orWhere('application_id', (string) $applicationId);
             })->first();
@@ -681,15 +594,7 @@ class IndustryJobApplicationController extends Controller
             return response()->json(['success' => false, 'message' => 'Application not found.'], 404);
         }
 
-        $job = $application->job;
-        $industry = $job?->industry;
-
-        // Permission check
-        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
-        $isJobCreator = $job && $job->created_by && ((int) $job->created_by === (int) $user->id);
-        $isIndustryOwner = $industry && ((int) $industry->created_by === (int) $user->id);
-
-        if (! $isAdmin && ! $isJobCreator && ! $isIndustryOwner) {
+        if (! $this->jobApplicationService->canManageApplication($user, $application)) {
             return response()->json([
                 'success' => false,
                 'message' => 'You are not authorized to update this application status.',
@@ -704,23 +609,7 @@ class IndustryJobApplicationController extends Controller
             ? $validated['status']->value
             : $validated['status'];
 
-        $oldStatus = $application->status instanceof \BackedEnum
-            ? $application->status->value
-            : $application->status;
-
-        // Status change hole update ebong notification send hobe
-        if ($oldStatus !== $newStatus) {
-            $application->update([
-                'status' => $newStatus,
-            ]);
-
-            // Applicant-ke notify kora
-            if ($application->applicant) {
-                $application->applicant->notify(
-                    new JobApplicationStatusUpdatedNotification($application, $job, $newStatus, $user)
-                );
-            }
-        }
+        $application = $this->jobApplicationService->updateStatus($user, $application, $newStatus);
 
         return response()->json([
             'success' => true,
@@ -733,54 +622,4 @@ class IndustryJobApplicationController extends Controller
             ],
         ]);
     }
-
-    // public function updateApplicationStatus(Request $request, $applicationId): JsonResponse
-    // {
-    //     $user = auth('api')->user();
-
-    //     if (! $user) {
-    //         return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
-    //     }
-
-    //     // Application er shathe job ebong industry nested relation load kora
-    //     $application = IndustryJobApplication::with(['job.industry'])->find($applicationId);
-
-    //     if (! $application) {
-    //         return response()->json(['success' => false, 'message' => 'Application not found.'], 404);
-    //     }
-
-    //     $job = $application->job;
-    //     $industry = $job?->industry;
-
-    //     // Permission check
-    //     $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
-    //     $isJobCreator = $job && $job->created_by && ((int) $job->created_by === (int) $user->id);
-    //     $isIndustryOwner = $industry && ((int) $industry->created_by === (int) $user->id);
-
-    //     if (! $isAdmin && ! $isJobCreator && ! $isIndustryOwner) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'You are not authorized to update this application status.',
-    //         ], 403);
-    //     }
-
-    //     $validated = $request->validate([
-    //         'status' => ['required', Rule::enum(JobApplicationStatus::class)],
-    //     ]);
-
-    //     $application->update([
-    //         'status' => $validated['status'],
-    //     ]);
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => "Application status updated to {$validated['status']} successfully.",
-    //         'data'    => [
-    //             'id'             => $application->id,
-    //             'application_id' => $application->application_id,
-    //             'status'         => $application->status instanceof \BackedEnum ? $application->status->value : $application->status,
-    //             'updated_at'     => $application->updated_at->toDateTimeString(),
-    //         ],
-    //     ]);
-    // }
 }

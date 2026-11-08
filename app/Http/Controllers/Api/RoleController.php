@@ -20,7 +20,7 @@ class RoleController extends Controller
             ->latest()
             ->get(['id', 'name', 'guard_name']);
 
-        $data = $roles->map(fn ($role) => [
+        $data = $roles->map(fn ($role): array => [
             'id' => $role->id,
             'name' => ucfirst($role->name),
             'guard' => $role->guard_name,
@@ -80,13 +80,13 @@ class RoleController extends Controller
         $validated = $validator->validated();
 
         try {
-            DB::transaction(function () use ($validated, &$role) {
+            DB::transaction(function () use ($validated, &$role): void {
                 $role = Role::create([
                     'name' => strtolower($validated['name']),
                     'guard_name' => 'api',
                 ]);
 
-                $role->syncPermissions(array_map('intval', $validated['permissions']));
+                $role->syncPermissions(array_map(intval(...), $validated['permissions']));
             });
 
             return response()->json([
@@ -155,12 +155,12 @@ class RoleController extends Controller
         $validated = $validator->validated();
 
         try {
-            DB::transaction(function () use ($validated, $role) {
+            DB::transaction(function () use ($validated, $role): void {
                 $role->update([
                     'name' => strtolower($validated['name']),
                 ]);
 
-                $role->syncPermissions(array_map('intval', $validated['permissions']));
+                $role->syncPermissions(array_map(intval(...), $validated['permissions']));
             });
 
             return response()->json([
@@ -193,7 +193,7 @@ class RoleController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($role) {
+            DB::transaction(function () use ($role): void {
                 $role->permissions()->detach();
 
                 $role->delete();

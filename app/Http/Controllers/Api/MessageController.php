@@ -6,14 +6,13 @@ use App\Enums\PlanType;
 use App\Events\ConversationUpdated;
 use App\Events\MessageDeleted;
 use App\Events\MessageReactionChanged;
-use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Connection;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Subscription;
-use App\Notifications\NewMessageNotification;
-use App\Services\OptimizedImageUploadService;
+use App\Models\User;
+use App\Services\Messaging\MessageDeliveryService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +27,7 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+        if (($error = $this->authorizeConversation($conversation, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -57,10 +56,10 @@ class MessageController extends Controller
 
         $isConnected = false;
 
-        if ($otherUser && ! $otherUser->trashed()) {
+        if ($otherUser instanceof User && ! $otherUser->trashed()) {
             $isConnected = Connection::query()
                 ->accepted()
-                ->where(function ($query) use ($currentUser, $otherUser) {
+                ->where(function ($query) use ($currentUser, $otherUser): void {
                     $query->where('sender_id', $currentUser->id)->where('receiver_id', $otherUser->id)
                         ->orWhere('sender_id', $otherUser->id)->where('receiver_id', $currentUser->id);
                 })
@@ -69,14 +68,14 @@ class MessageController extends Controller
 
         $messageItems = collect($messages->items());
 
-        $canDirectMessage = $this->isProIndustryUser($currentUser) || ($otherUser && $this->isProIndustryUser($otherUser));
+        $canDirectMessage = $this->isProIndustryUser($currentUser) || ($otherUser instanceof User && $this->isProIndustryUser($otherUser));
         $effectiveConnected = $isConnected || $canDirectMessage;
 
         if ($afterId === null) {
             $messageItems = $messageItems->reverse();
         }
 
-        $data = $messageItems->values()->map(fn (Message $message) => [
+        $data = $messageItems->values()->map(fn (Message $message): array => [
             'id' => $message->id,
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
@@ -108,7 +107,7 @@ class MessageController extends Controller
 
         return response()->json([
             'success' => true,
-            'other_user' => $otherUser ? [
+            'other_user' => $otherUser instanceof User ? [
                 'id' => $otherUser->id,
                 'name' => trim(($otherUser->first_name ?? '').' '.($otherUser->last_name ?? '')),
                 'first_name' => $otherUser->first_name,
@@ -128,24 +127,24 @@ class MessageController extends Controller
     /**
      * Create and send a new message in a conversation.
      */
-    public function store(Request $request, Conversation $conversation, OptimizedImageUploadService $imageUploadService): JsonResponse
+    public function store(Request $request, Conversation $conversation, MessageDeliveryService $deliveryService): JsonResponse
     {
         $currentUser = $request->user();
 
-        if ($error = $this->authorizeConversation($conversation, $currentUser->id)) {
+        if (($error = $this->authorizeConversation($conversation, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
         $conversation->load(['user1' => fn ($q) => $q->withTrashed(), 'user2' => fn ($q) => $q->withTrashed()]);
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
-        if (! $otherUser || $otherUser->trashed()) {
+        if (! $otherUser instanceof User || $otherUser->trashed()) {
             return response()->json(['success' => false, 'message' => 'Cannot send messages to a deleted user.'], 403);
         }
 
         $isConnected = Connection::query()
             ->accepted()
-            ->where(function ($query) use ($currentUser, $otherUser) {
+            ->where(function ($query) use ($currentUser, $otherUser): void {
                 $query->where('sender_id', $currentUser->id)->where('receiver_id', $otherUser->id)
                     ->orWhere('sender_id', $otherUser->id)->where('receiver_id', $currentUser->id);
             })
@@ -173,50 +172,22 @@ class MessageController extends Controller
             ],
         ]);
 
-        $data = [
-            'conversation_id' => $conversation->id,
-            'sender_id' => $currentUser->id,
-            'reply_to_id' => $validated['reply_to_id'] ?? null,
-            'type' => $validated['type'],
-            'message' => $validated['message'] ?? null,
-            'duration' => $validated['duration'] ?? null,
-        ];
-
+        $extractedDuration = null;
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $imageUploadService->store($file, 'conversations/'.$conversation->id);
-            $data['file_path'] = $path;
-            $data['file_name'] = $file->getClientOriginalName();
-            $data['file_size'] = $file->getSize();
-
-            if (($data['duration'] ?? null) === null && $this->isMediaFile($file)) {
-                $data['duration'] = $this->extractMediaDuration($file);
+            if (($validated['duration'] ?? null) === null && $this->isMediaFile($file)) {
+                $extractedDuration = $this->extractMediaDuration($file);
             }
         }
 
-        $message = Message::create($data)->load('replyTo.sender:id,first_name,last_name');
-
-        $conversation->restoreFor($currentUser->id);
-        $conversation->restoreFor($otherUser->id);
-
-        $conversation->update(['last_message_id' => $message->id]);
-
-        event(new MessageSent($message));
-
-        if (! $conversation->isArchivedFor($otherUser->id)) {
-            $unreadSummary = Conversation::unreadSummaryFor($otherUser->id);
-
-            event(new ConversationUpdated(
-                $conversation,
-                $otherUser,
-                $conversation->unreadCountFor($otherUser->id),
-                $message,
-                $unreadSummary['unread_conversation_count'],
-                $unreadSummary['total_unread_messages'],
-            ));
-
-            $otherUser->notify(new NewMessageNotification($message));
-        }
+        $message = $deliveryService->sendMessage(
+            $conversation,
+            $currentUser,
+            $otherUser,
+            $validated,
+            $request->file('file'),
+            $extractedDuration
+        );
 
         return response()->json([
             'success' => true,
@@ -247,7 +218,7 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($error = $this->authorizeMessage($message, $currentUser->id)) {
+        if (($error = $this->authorizeMessage($message, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -300,7 +271,7 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($error = $this->authorizeMessage($message, $currentUser->id)) {
+        if (($error = $this->authorizeMessage($message, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -325,7 +296,7 @@ class MessageController extends Controller
      */
     private function replyPreview(?Message $message): ?array
     {
-        if (! $message) {
+        if (! $message instanceof Message) {
             return null;
         }
 
@@ -353,10 +324,47 @@ class MessageController extends Controller
     }
 
     /**
-     * Extract the duration of a media file with ffprobe.
+     * Extract the duration of a media file with ffprobe, with pure-PHP fallback for WAV files.
      */
     private function extractMediaDuration(UploadedFile $file): ?int
     {
+        $path = $file->getRealPath();
+        if ($path && file_exists($path)) {
+            $fp = @fopen($path, 'rb');
+            if ($fp) {
+                $header = fread($fp, 12);
+                if (strlen($header) === 12 && str_starts_with($header, 'RIFF') && substr($header, 8, 4) === 'WAVE') {
+                    $byteRate = null;
+                    $dataSize = null;
+                    while (! feof($fp)) {
+                        $chunkHeader = fread($fp, 8);
+                        if (strlen($chunkHeader) < 8) {
+                            break;
+                        }
+                        $chunkId = substr($chunkHeader, 0, 4);
+                        $chunkSize = unpack('V', substr($chunkHeader, 4, 4))[1] ?? 0;
+                        if ($chunkId === 'fmt ') {
+                            $fmtData = fread($fp, $chunkSize);
+                            if (strlen($fmtData) >= 12) {
+                                $byteRate = unpack('V', substr($fmtData, 8, 4))[1] ?? null;
+                            }
+                        } elseif ($chunkId === 'data') {
+                            $dataSize = $chunkSize;
+                            break;
+                        } else {
+                            fseek($fp, $chunkSize, SEEK_CUR);
+                        }
+                    }
+                    fclose($fp);
+                    if ($byteRate && $dataSize) {
+                        return (int) round($dataSize / $byteRate);
+                    }
+                } else {
+                    fclose($fp);
+                }
+            }
+        }
+
         $command = sprintf(
             'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s 2>&1',
             escapeshellarg($file->getRealPath())
@@ -396,11 +404,11 @@ class MessageController extends Controller
     {
         return $message->reactions
             ->groupBy('reaction')
-            ->map(fn ($reactions, string $reaction) => [
+            ->map(fn ($reactions, string $reaction): array => [
                 'reaction' => $reaction,
                 'count' => $reactions->count(),
                 'users' => $reactions
-                    ->map(fn ($item) => [
+                    ->map(fn ($item): array => [
                         'id' => $item->user_id,
                         'name' => trim(($item->user?->first_name ?? '').' '.($item->user?->last_name ?? '')),
                     ])
@@ -427,7 +435,7 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($error = $this->authorizeMessage($message, $currentUser->id)) {
+        if (($error = $this->authorizeMessage($message, $currentUser->id)) instanceof JsonResponse) {
             return $error;
         }
 

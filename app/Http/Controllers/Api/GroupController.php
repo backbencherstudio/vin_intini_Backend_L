@@ -10,44 +10,49 @@ use App\Models\GroupUser;
 use App\Models\User;
 use App\Notifications\GroupInvitationAcceptedNotification;
 use App\Notifications\GroupInvitationNotification;
+use App\Services\Group\GroupMembershipService;
 use App\Services\OptimizedImageUploadService;
 use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class GroupController extends Controller
 {
+    public function __construct(
+        protected GroupMembershipService $membershipService
+    ) {}
+
     public function groupSuggestions(Request $request)
     {
         $user = $request->user();
+        $limit = max(1, min((int) $request->integer('limit', 10), 50));
 
         $groups = Group::query()
             ->where('type', 'public')
             ->where('discoverability', 'listed')
-            ->whereDoesntHave('members', function ($query) use ($user) {
+            ->whereDoesntHave('members', function ($query) use ($user): void {
                 $query->where('users.id', $user->id);
             })
             ->withCount([
                 'members as total_member',
             ])
             ->inRandomOrder()
-            ->limit(5)
+            ->limit($limit)
             ->get([
                 'id',
                 'name',
                 'logo',
             ]);
 
-        $groups = $groups->map(function (Group $group): array {
-            return [
-                'id' => $group->id,
-                'name' => $group->name,
-                'logo_url' => $group->logo_url,
-                'total_member' => (int) $group->total_member,
-            ];
-        })->values();
+        $groups = $groups->map(fn (Group $group): array => [
+            'id' => $group->id,
+            'name' => $group->name,
+            'logo_url' => $group->logo_url,
+            'total_member' => (int) $group->total_member,
+        ])->values();
 
         if ($groups->isEmpty()) {
             return response()->json([
@@ -59,7 +64,7 @@ class GroupController extends Controller
                     'total_groups' => 0,
                 ],
                 'total' => 0,
-                'limit' => 5,
+                'limit' => $limit,
                 'current_page' => 1,
                 'total_page' => 0,
                 'last_page' => 0,
@@ -76,7 +81,7 @@ class GroupController extends Controller
                 'total_groups' => $groups->count(),
             ],
             'total' => $groups->count(),
-            'limit' => 5,
+            'limit' => $limit,
             'current_page' => 1,
             'total_page' => 1,
             'last_page' => 1,
@@ -89,7 +94,7 @@ class GroupController extends Controller
         $data = $request->all();
 
         if (isset($data['industry']) && is_string($data['industry'])) {
-            $data['industry'] = array_map('trim', explode(',', $data['industry']));
+            $data['industry'] = array_map(trim(...), explode(',', $data['industry']));
         }
 
         $request->merge($data);
@@ -145,7 +150,7 @@ class GroupController extends Controller
     public function show(Request $request, $id)
     {
         $group = Group::with(['creator:id,first_name,last_name,title,profile_image'])
-            ->withCount(['members' => function ($query) {
+            ->withCount(['members' => function ($query): void {
                 $query->where('group_users.status', 'active');
             }])
             ->find($id);
@@ -160,7 +165,7 @@ class GroupController extends Controller
         $mutualMembers = [];
         $mutualMembersCount = 0;
 
-        $isEditable = $user ? ($group->creator_id === $user->id) : false;
+        $isEditable = $user && $group->creator_id === $user->id;
         $isAdmin = $isEditable;
 
         if ($user) {
@@ -189,15 +194,13 @@ class GroupController extends Controller
                     ->select('users.id', 'username', 'first_name', 'last_name', 'profile_image');
 
                 $mutualMembersCount = $mutualQuery->count();
-                $mutualMembers = $mutualQuery->limit(5)->get()->map(function ($member) {
-                    return [
-                        'id' => $member->id,
-                        'username' => $member->username,
-                        'first_name' => $member->first_name,
-                        'last_name' => $member->last_name,
-                        'profile_image_url' => $member->profile_image_url,
-                    ];
-                });
+                $mutualMembers = $mutualQuery->limit(5)->get()->map(fn ($member): array => [
+                    'id' => $member->id,
+                    'username' => $member->username,
+                    'first_name' => $member->first_name,
+                    'last_name' => $member->last_name,
+                    'profile_image_url' => $member->profile_image_url,
+                ]);
             }
         }
 
@@ -260,7 +263,7 @@ class GroupController extends Controller
         }
 
         $inviteableUserIds = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
+            ->diff($group->members()->pluck('users.id')->map(fn ($userId): int => (int) $userId))
             ->diff($this->pendingInvitationUserIds($group->id))
             ->values();
 
@@ -271,8 +274,8 @@ class GroupController extends Controller
             ->whereIn('id', $inviteableUserIds)
             ->whereNull('deleted_at')
             ->select(['id', 'username', 'first_name', 'last_name', 'title', 'profile_image'])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($subQuery) use ($search) {
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($subQuery) use ($search): void {
                     $subQuery
                         ->where('first_name', 'like', '%'.$search.'%')
                         ->orWhere('last_name', 'like', '%'.$search.'%')
@@ -285,16 +288,14 @@ class GroupController extends Controller
 
         $users = $query->paginate($perPage);
 
-        $data = $users->getCollection()->map(function (User $user): array {
-            return [
-                'id' => $user->id,
-                'username' => $user->username,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'title' => $user->title,
-                'profile_image_url' => $user->profile_image_url,
-            ];
-        })->values();
+        $data = $users->getCollection()->map(fn (User $user): array => [
+            'id' => $user->id,
+            'username' => $user->username,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'title' => $user->title,
+            'profile_image_url' => $user->profile_image_url,
+        ])->values();
 
         return response()->json([
             'success' => true,
@@ -329,45 +330,62 @@ class GroupController extends Controller
             ], 404);
         }
 
-        if (! $this->canInviteToGroup($group, $request->user()->id)) {
+        if (! $this->membershipService->canInviteToGroup($group, $request->user()->id)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'You are not allowed to invite users to this group.',
             ], 403);
         }
 
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-        ]);
+        $userIds = $request->input('user_ids');
+        if ($userIds !== null) {
+            $request->validate([
+                'user_ids' => ['required', 'array', 'min:1'],
+                'user_ids.*' => ['integer', 'exists:users,id'],
+            ]);
+            $requestedUserIds = collect($userIds)->map(fn ($id): int => (int) $id)->unique()->values()->all();
+        } else {
+            $validated = $request->validate([
+                'user_id' => ['required', 'integer', 'exists:users,id'],
+            ]);
+            $requestedUserIds = [(int) $validated['user_id']];
+        }
 
-        $currentUser = $request->user();
-        $requestedUserId = (int) $validated['user_id'];
+        $result = $this->membershipService->sendInvitations($request->user(), $group, $requestedUserIds);
 
-        $isInviteable = $this->connectedUserIds($currentUser->id)
-            ->diff($group->members()->pluck('users.id')->map(fn ($userId) => (int) $userId))
-            ->diff($this->pendingInvitationUserIds($group->id))
-            ->contains($requestedUserId);
+        if (! $result['success']) {
+            $msg = count($requestedUserIds) === 1
+                ? 'This user is not eligible for invitation.'
+                : 'Some selected users are not eligible for invitation.';
 
-        if (! $isInviteable) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'This user is not eligible for invitation.',
+                'message' => $msg,
+                'data' => [
+                    'invalid_user_ids' => $result['invalid_user_ids'] ?? [],
+                ],
             ], 422);
         }
 
-        $invitee = User::find($requestedUserId);
-
-        $invitation = GroupInvitation::create([
-            'group_id' => $group->id,
-            'inviter_id' => $currentUser->id,
-            'invited_user_id' => $invitee->id,
-        ]);
-
-        $invitee->notify(new GroupInvitationNotification($invitation, $group, $currentUser));
+        if ($userIds === null) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Group invitation sent successfully.',
+                'status' => 'success',
+                'data' => [
+                    'group' => [
+                        'id' => $group->id,
+                        'name' => $group->name,
+                        'slug' => $group->slug,
+                    ],
+                    'invited_user' => $result['invited_users'][0] ?? null,
+                ],
+            ], 200);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Group invitation sent successfully.',
+            'message' => 'Group invitations sent successfully.',
             'status' => 'success',
             'data' => [
                 'group' => [
@@ -375,15 +393,7 @@ class GroupController extends Controller
                     'name' => $group->name,
                     'slug' => $group->slug,
                 ],
-                'invited_user' => [
-                    'invitation_id' => $invitation->id,
-                    'id' => $invitee->id,
-                    'username' => $invitee->username,
-                    'first_name' => $invitee->first_name,
-                    'last_name' => $invitee->last_name,
-                    'title' => $invitee->title,
-                    'profile_image_url' => $invitee->profile_image_url,
-                ],
+                'invited_users' => $result['invited_users'] ?? [],
             ],
         ], 200);
     }
@@ -401,12 +411,12 @@ class GroupController extends Controller
 
         $input = $request->all();
         if (isset($input['industry']) && is_string($input['industry']) && ! empty($input['industry'])) {
-            $input['industry'] = array_map('trim', explode(',', $input['industry']));
+            $input['industry'] = array_map(trim(...), explode(',', $input['industry']));
         }
         $request->merge($input);
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255|unique:groups,name,'.$id,
+            'name' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('groups', 'name')->ignore($group->id)],
             'description' => 'sometimes|required|string|max:2500',
             'industry' => 'nullable|array|max:3',
             'location' => 'nullable|string|max:255',
@@ -589,7 +599,7 @@ class GroupController extends Controller
 
         $query = $baseQuery
             ->with(['creator:id,username,first_name,last_name,email,profile_image'])
-            ->withCount(['members' => function ($query) {
+            ->withCount(['members' => function ($query): void {
                 $query->where('group_users.status', 'active');
             }]);
         // ->withCount('members');
@@ -693,15 +703,6 @@ class GroupController extends Controller
 
         $this->deleteGroupInvitationNotification($user, $group->id);
 
-        // if ($group->members()->where('user_id', auth()->id())->exists()) {
-        //     return response()->json([
-        //         'status' => 'error',
-        //         'message' => 'You are already a member of this group',
-        //     ], 400);
-        // }
-
-        // $group->members()->attach(auth()->id(), ['role' => 'member']);
-
         return response()->json([
             'status' => 'success',
             'message' => 'Joined successfully!',
@@ -743,66 +744,35 @@ class GroupController extends Controller
 
     public function acceptInvitation(Request $request, int $invitationId)
     {
-        $invitation = GroupInvitation::query()
-            ->with(['group', 'inviter'])
-            ->where('id', $invitationId)
-            ->where('invited_user_id', $request->user()->id)
-            ->first();
+        $result = $this->membershipService->acceptInvitation($request->user(), $invitationId);
 
-        if (! $invitation) {
+        if (! $result) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invitation not found.',
             ], 404);
-        }
-
-        $group = $invitation->group;
-        $currentUserId = $request->user()->id;
-        $inviter = $invitation->inviter;
-        $acceptor = $request->user();
-
-        if (! $group->members()->where('user_id', $currentUserId)->exists()) {
-            $group->members()->attach($currentUserId, ['role' => 'member']);
-        }
-
-        $invitation->delete();
-
-        $this->deleteGroupInvitationNotification($acceptor, $group->id);
-
-        if ($inviter && (int) $inviter->id !== (int) $acceptor->id) {
-            $inviter->notify(new GroupInvitationAcceptedNotification($group, $acceptor, $inviter));
         }
 
         return response()->json([
             'status' => 'success',
             'message' => 'Invitation accepted successfully.',
             'data' => [
-                'group_id' => $group->id,
-                'group_name' => $group->name,
+                'group_id' => $result['group']['id'],
+                'group_name' => $result['group']['name'],
             ],
         ], 200);
     }
 
     public function ignoreInvitation(Request $request, int $invitationId)
     {
-        $invitation = GroupInvitation::query()
-            ->with('group')
-            ->where('id', $invitationId)
-            ->where('invited_user_id', $request->user()->id)
-            ->first();
+        $group = $this->membershipService->ignoreInvitation($request->user(), $invitationId);
 
-        if (! $invitation) {
+        if (! $group instanceof Group) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invitation not found.',
             ], 404);
         }
-
-        $group = $invitation->group;
-
-        $invitation->delete();
-
-        $this->deleteGroupInvitationNotification($request->user(), $group->id);
 
         return response()->json([
             'status' => 'success',
@@ -822,16 +792,16 @@ class GroupController extends Controller
             ->whereHas('inviter', fn ($q) => $q->whereNull('deleted_at'))
             ->whereHas('group.creator', fn ($q) => $q->whereNull('deleted_at'))
             ->with([
-                'group' => function ($query) {
+                'group' => function ($query): void {
                     $query->select('id', 'name', 'type', 'logo', 'creator_id', 'description')
-                        ->withCount(['members as member_count' => function ($q) {
+                        ->withCount(['members as member_count' => function ($q): void {
                             $q->where('group_users.status', 'active');
                         }]);
                 },
                 'inviter:id,username,first_name,last_name,title,profile_image',
             ])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->whereHas('group', function ($groupQuery) use ($search) {
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->whereHas('group', function ($groupQuery) use ($search): void {
                     $groupQuery->where('name', 'like', '%'.$search.'%');
                 });
             })
@@ -923,7 +893,7 @@ class GroupController extends Controller
         return GroupInvitation::query()
             ->where('group_id', $groupId)
             ->pluck('invited_user_id')
-            ->map(fn ($userId) => (int) $userId)
+            ->map(fn ($userId): int => (int) $userId)
             ->values();
     }
 
@@ -939,7 +909,7 @@ class GroupController extends Controller
     {
         return Connection::query()
             ->accepted()
-            ->where(function ($query) use ($userId) {
+            ->where(function ($query) use ($userId): void {
                 $query->where('sender_id', $userId)
                     ->orWhere('receiver_id', $userId);
             })
@@ -947,11 +917,9 @@ class GroupController extends Controller
             ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->get(['sender_id', 'receiver_id'])
             ->toBase()
-            ->map(function (Connection $connectionRequest) use ($userId) {
-                return (int) ($connectionRequest->sender_id === $userId
-                    ? $connectionRequest->receiver_id
-                    : $connectionRequest->sender_id);
-            })
+            ->map(fn (Connection $connectionRequest): int => (int) ($connectionRequest->sender_id === $userId
+                ? $connectionRequest->receiver_id
+                : $connectionRequest->sender_id))
             ->unique()
             ->values();
     }
@@ -1028,10 +996,10 @@ class GroupController extends Controller
         $user = auth('api')->user();
 
         $groups = Group::query()
-            ->where(function ($query) use ($user) {
+            ->where(function ($query) use ($user): void {
 
                 $query->where('creator_id', $user->id)
-                    ->orWhereHas('users', function ($q) use ($user) {
+                    ->orWhereHas('users', function ($q) use ($user): void {
                         $q->where('users.id', $user->id)
                             ->where('group_users.status', '!=', 'banned');
                     });
@@ -1044,12 +1012,5 @@ class GroupController extends Controller
             'status' => true,
             'data' => $groups,
         ]);
-    }
-
-    private function findGroupByIdentifier($identifier)
-    {
-        return Group::where('id', $identifier)
-            ->orWhere('slug', $identifier)
-            ->firstOrFail();
     }
 }

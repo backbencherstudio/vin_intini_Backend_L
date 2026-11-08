@@ -20,21 +20,21 @@ class AcademiaController extends Controller
             'universities',
             'residencies',
             'facilities',
-            'industryJobPosts as jobs_count' => function ($query) use ($today) {
+            'industryJobPosts as jobs_count' => function ($query) use ($today): void {
                 $query->where('status', IndustryJobPostStatus::PUBLISHED)
-                    ->where(function ($q) use ($today) {
+                    ->where(function ($q) use ($today): void {
                         $q->whereNull('announcement_start_date')
                             ->orWhere('announcement_start_date', '<=', $today);
                     })
-                    ->where(function ($q) use ($today) {
+                    ->where(function ($q) use ($today): void {
                         $q->whereNull('announcement_end_date')
                             ->orWhere('announcement_end_date', '>=', $today);
                     });
             },
         ])
-            ->when($request->filled('search'), function ($query) use ($request) {
+            ->when($request->filled('search'), function ($query) use ($request): void {
                 $search = $request->input('search');
-                $query->where(function ($q) use ($search) {
+                $query->where(function ($q) use ($search): void {
                     $q->where('name', 'LIKE', "%{$search}%")
                         ->orWhere('code', 'LIKE', "%{$search}%");
                 });
@@ -58,13 +58,13 @@ class AcademiaController extends Controller
                 'universities',
                 'residencies',
                 'facilities',
-                'industryJobPosts as jobs_count' => function ($query) use ($today) {
+                'industryJobPosts as jobs_count' => function ($query) use ($today): void {
                     $query->where('status', IndustryJobPostStatus::PUBLISHED)
-                        ->where(function ($q) use ($today) {
+                        ->where(function ($q) use ($today): void {
                             $q->whereNull('announcement_start_date')
                                 ->orWhere('announcement_start_date', '<=', $today);
                         })
-                        ->where(function ($q) use ($today) {
+                        ->where(function ($q) use ($today): void {
                             $q->whereNull('announcement_end_date')
                                 ->orWhere('announcement_end_date', '>=', $today);
                         });
@@ -101,16 +101,12 @@ class AcademiaController extends Controller
         }
 
         if ($degreeFilter !== 'All' && ! empty($degreeFilter)) {
-            $query->where(function ($q) use ($degreeFilter) {
+            $query->where(function ($q) use ($degreeFilter): void {
                 $q->whereJsonContains('psychology_degrees', $degreeFilter)
                     ->orWhereJsonContains('counseling_degrees', $degreeFilter)
                     ->orWhereJsonContains('neuroscience_degrees', $degreeFilter);
             });
         }
-
-        // if ($degreeFilter !== 'All' && !empty($degreeFilter)) {
-        //     $query->whereJsonContains('psychology_degrees', $degreeFilter);
-        // }
 
         // alphabetical order
         $query->orderBy('academia_universities.name', $sortOrder);
@@ -221,13 +217,9 @@ class AcademiaController extends Controller
 
         $query = $state->facilities();
 
-        $query->when($type, function ($q) use ($type) {
-            return $q->where('type', $type);
-        });
+        $query->when($type, fn ($q) => $q->where('type', $type));
 
-        $query->when($search !== '', function ($q) use ($search) {
-            return $q->where('academia_facilities.name', 'like', '%'.$search.'%');
-        });
+        $query->when($search !== '', fn ($q) => $q->where('academia_facilities.name', 'like', '%'.$search.'%'));
 
         // alphabetical order
         $query->orderBy('academia_facilities.name', $sortOrder);
@@ -281,7 +273,7 @@ class AcademiaController extends Controller
 
         $baseQuery = $state->jobs();
         if ($search !== '') {
-            $baseQuery->where(function ($q) use ($search) {
+            $baseQuery->where(function ($q) use ($search): void {
                 $q->where('title', 'like', "%$search%")
                     ->orWhere('company_name', 'like', "%$search%");
             });
@@ -338,7 +330,7 @@ class AcademiaController extends Controller
         }
 
         $cities = $state->cities()
-            ->when($request->filled('search'), function ($query) use ($request) {
+            ->when($request->filled('search'), function ($query) use ($request): void {
                 $query->where('name', 'LIKE', '%'.$request->input('search').'%');
             })
             ->orderBy('name')

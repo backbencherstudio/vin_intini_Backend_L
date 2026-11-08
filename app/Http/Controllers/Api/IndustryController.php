@@ -7,6 +7,7 @@ use App\Models\Comment;
 use App\Models\CommentLike;
 use App\Models\Connection;
 use App\Models\Industry;
+use App\Models\IndustryConversation;
 use App\Models\IndustryFollow;
 use App\Models\IndustryProfileView;
 use App\Models\Post;
@@ -51,7 +52,7 @@ class IndustryController extends Controller
 
         $existingIndustry = $this->ownedIndustry(auth()->id());
 
-        if ($existingIndustry) {
+        if ($existingIndustry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'You already have a company page.',
@@ -174,7 +175,7 @@ class IndustryController extends Controller
 
         $existingConversation = null;
         if ($viewerId && $viewerId !== (int) $industry->created_by) {
-            $existingConversation = \App\Models\IndustryConversation::where('industry_id', $industry->id)
+            $existingConversation = IndustryConversation::where('industry_id', $industry->id)
                 ->where('user_id', $viewerId)
                 ->first();
         }
@@ -224,7 +225,7 @@ class IndustryController extends Controller
 
         $industry = $this->ownedIndustry(auth()->id());
 
-        if (! $industry) {
+        if (! $industry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Company not found.',
@@ -348,7 +349,7 @@ class IndustryController extends Controller
 
         $industry = $this->ownedIndustry($userId);
 
-        if (! $industry) {
+        if (! $industry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Company page not found.',
@@ -370,9 +371,9 @@ class IndustryController extends Controller
             ),
             'deleted_comment_images' => $posts->sum(
                 fn ($post) => $post->comments->sum(
-                    fn ($comment) => (int) (bool) $comment->image
+                    fn ($comment): int|float => (int) (bool) $comment->image
                         + $comment->replies->filter(
-                            fn ($reply) => (bool) $reply->image
+                            fn ($reply): bool => (bool) $reply->image
                         )->count()
                 )
             ),
@@ -424,7 +425,7 @@ class IndustryController extends Controller
 
         $industry = $this->ownedIndustry($userId);
 
-        if (! $industry) {
+        if (! $industry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'You do not have a company page.',
@@ -438,7 +439,7 @@ class IndustryController extends Controller
             'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:102400'],
         ]);
 
-        if (! $this->mediaCountsAreValid($request, 'You can upload')) {
+        if (! $this->mediaCountsAreValid($request)) {
             return response()->json([
                 'success' => false,
                 'message' => $this->mediaValidationMessage($request),
@@ -513,7 +514,7 @@ class IndustryController extends Controller
 
         $post = $this->findCompanyPost($postId);
 
-        if (! $post) {
+        if (! $post instanceof Post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -554,7 +555,7 @@ class IndustryController extends Controller
             ], 422);
         }
 
-        if ($hasNewMedia && ! $this->mediaCountsAreValid($request, 'You can upload')) {
+        if ($hasNewMedia && ! $this->mediaCountsAreValid($request)) {
             return response()->json([
                 'success' => false,
                 'message' => $this->mediaValidationMessage($request),
@@ -642,7 +643,7 @@ class IndustryController extends Controller
 
         $post = $this->findCompanyPost($postId);
 
-        if (! $post) {
+        if (! $post instanceof Post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -731,7 +732,7 @@ class IndustryController extends Controller
             'success' => true,
             'message' => 'Company posts fetched successfully.',
             'data' => collect($posts->items())
-                ->map(fn ($post) => $this->postResource($post, true, $userId, $relationshipMap, $isFollowing))
+                ->map(fn ($post): array => $this->postResource($post, true, $userId, $relationshipMap, $isFollowing))
                 ->values(),
             'pagination' => $this->pagination($posts),
         ], 200);
@@ -743,7 +744,7 @@ class IndustryController extends Controller
 
         $industry = $this->ownedIndustry($userId);
 
-        if (! $industry) {
+        if (! $industry instanceof Industry) {
             return response()->json([
                 'success' => false,
                 'message' => 'Company page not found.',
@@ -773,7 +774,7 @@ class IndustryController extends Controller
             'success' => true,
             'message' => 'Latest company posts fetched successfully.',
             'data' => $posts
-                ->map(fn ($post) => $this->postResource($post, true, $userId, $relationshipMap, false))
+                ->map(fn ($post): array => $this->postResource($post, true, $userId, $relationshipMap, false))
                 ->values(),
         ], 200);
     }
@@ -784,7 +785,7 @@ class IndustryController extends Controller
 
         $post = $this->findCompanyPost($postId);
 
-        if (! $post) {
+        if (! $post instanceof Post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -856,7 +857,7 @@ class IndustryController extends Controller
 
         $post = $this->findCompanyPost($postId);
 
-        if (! $post) {
+        if (! $post instanceof Post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -882,7 +883,7 @@ class IndustryController extends Controller
             'success' => true,
             'message' => 'Post liked users fetched successfully.',
             'data' => collect($likes->items())
-                ->map(fn ($like) => $this->likedUserResource($like->user))
+                ->map(fn ($like): ?array => $this->likedUserResource($like->user))
                 ->filter()
                 ->values(),
             'pagination' => $this->pagination($likes),
@@ -893,7 +894,7 @@ class IndustryController extends Controller
     {
         $post = $this->findCompanyPost($postId);
 
-        if (! $post) {
+        if (! $post instanceof Post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -986,7 +987,7 @@ class IndustryController extends Controller
 
         $post = $this->findCompanyPost($postId);
 
-        if (! $post) {
+        if (! $post instanceof Post) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found.',
@@ -1022,12 +1023,12 @@ class IndustryController extends Controller
             'success' => true,
             'message' => 'Post comments fetched successfully.',
             'data' => collect($comments->items())
-                ->map(function ($comment) use ($replies) {
+                ->map(function ($comment) use ($replies): array {
                     $resource = $this->commentResource($comment);
 
                     $resource['replies'] = $replies
                         ->get($comment->id, collect())
-                        ->map(fn ($reply) => $this->replyResource($reply))
+                        ->map(fn ($reply): array => $this->replyResource($reply))
                         ->values();
 
                     return $resource;
@@ -1043,7 +1044,7 @@ class IndustryController extends Controller
 
         $comment = $this->findCompanyComment($commentId);
 
-        if (! $comment) {
+        if (! $comment instanceof Comment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1107,7 +1108,7 @@ class IndustryController extends Controller
 
         $comment = $this->findCompanyComment($commentId);
 
-        if (! $comment) {
+        if (! $comment instanceof Comment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1179,7 +1180,7 @@ class IndustryController extends Controller
 
         $comment = $this->findCompanyComment($commentId);
 
-        if (! $comment) {
+        if (! $comment instanceof Comment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1205,7 +1206,7 @@ class IndustryController extends Controller
             'success' => true,
             'message' => 'Comment liked users fetched successfully.',
             'data' => collect($likes->items())
-                ->map(fn ($like) => $this->likedUserResource($like->user))
+                ->map(fn ($like): ?array => $this->likedUserResource($like->user))
                 ->filter()
                 ->values(),
             'pagination' => $this->pagination($likes),
@@ -1216,7 +1217,7 @@ class IndustryController extends Controller
     {
         $parentComment = $this->findCompanyComment($commentId);
 
-        if (! $parentComment) {
+        if (! $parentComment instanceof Comment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1315,7 +1316,7 @@ class IndustryController extends Controller
 
         $comment = $this->findCompanyComment($commentId);
 
-        if (! $comment) {
+        if (! $comment instanceof Comment) {
             return response()->json([
                 'success' => false,
                 'message' => 'Comment not found.',
@@ -1344,7 +1345,7 @@ class IndustryController extends Controller
             'success' => true,
             'message' => 'Comment replies fetched successfully.',
             'data' => collect($replies->items())
-                ->map(fn ($reply) => $this->replyResource($reply))
+                ->map(fn ($reply): array => $this->replyResource($reply))
                 ->values(),
             'pagination' => $this->pagination($replies),
         ], 200);
@@ -1356,7 +1357,7 @@ class IndustryController extends Controller
 
         $reply = $this->findCompanyReply($replyId);
 
-        if (! $reply) {
+        if (! $reply instanceof Reply) {
             return response()->json([
                 'success' => false,
                 'message' => 'Reply not found.',
@@ -1428,7 +1429,7 @@ class IndustryController extends Controller
 
         $reply = $this->findCompanyReply($replyId);
 
-        if (! $reply) {
+        if (! $reply instanceof Reply) {
             return response()->json([
                 'success' => false,
                 'message' => 'Reply not found.',
@@ -1454,7 +1455,7 @@ class IndustryController extends Controller
             'success' => true,
             'message' => 'Reply liked users fetched successfully.',
             'data' => collect($likes->items())
-                ->map(fn ($like) => $this->likedUserResource($like->user))
+                ->map(fn ($like): ?array => $this->likedUserResource($like->user))
                 ->filter()
                 ->values(),
             'pagination' => $this->pagination($likes),
@@ -1569,14 +1570,14 @@ class IndustryController extends Controller
      */
     private function visibleCompanyPostsQuery($query, int $userId)
     {
-        return $query->where(function ($query) use ($userId) {
+        return $query->where(function ($query) use ($userId): void {
             $query->where('posts.user_id', $userId)
 
                 ->orWhere('visibility', 'public')
 
-                ->orWhere(function ($query) use ($userId) {
+                ->orWhere(function ($query) use ($userId): void {
                     $query->where('visibility', 'followers')
-                        ->whereExists(function ($subQuery) use ($userId) {
+                        ->whereExists(function ($subQuery) use ($userId): void {
                             $subQuery->select(DB::raw(1))
                                 ->from('industry_follows')
                                 ->join(
@@ -1689,7 +1690,7 @@ class IndustryController extends Controller
         return $counts;
     }
 
-    private function mediaCountsAreValid(Request $request, string $subject): bool
+    private function mediaCountsAreValid(Request $request): bool
     {
         ['images' => $images, 'videos' => $videos] = $this->mediaCounts($request);
 
@@ -1701,7 +1702,7 @@ class IndustryController extends Controller
             return false;
         }
 
-        return ! ($videos === 0 && $images > 10);
+        return $videos !== 0 || $images <= 10;
     }
 
     private function mediaValidationMessage(Request $request): string
@@ -1792,7 +1793,7 @@ class IndustryController extends Controller
         ?array $relationshipMap = null,
         ?bool $isFollowing = null
     ): array {
-        $viewerId = $viewerId ?? auth('api')->id() ?? auth()->id();
+        $viewerId ??= auth('api')->id() ?? auth()->id();
 
         if (! $post->relationLoaded('user') && $post->user_id) {
             $post->load('user:id,username,first_name,last_name,profile_image,title');
@@ -1829,9 +1830,9 @@ class IndustryController extends Controller
                     default => 'not_connected',
                 };
             } else {
-                $connection = Connection::where(function ($q) use ($viewerId, $post) {
+                $connection = Connection::where(function ($q) use ($viewerId, $post): void {
                     $q->where('sender_id', $viewerId)->where('receiver_id', $post->user_id);
-                })->orWhere(function ($q) use ($viewerId, $post) {
+                })->orWhere(function ($q) use ($viewerId, $post): void {
                     $q->where('sender_id', $post->user_id)->where('receiver_id', $viewerId);
                 })->first();
 
@@ -1849,7 +1850,7 @@ class IndustryController extends Controller
             ? $post->likes->isNotEmpty()
             : (bool) ($post->is_liked ?? ($viewerId ? $post->likes()->where('user_id', $viewerId)->exists() : false));
 
-        $canEdit = $viewerId ? ((int) $post->user_id === (int) $viewerId) : false;
+        $canEdit = $viewerId && (int) $post->user_id === (int) $viewerId;
         $canDelete = $canEdit;
 
         $industryData = null;
@@ -1911,19 +1912,19 @@ class IndustryController extends Controller
 
     private function buildRelationshipMap(?int $userId, array $otherUserIds): array
     {
-        if (! $userId || empty($otherUserIds)) {
+        if (! $userId || $otherUserIds === []) {
             return [];
         }
 
-        $otherUserIds = array_filter(array_unique($otherUserIds), fn ($id) => (int) $id !== (int) $userId);
+        $otherUserIds = array_filter(array_unique($otherUserIds), fn ($id): bool => (int) $id !== (int) $userId);
 
-        if (empty($otherUserIds)) {
+        if ($otherUserIds === []) {
             return [];
         }
 
-        $relationships = Connection::where(function ($q) use ($userId, $otherUserIds) {
+        $relationships = Connection::where(function ($q) use ($userId, $otherUserIds): void {
             $q->where('sender_id', $userId)->whereIn('receiver_id', $otherUserIds);
-        })->orWhere(function ($q) use ($userId, $otherUserIds) {
+        })->orWhere(function ($q) use ($userId, $otherUserIds): void {
             $q->where('receiver_id', $userId)->whereIn('sender_id', $otherUserIds);
         })
             ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
@@ -2045,7 +2046,7 @@ class IndustryController extends Controller
         ];
     }
 
-    private function commentAuthorResource($model): ?array
+    private function commentAuthorResource(Comment|Reply $model): ?array
     {
         if ($model->industry_id) {
             $industry = $model->relationLoaded('industry')
@@ -2080,7 +2081,7 @@ class IndustryController extends Controller
         ];
     }
 
-    private function resolvedAuthorResource($model): ?array
+    private function resolvedAuthorResource(Comment|Reply $model): ?array
     {
         if ($model->industry_id) {
             $industry = $model->relationLoaded('industry')

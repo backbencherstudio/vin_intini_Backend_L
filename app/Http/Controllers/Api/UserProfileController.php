@@ -81,46 +81,42 @@ class UserProfileController extends Controller
 
                 'skills' => $skills,
 
-                'experiences' => $user->experiences->map(function ($experience) {
-                    return [
-                        'id' => $experience->id,
-                        'company_id' => $experience->company_id,
-                        'company' => [
-                            'id' => $experience->company?->id,
-                            'name' => $experience->company?->name,
-                        ],
-                        'title' => $experience->title,
-                        'start_date' => $experience->start_date,
-                        'end_date' => $experience->end_date,
-                        'is_current' => $experience->is_current,
-                        'status' => $experience->formatted_end_date_attribute,
-                        'description' => $experience->description,
-                        'skills' => $experience->skills_data,
-                    ];
-                })->values(),
+                'experiences' => $user->experiences->map(fn ($experience): array => [
+                    'id' => $experience->id,
+                    'company_id' => $experience->company_id,
+                    'company' => [
+                        'id' => $experience->company?->id,
+                        'name' => $experience->company?->name,
+                    ],
+                    'title' => $experience->title,
+                    'start_date' => $experience->start_date,
+                    'end_date' => $experience->end_date,
+                    'is_current' => $experience->is_current,
+                    'status' => $experience->formatted_end_date_attribute,
+                    'description' => $experience->description,
+                    'skills' => $experience->skills_data,
+                ])->values(),
 
-                'educations' => $user->educations->map(function ($education) {
-                    return [
-                        'id' => $education->id,
-                        'institution_id' => $education->institution_id,
-                        'institution' => [
-                            'id' => $education->institution?->id,
-                            'name' => $education->institution?->name,
-                        ],
-                        'degree' => $education->degree,
-                        'field_study' => $education->field_study,
-                        'start_month' => $education->start_month,
-                        'start_year' => $education->start_year,
-                        'end_month' => $education->end_month,
-                        'end_year' => $education->end_year,
-                        'grade' => $education->grade,
-                        'description' => $education->description,
-                        'activities' => $education->activities,
-                        'is_current' => $education->is_current,
-                        'status' => $education->status,
-                        'skills' => $education->skills_data,
-                    ];
-                })->values(),
+                'educations' => $user->educations->map(fn ($education): array => [
+                    'id' => $education->id,
+                    'institution_id' => $education->institution_id,
+                    'institution' => [
+                        'id' => $education->institution?->id,
+                        'name' => $education->institution?->name,
+                    ],
+                    'degree' => $education->degree,
+                    'field_study' => $education->field_study,
+                    'start_month' => $education->start_month,
+                    'start_year' => $education->start_year,
+                    'end_month' => $education->end_month,
+                    'end_year' => $education->end_year,
+                    'grade' => $education->grade,
+                    'description' => $education->description,
+                    'activities' => $education->activities,
+                    'is_current' => $education->is_current,
+                    'status' => $education->status,
+                    'skills' => $education->skills_data,
+                ])->values(),
             ],
         ], 200);
     }
@@ -136,7 +132,7 @@ class UserProfileController extends Controller
             'experiences.company',
         ])
             // ->find($id);
-            ->where(function ($q) use ($username) {
+            ->where(function ($q) use ($username): void {
                 $q->where('username', $username)
                     ->orWhere('id', $username);
             })
@@ -162,11 +158,11 @@ class UserProfileController extends Controller
             $actionLabel = 'Edit Profile';
         } else {
             $connection = Connection::query()
-                ->where(function ($query) use ($currentUser, $user) {
+                ->where(function ($query) use ($currentUser, $user): void {
                     $query->where('sender_id', $currentUser->id)
                         ->where('receiver_id', $user->id);
                 })
-                ->orWhere(function ($query) use ($currentUser, $user) {
+                ->orWhere(function ($query) use ($currentUser, $user): void {
                     $query->where('sender_id', $user->id)
                         ->where('receiver_id', $currentUser->id);
                 })
@@ -254,45 +250,41 @@ class UserProfileController extends Controller
                 ] : null,
 
                 'skills' => $skills,
-                'experiences' => $canSeeDetails ? $user->experiences->map(function ($experience) {
-                    return [
-                        'id' => $experience->id,
-                        'company_id' => $experience->company_id,
-                        'company' => [
-                            'id' => $experience->company?->id,
-                            'name' => $experience->company?->name,
-                        ],
-                        'title' => $experience->title,
-                        'start_date' => $experience->start_date,
-                        'end_date' => $experience->end_date,
-                        'is_current' => $experience->is_current,
-                        'status' => $experience->formatted_end_date_attribute,
-                        'description' => $experience->description,
-                        'skills' => $experience->skills_data,
-                    ];
-                })->values() : [],
-                'educations' => $canSeeDetails ? $user->educations->map(function ($education) {
-                    return [
-                        'id' => $education->id,
-                        'institution_id' => $education->institution_id,
-                        'institution' => [
-                            'id' => $education->institution?->id,
-                            'name' => $education->institution?->name,
-                        ],
-                        'degree' => $education->degree,
-                        'field_study' => $education->field_study,
-                        'start_month' => $education->start_month,
-                        'start_year' => $education->start_year,
-                        'end_month' => $education->end_month,
-                        'end_year' => $education->end_year,
-                        'grade' => $education->grade,
-                        'description' => $education->description,
-                        'activities' => $education->activities,
-                        'is_current' => $education->is_current,
-                        'status' => $education->status,
-                        'skills' => $education->skills_data,
-                    ];
-                })->values() : [],
+                'experiences' => $canSeeDetails ? $user->experiences->map(fn ($experience): array => [
+                    'id' => $experience->id,
+                    'company_id' => $experience->company_id,
+                    'company' => [
+                        'id' => $experience->company?->id,
+                        'name' => $experience->company?->name,
+                    ],
+                    'title' => $experience->title,
+                    'start_date' => $experience->start_date,
+                    'end_date' => $experience->end_date,
+                    'is_current' => $experience->is_current,
+                    'status' => $experience->formatted_end_date_attribute,
+                    'description' => $experience->description,
+                    'skills' => $experience->skills_data,
+                ])->values() : [],
+                'educations' => $canSeeDetails ? $user->educations->map(fn ($education): array => [
+                    'id' => $education->id,
+                    'institution_id' => $education->institution_id,
+                    'institution' => [
+                        'id' => $education->institution?->id,
+                        'name' => $education->institution?->name,
+                    ],
+                    'degree' => $education->degree,
+                    'field_study' => $education->field_study,
+                    'start_month' => $education->start_month,
+                    'start_year' => $education->start_year,
+                    'end_month' => $education->end_month,
+                    'end_year' => $education->end_year,
+                    'grade' => $education->grade,
+                    'description' => $education->description,
+                    'activities' => $education->activities,
+                    'is_current' => $education->is_current,
+                    'status' => $education->status,
+                    'skills' => $education->skills_data,
+                ])->values() : [],
             ],
         ], 200);
     }
@@ -341,7 +333,7 @@ class UserProfileController extends Controller
                 'nullable',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $month = $request->input('start_month');
                     if ($value && $month) {
                         $startDate = Carbon::parse("1 {$month} {$value}");
@@ -359,7 +351,7 @@ class UserProfileController extends Controller
                 'nullable',
                 'integer',
                 'min:1900',
-                function ($attribute, $value, $fail) use ($request) {
+                function ($attribute, $value, $fail) use ($request): void {
                     $startYear = $request->input('start_year');
                     $startMonth = $request->input('start_month');
                     $endMonth = $request->input('end_month');
@@ -401,8 +393,8 @@ class UserProfileController extends Controller
             $user->username = $finalUsername;
         }
 
-        $professionArray = array_map('trim', explode(',', $request->profession));
-        $interestsArray = array_map('trim', explode(',', $request->interests));
+        $professionArray = array_map(trim(...), explode(',', $request->profession));
+        $interestsArray = array_map(trim(...), explode(',', $request->interests));
         $skillIds = [];
 
         if ($request->has('skills')) {
@@ -462,8 +454,6 @@ class UserProfileController extends Controller
         $institutionName = trim((string) ($validated['institution'] ?? ''));
         $degree = trim((string) ($validated['highest_degree'] ?? ''));
 
-        // $endYear = trim((string) ($validated['graduation_year'] ?? ''));
-
         if ($institutionName !== '' && $degree !== '') {
             $institution = Institution::query()->firstOrCreate(['name' => $institutionName]);
 
@@ -515,11 +505,11 @@ class UserProfileController extends Controller
 
         $extraFields = array_diff($requestedFields, $allowedFields);
 
-        if (! empty($extraFields)) {
+        if ($extraFields !== []) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Validation failed: Unexpected fields detected.',
-                'errors' => collect($extraFields)->mapWithKeys(fn ($field) => [
+                'errors' => collect($extraFields)->mapWithKeys(fn ($field): array => [
                     $field => ["The $field field is not allowed."],
                 ]),
             ], 422);
@@ -561,9 +551,7 @@ class UserProfileController extends Controller
         ])->toArray();
 
         if ($request->has('skills')) {
-            $profileData['skills_id'] = collect($request->skills)->map(function ($skillName) {
-                return Skill::firstOrCreate(['name' => trim($skillName)])->id;
-            })->toArray();
+            $profileData['skills_id'] = collect($request->skills)->map(fn ($skillName) => Skill::firstOrCreate(['name' => trim($skillName)])->id)->toArray();
         }
 
         if ($request->has('current_institute_id')) {
@@ -724,7 +712,7 @@ class UserProfileController extends Controller
                 ->where('token_id', '!=', $currentTokenId)
                 ->where('is_active', true)
                 ->update(['is_active' => false]);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
         }
 
         return response()->json([

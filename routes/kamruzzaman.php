@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Admin\Api\AcademiaController;
 use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
@@ -11,10 +13,10 @@ use App\Http\Controllers\Admin\Api\UserManagementController;
 use App\Http\Controllers\Api\IndustryController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('role:admin')->prefix('admin')->group(function () {
+Route::middleware('role:admin')->prefix('admin')->group(function (): void {
 
     // User Management.....
-    Route::prefix('user-manage')->group(function () {
+    Route::prefix('user-manage')->group(function (): void {
         Route::get('users', [UserManagementController::class, 'index']);
         Route::get('users/{id}', [UserManagementController::class, 'show']);
         Route::post('users/{id}/toggle-suspend', [UserManagementController::class, 'toggleSuspend']);
@@ -22,13 +24,13 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     });
 
     // Partners (Pro Industry Companies) Management.....
-    Route::prefix('partners')->group(function () {
+    Route::prefix('partners')->group(function (): void {
         Route::get('/', [PartnerManagementController::class, 'index']);
         Route::post('{id}/toggle-pause', [PartnerManagementController::class, 'togglePause']);
     });
 
     // Publications Management.....
-    Route::prefix('publications')->group(function () {
+    Route::prefix('publications')->group(function (): void {
         Route::get('/', [PublicationManagementController::class, 'index']);
         Route::get('{id}', [PublicationManagementController::class, 'show']);
         Route::post('{id}/toggle-status', [PublicationManagementController::class, 'toggleStatus']);
@@ -36,7 +38,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     });
 
     // Academia.....
-    Route::prefix('academia')->group(function () {
+    Route::prefix('academia')->group(function (): void {
 
         // State.....
         Route::get('state', [AcademiaController::class, 'getState']);
@@ -74,7 +76,7 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::get('contact-us', [ContactUsController::class, 'getContactUs']);
 
     // Categories.....
-    Route::prefix('categories')->group(function () {
+    Route::prefix('categories')->group(function (): void {
 
         // Psychology section.....
         Route::get('psychology', [IndustryCategoryController::class, 'psychology']);
@@ -105,8 +107,8 @@ Route::middleware('role:admin')->prefix('admin')->group(function () {
     Route::put('/pages/{slug}', [PageController::class, 'update']);
 });
 
-Route::middleware('role:user')->group(function () {
-    Route::prefix('industry')->group(function () {
+Route::middleware('role:user')->group(function (): void {
+    Route::prefix('industry')->group(function (): void {
         Route::post('create', [IndustryController::class, 'store']);
         Route::get('show/{industryId}', [IndustryController::class, 'show']);
         Route::post('update', [IndustryController::class, 'update']);

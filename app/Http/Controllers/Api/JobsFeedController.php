@@ -43,7 +43,7 @@ class JobsFeedController extends Controller
 
         // JIT auto-sync: Automatically update past-deadline published jobs to expired in DB
         // Cached hourly so concurrent high-traffic GET requests never produce database write-lock storms
-        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today) {
+        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today): true {
             IndustryJobPost::where('status', IndustryJobPostStatus::PUBLISHED)
                 ->whereNotNull('announcement_end_date')
                 ->where('announcement_end_date', '<', $today)
@@ -82,12 +82,12 @@ class JobsFeedController extends Controller
             ])
             ->where('status', IndustryJobPostStatus::PUBLISHED)
             // Start date check: announcement start date <= today (using direct index comparison)
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('announcement_start_date')
                     ->orWhere('announcement_start_date', '<=', $today);
             })
             // End date check: announcement end date >= today
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('announcement_end_date')
                     ->orWhere('announcement_end_date', '>=', $today);
             });
@@ -113,7 +113,7 @@ class JobsFeedController extends Controller
 
         // Search filter
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('job_title', 'LIKE', "%{$search}%")
                     ->orWhere('job_id', 'LIKE', "%{$search}%")
                     ->orWhere('position', 'LIKE', "%{$search}%");
@@ -122,25 +122,25 @@ class JobsFeedController extends Controller
 
         // Network type (supports single, array, comma-separated)
         $networkTypes = $this->normalizeArrayInput($networkType);
-        if (! empty($networkTypes)) {
+        if ($networkTypes !== []) {
             $query->whereIn('network_type', $networkTypes);
         }
 
         // Employment offering (supports single, array, comma-separated)
         $offerings = $this->normalizeArrayInput($employmentOffering);
-        if (! empty($offerings)) {
+        if ($offerings !== []) {
             $query->whereIn('employment_offering', $offerings);
         }
 
         // Work mode (supports single, array, comma-separated)
         $workModes = $this->normalizeArrayInput($workMode);
-        if (! empty($workModes)) {
+        if ($workModes !== []) {
             $query->whereIn('work_mode', $workModes);
         }
 
         // Employment type (supports single, array, comma-separated: full_time, part_time, etc.)
         $employmentTypes = $this->normalizeArrayInput($employmentType);
-        if (! empty($employmentTypes)) {
+        if ($employmentTypes !== []) {
             $query->whereIn('employment_type', $employmentTypes);
         }
 
@@ -157,21 +157,21 @@ class JobsFeedController extends Controller
 
         // City filter (supports city_id, city_ids[], and city name strings)
         $rawCityIds = $request->input('city_ids', $request->input('city_id'));
-        $cityIds = array_filter(array_map('intval', $this->normalizeArrayInput($rawCityIds)));
+        $cityIds = array_filter(array_map(intval(...), $this->normalizeArrayInput($rawCityIds)));
 
         $rawCityNames = $request->input('cities', $request->input('city'));
         $cityNames = $this->normalizeArrayInput($rawCityNames);
         // Exclude generic 'all cities' placeholder if submitted from UI checkbox
-        $cityNames = array_values(array_filter($cityNames, fn ($n) => ! in_array(strtolower($n), ['all cities', 'all', 'all_cities'], true)));
+        $cityNames = array_values(array_filter($cityNames, fn ($n): bool => ! in_array(strtolower($n), ['all cities', 'all', 'all_cities'], true)));
 
-        if (! empty($cityIds) && ! empty($cityNames)) {
-            $query->where(function ($q) use ($cityIds, $cityNames) {
+        if ($cityIds !== [] && $cityNames !== []) {
+            $query->where(function ($q) use ($cityIds, $cityNames): void {
                 $q->whereIn('city_id', $cityIds)
                     ->orWhereHas('city', fn ($sub) => $sub->whereIn('name', $cityNames));
             });
-        } elseif (! empty($cityIds)) {
+        } elseif ($cityIds !== []) {
             $query->whereIn('city_id', $cityIds);
-        } elseif (! empty($cityNames)) {
+        } elseif ($cityNames !== []) {
             $query->whereHas('city', fn ($q) => $q->whereIn('name', $cityNames));
         }
 
@@ -183,9 +183,9 @@ class JobsFeedController extends Controller
         // Salary range filters (minimum and maximum)
         if ($request->filled('salary_min')) {
             $salaryMin = (float) $request->query('salary_min');
-            $query->where(function ($q) use ($salaryMin) {
+            $query->where(function ($q) use ($salaryMin): void {
                 $q->where('salary_max', '>=', $salaryMin)
-                    ->orWhere(function ($sub) use ($salaryMin) {
+                    ->orWhere(function ($sub) use ($salaryMin): void {
                         $sub->whereNull('salary_max')->where('salary_min', '>=', $salaryMin);
                     });
             });
@@ -193,9 +193,9 @@ class JobsFeedController extends Controller
 
         if ($request->filled('salary_max')) {
             $salaryMax = (float) $request->query('salary_max');
-            $query->where(function ($q) use ($salaryMax) {
+            $query->where(function ($q) use ($salaryMax): void {
                 $q->where('salary_min', '<=', $salaryMax)
-                    ->orWhere(function ($sub) use ($salaryMax) {
+                    ->orWhere(function ($sub) use ($salaryMax): void {
                         $sub->whereNull('salary_min')->where('salary_max', '<=', $salaryMax);
                     });
             });
@@ -203,37 +203,37 @@ class JobsFeedController extends Controller
 
         // Position filter
         $positions = $this->normalizeArrayInput($request->query('position'));
-        if (! empty($positions)) {
+        if ($positions !== []) {
             $query->whereIn('position', $positions);
         }
 
         // Level / Seniority filter
         $levels = $this->normalizeArrayInput($request->query('level'));
-        if (! empty($levels)) {
+        if ($levels !== []) {
             $query->whereIn('level', $levels);
         }
 
         // Experience filter
         $experiences = $this->normalizeArrayInput($request->query('experience'));
-        if (! empty($experiences)) {
+        if ($experiences !== []) {
             $query->whereIn('experience', $experiences);
         }
 
         // Industry / Company filter
         $rawIndustryIds = $request->input('industry_ids', $request->input('industry_id'));
-        $industryIds = array_filter(array_map('intval', $this->normalizeArrayInput($rawIndustryIds)));
-        if (! empty($industryIds)) {
+        $industryIds = array_filter(array_map(intval(...), $this->normalizeArrayInput($rawIndustryIds)));
+        if ($industryIds !== []) {
             $query->whereIn('industry_id', $industryIds);
         }
 
         // Category & Sub-category (supports single, array, comma-separated)
         $categories = $this->normalizeArrayInput($category);
-        if (! empty($categories)) {
+        if ($categories !== []) {
             $query->whereIn('category', $categories);
         }
 
         $subCategories = $this->normalizeArrayInput($subCategory);
-        if (! empty($subCategories)) {
+        if ($subCategories !== []) {
             $query->whereIn('sub_category', $subCategories);
         }
 
@@ -265,7 +265,7 @@ class JobsFeedController extends Controller
                     'slug' => $first->slug,
                 ] : null;
             } else {
-                $stateData = $statesQuery->map(fn ($s) => [
+                $stateData = $statesQuery->map(fn ($s): array => [
                     'id' => (int) $s->id,
                     'name' => $s->name,
                     'code' => $s->code,
@@ -277,21 +277,21 @@ class JobsFeedController extends Controller
         // Resolve searched cities information for the response
         $citiesData = [];
         $searchedCities = collect();
-        if (! empty($cityIds) || ! empty($cityNames)) {
+        if ($cityIds !== [] || $cityNames !== []) {
             $citiesQuery = City::query()->select(['id', 'state_id', 'name']);
-            if (! empty($cityIds) && ! empty($cityNames)) {
-                $citiesQuery->where(function ($q) use ($cityIds, $cityNames) {
+            if ($cityIds !== [] && $cityNames !== []) {
+                $citiesQuery->where(function ($q) use ($cityIds, $cityNames): void {
                     $q->whereIn('id', $cityIds)
                         ->orWhereIn('name', $cityNames);
                 });
-            } elseif (! empty($cityIds)) {
+            } elseif ($cityIds !== []) {
                 $citiesQuery->whereIn('id', $cityIds);
             } else {
                 $citiesQuery->whereIn('name', $cityNames);
             }
             $searchedCities = $citiesQuery->get();
 
-            $citiesData = $searchedCities->map(fn ($c) => [
+            $citiesData = $searchedCities->map(fn ($c): array => [
                 'id' => (int) $c->id,
                 'name' => $c->name,
             ])->values()->all();
@@ -373,7 +373,7 @@ class JobsFeedController extends Controller
         $today = Carbon::today()->toDateString();
 
         // JIT auto-sync expired jobs
-        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today) {
+        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today): true {
             IndustryJobPost::where('status', IndustryJobPostStatus::PUBLISHED)
                 ->whereNotNull('announcement_end_date')
                 ->where('announcement_end_date', '<', $today)
@@ -389,7 +389,7 @@ class JobsFeedController extends Controller
                 ->first()
             : null;
 
-        $hasPreference = (bool) ($preference && $preference->hasAnyPreference());
+        $hasPreference = $preference && $preference->hasAnyPreference();
 
         // Base query: published and active jobs
         $query = IndustryJobPost::query()
@@ -420,11 +420,11 @@ class JobsFeedController extends Controller
                 'industry_job_posts.created_at',
             ])
             ->where('industry_job_posts.status', IndustryJobPostStatus::PUBLISHED)
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('industry_job_posts.announcement_start_date')
                     ->orWhere('industry_job_posts.announcement_start_date', '<=', $today);
             })
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('industry_job_posts.announcement_end_date')
                     ->orWhere('industry_job_posts.announcement_end_date', '>=', $today);
             });
@@ -452,7 +452,7 @@ class JobsFeedController extends Controller
         // Search filter
         $search = trim((string) $request->query('search', ''));
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('industry_job_posts.job_title', 'LIKE', "%{$search}%")
                     ->orWhere('industry_job_posts.job_id', 'LIKE', "%{$search}%")
                     ->orWhere('industry_job_posts.position', 'LIKE', "%{$search}%");
@@ -474,7 +474,7 @@ class JobsFeedController extends Controller
                     $bindings[] = '%'.strtolower($word).'%';
                 }
                 // Exact title bonus
-                $scoreExpressions[] = "(CASE WHEN LOWER(industry_job_posts.job_title) = ? THEN 3 ELSE 0 END)";
+                $scoreExpressions[] = '(CASE WHEN LOWER(industry_job_posts.job_title) = ? THEN 3 ELSE 0 END)';
                 $bindings[] = strtolower(trim($preference->job_title));
             }
 
@@ -535,30 +535,30 @@ class JobsFeedController extends Controller
 
             // 10. State & City
             if (! empty($preference->state_id)) {
-                $scoreExpressions[] = "(CASE WHEN industry_job_posts.state_id = ? THEN 2 ELSE 0 END)";
+                $scoreExpressions[] = '(CASE WHEN industry_job_posts.state_id = ? THEN 2 ELSE 0 END)';
                 $bindings[] = (int) $preference->state_id;
             }
             if (! empty($preference->city_id)) {
-                $scoreExpressions[] = "(CASE WHEN industry_job_posts.city_id = ? THEN 2 ELSE 0 END)";
+                $scoreExpressions[] = '(CASE WHEN industry_job_posts.city_id = ? THEN 2 ELSE 0 END)';
                 $bindings[] = (int) $preference->city_id;
             }
 
             // 11. Salary overlap
             if ($preference->salary_min !== null && $preference->salary_max !== null) {
-                $scoreExpressions[] = "(CASE WHEN (industry_job_posts.salary_max IS NULL OR industry_job_posts.salary_max >= ?) AND (industry_job_posts.salary_min IS NULL OR industry_job_posts.salary_min <= ?) THEN 2 ELSE 0 END)";
+                $scoreExpressions[] = '(CASE WHEN (industry_job_posts.salary_max IS NULL OR industry_job_posts.salary_max >= ?) AND (industry_job_posts.salary_min IS NULL OR industry_job_posts.salary_min <= ?) THEN 2 ELSE 0 END)';
                 $bindings[] = $preference->salary_min;
                 $bindings[] = $preference->salary_max;
             } elseif ($preference->salary_min !== null) {
-                $scoreExpressions[] = "(CASE WHEN industry_job_posts.salary_max >= ? OR (industry_job_posts.salary_max IS NULL AND industry_job_posts.salary_min >= ?) THEN 2 ELSE 0 END)";
+                $scoreExpressions[] = '(CASE WHEN industry_job_posts.salary_max >= ? OR (industry_job_posts.salary_max IS NULL AND industry_job_posts.salary_min >= ?) THEN 2 ELSE 0 END)';
                 $bindings[] = $preference->salary_min;
                 $bindings[] = $preference->salary_min;
             } elseif ($preference->salary_max !== null) {
-                $scoreExpressions[] = "(CASE WHEN industry_job_posts.salary_min <= ? OR (industry_job_posts.salary_min IS NULL AND industry_job_posts.salary_max <= ?) THEN 2 ELSE 0 END)";
+                $scoreExpressions[] = '(CASE WHEN industry_job_posts.salary_min <= ? OR (industry_job_posts.salary_min IS NULL AND industry_job_posts.salary_max <= ?) THEN 2 ELSE 0 END)';
                 $bindings[] = $preference->salary_max;
                 $bindings[] = $preference->salary_max;
             }
 
-            if (! empty($scoreExpressions)) {
+            if ($scoreExpressions !== []) {
                 $scoreSql = implode(' + ', $scoreExpressions);
                 $query->selectRaw("({$scoreSql}) as match_score", $bindings);
 
@@ -659,7 +659,7 @@ class JobsFeedController extends Controller
         $today = Carbon::today()->toDateString();
 
         // JIT auto-sync expired jobs
-        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today) {
+        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today): true {
             IndustryJobPost::where('status', IndustryJobPostStatus::PUBLISHED)
                 ->whereNotNull('announcement_end_date')
                 ->where('announcement_end_date', '<', $today)
@@ -675,7 +675,7 @@ class JobsFeedController extends Controller
                 ->first()
             : null;
 
-        $hasPreference = (bool) ($preference && $preference->hasAnyPreference());
+        $hasPreference = $preference && $preference->hasAnyPreference();
 
         // Base query: published and active jobs
         $query = IndustryJobPost::query()
@@ -707,11 +707,11 @@ class JobsFeedController extends Controller
                 'industry_job_posts.created_at',
             ])
             ->where('industry_job_posts.status', IndustryJobPostStatus::PUBLISHED)
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('industry_job_posts.announcement_start_date')
                     ->orWhere('industry_job_posts.announcement_start_date', '<=', $today);
             })
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('industry_job_posts.announcement_end_date')
                     ->orWhere('industry_job_posts.announcement_end_date', '>=', $today);
             });
@@ -733,7 +733,7 @@ class JobsFeedController extends Controller
                     $bindings[] = '%'.strtolower($word).'%';
                     $bindings[] = '%'.strtolower($word).'%';
                 }
-                $scoreExpressions[] = "(CASE WHEN LOWER(industry_job_posts.job_title) = ? THEN 3 ELSE 0 END)";
+                $scoreExpressions[] = '(CASE WHEN LOWER(industry_job_posts.job_title) = ? THEN 3 ELSE 0 END)';
                 $bindings[] = strtolower(trim($preference->job_title));
             }
 
@@ -763,7 +763,7 @@ class JobsFeedController extends Controller
                 $bindings[] = strtolower(trim($preference->employment_type));
             }
 
-            if (! empty($scoreExpressions)) {
+            if ($scoreExpressions !== []) {
                 $scoreSql = implode(' + ', $scoreExpressions);
                 $query->selectRaw("({$scoreSql}) as match_score", $bindings);
                 $query->orderByDesc('match_score');
@@ -830,11 +830,11 @@ class JobsFeedController extends Controller
                 'created_at',
             ])
             ->where('status', IndustryJobPostStatus::PUBLISHED)
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('announcement_start_date')
                     ->orWhere('announcement_start_date', '<=', $today);
             })
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('announcement_end_date')
                     ->orWhere('announcement_end_date', '>=', $today);
             });
@@ -855,7 +855,7 @@ class JobsFeedController extends Controller
         // Optional network_type filter
         if ($request->filled('network_type')) {
             $networkTypes = $this->normalizeArrayInput($request->input('network_type'));
-            if (! empty($networkTypes)) {
+            if ($networkTypes !== []) {
                 $query->whereIn('network_type', $networkTypes);
             }
         }
@@ -863,7 +863,7 @@ class JobsFeedController extends Controller
         // Search filter by job_title, job_id, position, or numeric id
         $search = trim((string) $request->input('search', $request->input('query', $request->input('q', ''))));
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('job_title', 'LIKE', "%{$search}%")
                     ->orWhere('job_id', 'LIKE', "%{$search}%")
                     ->orWhere('position', 'LIKE', "%{$search}%");
@@ -890,7 +890,7 @@ class JobsFeedController extends Controller
         // Filter by employment_offering (supports single, array, or comma-separated)
         $rawOfferings = $request->input('employment_offering', $request->input('employment_offerings'));
         $offerings = $this->normalizeArrayInput($rawOfferings);
-        if (! empty($offerings)) {
+        if ($offerings !== []) {
             $effectiveOfferings = $offerings;
             if (in_array('state', $offerings, true) && ! in_array('public', $offerings, true)) {
                 $effectiveOfferings[] = 'public';
@@ -926,7 +926,7 @@ class JobsFeedController extends Controller
                     'slug' => $first->slug,
                 ] : null;
             } else {
-                $stateData = $statesQuery->map(fn ($s) => [
+                $stateData = $statesQuery->map(fn ($s): array => [
                     'id' => $s->id,
                     'name' => $s->name,
                     'code' => $s->code,
@@ -957,7 +957,7 @@ class JobsFeedController extends Controller
                 'code' => ! empty($requestedCodes)
                     ? (count($requestedCodes) === 1 ? reset($requestedCodes) : array_values($requestedCodes))
                     : (is_array($stateData) && isset($stateData['code']) ? $stateData['code'] : null),
-                'employment_offering' => ! empty($offerings) ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
+                'employment_offering' => $offerings !== [] ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
             ],
         ], 200);
     }
@@ -970,7 +970,7 @@ class JobsFeedController extends Controller
         $today = Carbon::today()->toDateString();
 
         // JIT auto-sync: Automatically update past-deadline published jobs to expired
-        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today) {
+        Cache::remember('industry_jobs_expired_sync_'.$today, 3600, function () use ($today): true {
             IndustryJobPost::where('status', IndustryJobPostStatus::PUBLISHED)
                 ->whereNotNull('announcement_end_date')
                 ->where('announcement_end_date', '<', $today)
@@ -982,11 +982,11 @@ class JobsFeedController extends Controller
         // Base query: Published active jobs with assigned state
         $query = IndustryJobPost::query()
             ->where('status', IndustryJobPostStatus::PUBLISHED)
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('announcement_start_date')
                     ->orWhere('announcement_start_date', '<=', $today);
             })
-            ->where(function ($q) use ($today) {
+            ->where(function ($q) use ($today): void {
                 $q->whereNull('announcement_end_date')
                     ->orWhere('announcement_end_date', '>=', $today);
             })
@@ -995,33 +995,34 @@ class JobsFeedController extends Controller
         // Filter by network_type (supports single string, comma-separated, or array)
         $rawNetworkType = $request->input('network_type');
         $networkTypes = $this->normalizeArrayInput($rawNetworkType);
-        if (! empty($networkTypes)) {
+        if ($networkTypes !== []) {
             $query->whereIn('network_type', $networkTypes);
         }
 
         // Optional filter by employment_offering
         $rawOfferings = $request->input('employment_offering', $request->input('employment_offerings'));
         $offerings = $this->normalizeArrayInput($rawOfferings);
-        if (! empty($offerings)) {
+        if ($offerings !== []) {
             $query->whereIn('employment_offering', $offerings);
         }
 
         // Optional filter by work_mode
         $rawWorkModes = $request->input('work_mode');
         $workModes = $this->normalizeArrayInput($rawWorkModes);
-        if (! empty($workModes)) {
+        if ($workModes !== []) {
             $query->whereIn('work_mode', $workModes);
         }
 
         // Optional filter by category
         $rawCategories = $request->input('category');
         $categories = $this->normalizeArrayInput($rawCategories);
-        if (! empty($categories)) {
+        if ($categories !== []) {
             $query->whereIn('category', $categories);
         }
 
         // Optional filter by state_id / state_ids or code / codes
         $stateFilter = $this->resolveStateFilter($request);
+        $stateIds = $stateFilter['state_ids'] ?? [];
         if ($stateFilter['has_filter']) {
             if (! empty($stateFilter['state_ids'])) {
                 $query->whereIn('state_id', $stateFilter['state_ids']);
@@ -1063,7 +1064,7 @@ class JobsFeedController extends Controller
         $result = [];
 
         foreach ($states as $state) {
-            $count = (int) ($stateActiveCounts[$state->id] ?? 0);
+            $count = $stateActiveCounts[$state->id] ?? 0;
 
             if (! $onlyWithJobs || $count > 0) {
                 $result[] = [
@@ -1080,7 +1081,7 @@ class JobsFeedController extends Controller
         // Optional sorting: if sort=count or order_by=count, sort by active_jobs_count descending
         $sortBy = strtolower((string) $request->input('sort', $request->input('order_by', 'name')));
         if (in_array($sortBy, ['count', 'jobs_count', 'active_jobs_count'], true)) {
-            usort($result, fn ($a, $b) => $b['active_jobs_count'] <=> $a['active_jobs_count']);
+            usort($result, fn (array $a, array $b): int => $b['active_jobs_count'] <=> $a['active_jobs_count']);
         }
 
         return response()->json([
@@ -1096,10 +1097,10 @@ class JobsFeedController extends Controller
                 'network_types' => $networkTypeTotals,
             ],
             'filters' => [
-                'network_type' => ! empty($networkTypes) ? (count($networkTypes) === 1 ? reset($networkTypes) : array_values($networkTypes)) : null,
-                'employment_offering' => ! empty($offerings) ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
-                'work_mode' => ! empty($workModes) ? (count($workModes) === 1 ? reset($workModes) : array_values($workModes)) : null,
-                'category' => ! empty($categories) ? (count($categories) === 1 ? reset($categories) : array_values($categories)) : null,
+                'network_type' => $networkTypes !== [] ? (count($networkTypes) === 1 ? reset($networkTypes) : array_values($networkTypes)) : null,
+                'employment_offering' => $offerings !== [] ? (count($offerings) === 1 ? reset($offerings) : array_values($offerings)) : null,
+                'work_mode' => $workModes !== [] ? (count($workModes) === 1 ? reset($workModes) : array_values($workModes)) : null,
+                'category' => $categories !== [] ? (count($categories) === 1 ? reset($categories) : array_values($categories)) : null,
                 'state_id' => ! empty($stateIds) ? (count($stateIds) === 1 ? reset($stateIds) : array_values($stateIds)) : null,
                 'only_with_jobs' => $onlyWithJobs,
             ],
@@ -1145,9 +1146,7 @@ class JobsFeedController extends Controller
                 ->all()
             : [];
 
-        return $jobs->map(function (IndustryJobPost $job) use ($likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser, $preference) {
-            return $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser, $preference);
-        })->values()->all();
+        return $jobs->map(fn (IndustryJobPost $job): array => $this->formatJobPost($job, $likedJobIds, $savedJobIds, $appliedJobs, $userIndustryIds, $currentUser, $preference))->values()->all();
     }
 
     /**
@@ -1166,7 +1165,7 @@ class JobsFeedController extends Controller
             $job->city?->name,
             $job->state?->name,
         ]);
-        $locationText = ! empty($locationParts) ? implode(', ', $locationParts) : null;
+        $locationText = $locationParts !== [] ? implode(', ', $locationParts) : null;
 
         $status = $job->status instanceof \BackedEnum
             ? $job->status->value
@@ -1176,12 +1175,10 @@ class JobsFeedController extends Controller
             $status = IndustryJobPostStatus::EXPIRED->value;
         }
 
-        $isOwnIndustry = (bool) (
-            $currentUser && (
-                ((int) $job->created_by === (int) $currentUser->id) ||
-                ($job->industry_id && isset($userIndustryIds[$job->industry_id])) ||
-                ($job->industry && (int) $job->industry->created_by === (int) $currentUser->id)
-            )
+        $isOwnIndustry = $currentUser && (
+            ((int) $job->created_by === (int) $currentUser->id) ||
+            ($job->industry_id && isset($userIndustryIds[$job->industry_id])) ||
+            ($job->industry && (int) $job->industry->created_by === (int) $currentUser->id)
         );
 
         return [
@@ -1250,9 +1247,7 @@ class JobsFeedController extends Controller
         $clean = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $text);
         $words = preg_split('/\s+/', strtolower($clean), -1, PREG_SPLIT_NO_EMPTY);
 
-        $meaningful = array_filter($words, function ($w) use ($stopwords) {
-            return mb_strlen($w) >= 3 && ! in_array($w, $stopwords, true);
-        });
+        $meaningful = array_filter($words, fn ($w): bool => mb_strlen($w) >= 3 && ! in_array($w, $stopwords, true));
 
         return array_values(array_unique($meaningful));
     }
@@ -1262,7 +1257,7 @@ class JobsFeedController extends Controller
      */
     private function determineMatchedCriteria(IndustryJobPost $job, ?UserJobPreference $preference): array
     {
-        if (! $preference || ! $preference->hasAnyPreference()) {
+        if (! $preference instanceof UserJobPreference || ! $preference->hasAnyPreference()) {
             return [];
         }
 
@@ -1326,12 +1321,12 @@ class JobsFeedController extends Controller
         }
 
         // Category
-        if (! empty($preference->category) && stripos($job->category ?? '', $preference->category) !== false) {
+        if (! empty($preference->category) && stripos($job->category ?? '', (string) $preference->category) !== false) {
             $matches[] = $job->category;
         }
 
         // Level
-        if (! empty($preference->level) && stripos($job->level ?? '', $preference->level) !== false) {
+        if (! empty($preference->level) && stripos($job->level ?? '', (string) $preference->level) !== false) {
             $matches[] = $job->level;
         }
 
@@ -1377,7 +1372,7 @@ class JobsFeedController extends Controller
 
         $rawCombined = array_merge($rawStateIdInputs, $rawStateCodeInputs);
 
-        if (empty($rawCombined)) {
+        if ($rawCombined === []) {
             return [
                 'state_ids' => [],
                 'has_filter' => false,
@@ -1401,18 +1396,18 @@ class JobsFeedController extends Controller
 
         $resolvedIds = $numericIds;
 
-        if (! empty($stringCodes)) {
-            $upperCodes = array_map('strtoupper', $stringCodes);
-            $lowerSlugs = array_map('strtolower', $stringCodes);
+        if ($stringCodes !== []) {
+            $upperCodes = array_map(strtoupper(...), $stringCodes);
+            $lowerSlugs = array_map(strtolower(...), $stringCodes);
 
             $matchedIds = State::query()
-                ->where(function ($q) use ($upperCodes, $lowerSlugs, $stringCodes) {
+                ->where(function ($q) use ($upperCodes, $lowerSlugs, $stringCodes): void {
                     $q->whereIn('code', $upperCodes)
                         ->orWhereIn('slug', $lowerSlugs)
                         ->orWhereIn('name', $stringCodes);
                 })
                 ->pluck('id')
-                ->map(fn ($id) => (int) $id)
+                ->map(fn ($id): int => (int) $id)
                 ->all();
 
             $resolvedIds = array_merge($resolvedIds, $matchedIds);
@@ -1421,7 +1416,7 @@ class JobsFeedController extends Controller
         return [
             'state_ids' => array_values(array_unique(array_filter($resolvedIds))),
             'has_filter' => true,
-            'requested_codes' => array_values(array_unique(array_map('strtoupper', $stringCodes))),
+            'requested_codes' => array_values(array_unique(array_map(strtoupper(...), $stringCodes))),
         ];
     }
 
@@ -1444,11 +1439,11 @@ class JobsFeedController extends Controller
                 }
             }
 
-            return array_values(array_filter(array_map('trim', $result), fn ($val) => $val !== ''));
+            return array_values(array_filter(array_map(trim(...), $result), fn (string $val): bool => $val !== ''));
         }
 
         if (is_string($input)) {
-            return array_values(array_filter(array_map('trim', explode(',', $input)), fn ($val) => $val !== ''));
+            return array_values(array_filter(array_map(trim(...), explode(',', $input)), fn ($val): bool => $val !== ''));
         }
 
         return [(string) $input];
@@ -1474,7 +1469,7 @@ class JobsFeedController extends Controller
         $grouped = [];
 
         // 1. If specific city IDs were requested, initialize them in the exact requested order
-        if (! empty($selectedCityIds)) {
+        if ($selectedCityIds !== []) {
             $requestedCities = City::whereIn('id', $selectedCityIds)->pluck('name', 'id')->all();
             foreach ($selectedCityIds as $id) {
                 if (isset($requestedCities[$id])) {
@@ -1489,7 +1484,7 @@ class JobsFeedController extends Controller
                     ];
                 }
             }
-        } elseif (empty($selectedCityNames) && ! empty($selectedStateIds)) {
+        } elseif ($selectedCityNames === [] && $selectedStateIds !== []) {
             // When "All Cities" is selected for a state, include all cities of that state
             $stateCities = City::whereIn('state_id', $selectedStateIds)->orderBy('name')->pluck('name', 'id')->all();
             foreach ($stateCities as $id => $name) {
@@ -1505,20 +1500,16 @@ class JobsFeedController extends Controller
         }
 
         // 2. If specific city names were requested, initialize them too
-        if (! empty($selectedCityNames)) {
-            foreach ($selectedCityNames as $name) {
-                $key = 'name_'.strtolower($name);
-                if (! isset($grouped[$key])) {
-                    $grouped[$key] = [
-                        'city_id' => null,
-                        'city_name' => $name,
-                        'title' => "{$name} Jobs",
-                        'total' => 0,
-                        'has_more' => false,
-                        'jobs' => [],
-                    ];
-                }
-            }
+        foreach ($selectedCityNames as $name) {
+            $key = 'name_'.strtolower($name);
+            $grouped[$key] ??= [
+                'city_id' => null,
+                'city_name' => $name,
+                'title' => "{$name} Jobs",
+                'total' => 0,
+                'has_more' => false,
+                'jobs' => [],
+            ];
         }
 
         // 3. Populate jobs into their corresponding city groups
@@ -1529,16 +1520,14 @@ class JobsFeedController extends Controller
                 ? $cId
                 : (isset($grouped['name_'.strtolower($cName)]) ? 'name_'.strtolower($cName) : $cId);
 
-            if (! isset($grouped[$targetKey])) {
-                $grouped[$targetKey] = [
-                    'city_id' => $job->city_id,
-                    'city_name' => $cName,
-                    'title' => $cName !== 'Other' ? "{$cName} Jobs" : 'Other Jobs',
-                    'total' => 0,
-                    'has_more' => false,
-                    'jobs' => [],
-                ];
-            }
+            $grouped[$targetKey] ??= [
+                'city_id' => $job->city_id,
+                'city_name' => $cName,
+                'title' => $cName !== 'Other' ? "{$cName} Jobs" : 'Other Jobs',
+                'total' => 0,
+                'has_more' => false,
+                'jobs' => [],
+            ];
 
             if (isset($formattedById[$job->id])) {
                 $grouped[$targetKey]['jobs'][] = $formattedById[$job->id];

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Comment;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Post;
@@ -11,13 +10,14 @@ use App\Models\PostGroup;
 use App\Models\PostLike;
 use App\Models\PostMedia;
 use App\Services\MediaUploadService;
+use App\Services\Social\PostService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
-    public function store(Request $request, MediaUploadService $mediaService)
+    public function store(Request $request, PostService $postService)
     {
         $user = auth('api')->user();
 
@@ -44,64 +44,13 @@ class PostController extends Controller
             }
         }
 
-        DB::beginTransaction();
-
         try {
-
-            $posts = [];
-
-            $uploadedMedia = [];
-
-            if ($request->hasFile('media')) {
-
-                foreach ($request->file('media') as $index => $file) {
-
-                    $media = $mediaService->upload($file);
-
-                    $uploadedMedia[] = [
-                        'file_path' => $media['file_path'],
-                        'type' => $media['type'],
-                        'order' => $index,
-                    ];
-                }
+            $files = $request->file('media', []);
+            if (! is_array($files)) {
+                $files = $files ? [$files] : [];
             }
 
-            if ($request->visibility === 'groups') {
-
-                foreach ($request->group_ids as $groupId) {
-
-                    $post = Post::create([
-                        'user_id' => $user->id,
-                        'description' => $request->description,
-                        'visibility' => 'groups',
-                        'who_can_comment' => $request->who_can_comment,
-                    ]);
-
-                    $post->groups()->sync([$groupId]);
-
-                    foreach ($uploadedMedia as $media) {
-                        $post->media()->create($media);
-                    }
-
-                    $posts[] = $post;
-                }
-            } else {
-
-                $post = Post::create([
-                    'user_id' => $user->id,
-                    'description' => $request->description,
-                    'visibility' => $request->visibility,
-                    'who_can_comment' => $request->who_can_comment,
-                ]);
-
-                foreach ($uploadedMedia as $media) {
-                    $post->media()->create($media);
-                }
-
-                $posts[] = $post;
-            }
-
-            DB::commit();
+            $posts = $postService->createPost($user, $validated, $files);
 
             return response()->json([
                 'success' => true,
@@ -109,9 +58,6 @@ class PostController extends Controller
                 'data' => $posts,
             ], 200);
         } catch (\Throwable $e) {
-
-            DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'Post creation failed',
@@ -157,14 +103,12 @@ class PostController extends Controller
                 'description' => $post->description,
                 'visibility' => $post->visibility,
                 'who_can_comment' => $post->who_can_comment,
-                'media' => $post->media->map(function ($media) {
-                    return [
-                        'id' => $media->id,
-                        'type' => $media->type,
-                        'url' => $media->url,
-                        'order' => $media->order,
-                    ];
-                }),
+                'media' => $post->media->map(fn ($media): array => [
+                    'id' => $media->id,
+                    'type' => $media->type,
+                    'url' => $media->url,
+                    'order' => $media->order,
+                ]),
             ],
         ]);
     }
@@ -197,7 +141,7 @@ class PostController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
+        $request->validate([
             'description' => 'nullable|string|max:5000',
             'visibility' => 'required|in:public,connections',
             'who_can_comment' => 'required|in:anyone,connections,no_one',
@@ -345,67 +289,6 @@ class PostController extends Controller
         }
     }
 
-    // public function destroyProfilePost($id)
-    // {
-    //     $user = auth('api')->user();
-
-    //     $post = Post::with(['media', 'comments', 'likes'])->findOrFail($id);
-
-    //     if ($post->user_id !== $user->id) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Unauthorized',
-    //         ], 403);
-    //     }
-
-    //     if (! in_array($post->visibility, ['public', 'connections'])) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Group posts cannot be deleted from profile',
-    //         ], 403);
-    //     }
-
-    //     DB::beginTransaction();
-
-    //     try {
-
-    //         foreach ($post->media as $media) {
-
-    //             $count = PostMedia::where('file_path', $media->file_path)->count();
-
-    //             if ($count === 1) {
-    //                 Storage::disk('public')->delete($media->file_path);
-    //             }
-
-    //             $media->delete();
-    //         }
-
-    //         Comment::where('post_id', $post->id)->delete();
-    //         PostLike::where('post_id', $post->id)->delete();
-
-    //         $post->groups()->detach();
-
-    //         $post->delete();
-
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Post deleted successfully',
-    //         ]);
-
-    //     } catch (\Throwable $e) {
-
-    //         DB::rollBack();
-
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Post deletion failed',
-    //             'error' => app()->environment('local') ? $e->getMessage() : null,
-    //         ], 500);
-    //     }
-    // }
-
     public function editGroupPost($groupId, $postId)
     {
         $user = auth('api')->user();
@@ -454,14 +337,12 @@ class PostController extends Controller
                 'visibility' => $post->visibility,
                 'who_can_comment' => $post->who_can_comment,
 
-                'media' => $post->media->map(function ($media) {
-                    return [
-                        'id' => $media->id,
-                        'type' => $media->type,
-                        'url' => $media->url,
-                        'order' => $media->order,
-                    ];
-                }),
+                'media' => $post->media->map(fn ($media): array => [
+                    'id' => $media->id,
+                    'type' => $media->type,
+                    'url' => $media->url,
+                    'order' => $media->order,
+                ]),
             ],
         ]);
     }
@@ -497,7 +378,7 @@ class PostController extends Controller
             ], 404);
         }
 
-        $validated = $request->validate([
+        $request->validate([
             'description' => 'nullable|string|max:5000',
             'who_can_comment' => 'required|in:anyone,connections,no_one',
             'media' => 'nullable|array|max:20',
@@ -603,7 +484,7 @@ class PostController extends Controller
 
         $canDelete = (
             $post->user_id === $user->id ||
-            in_array($groupRole, ['admin'])
+            $groupRole == 'admin'
         );
 
         if (! $canDelete) {
@@ -659,87 +540,4 @@ class PostController extends Controller
             ], 500);
         }
     }
-
-    // public function destroyGroupPost($groupId, $postId)
-    // {
-    //     $user = auth('api')->user();
-
-    //     $post = Post::with(['media', 'groups'])->findOrFail($postId);
-
-    //     if ($post->visibility !== 'groups') {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'This is not a group post',
-    //         ], 400);
-    //     }
-
-    //     $existsInGroup = $post->groups()
-    //         ->where('groups.id', $groupId)
-    //         ->exists();
-
-    //     if (! $existsInGroup) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Post not found in this group',
-    //         ], 404);
-    //     }
-
-    //     $groupRole = GroupUser::where('group_id', $groupId)
-    //         ->where('user_id', $user->id)
-    //         ->value('role');
-
-    //     $canDelete = (
-    //         $post->user_id === $user->id ||
-    //         in_array($groupRole, ['admin'])
-    //     );
-
-    //     if (! $canDelete) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'You are not authorized to delete this post',
-    //         ], 403);
-    //     }
-
-    //     DB::beginTransaction();
-
-    //     try {
-
-    //         $post->groups()->detach($groupId);
-
-    //         if ($post->groups()->count() === 0) {
-
-    //             foreach ($post->media as $media) {
-
-    //                 $count = PostMedia::where('file_path', $media->file_path)->count();
-
-    //                 if ($count === 1) {
-    //                     Storage::disk('public')->delete($media->file_path);
-    //                 }
-
-    //                 $media->delete();
-    //             }
-
-    //             Comment::where('post_id', $post->id)->delete();
-    //             PostLike::where('post_id', $post->id)->delete();
-
-    //             $post->delete();
-    //         }
-
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Post removed successfully',
-    //         ]);
-    //     } catch (\Throwable $e) {
-
-    //         DB::rollBack();
-
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to remove post',
-    //             'error' => app()->environment('local') ? $e->getMessage() : null,
-    //         ], 500);
-    //     }
-    // }
 }

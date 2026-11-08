@@ -35,10 +35,10 @@ class TimelineController extends Controller
         if ($isOwnProfile) {
             $relationshipStatus = 'connected';
         } else {
-            $connection = Connection::where(function ($q) use ($authUser, $actualId) {
-                $q->where(function ($q1) use ($authUser, $actualId) {
+            $connection = Connection::where(function ($q) use ($authUser, $actualId): void {
+                $q->where(function ($q1) use ($authUser, $actualId): void {
                     $q1->where('sender_id', $authUser->id)->where('receiver_id', $actualId);
-                })->orWhere(function ($q2) use ($authUser, $actualId) {
+                })->orWhere(function ($q2) use ($authUser, $actualId): void {
                     $q2->where('sender_id', $actualId)->where('receiver_id', $authUser->id);
                 });
             })->first();
@@ -59,13 +59,13 @@ class TimelineController extends Controller
             ->with([
                 'user:id,username,first_name,last_name,profile_image,title',
                 'media',
-                'likes' => function ($q) use ($authUser) {
+                'likes' => function ($q) use ($authUser): void {
                     $q->where('user_id', $authUser->id);
                 },
             ])
             ->where('user_id', $actualId);
 
-        $postsQuery->where(function ($query) use ($isOwnProfile, $isConnected, $privacy) {
+        $postsQuery->where(function ($query) use ($isOwnProfile, $isConnected, $privacy): void {
             if ($isOwnProfile) {
                 $query->whereIn('visibility', ['public', 'connections', 'groups']);
             } else {
@@ -95,20 +95,18 @@ class TimelineController extends Controller
             'success' => true,
             'message' => 'Timeline fetched successfully',
 
-            'data' => collect($posts->items())->map(function ($post) {
-                return [
-                    'id' => $post->id,
-                    'user' => $post->user,
-                    'description' => $post->description,
-                    'visibility' => $post->visibility,
-                    'who_can_comment' => $post->who_can_comment,
-                    'total_like' => $post->total_like ?? 0,
-                    'total_comment' => $post->total_comment ?? 0,
-                    'liked_by_me' => $post->likes->isNotEmpty(),
-                    'media' => $post->media,
-                    'created_at' => $post->created_at,
-                ];
-            }),
+            'data' => collect($posts->items())->map(fn ($post): array => [
+                'id' => $post->id,
+                'user' => $post->user,
+                'description' => $post->description,
+                'visibility' => $post->visibility,
+                'who_can_comment' => $post->who_can_comment,
+                'total_like' => $post->total_like ?? 0,
+                'total_comment' => $post->total_comment ?? 0,
+                'liked_by_me' => $post->likes->isNotEmpty(),
+                'media' => $post->media,
+                'created_at' => $post->created_at,
+            ]),
 
             'meta' => [
                 'is_own_profile' => $isOwnProfile,
@@ -123,104 +121,6 @@ class TimelineController extends Controller
             ],
         ]);
     }
-
-    // santos's code===================================
-    // public function timeline(Request $request, $userId)
-    // {
-    //     $authUser = auth('api')->user();
-
-    //     $isOwnProfile = $authUser->id == $userId;
-
-    //     $relationshipStatus = 'not_connected';
-
-    //     if ($isOwnProfile) {
-    //         $relationshipStatus = 'connected';
-    //     } else {
-
-    //         $connection = Connection::where(function ($q) use ($authUser, $userId) {
-    //             $q->where(function ($q1) use ($authUser, $userId) {
-    //                 $q1->where('sender_id', $authUser->id)
-    //                     ->where('receiver_id', $userId);
-    //             })->orWhere(function ($q2) use ($authUser, $userId) {
-    //                 $q2->where('sender_id', $userId)
-    //                     ->where('receiver_id', $authUser->id);
-    //             });
-    //         })->first();
-
-    //         if ($connection) {
-    //             $relationshipStatus = match ($connection->status) {
-    //                 Connection::STATUS_ACCEPTED => 'connected',
-    //                 Connection::STATUS_PENDING => 'pending',
-    //                 default => 'not_connected',
-    //             };
-    //         }
-    //     }
-
-    //     $isConnected = $relationshipStatus === 'connected';
-
-    //     $postsQuery = Post::query()
-    //         ->with([
-    //             'user:id,first_name,last_name,profile_image,title',
-    //             'media',
-    //         ])
-    //         ->where('user_id', $userId)
-    //         ->where(function ($query) use ($isOwnProfile, $isConnected) {
-
-    //             if ($isOwnProfile) {
-    //                 $query->whereIn('visibility', ['public', 'connections']);
-    //             } else {
-
-    //                 if ($isConnected) {
-    //                     $query->whereIn('visibility', ['public', 'connections']);
-    //                 } else {
-    //                     $query->where('visibility', 'public');
-    //                 }
-    //             }
-    //         });
-
-    //     $posts = $postsQuery
-    //         ->orderByDesc('id')
-    //         ->paginate($request->get('per_page', 10));
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Timeline fetched successfully',
-
-    //         'data' => collect($posts->items())->map(function ($post) use ($authUser) {
-    //             return [
-    //                 'id' => $post->id,
-    //                 'user' => $post->user,
-    //                 'description' => $post->description,
-    //                 'visibility' => $post->visibility,
-    //                 'who_can_comment' => $post->who_can_comment,
-
-    //                 'total_like' => $post->total_like ?? 0,
-    //                 'total_comment' => $post->total_comment ?? 0,
-
-    //                 'liked_by_me' => $post->likes()
-    //                     ->where('user_id', $authUser->id)
-    //                     ->exists(),
-
-    //                 'media' => $post->media,
-    //                 'created_at' => $post->created_at,
-    //             ];
-    //         }),
-
-    //         'meta' => [
-    //             'is_own_profile' => $isOwnProfile,
-
-    //             'relationship_status' => $relationshipStatus,
-    //         ],
-
-    //         'pagination' => [
-    //             'current_page' => $posts->currentPage(),
-    //             'per_page' => $posts->perPage(),
-    //             'total' => $posts->total(),
-    //             'last_page' => $posts->lastPage(),
-    //         ],
-    //     ]);
-    // }
-    // santos's code===================================
 
     public function groupPosts(Request $request, $groupId)
     {
@@ -250,7 +150,7 @@ class TimelineController extends Controller
             ], 403);
         }
 
-        $relationships = Connection::where(function ($q) use ($user) {
+        $relationships = Connection::where(function ($q) use ($user): void {
             $q->where('sender_id', $user->id)
                 ->orWhere('receiver_id', $user->id);
         })->get();
@@ -271,12 +171,12 @@ class TimelineController extends Controller
                 'user:id,username,first_name,last_name,profile_image,title',
                 'media',
                 'groups:id,name',
-                'likes' => function ($q) use ($user) {
+                'likes' => function ($q) use ($user): void {
                     $q->where('user_id', $user->id);
                 },
             ])
             ->where('visibility', 'groups')
-            ->whereHas('groups', function ($q) use ($groupId) {
+            ->whereHas('groups', function ($q) use ($groupId): void {
                 $q->where('groups.id', $groupId);
             })
             ->latest()
@@ -289,7 +189,7 @@ class TimelineController extends Controller
             'data' => collect($posts->items())->map(function ($post) use (
                 $user,
                 $relationshipMap
-            ) {
+            ): array {
 
                 if ($post->user_id === $user->id) {
                     $relationshipStatus = 'connected';

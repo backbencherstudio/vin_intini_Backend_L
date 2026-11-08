@@ -27,7 +27,7 @@ class NewsfeedController extends Controller
             ->pluck('groups.id')
             ->toArray();
 
-        $relationships = Connection::where(function ($q) use ($user) {
+        $relationships = Connection::where(function ($q) use ($user): void {
             $q->where('sender_id', $user->id)
                 ->orWhere('receiver_id', $user->id);
         })
@@ -44,7 +44,7 @@ class NewsfeedController extends Controller
         }
 
         $connectionIds = collect($relationshipMap)
-            ->filter(fn ($status) => $status === Connection::STATUS_ACCEPTED)
+            ->filter(fn ($status): bool => $status === Connection::STATUS_ACCEPTED)
             ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)
@@ -68,21 +68,21 @@ class NewsfeedController extends Controller
                 'media',
                 'groups:id,name,logo',
                 'industryLink:id,post_id,industry_id', 'industryLink.industry:id,name,slug,tagline,logo',
-                'likes' => function ($q) use ($user) {
+                'likes' => function ($q) use ($user): void {
                     $q->where('user_id', $user->id);
                 },
             ])
-            ->where(function ($query) use ($user, $groupIds, $connectionIds, $followingIds, $unfollowedConnectionIds) {
+            ->where(function ($query) use ($user, $groupIds, $connectionIds, $followingIds, $unfollowedConnectionIds): void {
 
                 $query->where('user_id', $user->id)
 
-                    ->orWhere(function ($q) use ($connectionIds, $unfollowedConnectionIds) {
+                    ->orWhere(function ($q) use ($connectionIds, $unfollowedConnectionIds): void {
                         $q->where('visibility', 'public')
                             ->whereNotIn('user_id', $unfollowedConnectionIds)
-                            ->whereHas('user.profile', function ($qProfile) use ($connectionIds) {
-                                $qProfile->where(function ($qp) use ($connectionIds) {
+                            ->whereHas('user.profile', function ($qProfile) use ($connectionIds): void {
+                                $qProfile->where(function ($qp) use ($connectionIds): void {
                                     $qp->where('privacy_profile_activity', 'everyone')
-                                        ->orWhere(function ($qp2) use ($connectionIds) {
+                                        ->orWhere(function ($qp2) use ($connectionIds): void {
                                             $qp2->where('privacy_profile_activity', 'only_connected')
                                                 ->whereIn('user_profiles.user_id', $connectionIds);
                                         });
@@ -90,38 +90,38 @@ class NewsfeedController extends Controller
                             });
                     })
 
-                    ->orWhere(function ($q) use ($connectionIds, $followingIds) {
+                    ->orWhere(function ($q) use ($connectionIds, $followingIds): void {
                         $q->where('visibility', 'connections')
                             ->whereIn('user_id', $connectionIds)
                             ->whereIn('user_id', $followingIds)
-                            ->whereHas('user.profile', function ($qProfile) {
+                            ->whereHas('user.profile', function ($qProfile): void {
                                 $qProfile->where('privacy_profile_activity', '!=', 'nobody');
                             });
                     })
 
-                    ->orWhere(function ($q) use ($groupIds, $user) {
+                    ->orWhere(function ($q) use ($groupIds, $user): void {
                         $q->where('visibility', 'groups')
-                            ->whereHas('groups', function ($q2) use ($groupIds, $user) {
+                            ->whereHas('groups', function ($q2) use ($groupIds, $user): void {
                                 $q2->whereIn('groups.id', $groupIds)
-                                    ->whereHas('users', function ($q3) use ($user) {
+                                    ->whereHas('users', function ($q3) use ($user): void {
                                         $q3->where('group_users.user_id', $user->id)
                                             ->where('group_users.status', '!=', 'banned');
                                     });
                             });
                     })
 
-                    ->orWhere(function ($q) use ($user) {
-                        $q->whereExists(function ($sub) {
+                    ->orWhere(function ($q) use ($user): void {
+                        $q->whereExists(function ($sub): void {
                             $sub->select(DB::raw(1))
                                 ->from('post_industry')
                                 ->whereColumn('post_industry.post_id', 'posts.id');
                         })
-                            ->where(function ($q2) use ($user) {
+                            ->where(function ($q2) use ($user): void {
                                 $q2->where('visibility', 'public')
 
-                                    ->orWhere(function ($q3) use ($user) {
+                                    ->orWhere(function ($q3) use ($user): void {
                                         $q3->where('visibility', 'followers')
-                                            ->whereExists(function ($sub) use ($user) {
+                                            ->whereExists(function ($sub) use ($user): void {
                                                 $sub->select(DB::raw(1))
                                                     ->from('industry_follows')
                                                     ->join(
@@ -140,7 +140,7 @@ class NewsfeedController extends Controller
             ->orderByDesc('id')
             ->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
 
-        $feedItems = collect($posts->items())->map(function ($post) use ($user, $relationshipMap, $adminGroupIds, $followedIndustryIds) {
+        $feedItems = collect($posts->items())->map(function ($post) use ($user, $relationshipMap, $adminGroupIds, $followedIndustryIds): ?array {
             if (! $post->user) {
                 return null;
             }
@@ -209,7 +209,7 @@ class NewsfeedController extends Controller
             }
         }
 
-        $seenCampaignIds = array_filter(array_map('intval', explode(',', (string) $request->input('seen_campaign_ids', ''))));
+        $seenCampaignIds = array_filter(array_map(intval(...), explode(',', (string) $request->input('seen_campaign_ids', ''))));
 
         $finalFeed = $this->adInjector->injectAdsIntoFeed(
             $feedItems,
@@ -237,156 +237,13 @@ class NewsfeedController extends Controller
         ]);
     }
 
-    // santos's code===================================
-    // public function newsFeed(Request $request)
-    // {
-    //     $user = auth('api')->user();
-
-    //     $groupIds = $user->groups()->pluck('groups.id');
-
-    //     $relationships = Connection::where(function ($q) use ($user) {
-    //         $q->where('sender_id', $user->id)
-    //             ->orWhere('receiver_id', $user->id);
-    //     })->get();
-
-    //     $relationshipMap = [];
-
-    //     foreach ($relationships as $connection) {
-
-    //         $otherUserId = $connection->sender_id == $user->id
-    //             ? $connection->receiver_id
-    //             : $connection->sender_id;
-
-    //         $relationshipMap[$otherUserId] = $connection->status;
-    //     }
-
-    //     $connectionIds = collect($relationshipMap)
-    //         ->filter(fn ($status) => $status === Connection::STATUS_ACCEPTED)
-    //         ->keys();
-
-    //     $followingIds = UserFollow::where('follower_id', $user->id)
-    //         ->pluck('following_id');
-
-    //     $allowedConnectionIds = $connectionIds->intersect($followingIds);
-
-    //     $posts = Post::query()
-    //         ->with([
-    //             'user:id,first_name,last_name,profile_image,title',
-    //             'media',
-    //             'groups:id,name,logo',
-    //             'industryLink:id,post_id,industry_id', 'industryLink.industry:id,name,slug,tagline,logo',
-    //             'likes' => function ($q) use ($user) {
-    //                 $q->where('user_id', $user->id);
-    //             },
-    //         ])
-    //         ->where(function ($query) use (
-    //             $user,
-    //             $groupIds,
-    //             $allowedConnectionIds
-    //         ) {
-
-    //             $query->where('user_id', $user->id)
-
-    //                 ->orWhere(function ($query) use (
-    //                     $groupIds,
-    //                     $allowedConnectionIds,
-    //                     $user
-    //                 ) {
-
-    //                     $query->where('visibility', 'public')
-
-    //                         ->orWhere(function ($q) use ($allowedConnectionIds) {
-    //                             $q->where('visibility', 'connections')
-    //                                 ->whereIn('user_id', $allowedConnectionIds);
-    //                         })
-
-    //                         ->orWhere(function ($q) use ($groupIds, $user) {
-    //                             $q->where('visibility', 'groups')
-    //                                 ->whereHas('groups', function ($q2) use ($groupIds, $user) {
-    //                                     $q2->whereIn('groups.id', $groupIds)
-    //                                         ->whereHas('users', function ($q3) use ($user) {
-    //                                             $q3->where('group_users.user_id', $user->id)
-    //                                                 ->where('group_users.status', '!=', 'banned');
-    //                                         });
-    //                                 });
-    //                         });
-    //                 });
-    //         })
-    //         ->orderByDesc('id')
-    //         ->paginate($request->get('per_page', 10));
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Feed fetched successfully',
-
-    //         'data' => collect($posts->items())->map(function ($post) use (
-    //             $user,
-    //             $relationshipMap
-    //         ) {
-
-    //             $canEdit = ($post->user_id === $user->id);
-    //             $canDelete = ($post->user_id === $user->id);
-
-    //             foreach ($post->groups as $group) {
-    //                 $isGroupAdmin = $group->users()
-    //                     ->wherePivot('role', 'admin')
-    //                     ->wherePivot('user_id', $user->id)
-    //                     ->exists();
-
-    //                 if ($isGroupAdmin && $post->user_id !== $user->id) {
-    //                     $canDelete = true;
-    //                     break;
-    //                 }
-    //             }
-
-    //             if ($post->user_id === $user->id) {
-    //                 $relationshipStatus = 'connected';
-    //             } else {
-    //                 $status = $relationshipMap[$post->user_id] ?? null;
-
-    //                 $relationshipStatus = match ($status) {
-    //                     Connection::STATUS_ACCEPTED => 'connected',
-    //                     Connection::STATUS_PENDING => 'pending',
-    //                     default => 'not_connected',
-    //                 };
-    //             }
-
-    //             return [
-    //                 'id' => $post->id,
-    //                 'user' => $post->user,
-    //                 'description' => $post->description,
-    //                 'visibility' => $post->visibility,
-    //                 'who_can_comment' => $post->who_can_comment,
-    //                 'total_like' => $post->total_like ?? 0,
-    //                 'total_comment' => $post->total_comment ?? 0,
-    //                 'liked_by_me' => $post->likes->isNotEmpty(),
-    //                 'relationship_status' => $relationshipStatus,
-    //                 'media' => $post->media,
-    //                 'group' => $post->groups->first(),
-    //                 'industry' => $post->industryLink?->industry,
-    //                 'created_at' => $post->created_at,
-    //                 'can_edit' => $canEdit,
-    //                 'can_delete' => $canDelete,
-    //             ];
-    //         }),
-
-    //         'pagination' => [
-    //             'current_page' => $posts->currentPage(),
-    //             'per_page' => $posts->perPage(),
-    //             'total' => $posts->total(),
-    //             'last_page' => $posts->lastPage(),
-    //         ],
-    //     ]);
-    // }
-    // santos's code===================================
-
     public function singlePost($id)
     {
         $user = auth('api')->user();
 
         $groupIds = $user->groups()->pluck('groups.id');
 
-        $relationships = Connection::where(function ($q) use ($user) {
+        $relationships = Connection::where(function ($q) use ($user): void {
             $q->where('sender_id', $user->id)
                 ->orWhere('receiver_id', $user->id);
         })
@@ -406,7 +263,7 @@ class NewsfeedController extends Controller
         }
 
         $connectionIds = collect($relationshipMap)
-            ->filter(fn ($status) => $status === Connection::STATUS_ACCEPTED)
+            ->filter(fn ($status): bool => $status === Connection::STATUS_ACCEPTED)
             ->keys();
 
         $followingIds = UserFollow::where('follower_id', $user->id)
@@ -420,7 +277,7 @@ class NewsfeedController extends Controller
             'media',
             'groups:id,name,logo',
             'industryLink:id,post_id,industry_id', 'industryLink.industry:id,name,slug,tagline,logo',
-            'likes' => function ($q) use ($user) {
+            'likes' => function ($q) use ($user): void {
                 $q->where('user_id', $user->id);
             },
         ])
@@ -430,7 +287,7 @@ class NewsfeedController extends Controller
                 $user,
                 $groupIds,
                 $allowedConnectionIds
-            ) {
+            ): void {
 
                 $query->where('user_id', $user->id)
 
@@ -438,37 +295,37 @@ class NewsfeedController extends Controller
                         $groupIds,
                         $allowedConnectionIds,
                         $user
-                    ) {
+                    ): void {
                         $query->where('visibility', 'public')
 
-                            ->orWhere(function ($q) use ($allowedConnectionIds) {
+                            ->orWhere(function ($q) use ($allowedConnectionIds): void {
                                 $q->where('visibility', 'connections')
                                     ->whereIn('user_id', $allowedConnectionIds);
                             })
 
-                            ->orWhere(function ($q) use ($groupIds, $user) {
+                            ->orWhere(function ($q) use ($groupIds, $user): void {
                                 $q->where('visibility', 'groups')
-                                    ->whereHas('groups', function ($q2) use ($groupIds, $user) {
+                                    ->whereHas('groups', function ($q2) use ($groupIds, $user): void {
                                         $q2->whereIn('groups.id', $groupIds)
-                                            ->whereHas('users', function ($q3) use ($user) {
+                                            ->whereHas('users', function ($q3) use ($user): void {
                                                 $q3->where('group_users.user_id', $user->id)
                                                     ->where('group_users.status', '!=', 'banned');
                                             });
                                     });
                             })
 
-                            ->orWhere(function ($q) use ($user) {
-                                $q->whereExists(function ($sub) {
+                            ->orWhere(function ($q) use ($user): void {
+                                $q->whereExists(function ($sub): void {
                                     $sub->select(DB::raw(1))
                                         ->from('post_industry')
                                         ->whereColumn('post_industry.post_id', 'posts.id');
                                 })
-                                    ->where(function ($q2) use ($user) {
+                                    ->where(function ($q2) use ($user): void {
                                         $q2->where('visibility', 'public')
 
-                                            ->orWhere(function ($q3) use ($user) {
+                                            ->orWhere(function ($q3) use ($user): void {
                                                 $q3->where('visibility', 'followers')
-                                                    ->whereExists(function ($sub) use ($user) {
+                                                    ->whereExists(function ($sub) use ($user): void {
                                                         $sub->select(DB::raw(1))
                                                             ->from('industry_follows')
                                                             ->join(

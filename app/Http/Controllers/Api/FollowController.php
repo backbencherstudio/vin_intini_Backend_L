@@ -28,8 +28,8 @@ class FollowController extends Controller
         $totalFollowersCount = (clone $baseQuery)->count();
 
         if ($search !== '') {
-            $baseQuery->whereHas('follower', function ($q) use ($search) {
-                $q->where(function ($sub) use ($search) {
+            $baseQuery->whereHas('follower', function ($q) use ($search): void {
+                $q->where(function ($sub) use ($search): void {
                     $sub->where('first_name', 'LIKE', "%{$search}%")
                         ->orWhere('last_name', 'LIKE', "%{$search}%")
                         ->orWhere('username', 'LIKE', "%{$search}%");
@@ -51,7 +51,7 @@ class FollowController extends Controller
             $paginated->pluck('follower_id')->values()
         );
 
-        $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followingIds, $mutualConnections) {
+        $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followingIds, $mutualConnections): ?array {
 
             if (! $follow->follower) {
                 return null;
@@ -131,8 +131,8 @@ class FollowController extends Controller
         $totalFollowingCount = (clone $baseQuery)->count();
 
         if ($search !== '') {
-            $baseQuery->whereHas('following', function ($q) use ($search) {
-                $q->where(function ($sub) use ($search) {
+            $baseQuery->whereHas('following', function ($q) use ($search): void {
+                $q->where(function ($sub) use ($search): void {
                     $sub->where('first_name', 'LIKE', "%{$search}%")
                         ->orWhere('last_name', 'LIKE', "%{$search}%")
                         ->orWhere('username', 'LIKE', "%{$search}%");
@@ -154,7 +154,7 @@ class FollowController extends Controller
             $paginated->pluck('following_id')->values()
         );
 
-        $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followerIds, $mutualConnections) {
+        $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followerIds, $mutualConnections): ?array {
 
             if (! $follow->following) {
                 return null;
@@ -340,13 +340,9 @@ class FollowController extends Controller
                 ->values();
 
             $preview = $counterpartMutualIds
-                ->map(function (int $userId) use ($mutualUsers) {
-                    return $mutualUsers->get($userId);
-                })
+                ->map(fn (int $userId) => $mutualUsers->get($userId))
                 ->filter()
-                ->map(function (User $user) {
-                    return $this->formatUser($user);
-                })
+                ->map(fn (User $user): array => $this->formatUser($user))
                 ->take(1)
                 ->values();
 

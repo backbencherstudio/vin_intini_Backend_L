@@ -70,9 +70,7 @@ class PublicationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Publications retrieved successfully.',
-            'data' => PublicationResource::collection($paginated->items())->map(function ($res) use ($likedIds) {
-                return (new PublicationResource($res->resource, $likedIds))->resolve();
-            }),
+            'data' => PublicationResource::collection($paginated->items())->map(fn ($res) => (new PublicationResource($res->resource, $likedIds))->resolve()),
             'pagination' => [
                 'per_page' => $paginated->perPage(),
                 'next_cursor' => $paginated->nextCursor()?->encode(),
@@ -239,7 +237,7 @@ class PublicationController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('title', 'LIKE', "%{$search}%")
                     ->orWhere('publication_id', 'LIKE', "%{$search}%")
                     ->orWhere('abstract', 'LIKE', "%{$search}%");
@@ -424,13 +422,13 @@ class PublicationController extends Controller
     private function findPublication(int|string $id, array $relations = []): Publication
     {
         $query = Publication::query()
-            ->where(function ($q) use ($id) {
+            ->where(function ($q) use ($id): void {
                 $q->where('id', $id)
                     ->orWhere('publication_id', (string) $id)
                     ->orWhere('slug', (string) $id);
             });
 
-        if (! empty($relations)) {
+        if ($relations !== []) {
             $query->with($relations);
         }
 
@@ -453,11 +451,7 @@ class PublicationController extends Controller
             return true;
         }
 
-        if ($publication->industry_id && $user->industry && $user->industry->id === $publication->industry_id) {
-            return true;
-        }
-
-        return false;
+        return $publication->industry_id && $user->industry && $user->industry->id === $publication->industry_id;
     }
 
     /**
@@ -465,7 +459,7 @@ class PublicationController extends Controller
      */
     private function recordView(Publication $publication, ?User $user, ?string $ip): void
     {
-        if ($user && ((int) $user->id === (int) $publication->creator_id || (int) $user->id === (int) ($publication->industry?->created_by ?? 0))) {
+        if ($user instanceof User && ((int) $user->id === (int) $publication->creator_id || (int) $user->id === (int) ($publication->industry?->created_by ?? 0))) {
             return;
         }
 
@@ -474,7 +468,7 @@ class PublicationController extends Controller
             'user_id' => $user?->id,
         ];
 
-        if (! $user) {
+        if (! $user instanceof User) {
             $viewCriteria['ip_address'] = $ip;
         }
 
@@ -507,7 +501,7 @@ class PublicationController extends Controller
         }
 
         if (is_array($authors)) {
-            return array_values(array_filter(array_map('trim', $authors)));
+            return array_values(array_filter(array_map(trim(...), $authors)));
         }
 
         return null;
@@ -593,7 +587,7 @@ class PublicationController extends Controller
             'growth' => sprintf('%s%s%%', $activeGrowth >= 0 ? '+' : '-', abs($activeGrowth)),
             'growth_text' => sprintf('%s%s%% from last month', $activeGrowth >= 0 ? '+' : '-', abs($activeGrowth)),
             'growth_percentage' => abs($activeGrowth),
-            'badge' => $activeGrowth == 0.0 ? 'Scale' : sprintf('%s%s%%', $activeGrowth >= 0 ? '+' : '-', abs($activeGrowth)),
+            'badge' => $activeGrowth === 0.0 ? 'Scale' : sprintf('%s%s%%', $activeGrowth >= 0 ? '+' : '-', abs($activeGrowth)),
             'is_positive' => $activeGrowth >= 0,
         ];
 
@@ -627,7 +621,7 @@ class PublicationController extends Controller
 
     private function calculatePercentageChange(float $current, float $previous): float
     {
-        if ($previous == 0.0) {
+        if ($previous === 0.0) {
             return $current > 0 ? 100.0 : 0.0;
         }
 

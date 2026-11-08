@@ -39,12 +39,12 @@ class ConversationController extends Controller
         $premiumUserIds = $this->loadPremiumUserIds($conversations, $currentUser->id);
 
         $data = $conversations
-            ->map(function (Conversation $conversation) use ($currentUser, $unreadCounts, $premiumUserIds) {
+            ->map(function (Conversation $conversation) use ($currentUser, $unreadCounts, $premiumUserIds): ?array {
                 $otherUser = $conversation->getOtherUser($currentUser->id);
                 $unreadCount = $unreadCounts[$conversation->id] ?? 0;
                 $lastMessage = $this->visibleLastMessageFor($conversation, $currentUser->id);
 
-                if (! $otherUser) {
+                if (! $otherUser instanceof User) {
                     return null;
                 }
 
@@ -56,7 +56,7 @@ class ConversationController extends Controller
                         'profile_image_url' => $otherUser->profile_image_url,
                         'has_premium' => in_array($otherUser->id, $premiumUserIds),
                     ],
-                    'last_message' => $lastMessage ? [
+                    'last_message' => $lastMessage instanceof Message ? [
                         'id' => $lastMessage->id,
                         'type' => $lastMessage->display_type,
                         'message' => $lastMessage->message,
@@ -73,10 +73,8 @@ class ConversationController extends Controller
                 ];
             })
             ->filter()
-            ->when($status === 'unread', fn ($items) => $items->filter(fn ($item) => $item['unread_count'] > 0))
-            ->when($search !== '', fn ($items) => $items->filter(function ($item) use ($search) {
-                return str_contains(mb_strtolower($item['_search_name']), mb_strtolower($search));
-            }))
+            ->when($status === 'unread', fn ($items) => $items->filter(fn ($item): bool => $item['unread_count'] > 0))
+            ->when($search !== '', fn ($items) => $items->filter(fn ($item): bool => str_contains(mb_strtolower($item['_search_name']), mb_strtolower($search))))
             ->values()
             ->map(fn ($item) => collect($item)->except('_search_name')->all());
 
@@ -102,7 +100,7 @@ class ConversationController extends Controller
      */
     public function markAsRead(Request $request, Conversation $conversation): JsonResponse
     {
-        if ($error = $this->authorizeConversation($request, $conversation)) {
+        if (($error = $this->authorizeConversation($request, $conversation)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -121,7 +119,7 @@ class ConversationController extends Controller
      */
     public function markAsUnread(Request $request, Conversation $conversation): JsonResponse
     {
-        if ($error = $this->authorizeConversation($request, $conversation)) {
+        if (($error = $this->authorizeConversation($request, $conversation)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -140,7 +138,7 @@ class ConversationController extends Controller
      */
     public function archive(Request $request, Conversation $conversation): JsonResponse
     {
-        if ($error = $this->authorizeConversation($request, $conversation)) {
+        if (($error = $this->authorizeConversation($request, $conversation)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -164,7 +162,7 @@ class ConversationController extends Controller
      */
     public function unarchive(Request $request, Conversation $conversation): JsonResponse
     {
-        if ($error = $this->authorizeConversation($request, $conversation)) {
+        if (($error = $this->authorizeConversation($request, $conversation)) instanceof JsonResponse) {
             return $error;
         }
 
@@ -196,7 +194,7 @@ class ConversationController extends Controller
 
         $connected = Connection::query()
             ->accepted()
-            ->where(function ($q) use ($currentUser, $user) {
+            ->where(function ($q) use ($currentUser, $user): void {
                 $q->where('sender_id', $currentUser->id)->where('receiver_id', $user->id)
                     ->orWhere('sender_id', $user->id)->where('receiver_id', $currentUser->id);
             })
@@ -232,7 +230,7 @@ class ConversationController extends Controller
                     'cover_image_url' => $otherUser->cover_image_url,
                     'has_premium' => $this->userHasActiveSubscription($otherUser->id),
                 ],
-                'last_message' => $lastMessage ? [
+                'last_message' => $lastMessage instanceof Message ? [
                     'id' => $lastMessage->id,
                     'type' => $lastMessage->display_type,
                     'message' => $lastMessage->message,
@@ -258,7 +256,7 @@ class ConversationController extends Controller
      */
     public function destroy(Request $request, Conversation $conversation): JsonResponse
     {
-        if ($error = $this->authorizeConversation($request, $conversation)) {
+        if (($error = $this->authorizeConversation($request, $conversation)) instanceof JsonResponse) {
             return $error;
         }
 
