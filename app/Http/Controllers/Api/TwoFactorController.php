@@ -4,28 +4,31 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\OtpType;
 use App\Http\Controllers\Controller;
-use App\Mail\RecoveryOtpMail;
 use App\Models\Otp;
 use App\Models\User;
-use Illuminate\Auth\Events\Failed;
-use Illuminate\Auth\Events\Login;
+use App\Notifications\RecoveryOtpNotification;
+use App\Services\Auth\ChallengeService;
+use App\Services\Auth\SessionIssuanceService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 
 class TwoFactorController extends Controller
 {
-    protected $google2fa;
+    protected Google2FA $google2fa;
 
-    public function __construct()
-    {
+    public function __construct(
+        protected SessionIssuanceService $sessionService,
+        protected ChallengeService $challengeService,
+    ) {
         $this->google2fa = new Google2FA;
     }
 
-    public function setup(Request $request)
+    public function setup(Request $request): JsonResponse
     {
         $request->validate(['password' => 'required']);
 
@@ -68,7 +71,7 @@ class TwoFactorController extends Controller
         ]);
     }
 
-    public function confirm(Request $request)
+    public function confirm(Request $request): JsonResponse
     {
         $request->validate(['code' => 'required']);
         $user = auth('api')->user();
@@ -81,7 +84,7 @@ class TwoFactorController extends Controller
             return DB::transaction(function () use ($user) {
                 $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
 
-                $hashedCodes = array_map(fn ($code) => bcrypt($code), $plainRecoveryCodes);
+                $hashedCodes = array_map(fn ($code): string => bcrypt($code), $plainRecoveryCodes);
 
                 $user->update([
                     'two_factor_confirmed_at' => now(),
@@ -99,17 +102,29 @@ class TwoFactorController extends Controller
         return response()->json(['status' => false, 'message' => 'Invalid OTP code from app'], 422);
     }
 
-    public function verifyLogin(Request $request)
+    public function verifyLogin(Request $request): JsonResponse
     {
         $request->validate([
             'email' => 'required|email',
             'code' => 'required',
+            'challenge_token' => 'required|string',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
         if (! $user || ! $user->two_factor_confirmed_at) {
             return response()->json(['status' => false, 'message' => 'Invalid request'], 403);
+        }
+
+        if (($statusResponse = $this->sessionService->checkAccountStatus($user)) instanceof JsonResponse) {
+            return $statusResponse;
+        }
+
+        if (! $this->challengeService->verifyAndConsumeChallenge($request->challenge_token, $user, '2fa')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid or expired two-factor challenge. Please sign in again.',
+            ], 403);
         }
 
         $inputCode = $request->code;
@@ -145,18 +160,10 @@ class TwoFactorController extends Controller
         }
 
         if ($isValid) {
-            $token = auth('api')->login($user);
-
-            $payload = auth('api')->setToken($token)->getPayload();
-            $tokenId = $payload->get('jti');
-            request()->merge(['current_token_id' => $tokenId]);
-            event(new Login('api', $user, false));
-
-            return $this->respondWithToken($token, $user);
+            return $this->sessionService->respondWithSession($user, null, [
+                'message' => '2FA verified successfully.',
+            ]);
         }
-
-        // suspicious activity tracking: if Failed triggered, log the failed attempt with the provided code
-        // event(new Failed('api', $user, ['code' => $inputCode]));
 
         return response()->json([
             'status' => false,
@@ -165,7 +172,7 @@ class TwoFactorController extends Controller
         ], 401);
     }
 
-    public function disable(Request $request)
+    public function disable(Request $request): JsonResponse
     {
         $request->validate(['password' => 'required']);
         $user = auth('api')->user();
@@ -183,7 +190,7 @@ class TwoFactorController extends Controller
         return response()->json(['status' => false, 'message' => 'Incorrect password'], 403);
     }
 
-    public function regenerateRecoveryCodes(Request $request)
+    public function regenerateRecoveryCodes(Request $request): JsonResponse
     {
         $request->validate(['password' => 'required']);
         $user = auth('api')->user();
@@ -197,7 +204,7 @@ class TwoFactorController extends Controller
 
         if (Hash::check($request->password, $user->password)) {
             $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
-            $hashedCodes = array_map(fn ($code) => bcrypt($code), $plainRecoveryCodes);
+            $hashedCodes = array_map(fn ($code): string => bcrypt($code), $plainRecoveryCodes);
 
             $user->update([
                 'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
@@ -213,7 +220,7 @@ class TwoFactorController extends Controller
         return response()->json(['status' => false, 'message' => 'Incorrect password'], 403);
     }
 
-    public function updateRecoveryEmail(Request $request)
+    public function updateRecoveryEmail(Request $request): JsonResponse
     {
         $request->validate([
             'email' => 'required|email',
@@ -236,7 +243,7 @@ class TwoFactorController extends Controller
             ], 422);
         }
 
-        $otp = rand(1000, 9999);
+        $otp = random_int(1000, 9999);
 
         Otp::updateOrCreate(
             ['user_id' => $user->id, 'type' => OtpType::RECOVERY_EMAIL->value],
@@ -248,12 +255,12 @@ class TwoFactorController extends Controller
             'recovery_email_verified_at' => null,
         ]);
 
-        Mail::to($request->email)->send(new RecoveryOtpMail($otp));
+        Notification::route('mail', $request->email)->notify(new RecoveryOtpNotification($otp));
 
         return response()->json(['status' => true, 'message' => 'OTP sent to recovery email.']);
     }
 
-    public function confirmRecoveryEmail(Request $request)
+    public function confirmRecoveryEmail(Request $request): JsonResponse
     {
         $request->validate(['otp' => 'required|digits:4']);
         $user = auth('api')->user();
@@ -275,7 +282,7 @@ class TwoFactorController extends Controller
         return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.'], 422);
     }
 
-    public function resendRecoveryEmailOtp(Request $request)
+    public function resendRecoveryEmailOtp(Request $request): JsonResponse
     {
         $user = auth('api')->user();
 
@@ -317,14 +324,14 @@ class TwoFactorController extends Controller
             }
         }
 
-        $otp = rand(1000, 9999);
+        $otp = random_int(1000, 9999);
 
         Otp::updateOrCreate(
             ['user_id' => $user->id, 'type' => OtpType::RECOVERY_EMAIL->value],
             ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
         );
 
-        Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
+        Notification::route('mail', $user->recovery_email)->notify(new RecoveryOtpNotification($otp));
 
         return response()->json([
             'status' => true,
@@ -332,7 +339,7 @@ class TwoFactorController extends Controller
         ]);
     }
 
-    public function recoveryInit(Request $request)
+    public function recoveryInit(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email']);
         $user = User::where('email', $request->email)->first();
@@ -372,13 +379,13 @@ class TwoFactorController extends Controller
             ], 422);
         }
 
-        $otp = rand(1000, 9999);
+        $otp = random_int(1000, 9999);
         Otp::updateOrCreate(
             ['user_id' => $user->id, 'type' => OtpType::RECOVERY->value],
             ['otp' => $otp, 'expires_at' => now()->addMinutes(10), 'verified_at' => null],
         );
 
-        Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
+        Notification::route('mail', $user->recovery_email)->notify(new RecoveryOtpNotification($otp));
 
         return response()->json([
             'status' => true,
@@ -397,30 +404,15 @@ class TwoFactorController extends Controller
         $otpRecord = $user ? Otp::where('user_id', $user->id)->where('type', OtpType::RECOVERY->value)->first() : null;
 
         if ($otpRecord && (string) $otpRecord->otp === (string) $request->otp && now()->lt($otpRecord->expires_at)) {
-
             $otpRecord->delete();
 
-            $token = auth('api')->login($user);
-
-            // -----------------------------------------
-            // Trigger the Login event to log the successful login activity
-            $payload = auth('api')->setToken($token)->getPayload(); // Get the payload of the token
-            $tokenId = $payload->get('jti'); // Get the token ID (jti) from the payload
-            request()->merge(['current_token_id' => $tokenId]); // Merge the token ID into the request for later use
-            event(new Login('api', $user, false)); // Trigger the Login event to log the successful login activity
-            // -----------------------------------------
-
-            return $this->respondWithToken($token, $user);
+            return $this->sessionService->respondWithSession($user);
         }
-
-        // if ($user) {
-        //     event(new Failed('api', $user, ['otp' => $request->otp]));
-        // }
 
         return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.'], 422);
     }
 
-    protected function respondWithToken($token, $user)
+    protected function respondWithToken(string $token, User $user): JsonResponse
     {
         $roleName = $user->getRoleNames()->first();
         $user->makeHidden('roles');
@@ -463,13 +455,13 @@ class TwoFactorController extends Controller
             }
         }
 
-        $otp = rand(1000, 9999);
+        $otp = random_int(1000, 9999);
         Otp::updateOrCreate(
             ['user_id' => $user->id, 'type' => OtpType::RECOVERY->value],
             ['otp' => $otp, 'expires_at' => now()->addMinutes(10), 'verified_at' => null],
         );
 
-        Mail::to($user->recovery_email)->send(new RecoveryOtpMail($otp));
+        Notification::route('mail', $user->recovery_email)->notify(new RecoveryOtpNotification($otp));
 
         return response()->json(['status' => true, 'message' => 'A new verification code has been sent.']);
     }
