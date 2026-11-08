@@ -115,6 +115,7 @@ class Phase1SecurityP1Test extends TestCase
         ]);
 
         // GET request to delete route must fail (Method Not Allowed 405)
+        /** @var User $admin */
         $getResponse = $this->actingAs($admin, 'web')
             ->get("/admin/partners/delete/{$partner->id}");
         $getResponse->assertStatus(405);
@@ -135,6 +136,7 @@ class Phase1SecurityP1Test extends TestCase
         ]);
 
         // Protected DELETE request succeeds
+        /** @var User $admin */
         $deleteResponse = $this->actingAs($admin, 'web')
             ->delete("/admin/partners/delete/{$partner->id}");
         $deleteResponse->assertRedirect();
