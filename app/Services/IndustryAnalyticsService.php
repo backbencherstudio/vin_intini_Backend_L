@@ -100,7 +100,7 @@ class IndustryAnalyticsService
         // Active Positions (Current snapshot: published and not expired)
         $currentActivePositions = IndustryJobPost::where('industry_id', $industryId)
             ->where('status', IndustryJobPostStatus::PUBLISHED)
-            ->where(function ($q) {
+            ->where(function ($q): void {
                 $q->whereNull('announcement_end_date')
                     ->orWhere('announcement_end_date', '>=', now()->toDateString());
             })
@@ -109,14 +109,14 @@ class IndustryAnalyticsService
         // Active Positions at the end of last month (Historical comparison)
         $lastMonthActivePositions = IndustryJobPost::where('industry_id', $industryId)
             ->where('created_at', '<=', $endLast)
-            ->where(function ($q) use ($endLast) {
+            ->where(function ($q) use ($endLast): void {
                 $q->where('status', IndustryJobPostStatus::PUBLISHED)
-                    ->orWhere(function ($sub) use ($endLast) {
+                    ->orWhere(function ($sub) use ($endLast): void {
                         $sub->whereIn('status', [IndustryJobPostStatus::EXPIRED, IndustryJobPostStatus::ARCHIVE])
                             ->where('updated_at', '>', $endLast);
                     });
             })
-            ->where(function ($q) use ($endLast) {
+            ->where(function ($q) use ($endLast): void {
                 $q->whereNull('announcement_end_date')
                     ->orWhere('announcement_end_date', '>=', $endLast->toDateString());
             })
@@ -270,7 +270,7 @@ class IndustryAnalyticsService
 
     private function calculatePercentageChange(float $current, float $previous): float
     {
-        if ($previous == 0.0) {
+        if ($previous === 0.0) {
             return $current > 0 ? 100.0 : 0.0;
         }
 
@@ -288,7 +288,7 @@ class IndustryAnalyticsService
 
         $productIds = IndustryProduct::where('industry_id', $industryId)->select('id');
         $campaignIds = AdCampaign::where('industry_id', $industryId)
-            ->orWhere(function ($q) use ($productIds) {
+            ->orWhere(function ($q) use ($productIds): void {
                 $q->where('boostable_type', IndustryProduct::class)
                     ->whereIn('boostable_id', $productIds);
             })
@@ -312,7 +312,7 @@ class IndustryAnalyticsService
         $topCampaigns = $this->getTopPerformingCampaigns($campaignIds);
 
         // 4. Advertisement Performance Graph (Impressions vs Clicks)
-        $graph = $this->calculateAdvertisementPerformanceGraph($industryId, $campaignIds, $period);
+        $graph = $this->calculateAdvertisementPerformanceGraph($campaignIds, $period);
 
         return [
             'cards' => $cards,
@@ -330,7 +330,7 @@ class IndustryAnalyticsService
         Carbon $startLast,
         Carbon $endLast
     ): array {
-        $productIds = IndustryProduct::where('industry_id', $industryId)->select('id');
+        IndustryProduct::where('industry_id', $industryId)->select('id');
 
         // Total Ad Spend / Investment
         $totalSpend = (float) AdCampaign::whereIn('id', $campaignIds)
@@ -394,7 +394,7 @@ class IndustryAnalyticsService
 
         return [
             'total_spend' => [
-                'total' => (float) round($totalSpend, 2),
+                'total' => round($totalSpend, 2),
                 'formatted' => '$'.number_format($totalSpend, 2),
                 'growth_percentage' => $spendGrowth,
                 'growth' => ($spendGrowth >= 0 ? "+{$spendGrowth}%" : "{$spendGrowth}%").' from last month',
@@ -415,7 +415,7 @@ class IndustryAnalyticsService
                 'is_positive' => $clicksGrowth >= 0,
             ],
             'avg_ctr' => [
-                'total' => (float) $totalCtr,
+                'total' => $totalCtr,
                 'formatted' => $totalCtr.'%',
                 'growth_percentage' => $ctrGrowth,
                 'growth' => ($ctrGrowth >= 0 ? "+{$ctrGrowth}%" : "{$ctrGrowth}%").' from last month',
@@ -493,7 +493,7 @@ class IndustryAnalyticsService
             ->orderByDesc('total_clicks')
             ->take($limit)
             ->get()
-            ->map(function (AdCampaign $campaign) {
+            ->map(function (AdCampaign $campaign): array {
                 $product = $campaign->boostable;
                 $impressions = (int) $campaign->total_impressions;
                 $clicks = (int) $campaign->total_clicks;
@@ -510,7 +510,7 @@ class IndustryAnalyticsService
             ->all();
     }
 
-    private function calculateAdvertisementPerformanceGraph(int $industryId, $campaignIds, string $period): array
+    private function calculateAdvertisementPerformanceGraph($campaignIds, string $period): array
     {
         $driver = DB::connection()->getDriverName();
 
@@ -866,12 +866,12 @@ class IndustryAnalyticsService
     private function getIndustryPostIdsQuery(int $industryId)
     {
         return PostIndustry::where('industry_id', $industryId)
-            ->whereNotExists(function ($query) {
+            ->whereNotExists(function ($query): void {
                 $query->select(DB::raw(1))
                     ->from('post_groups')
                     ->whereColumn('post_groups.post_id', 'post_industry.post_id');
             })
-            ->whereNotExists(function ($query) {
+            ->whereNotExists(function ($query): void {
                 $query->select(DB::raw(1))
                     ->from('posts')
                     ->whereColumn('posts.id', 'post_industry.post_id')

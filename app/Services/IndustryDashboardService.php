@@ -8,6 +8,8 @@ use App\Models\IndustryJobApplication;
 use App\Models\IndustryJobPost;
 use App\Models\IndustryJobPostView;
 use App\Models\User;
+use App\Notifications\JobApplicationReceivedNotification;
+use App\Notifications\JobApplicationStatusUpdatedNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -78,7 +80,7 @@ class IndustryDashboardService
         // 1. Active Positions (Current snapshot)
         $currentActivePositions = IndustryJobPost::where('industry_id', $industryId)
             ->where('status', IndustryJobPostStatus::PUBLISHED)
-            ->where(function ($q) {
+            ->where(function ($q): void {
                 $q->whereNull('announcement_end_date')
                     ->orWhere('announcement_end_date', '>=', now()->toDateString());
             })
@@ -87,14 +89,14 @@ class IndustryDashboardService
         // Active Positions at end of last month
         $lastMonthActivePositions = IndustryJobPost::where('industry_id', $industryId)
             ->where('created_at', '<=', $endLast)
-            ->where(function ($q) use ($endLast) {
+            ->where(function ($q) use ($endLast): void {
                 $q->where('status', IndustryJobPostStatus::PUBLISHED)
-                    ->orWhere(function ($sub) use ($endLast) {
+                    ->orWhere(function ($sub) use ($endLast): void {
                         $sub->whereIn('status', [IndustryJobPostStatus::EXPIRED, IndustryJobPostStatus::ARCHIVE])
                             ->where('updated_at', '>', $endLast);
                     });
             })
-            ->where(function ($q) use ($endLast) {
+            ->where(function ($q) use ($endLast): void {
                 $q->whereNull('announcement_end_date')
                     ->orWhere('announcement_end_date', '>=', $endLast->toDateString());
             })
@@ -284,19 +286,19 @@ class IndustryDashboardService
     private function getActivityFeed(User $user, int $industryId): array
     {
         return $user->notifications()
-            ->where(function ($q) use ($industryId) {
-                $q->where('data->industry_id', (int) $industryId)
+            ->where(function ($q) use ($industryId): void {
+                $q->where('data->industry_id', $industryId)
                     ->orWhereNotNull('data->industry_id');
             })
             ->orderByDesc('created_at')
             ->take(3)
             ->get()
-            ->map(function ($n) {
+            ->map(function ($n): array {
                 $data = is_string($n->data) ? json_decode($n->data, true) : $n->data;
 
                 $title = $data['title'] ?? match ($n->type) {
-                    'App\Notifications\JobApplicationReceivedNotification' => 'New application received',
-                    'App\Notifications\JobApplicationStatusUpdatedNotification' => 'Application status updated',
+                    JobApplicationReceivedNotification::class => 'New application received',
+                    JobApplicationStatusUpdatedNotification::class => 'Application status updated',
                     default => 'Notification',
                 };
 
@@ -329,7 +331,7 @@ class IndustryDashboardService
             ->latest('id')
             ->take($limit)
             ->get()
-            ->map(function (IndustryJobApplication $app) {
+            ->map(function (IndustryJobApplication $app): array {
                 $applicant = $app->applicant;
                 $job = $app->job;
                 $avatar = null;

@@ -172,11 +172,11 @@ class StripeService
         $periodStart = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_start'));
         $periodEnd = $this->fromTimestamp(data_get($stripeSubscription, 'current_period_end'));
 
-        if (! $periodEnd) {
+        if (! $periodEnd instanceof Carbon) {
             $anchor = $this->fromTimestamp(data_get($stripeSubscription, 'billing_cycle_anchor'));
 
-            if ($anchor) {
-                $periodStart = $periodStart ?? $anchor;
+            if ($anchor instanceof Carbon) {
+                $periodStart ??= $anchor;
                 $periodEnd = $this->billingCycle($stripeSubscription) === 'yearly'
                     ? $anchor->copy()->addYear()
                     : $anchor->copy()->addMonth();
@@ -202,7 +202,13 @@ class StripeService
         string $paymentMethodId,
         array $metadata = [],
         bool $confirm = true,
+        ?string $idempotencyKey = null,
     ): PaymentIntent {
+        $options = [];
+        if ($idempotencyKey) {
+            $options['idempotency_key'] = $idempotencyKey;
+        }
+
         return $this->client()->paymentIntents->create([
             'amount' => $amountInCents,
             'currency' => strtolower($currency),
@@ -215,7 +221,7 @@ class StripeService
             ],
             'metadata' => $metadata,
             'expand' => ['payment_method'],
-        ]);
+        ], $options);
     }
 
     public function retrievePaymentIntent(string $paymentIntentId): PaymentIntent

@@ -45,8 +45,11 @@ class MediaUploadService
 
         Storage::disk('public')->makeDirectory(dirname($filename));
 
+        $ffmpegBinary = config('services.ffmpeg.binary', 'ffmpeg');
+
         $command = sprintf(
-            "ffmpeg -i %s -vf \"scale='min(1280,iw)':-2\" -c:v libx264 -preset medium -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1",
+            '%s -i %s -vf "scale=\'min(1280,iw)\':-2" -c:v libx264 -preset medium -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1',
+            escapeshellcmd($ffmpegBinary),
             escapeshellarg($inputPath),
             escapeshellarg($outputPath)
         );
@@ -54,6 +57,10 @@ class MediaUploadService
         exec($command, $output, $status);
 
         if ($status !== 0) {
+            if (Storage::disk('public')->exists($filename)) {
+                Storage::disk('public')->delete($filename);
+            }
+
             throw new \Exception(
                 'Video compression failed: '.implode("\n", $output)
             );

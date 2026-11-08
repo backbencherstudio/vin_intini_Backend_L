@@ -11,7 +11,7 @@ use Stripe\StripeObject;
 
 class BillingWebhookService
 {
-    public function __construct(private StripeService $stripe) {}
+    public function __construct(private readonly StripeService $stripe) {}
 
     public function handleCheckoutCompleted(StripeObject $session): void
     {
@@ -80,7 +80,7 @@ class BillingWebhookService
     {
         $subscription = $this->syncSubscriptionFromStripe($stripeSubscription);
 
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -135,7 +135,7 @@ class BillingWebhookService
     {
         $subscription = $this->resolveSubscriptionForPaymentIntent($paymentIntent);
 
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -162,11 +162,11 @@ class BillingWebhookService
                 ? $this->stripe->retrievePaymentIntent($charge->payment_intent)
                 : null;
 
-            $subscription = $paymentIntent
+            $subscription = $paymentIntent instanceof PaymentIntent
                 ? $this->resolveSubscriptionForPaymentIntent($paymentIntent)
                 : null;
 
-            if (! $subscription) {
+            if (! $subscription instanceof Subscription) {
                 return;
             }
 
@@ -198,7 +198,7 @@ class BillingWebhookService
     {
         $subscription = $this->resolveSubscriptionFromInvoice($invoice);
 
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -221,7 +221,7 @@ class BillingWebhookService
         $periodStart = $this->fromTimestamp($invoice->period_start);
         $periodEnd = $this->fromTimestamp($invoice->period_end);
 
-        if (! $periodEnd || $periodEnd->lessThanOrEqualTo(now())) {
+        if (! $periodEnd instanceof Carbon || $periodEnd->lessThanOrEqualTo(now())) {
             $stripeSubscription = $this->stripe->retrieveSubscription((string) $subscription->provider_subscription_id);
             [$periodStart, $periodEnd] = $this->stripe->periodDatesFromSubscription($stripeSubscription);
         }
@@ -239,7 +239,7 @@ class BillingWebhookService
     {
         $subscription = $this->resolveSubscriptionFromInvoice($invoice);
 
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 

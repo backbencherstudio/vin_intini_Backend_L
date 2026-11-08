@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 class IndustryMediaUploadService
 {
     public function __construct(
-        private OptimizedImageUploadService $imageUploadService
+        private readonly OptimizedImageUploadService $imageUploadService
     ) {}
 
     public function upload(UploadedFile $file): array
@@ -48,9 +48,11 @@ class IndustryMediaUploadService
 
         Storage::disk('public')->makeDirectory(dirname($filename));
 
+        $ffmpegBinary = config('services.ffmpeg.binary', 'ffmpeg');
+
         $command = sprintf(
-            '"%s" -i %s -vf "scale=\'min(1280,iw)\':-2" -c:v libx264 -preset veryfast -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1',
-            env('FFMPEG_BINARY', 'C:\ffmpeg\bin\ffmpeg.exe'),
+            '%s -i %s -vf "scale=\'min(1280,iw)\':-2" -c:v libx264 -preset veryfast -crf 28 -c:a aac -b:a 128k -movflags +faststart %s -y 2>&1',
+            escapeshellcmd($ffmpegBinary),
             escapeshellarg($inputPath),
             escapeshellarg($outputPath)
         );

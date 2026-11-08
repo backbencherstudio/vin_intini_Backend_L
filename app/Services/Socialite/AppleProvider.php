@@ -89,7 +89,7 @@ class AppleProvider extends AppleBaseProvider
 
             return true;
         } catch (RequiredConstraintsViolated $e) {
-            throw new InvalidStateException($e->getMessage());
+            throw new InvalidStateException($e->getMessage(), $e->getCode(), $e);
         }
     }
 }

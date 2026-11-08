@@ -20,9 +20,11 @@ class ProfileImageService
         ?string $existingPath = null,
         string $folder = self::DEFAULT_FOLDER
     ): string {
+        $path = $this->optimizedImageUploadService->store($file, $folder);
+
         $this->deleteIfLocal($existingPath);
 
-        return $this->optimizedImageUploadService->store($file, $folder);
+        return $path;
     }
 
     public function storeFromUrl(
@@ -44,7 +46,7 @@ class ProfileImageService
             return null;
         }
 
-        $contentType = (string) $response->header('Content-Type', '');
+        $contentType = (string) $response->header('Content-Type');
         if ($contentType === '' || ! Str::startsWith(Str::lower($contentType), 'image/')) {
             return null;
         }

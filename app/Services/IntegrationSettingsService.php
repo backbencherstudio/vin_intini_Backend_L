@@ -62,14 +62,12 @@ class IntegrationSettingsService
             return [];
         }
 
-        return Cache::rememberForever(self::CACHE_KEY, function () {
-            return IntegrationSetting::query()
-                ->orderBy('section')
-                ->orderBy('key')
-                ->get()
-                ->mapWithKeys(fn (IntegrationSetting $setting) => [$setting->key => $setting->value])
-                ->all();
-        });
+        return Cache::rememberForever(self::CACHE_KEY, fn () => IntegrationSetting::query()
+            ->orderBy('section')
+            ->orderBy('key')
+            ->get()
+            ->mapWithKeys(fn (IntegrationSetting $setting): array => [$setting->key => $setting->value])
+            ->all());
     }
 
     public function get(string $key, ?string $default = null): ?string
@@ -96,6 +94,7 @@ class IntegrationSettingsService
         );
 
         Cache::forget(self::CACHE_KEY);
+        $this->applyOverrides();
     }
 
     /**
@@ -113,7 +112,7 @@ class IntegrationSettingsService
 
         try {
             $settings = $this->all();
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             // Database is unavailable: keep the config-file / .env defaults.
             return;
         }
@@ -140,7 +139,7 @@ class IntegrationSettingsService
             ->orderBy('key')
             ->get()
             ->groupBy('section')
-            ->map(fn ($settings) => $settings->map(fn (IntegrationSetting $setting) => [
+            ->map(fn ($settings) => $settings->map(fn (IntegrationSetting $setting): array => [
                 'key' => $setting->key,
                 'value' => $this->mask($setting->key, $setting->value),
             ])->values())

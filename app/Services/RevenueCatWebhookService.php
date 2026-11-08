@@ -36,7 +36,7 @@ class RevenueCatWebhookService
     private function handleInitialPurchase(array $event, array $payload): void
     {
         $user = $this->resolveUser($event, $payload);
-        if (! $user) {
+        if (! $user instanceof User) {
             return;
         }
 
@@ -49,7 +49,7 @@ class RevenueCatWebhookService
     private function handleRenewal(array $event, array $payload): void
     {
         $user = $this->resolveUser($event, $payload);
-        if (! $user) {
+        if (! $user instanceof User) {
             return;
         }
 
@@ -61,7 +61,7 @@ class RevenueCatWebhookService
     private function handleCancellation(array $event): void
     {
         $subscription = $this->findSubscription($event);
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -76,7 +76,7 @@ class RevenueCatWebhookService
     private function handleUncancellation(array $event): void
     {
         $subscription = $this->findSubscription($event);
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -91,7 +91,7 @@ class RevenueCatWebhookService
     private function handleNonRenewingPurchase(array $event, array $payload): void
     {
         $user = $this->resolveUser($event, $payload);
-        if (! $user) {
+        if (! $user instanceof User) {
             return;
         }
 
@@ -101,7 +101,7 @@ class RevenueCatWebhookService
     private function handleStatusChange(array $event, string $status): void
     {
         $subscription = $this->findSubscription($event);
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -111,7 +111,7 @@ class RevenueCatWebhookService
     private function handleProductChange(array $event): void
     {
         $subscription = $this->findSubscription($event);
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -122,16 +122,6 @@ class RevenueCatWebhookService
             'product_id' => $event['product_id'] ?? $subscription->product_id,
             'status' => 'active',
         ]);
-    }
-
-    private function handleBillingIssue(array $event): void
-    {
-        $subscription = $this->findSubscription($event);
-        if (! $subscription) {
-            return;
-        }
-
-        $subscription->update(['status' => 'past_due']);
     }
 
     private function handleRefund(array $event): void
@@ -158,7 +148,7 @@ class RevenueCatWebhookService
     private function handlePeriodChanged(array $event): void
     {
         $subscription = $this->findSubscription($event);
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -171,7 +161,7 @@ class RevenueCatWebhookService
     private function handleExpiration(array $event): void
     {
         $subscription = $this->findSubscription($event);
-        if (! $subscription) {
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
@@ -191,7 +181,7 @@ class RevenueCatWebhookService
         }
 
         $targetUser = $this->resolveUserByIdentifier($to[0]);
-        if (! $targetUser) {
+        if (! $targetUser instanceof User) {
             return;
         }
 
@@ -209,7 +199,7 @@ class RevenueCatWebhookService
         if (in_array($status, ['active', 'trialing'], true)) {
             Subscription::where('user_id', $user->id)
                 ->whereIn('status', ['active', 'trialing'])
-                ->where(function ($query) use ($providerId) {
+                ->where(function ($query) use ($providerId): void {
                     $query->where('provider_subscription_id', '!=', $providerId)
                         ->orWhereNull('provider_subscription_id');
                 })

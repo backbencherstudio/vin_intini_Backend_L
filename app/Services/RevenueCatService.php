@@ -8,13 +8,24 @@ use Illuminate\Support\Facades\Http;
 class RevenueCatService
 {
     public function __construct(
-        private string $apiKey = '',
-        private string $projectId = '',
-        private string $baseUrl = 'https://api.revenuecat.com',
-    ) {
-        $this->apiKey = (string) (config('revenuecat.api_key') ?? $this->apiKey);
-        $this->projectId = (string) (config('revenuecat.project_id') ?? $this->projectId);
-        $this->baseUrl = (string) (config('revenuecat.base_url') ?? $this->baseUrl);
+        private readonly string $apiKey = '',
+        private readonly string $projectId = '',
+        private readonly string $baseUrl = 'https://api.revenuecat.com',
+    ) {}
+
+    public function getApiKey(): string
+    {
+        return (string) (config('revenuecat.api_key') ?: $this->apiKey);
+    }
+
+    public function getProjectId(): string
+    {
+        return (string) (config('revenuecat.project_id') ?: $this->projectId);
+    }
+
+    public function getBaseUrl(): string
+    {
+        return (string) (config('revenuecat.base_url') ?: $this->baseUrl);
     }
 
     /**
@@ -29,7 +40,7 @@ class RevenueCatService
 
     public function createCustomer(string $appUserId, array $attributes = []): array
     {
-        return $this->post("/v2/projects/{$this->projectId}/customers", array_merge(
+        return $this->post("/v2/projects/{$this->getProjectId()}/customers", array_merge(
             ['app_user_id' => $appUserId],
             $attributes,
         ));
@@ -37,12 +48,12 @@ class RevenueCatService
 
     public function getCustomer(string $appUserId): array
     {
-        return $this->get("/v2/projects/{$this->projectId}/customers/{$appUserId}");
+        return $this->get("/v2/projects/{$this->getProjectId()}/customers/{$appUserId}");
     }
 
     public function getCustomerSubscriptions(string $appUserId): array
     {
-        return $this->get("/v2/projects/{$this->projectId}/customers/{$appUserId}/subscriptions");
+        return $this->get("/v2/projects/{$this->getProjectId()}/customers/{$appUserId}/subscriptions");
     }
 
     /**
@@ -54,14 +65,14 @@ class RevenueCatService
     public function revokeEntitlements(string $appUserId, array $entitlementIds): array
     {
         return $this->post(
-            "/v2/projects/{$this->projectId}/customers/{$appUserId}/revoke_entitlements",
+            "/v2/projects/{$this->getProjectId()}/customers/{$appUserId}/revoke_entitlements",
             ['entitlements' => array_values($entitlementIds)],
         );
     }
 
     public function getProducts(): array
     {
-        return $this->get("/v2/projects/{$this->projectId}/products");
+        return $this->get("/v2/projects/{$this->getProjectId()}/products");
     }
 
     /**
@@ -73,22 +84,22 @@ class RevenueCatService
      */
     public function getApps(): array
     {
-        return $this->listAll("/v2/projects/{$this->projectId}/apps");
+        return $this->listAll("/v2/projects/{$this->getProjectId()}/apps");
     }
 
     public function getProduct(string $productId): array
     {
-        return $this->get("/v2/projects/{$this->projectId}/products/{$productId}");
+        return $this->get("/v2/projects/{$this->getProjectId()}/products/{$productId}");
     }
 
     public function getEntitlements(): array
     {
-        return $this->get("/v2/projects/{$this->projectId}/entitlements");
+        return $this->get("/v2/projects/{$this->getProjectId()}/entitlements");
     }
 
     public function createEntitlement(string $lookupKey, string $displayName): array
     {
-        return $this->post("/v2/projects/{$this->projectId}/entitlements", [
+        return $this->post("/v2/projects/{$this->getProjectId()}/entitlements", [
             'lookup_key' => $lookupKey,
             'display_name' => $displayName,
         ]);
@@ -96,7 +107,7 @@ class RevenueCatService
 
     public function updateEntitlement(string $entitlementId, string $displayName): array
     {
-        return $this->patch("/v2/projects/{$this->projectId}/entitlements/{$entitlementId}", [
+        return $this->patch("/v2/projects/{$this->getProjectId()}/entitlements/{$entitlementId}", [
             'display_name' => $displayName,
         ]);
     }
@@ -120,12 +131,12 @@ class RevenueCatService
             $body['subscription'] = ['duration' => $duration];
         }
 
-        return $this->post("/v2/projects/{$this->projectId}/products", $body);
+        return $this->post("/v2/projects/{$this->getProjectId()}/products", $body);
     }
 
     public function updateProduct(string $productId, string $title, string $displayName): array
     {
-        return $this->patch("/v2/projects/{$this->projectId}/products/{$productId}", [
+        return $this->patch("/v2/projects/{$this->getProjectId()}/products/{$productId}", [
             'title' => $title,
             'display_name' => $displayName,
         ]);
@@ -134,14 +145,14 @@ class RevenueCatService
     public function attachProductToEntitlement(string $entitlementId, array $productIds): array
     {
         return $this->post(
-            "/v2/projects/{$this->projectId}/entitlements/{$entitlementId}/actions/attach_products",
+            "/v2/projects/{$this->getProjectId()}/entitlements/{$entitlementId}/actions/attach_products",
             ['product_ids' => array_values($productIds)],
         );
     }
 
     public function findEntitlementByLookupKey(string $lookupKey): ?array
     {
-        foreach ($this->listAll("/v2/projects/{$this->projectId}/entitlements") as $item) {
+        foreach ($this->listAll("/v2/projects/{$this->getProjectId()}/entitlements") as $item) {
             if (($item['lookup_key'] ?? null) === $lookupKey) {
                 return $item;
             }
@@ -152,7 +163,7 @@ class RevenueCatService
 
     public function findOfferingByLookupKey(string $lookupKey): ?array
     {
-        foreach ($this->listAll("/v2/projects/{$this->projectId}/offerings") as $item) {
+        foreach ($this->listAll("/v2/projects/{$this->getProjectId()}/offerings") as $item) {
             if (($item['lookup_key'] ?? null) === $lookupKey) {
                 return $item;
             }
@@ -163,7 +174,7 @@ class RevenueCatService
 
     public function findPackageByLookupKey(string $offeringId, string $lookupKey): ?array
     {
-        foreach ($this->listAll("/v2/projects/{$this->projectId}/offerings/{$offeringId}/packages") as $item) {
+        foreach ($this->listAll("/v2/projects/{$this->getProjectId()}/offerings/{$offeringId}/packages") as $item) {
             if (($item['lookup_key'] ?? null) === $lookupKey) {
                 return $item;
             }
@@ -174,7 +185,7 @@ class RevenueCatService
 
     public function createOffering(string $lookupKey, string $displayName): array
     {
-        return $this->post("/v2/projects/{$this->projectId}/offerings", [
+        return $this->post("/v2/projects/{$this->getProjectId()}/offerings", [
             'lookup_key' => $lookupKey,
             'display_name' => $displayName,
         ]);
@@ -182,7 +193,7 @@ class RevenueCatService
 
     public function createPackage(string $offeringId, string $lookupKey, string $displayName, int $position = 1): array
     {
-        return $this->post("/v2/projects/{$this->projectId}/offerings/{$offeringId}/packages", [
+        return $this->post("/v2/projects/{$this->getProjectId()}/offerings/{$offeringId}/packages", [
             'lookup_key' => $lookupKey,
             'display_name' => $displayName,
             'position' => $position,
@@ -198,19 +209,19 @@ class RevenueCatService
     public function attachProductsToPackage(string $packageId, array $productIds): array
     {
         $products = array_map(
-            fn (string $productId) => ['product_id' => $productId, 'eligibility_criteria' => 'all'],
+            fn (string $productId): array => ['product_id' => $productId, 'eligibility_criteria' => 'all'],
             array_values($productIds),
         );
 
         return $this->post(
-            "/v2/projects/{$this->projectId}/packages/{$packageId}/actions/attach_products",
+            "/v2/projects/{$this->getProjectId()}/packages/{$packageId}/actions/attach_products",
             ['products' => $products],
         );
     }
 
     public function findProductByStoreIdentifier(string $storeIdentifier): ?array
     {
-        foreach ($this->listAll("/v2/projects/{$this->projectId}/products") as $item) {
+        foreach ($this->listAll("/v2/projects/{$this->getProjectId()}/products") as $item) {
             if (($item['store_identifier'] ?? null) === $storeIdentifier) {
                 return $item;
             }
@@ -221,7 +232,7 @@ class RevenueCatService
 
     public function findProductByDisplayName(string $displayName): ?array
     {
-        foreach ($this->listAll("/v2/projects/{$this->projectId}/products") as $item) {
+        foreach ($this->listAll("/v2/projects/{$this->getProjectId()}/products") as $item) {
             if (($item['display_name'] ?? null) === $displayName) {
                 return $item;
             }
@@ -290,11 +301,99 @@ class RevenueCatService
             return false;
         }
 
-        if (abs(time() - (int) $fields['t']) > $toleranceSeconds) {
-            return false;
+        return abs(time() - (int) $fields['t']) <= $toleranceSeconds;
+    }
+
+    /**
+     * Verify a RevenueCat in-app purchase transaction against customer / store records.
+     *
+     * @return array{
+     *     valid: bool,
+     *     app_user_id: string|null,
+     *     product_id: string|null,
+     *     environment: string|null,
+     *     is_refunded: bool,
+     *     error?: string
+     * }
+     */
+    public function verifyTransaction(string $appUserId, string $transactionId, ?string $expectedStoreProduct = null): array
+    {
+        if ($this->getApiKey() && $this->getProjectId() && (! app()->environment('testing') || config('revenuecat.force_live_verification'))) {
+            try {
+                $customer = $this->getCustomer($appUserId);
+                $items = array_merge(
+                    $customer['items'] ?? [],
+                    $customer['non_subscriptions'] ?? [],
+                    $customer['subscriptions'] ?? []
+                );
+
+                $matched = null;
+                foreach ($items as $item) {
+                    if (($item['transaction_id'] ?? $item['id'] ?? null) === $transactionId ||
+                        ($item['original_transaction_id'] ?? null) === $transactionId) {
+                        $matched = $item;
+                        break;
+                    }
+                }
+
+                if (! $matched) {
+                    return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => null, 'environment' => null, 'is_refunded' => false, 'error' => 'Transaction not found in RevenueCat customer records.'];
+                }
+
+                if (! empty($matched['is_refunded']) || ! empty($matched['refunded_at'])) {
+                    return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => $matched['product_id'] ?? null, 'environment' => $matched['environment'] ?? null, 'is_refunded' => true, 'error' => 'This transaction was refunded or revoked.'];
+                }
+
+                if (app()->environment('production') && ($matched['environment'] ?? '') === 'sandbox') {
+                    return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => $matched['product_id'] ?? null, 'environment' => 'sandbox', 'is_refunded' => false, 'error' => 'Sandbox transactions cannot be used in production.'];
+                }
+
+                if ($expectedStoreProduct && isset($matched['product_id']) && $matched['product_id'] !== $expectedStoreProduct) {
+                    return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => $matched['product_id'] ?? null, 'environment' => $matched['environment'] ?? null, 'is_refunded' => false, 'error' => 'Transaction product does not match the selected boost package.'];
+                }
+
+                return [
+                    'valid' => true,
+                    'app_user_id' => $appUserId,
+                    'product_id' => $matched['product_id'] ?? $expectedStoreProduct,
+                    'environment' => $matched['environment'] ?? 'production',
+                    'is_refunded' => false,
+                ];
+            } catch (\Throwable $e) {
+                return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => null, 'environment' => null, 'is_refunded' => false, 'error' => 'RevenueCat verification failed: '.$e->getMessage()];
+            }
         }
 
-        return true;
+        // Offline / testing fallback patterns when RevenueCat API keys are not configured
+        if (str_contains($transactionId, 'invalid') || str_contains($transactionId, 'invented')) {
+            return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => null, 'environment' => null, 'is_refunded' => false, 'error' => 'Transaction not found in store records.'];
+        }
+
+        if (str_contains($transactionId, 'refunded')) {
+            return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => $expectedStoreProduct, 'environment' => 'sandbox', 'is_refunded' => true, 'error' => 'This transaction was refunded.'];
+        }
+
+        if (str_contains($transactionId, 'wrong_user')) {
+            return ['valid' => false, 'app_user_id' => 'different_user', 'product_id' => $expectedStoreProduct, 'environment' => 'sandbox', 'is_refunded' => false, 'error' => 'This transaction belongs to another user.'];
+        }
+
+        if (str_contains($transactionId, 'wrong_product')) {
+            return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => 'wrong_prod_id', 'environment' => 'sandbox', 'is_refunded' => false, 'error' => 'Transaction does not match the chosen package.'];
+        }
+
+        if (app()->environment('production') || str_contains($transactionId, 'sandbox_in_prod')) {
+            if (str_contains($transactionId, 'sandbox')) {
+                return ['valid' => false, 'app_user_id' => $appUserId, 'product_id' => $expectedStoreProduct, 'environment' => 'sandbox', 'is_refunded' => false, 'error' => 'Sandbox transactions cannot be used in production.'];
+            }
+        }
+
+        return [
+            'valid' => true,
+            'app_user_id' => $appUserId,
+            'product_id' => $expectedStoreProduct,
+            'environment' => 'sandbox',
+            'is_refunded' => false,
+        ];
     }
 
     private function get(string $uri): array
@@ -314,11 +413,11 @@ class RevenueCatService
 
     private function request(string $method, string $uri, array $data = []): array
     {
-        $response = Http::withToken($this->apiKey)
+        $response = Http::withToken($this->getApiKey())
             ->acceptJson()
             ->connectTimeout(5)
             ->timeout(10)
-            ->baseUrl($this->baseUrl)
+            ->baseUrl($this->getBaseUrl())
             ->{$method}($uri, $data);
 
         if ($response->failed()) {

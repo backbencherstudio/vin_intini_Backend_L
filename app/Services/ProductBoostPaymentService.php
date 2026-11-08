@@ -3,14 +3,15 @@
 namespace App\Services;
 
 use App\Enums\AdCampaignStatus;
-use App\Mail\CampaignActivatedMail;
+use App\Enums\BoostTargetEntity;
 use App\Models\AdCampaign;
 use App\Models\BoostPackage;
 use App\Models\IndustryProduct;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\CampaignActivatedNotification;
+use App\Services\Advertising\ProductBoostProjection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\ApiErrorException;
 
@@ -19,6 +20,7 @@ class ProductBoostPaymentService
     public function __construct(
         private readonly StripeService $stripe,
         private readonly BoostSettingService $boostSettings,
+        private readonly RevenueCatService $revenueCat,
     ) {}
 
     /**
@@ -48,16 +50,17 @@ class ProductBoostPaymentService
         $networkType = $product->network_type;
         $placements = $params['placements'] ?? ['newsfeed', 'product_feed'];
         $paymentMethodId = $params['payment_method'];
+        $idempotencyKey = $params['idempotency_key'] ?? null;
 
         $customer = $this->stripe->getOrCreateCustomer($user);
         $this->stripe->attachPaymentMethod($paymentMethodId, $customer->id);
 
-        $paymentIntent = $this->stripe->createPaymentIntent(
-            amountInCents: (int) round($amount * 100),
-            currency: 'usd',
-            customerId: $customer->id,
-            paymentMethodId: $paymentMethodId,
-            metadata: [
+        $intentArgs = [
+            'amountInCents' => (int) round($amount * 100),
+            'currency' => 'usd',
+            'customerId' => $customer->id,
+            'paymentMethodId' => $paymentMethodId,
+            'metadata' => [
                 'flow' => 'product_boost',
                 'user_id' => (string) $user->id,
                 'industry_id' => (string) $product->industry_id,
@@ -65,8 +68,14 @@ class ProductBoostPaymentService
                 'boost_package_id' => $package ? (string) $package->id : 'custom',
                 'duration_days' => (string) $durationDays,
             ],
-            confirm: true,
-        );
+            'confirm' => true,
+        ];
+
+        if ($idempotencyKey !== null) {
+            $intentArgs['idempotencyKey'] = $idempotencyKey;
+        }
+
+        $paymentIntent = $this->stripe->createPaymentIntent(...$intentArgs);
 
         if ($paymentIntent->status === 'requires_action') {
             return DB::transaction(function () use ($user, $product, $package, $durationDays, $amount, $networkType, $placements, $paymentIntent): array {
@@ -111,7 +120,7 @@ class ProductBoostPaymentService
             ]);
         }
 
-        $result = DB::transaction(function () use ($user, $product, $package, $durationDays, $amount, $networkType, $placements, $paymentIntent, $priorityWeight): array {
+        $result = DB::transaction(function () use ($user, $product, $package, $durationDays, $amount, $networkType, $placements, $paymentIntent): array {
             $baseDate = ($product->is_boosted && $product->boost_expires_at?->isFuture())
                 ? $product->boost_expires_at
                 : now();
@@ -138,11 +147,7 @@ class ProductBoostPaymentService
                 'payment_platform' => 'stripe',
             ]);
 
-            $product->update([
-                'is_boosted' => true,
-                'boost_expires_at' => $endsAt,
-                'boost_score' => $priorityWeight,
-            ]);
+            ProductBoostProjection::projectFor($product);
 
             Transaction::create([
                 'provider_transaction_id' => $paymentIntent->id,
@@ -165,7 +170,7 @@ class ProductBoostPaymentService
             ];
         });
 
-        Mail::to($user->email)->queue(new CampaignActivatedMail($result['campaign']));
+        $user->notify(new CampaignActivatedNotification($result['campaign']));
 
         return $result;
     }
@@ -203,6 +208,15 @@ class ProductBoostPaymentService
             ];
         }
 
+        if ($campaign->status !== AdCampaignStatus::PENDING) {
+            $status = $campaign->status instanceof \BackedEnum ? $campaign->status->value : (string) $campaign->status;
+
+            return [
+                'success' => false,
+                'message' => "Campaign cannot be activated from status '{$status}'.",
+            ];
+        }
+
         $paymentIntent = $this->stripe->retrievePaymentIntent($paymentIntentId);
 
         if ($paymentIntent->status !== 'succeeded') {
@@ -212,53 +226,104 @@ class ProductBoostPaymentService
             ];
         }
 
-        $result = DB::transaction(function () use ($campaign, $product, $paymentIntent): array {
+        return $this->activatePendingStripeCampaign($campaign, $paymentIntent);
+    }
+
+    /**
+     * Activate a pending campaign associated with a succeeded Stripe payment intent.
+     * Can be invoked from either client confirmation or the Stripe webhook handler.
+     *
+     * @return array{
+     *     success: bool,
+     *     message: string,
+     *     campaign?: AdCampaign|null,
+     *     product?: IndustryProduct|null
+     * }
+     */
+    public function activatePendingStripeCampaign(AdCampaign $campaign, object|array $paymentIntent): array
+    {
+        return DB::transaction(function () use ($campaign, $paymentIntent): array {
+            /** @var AdCampaign|null $lockedCampaign */
+            $lockedCampaign = AdCampaign::where('id', $campaign->id)->lockForUpdate()->first();
+
+            if (! $lockedCampaign) {
+                return [
+                    'success' => false,
+                    'message' => 'Campaign not found.',
+                ];
+            }
+
+            if ($lockedCampaign->status === AdCampaignStatus::ACTIVE) {
+                return [
+                    'success' => true,
+                    'message' => 'Campaign is already active.',
+                    'campaign' => $lockedCampaign->withoutRelations(),
+                    'product' => $lockedCampaign->boostable,
+                ];
+            }
+
+            if ($lockedCampaign->status !== AdCampaignStatus::PENDING) {
+                $status = $lockedCampaign->status instanceof \BackedEnum ? $lockedCampaign->status->value : (string) $lockedCampaign->status;
+
+                return [
+                    'success' => false,
+                    'message' => "Campaign cannot be activated from status '{$status}'.",
+                    'campaign' => $lockedCampaign->withoutRelations(),
+                ];
+            }
+
+            $product = $lockedCampaign->boostable;
+            if (! $product instanceof IndustryProduct) {
+                return [
+                    'success' => false,
+                    'message' => 'Campaign boostable target is invalid.',
+                ];
+            }
+
             $baseDate = ($product->is_boosted && $product->boost_expires_at?->isFuture())
                 ? $product->boost_expires_at
                 : now();
 
             $startsAt = now();
-            $endsAt = $baseDate->copy()->addDays($campaign->duration_days);
+            $endsAt = $baseDate->copy()->addDays($lockedCampaign->duration_days);
 
-            $priorityWeight = $campaign->boostPackage?->priority_weight ?? 1;
-
-            $campaign->update([
+            $lockedCampaign->update([
                 'status' => AdCampaignStatus::ACTIVE,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
             ]);
 
-            $product->update([
-                'is_boosted' => true,
-                'boost_expires_at' => $endsAt,
-                'boost_score' => $priorityWeight,
-            ]);
+            ProductBoostProjection::projectFor($product);
+
+            $intentId = is_object($paymentIntent) ? $paymentIntent->id : ($paymentIntent['id'] ?? null);
+            $cardBrand = data_get($paymentIntent, 'payment_method.card.brand');
+            $cardLast4 = data_get($paymentIntent, 'payment_method.card.last4');
 
             Transaction::updateOrCreate(
-                ['provider_transaction_id' => $paymentIntent->id],
+                ['provider_transaction_id' => $intentId],
                 [
-                    'user_id' => $campaign->user_id,
-                    'ad_campaign_id' => $campaign->id,
-                    'amount' => $campaign->amount_paid,
+                    'user_id' => $lockedCampaign->user_id,
+                    'ad_campaign_id' => $lockedCampaign->id,
+                    'amount' => $lockedCampaign->amount_paid,
                     'currency' => 'usd',
-                    'card_brand' => data_get($paymentIntent, 'payment_method.card.brand'),
-                    'card_last4' => data_get($paymentIntent, 'payment_method.card.last4'),
+                    'card_brand' => $cardBrand,
+                    'card_last4' => $cardLast4,
                     'status' => 'succeeded',
                     'paid_at' => now(),
                 ]
             );
 
+            if ($lockedCampaign->user?->email) {
+                $lockedCampaign->user->notify(new CampaignActivatedNotification($lockedCampaign->withoutRelations()));
+            }
+
             return [
                 'success' => true,
                 'message' => 'Payment confirmed and boost campaign activated successfully.',
-                'campaign' => $campaign->withoutRelations(),
+                'campaign' => $lockedCampaign->withoutRelations(),
                 'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
             ];
         });
-
-        Mail::to($user->email)->queue(new CampaignActivatedMail($result['campaign']));
-
-        return $result;
     }
 
     /**
@@ -296,16 +361,24 @@ class ProductBoostPaymentService
             ]);
         }
 
-        $package = BoostPackage::where('status', 'active')->find($packageId);
+        $package = BoostPackage::where('status', 'active')
+            ->whereIn('target_entity', [BoostTargetEntity::PRODUCT->value, BoostTargetEntity::ALL->value])
+            ->find($packageId);
         if (! $package) {
             throw ValidationException::withMessages([
-                'boost_package_id' => ['The selected boost package is invalid or inactive.'],
+                'boost_package_id' => ['The selected boost package is invalid, inactive, or not eligible for products.'],
             ]);
         }
 
         // Prevent duplicate crediting of the same store transaction
         $existing = AdCampaign::where('revenuecat_transaction_id', $transactionId)->first();
         if ($existing) {
+            if ((int) $existing->user_id !== (int) $user->id || (int) $existing->boostable_id !== (int) $product->id) {
+                throw ValidationException::withMessages([
+                    'revenuecat_transaction_id' => ['This transaction ID is already associated with another account or target.'],
+                ]);
+            }
+
             return [
                 'success' => true,
                 'message' => 'This purchase has already been activated.',
@@ -314,13 +387,25 @@ class ProductBoostPaymentService
             ];
         }
 
+        // Server-side verify transaction with RevenueCat
+        $appUserId = $this->revenueCat->appUserIdFor($user);
+        $expectedProduct = ($params['platform'] ?? null) === 'android'
+            ? ($package->revenuecat_store_identifier_android ?? $package->revenuecat_store_identifier_ios)
+            : ($package->revenuecat_store_identifier_ios ?? $package->revenuecat_store_identifier_android);
+
+        $verification = $this->revenueCat->verifyTransaction($appUserId, $transactionId, $expectedProduct);
+        if (! ($verification['valid'] ?? false)) {
+            throw ValidationException::withMessages([
+                'revenuecat_transaction_id' => [$verification['error'] ?? 'The provided transaction could not be verified with the app store.'],
+            ]);
+        }
+
         $networkType = $product->network_type;
         $placements = $params['placements'] ?? ['newsfeed', 'product_feed'];
         $durationDays = $package->duration_days;
         $amount = (float) $package->price;
-        $priorityWeight = $package->priority_weight;
 
-        $result = DB::transaction(function () use ($user, $product, $package, $transactionId, $durationDays, $amount, $networkType, $placements, $priorityWeight): array {
+        $result = DB::transaction(function () use ($user, $product, $package, $transactionId, $durationDays, $amount, $networkType, $placements): array {
             $baseDate = ($product->is_boosted && $product->boost_expires_at?->isFuture())
                 ? $product->boost_expires_at
                 : now();
@@ -347,11 +432,7 @@ class ProductBoostPaymentService
                 'payment_platform' => 'revenuecat',
             ]);
 
-            $product->update([
-                'is_boosted' => true,
-                'boost_expires_at' => $endsAt,
-                'boost_score' => $priorityWeight,
-            ]);
+            ProductBoostProjection::projectFor($product);
 
             Transaction::create([
                 'provider_transaction_id' => $transactionId,
@@ -371,7 +452,7 @@ class ProductBoostPaymentService
             ];
         });
 
-        Mail::to($user->email)->queue(new CampaignActivatedMail($result['campaign']));
+        $user->notify(new CampaignActivatedNotification($result['campaign']));
 
         return $result;
     }
@@ -390,10 +471,12 @@ class ProductBoostPaymentService
     public function resolvePricingAndDuration(array $params): array
     {
         if (! empty($params['boost_package_id'])) {
-            $package = BoostPackage::where('status', 'active')->find($params['boost_package_id']);
+            $package = BoostPackage::where('status', 'active')
+                ->whereIn('target_entity', [BoostTargetEntity::PRODUCT->value, BoostTargetEntity::ALL->value])
+                ->find($params['boost_package_id']);
             if (! $package) {
                 throw ValidationException::withMessages([
-                    'boost_package_id' => ['The selected boost package is invalid or inactive.'],
+                    'boost_package_id' => ['The selected boost package is invalid, inactive, or not eligible for products.'],
                 ]);
             }
 
@@ -441,11 +524,11 @@ class ProductBoostPaymentService
      */
     public function buildOrderSummary(IndustryProduct $product, ?BoostPackage $package, int $durationDays, float $amount): array
     {
-        $planTitle = $package
+        $planTitle = $package instanceof BoostPackage
             ? ($package->badge ? "{$package->badge} Boosting" : "{$package->name} Boosting")
             : "Custom Boosting ({$durationDays} Days)";
 
-        if ($package) {
+        if ($package instanceof BoostPackage) {
             $estimatedImpressions = $package->estimated_impressions ?: '5k – 10k Impression';
         } else {
             $sliderConfig = $this->boostSettings->getSliderConfig();

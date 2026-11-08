@@ -49,7 +49,7 @@ class WebhookLoggerService
      */
     public function markFailed(?WebhookLog $log, Throwable|string $error): void
     {
-        if (! $log) {
+        if (! $log instanceof WebhookLog) {
             return;
         }
 
