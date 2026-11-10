@@ -13,6 +13,7 @@ enum PlanFeature: string
     case POSTS_ARTICLES_PHOTOS_VIDEOS = 'posts_articles_photos_videos';
     case PROFILE_VIEWS_INSIGHTS = 'profile_views_insights';
     case JOB_APPLICATIONS = 'job_applications';
+    case JOB_APPLICATIONS_RECEIVED = 'job_applications_received';
     case CONNECT_ORGANIZATIONS = 'connect_organizations';
     case PRODUCT_ADVERTISEMENT = 'product_advertisement';
 
@@ -49,6 +50,7 @@ enum PlanFeature: string
                 PlanType::INDUSTRY->value,
             ],
             self::JOB_APPLICATIONS => [PlanType::PREMIUM->value],
+            self::JOB_APPLICATIONS_RECEIVED => [PlanType::PREMIUM->value],
             self::PROFILE_VIEWS_INSIGHTS => [
                 PlanType::PREMIUM->value,
                 PlanType::INDUSTRY->value,
@@ -65,7 +67,8 @@ enum PlanFeature: string
             self::DIRECT_MESSAGING->value => 'Direct Messaging',
             self::POSTS_ARTICLES_PHOTOS_VIDEOS->value => 'Posts, Articles, Photos, Videos',
             self::PROFILE_VIEWS_INSIGHTS->value => 'Profile Views & Insights',
-            self::JOB_APPLICATIONS->value => 'Job Applications (Submit CV/Résumé)',
+            self::JOB_APPLICATIONS->value => 'Job Applications (Submit CV/Resume)',
+            self::JOB_APPLICATIONS_RECEIVED->value => 'Job Applications (Receive CV/Resume)',
             self::CONNECT_ORGANIZATIONS->value => 'Connect with Organizations',
             self::PRODUCT_ADVERTISEMENT->value => 'Product Advertisement',
         ];
