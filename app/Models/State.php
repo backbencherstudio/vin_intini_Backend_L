@@ -38,4 +38,9 @@ class State extends Model
     {
         return $this->hasMany(AcademiaJob::class);
     }
+
+    public function postBaccalaureatePrograms(): HasMany
+    {
+        return $this->hasMany(AcademiaPostBaccalaureateProgram::class);
+    }
 }

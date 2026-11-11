@@ -18,17 +18,22 @@ class StateResource extends JsonResource
         $residenciesCount = (int) ($this->residencies_count ?? 0);
         $facilitiesCount = (int) ($this->facilities_count ?? 0);
         $jobsCount = (int) ($this->jobs_count ?? 0);
+        $postBaccalaureateCount = (int) ($this->post_baccalaureate_programs_count ?? 0);
 
         return [
             'id' => $this->id,
             'name' => $this->name,
             'code' => $this->code,
             'slug' => $this->slug,
-            'total_resources' => $universitiesCount + $residenciesCount + $facilitiesCount + $jobsCount,
+            'total_resources' => $universitiesCount + $residenciesCount + $facilitiesCount + $jobsCount + $postBaccalaureateCount,
             'universities' => $this->whenLoaded('universities'),
             'residencies' => $this->whenLoaded('residencies'),
             'facilities' => $this->whenLoaded('facilities'),
             'jobs' => $this->whenLoaded('jobs'),
+            'post_baccalaureate_programs' => $this->whenLoaded(
+                'postBaccalaureatePrograms',
+                fn (): array => PostBaccalaureateProgramResource::collection($this->postBaccalaureatePrograms)->resolve($request)
+            ),
         ];
     }
 }

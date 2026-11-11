@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\IndustryJobPostStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PostBaccalaureateCategoryResource;
+use App\Http\Resources\PostBaccalaureateProgramResource;
 use App\Http\Resources\StateResource;
+use App\Models\AcademiaPostBaccalaureateCategory;
 use App\Models\State;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +23,7 @@ class AcademiaController extends Controller
             'universities',
             'residencies',
             'facilities',
+            'postBaccalaureatePrograms',
             'industryJobPosts as jobs_count' => function ($query) use ($today): void {
                 $query->where('status', IndustryJobPostStatus::PUBLISHED)
                     ->where(function ($q) use ($today): void {
@@ -53,11 +57,12 @@ class AcademiaController extends Controller
         $today = Carbon::today()->toDateString();
 
         $state = State::where('code', $code)
-            ->with(['universities', 'residencies', 'facilities'])
+            ->with(['universities', 'residencies', 'facilities', 'postBaccalaureatePrograms.categories'])
             ->withCount([
                 'universities',
                 'residencies',
                 'facilities',
+                'postBaccalaureatePrograms',
                 'industryJobPosts as jobs_count' => function ($query) use ($today): void {
                     $query->where('status', IndustryJobPostStatus::PUBLISHED)
                         ->where(function ($q) use ($today): void {
@@ -346,6 +351,91 @@ class AcademiaController extends Controller
                 'name' => $state->name,
                 'code' => $state->code,
             ],
+        ], 200);
+    }
+
+    public function getPostBaccalaureatePrograms(Request $request, string $code): JsonResponse
+    {
+        $categoryFilter = trim((string) $request->query('category', $request->query('degree', 'All')));
+        $search = trim((string) $request->query('search', ''));
+        $perPage = max(1, min($request->integer('limit', $request->integer('per_page', 15)), 100));
+        $sortOrder = strtolower((string) $request->query('sort', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $state = State::where('code', $code)->first();
+
+        if (! $state) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'State not found',
+            ], 404);
+        }
+
+        $query = $state->postBaccalaureatePrograms()
+            ->with(['state', 'categories']);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search): void {
+                $q->where('academia_post_baccalaureate_programs.program_name', 'like', '%'.$search.'%')
+                    ->orWhere('academia_post_baccalaureate_programs.location', 'like', '%'.$search.'%')
+                    ->orWhereHas('categories', function ($catQuery) use ($search): void {
+                        $catQuery->where('academia_post_baccalaureate_categories.name', 'like', '%'.$search.'%');
+                    });
+            });
+        }
+
+        if ($categoryFilter !== '' && strcasecmp($categoryFilter, 'All') !== 0) {
+            $query->whereHas('categories', function ($catQuery) use ($categoryFilter): void {
+                if (ctype_digit($categoryFilter)) {
+                    $catQuery->where('academia_post_baccalaureate_categories.id', (int) $categoryFilter);
+                } else {
+                    $catQuery->where('academia_post_baccalaureate_categories.name', $categoryFilter);
+                }
+            });
+        }
+
+        $query->orderBy('academia_post_baccalaureate_programs.program_name', $sortOrder)
+            ->orderBy('academia_post_baccalaureate_programs.id', $sortOrder);
+
+        $paginator = $query->paginate($perPage);
+
+        $categories = AcademiaPostBaccalaureateCategory::query()
+            ->active()
+            ->ordered()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Post-baccalaureate programs retrieved successfully.',
+            'status' => 'success',
+            'data' => PostBaccalaureateProgramResource::collection($paginator->items())->resolve($request),
+            'categories' => PostBaccalaureateCategoryResource::collection($categories)->resolve($request),
+            'stats' => [
+                'total_programs' => $paginator->total(),
+            ],
+            'total' => $paginator->total(),
+            'limit' => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+            'total_page' => $paginator->lastPage(),
+            'last_page' => $paginator->lastPage(),
+            'filters' => [
+                'applied_category' => $categoryFilter,
+                'search' => $search !== '' ? $search : null,
+                'sort' => $sortOrder,
+            ],
+        ], 200);
+    }
+
+    public function getPostBaccalaureateCategories(Request $request): JsonResponse
+    {
+        $categories = AcademiaPostBaccalaureateCategory::query()
+            ->active()
+            ->ordered()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Post-baccalaureate categories retrieved successfully.',
+            'data' => PostBaccalaureateCategoryResource::collection($categories)->resolve($request),
         ], 200);
     }
 }

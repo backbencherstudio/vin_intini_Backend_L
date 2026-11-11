@@ -123,8 +123,10 @@ Route::middleware('profile_completed')->group(function (): void {
     Route::get('/states/{code}/cities', [AcademiaController::class, 'getCities']);
     Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
     Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
+    Route::get('/states/{code}/post-baccalaureate-programs', [AcademiaController::class, 'getPostBaccalaureatePrograms']);
     Route::get('/states/{code}/facilities', [AcademiaController::class, 'getFacilities']); // medical facilities
     Route::get('/states/{code}/jobs', [AcademiaController::class, 'getJobs']);
+    Route::get('/academia/post-baccalaureate/categories', [AcademiaController::class, 'getPostBaccalaureateCategories']);
 
     // industry routes
     Route::prefix('psychology-network/industry')->group(function (): void {

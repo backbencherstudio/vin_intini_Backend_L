@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\Api\IntegrationSettingController;
 use App\Http\Controllers\Admin\Api\PageController;
 use App\Http\Controllers\Admin\Api\PartnerManagementController;
 use App\Http\Controllers\Admin\Api\PlanController;
+use App\Http\Controllers\Admin\Api\PostBaccalaureateController;
 use App\Http\Controllers\Admin\Api\PublicationManagementController;
 use App\Http\Controllers\Admin\Api\SubscriptionManagementController;
 use App\Http\Controllers\Admin\Api\TransactionController;
@@ -108,6 +109,18 @@ Route::prefix('admin')->group(function (): void {
         Route::post('job/create', [AcademiaController::class, 'storeJob']);
         Route::put('job/update/{id}', [AcademiaController::class, 'updateJob']);
         Route::delete('job/delete/{id}', [AcademiaController::class, 'destroyJob']);
+
+        // Post-Baccalaureate Categories & Programs
+        Route::get('post-baccalaureate/categories', [PostBaccalaureateController::class, 'indexCategories']);
+        Route::post('post-baccalaureate/category/create', [PostBaccalaureateController::class, 'storeCategory']);
+        Route::put('post-baccalaureate/category/update/{id}', [PostBaccalaureateController::class, 'updateCategory']);
+        Route::patch('post-baccalaureate/categories/reorder', [PostBaccalaureateController::class, 'reorderCategories']);
+        Route::delete('post-baccalaureate/category/delete/{id}', [PostBaccalaureateController::class, 'destroyCategory']);
+
+        Route::get('post-baccalaureate', [PostBaccalaureateController::class, 'indexPrograms']);
+        Route::post('post-baccalaureate/create', [PostBaccalaureateController::class, 'storeProgram']);
+        Route::put('post-baccalaureate/update/{id}', [PostBaccalaureateController::class, 'updateProgram']);
+        Route::delete('post-baccalaureate/delete/{id}', [PostBaccalaureateController::class, 'destroyProgram']);
     });
 
     // Institution Report

@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
         $this->call(CitySeeder::class);
         $this->call(PublicationSeeder::class);
         $this->call(DeletedAccountLogSeeder::class);
+        $this->call(PostBaccalaureateCategorySeeder::class);
 
         $adminApi = User::updateOrCreate(
             ['email' => 'admin@gmail.com'],
