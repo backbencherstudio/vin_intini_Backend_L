@@ -350,11 +350,33 @@ class ProductManagementTest extends TestCase
             ->assertJsonPath('data.summary.rejected_products', 1)
             ->assertJsonPath('data.sections.0.products.0.id', $product->id);
 
+        // Non-rejected status transition does not trigger rejection-restore notification
+        $notificationsBefore = $owner->notifications()->count();
+
         $this->actingAs($this->admin, 'api')
             ->patchJson("/api/admin/products/{$product->id}/status", ['status' => 'active'])
             ->assertOk()
             ->assertJsonPath('data.status', 'active')
             ->assertJsonPath('data.rejection_reason', null);
+
+        $restoreNotification = $owner->notifications()
+            ->where('type', \App\Notifications\ProductStatusUpdatedNotification::class)
+            ->latest('created_at')
+            ->first();
+
+        $this->assertNotNull($restoreNotification);
+        $this->assertSame($notificationsBefore + 1, $owner->notifications()->count());
+        $this->assertSame('rejected', $restoreNotification->data['previous_status'] ?? null);
+        $this->assertSame('active', $restoreNotification->data['status'] ?? null);
+        $this->assertSame($product->id, $restoreNotification->data['product_id'] ?? null);
+
+        // Changing status of a non-rejected product does not duplicate restore notifications
+        $this->actingAs($this->admin, 'api')
+            ->patchJson("/api/admin/products/{$product->id}/status", ['status' => 'inactive'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'inactive');
+
+        $this->assertSame($notificationsBefore + 1, $owner->notifications()->count());
     }
 }
 
