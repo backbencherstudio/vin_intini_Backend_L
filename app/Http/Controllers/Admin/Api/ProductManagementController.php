@@ -332,10 +332,14 @@ class ProductManagementController extends Controller
             $validated['information_confirmed'] = $request->boolean('information_confirmed');
         }
 
+        /** @var User|null $admin */
+        $admin = auth('api')->user();
+
         $product = $this->productService->updateProduct(
             $product,
             $validated,
-            $request->file('image')
+            $request->file('image'),
+            $admin
         );
 
         return response()->json([
@@ -350,19 +354,22 @@ class ProductManagementController extends Controller
      */
     public function updateStatus(Request $request, int|string $id): JsonResponse
     {
-        $product = $this->findProduct($id);
+        $product = $this->findProduct($id, ['creator', 'industry.creator']);
 
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:active,inactive,draft'],
         ]);
 
-        $product->status = $validated['status'];
-        $this->productService->clearRejectionMetadata($product);
-        $product->save();
+        /** @var User|null $admin */
+        $admin = auth('api')->user();
+        $wasRejected = $product->status === 'rejected';
+        $product = $this->productService->updateProductStatus($product, $validated['status'], $admin);
 
         return response()->json([
             'success' => true,
-            'message' => "Product status updated to {$product->status} successfully.",
+            'message' => $wasRejected
+                ? "Product status updated to {$product->status} successfully. Industry owner notified."
+                : "Product status updated to {$product->status} successfully.",
             'data' => [
                 'id' => $product->id,
                 'product_id' => $product->product_id,
