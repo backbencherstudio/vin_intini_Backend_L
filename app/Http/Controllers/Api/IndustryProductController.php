@@ -409,11 +409,21 @@ class IndustryProductController extends Controller
             $currentUser = User::where('email', 'niaz.softvence@gmail.com')->first() ?? User::first();
         }
 
-        // Record unique and total view
-        $this->recordView($product, $currentUser, $request->ip());
+        $isAdmin = $currentUser && method_exists($currentUser, 'hasRole') && ($currentUser->hasRole('admin') || $currentUser->hasRole('super-admin'));
+        if ($product->status !== 'active' && ! $product->isOwnedBy($currentUser) && ! $isAdmin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found.',
+            ], 404);
+        }
 
-        // Record verified click on product and boost campaign (Learn More / Card Click from feed)
-        $this->recordProductClick($product, $currentUser, $request->ip(), $request->input('placement', 'industry_product_feed'));
+        if ($product->status === 'active') {
+            // Record unique and total view
+            $this->recordView($product, $currentUser, $request->ip());
+
+            // Record verified click on product and boost campaign (Learn More / Card Click from feed)
+            $this->recordProductClick($product, $currentUser, $request->ip(), $request->input('placement', 'industry_product_feed'));
+        }
 
         return response()->json([
             'success' => true,
@@ -437,6 +447,13 @@ class IndustryProductController extends Controller
         }
 
         $product = $this->findProduct($id);
+
+        if ($product->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found.',
+            ], 404);
+        }
 
         return DB::transaction(function () use ($product, $user, $request) {
             $like = IndustryProductLike::where('industry_product_id', $product->id)
@@ -566,7 +583,7 @@ class IndustryProductController extends Controller
 
         $stats = IndustryProduct::query()
             ->where('industry_id', $industry->id)
-            ->selectRaw("COUNT(*) as total_products, COUNT(CASE WHEN status = 'active' THEN 1 END) as total_active_products, COALESCE(SUM(impressions_count), 0) as total_impressions, COALESCE(SUM(clicks_count), 0) as total_clicks")
+            ->selectRaw("COUNT(*) as total_products, COUNT(CASE WHEN status = 'active' THEN 1 END) as total_active_products, COUNT(CASE WHEN status = 'rejected' THEN 1 END) as total_rejected_products, COALESCE(SUM(impressions_count), 0) as total_impressions, COALESCE(SUM(clicks_count), 0) as total_clicks")
             ->first();
 
         return response()->json([
@@ -575,6 +592,7 @@ class IndustryProductController extends Controller
             'stats' => [
                 'total_products' => (int) ($stats->total_products ?? 0),
                 'total_active_products' => (int) ($stats->total_active_products ?? 0),
+                'total_rejected_products' => (int) ($stats->total_rejected_products ?? 0),
                 'total_impressions' => (int) ($stats->total_impressions ?? 0),
                 'total_clicks' => (int) ($stats->total_clicks ?? 0),
             ],
@@ -663,6 +681,11 @@ class IndustryProductController extends Controller
             ], 403);
         }
 
+        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+        if (! $isAdmin && $product->isRejected()) {
+            return $this->rejectedProductResponse($product, 'cannot be modified or reactivated');
+        }
+
         $validated = $request->validated();
         if ($request->has('information_confirmed')) {
             $validated['information_confirmed'] = (bool) $request->boolean('information_confirmed');
@@ -707,6 +730,11 @@ class IndustryProductController extends Controller
             ], 403);
         }
 
+        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+        if (! $isAdmin && $product->isRejected()) {
+            return $this->rejectedProductResponse($product, 'cannot be activated or changed');
+        }
+
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:active,inactive,draft'],
         ]);
@@ -714,7 +742,6 @@ class IndustryProductController extends Controller
         $newStatus = $validated['status'];
 
         // If activating, verify that user still has an active Pro Industry subscription
-        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
         if (! $isAdmin && $newStatus === 'active') {
             if (($accessError = $this->validateIndustryAccess($user)) instanceof JsonResponse) {
                 return $accessError;
@@ -805,6 +832,18 @@ class IndustryProductController extends Controller
         }
 
         return $user->industry && $user->industry->id === $product->industry_id;
+    }
+
+    private function rejectedProductResponse(IndustryProduct $product, string $actionDescription): JsonResponse
+    {
+        $reasonSuffix = $product->rejection_reason ? " Reason: {$product->rejection_reason}" : '';
+
+        return response()->json([
+            'success' => false,
+            'message' => "This product was rejected by Admin and {$actionDescription}.{$reasonSuffix}",
+            'rejection_reason' => $product->rejection_reason,
+            'rejected_at' => $product->rejected_at?->toISOString(),
+        ], 403);
     }
 
     /**

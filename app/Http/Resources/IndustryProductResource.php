@@ -128,6 +128,8 @@ class IndustryProductResource extends JsonResource
             $payload['industry_id'] = $this->industry_id;
             $payload['image'] = $this->image;
             $payload['status'] = $this->status;
+            $payload['rejection_reason'] = $this->rejection_reason;
+            $payload['rejected_at'] = $this->rejected_at?->toISOString();
             $payload['poc_name'] = $this->poc_name;
             $payload['poc_email'] = $this->poc_email;
             $payload['poc_phone'] = $this->poc_phone;
@@ -138,9 +140,15 @@ class IndustryProductResource extends JsonResource
 
         // Owner/Industry private advertiser metrics
         if ($isIndustryContext) {
+            $impressionsCount = (int) ($this->impressions_count ?? 0);
+            $clicksCount = (int) ($this->clicks_count ?? 0);
+            $ctr = $impressionsCount > 0 ? round(($clicksCount / $impressionsCount) * 100, 2) : 0.0;
+
             $payload['unique_views_count'] = (int) ($this->unique_views_count ?? 0);
-            $payload['impressions_count'] = (int) ($this->impressions_count ?? 0);
-            $payload['clicks_count'] = (int) ($this->clicks_count ?? 0);
+            $payload['impressions_count'] = $impressionsCount;
+            $payload['clicks_count'] = $clicksCount;
+            $payload['ctr'] = $ctr;
+            $payload['ctr_formatted'] = $ctr.'%';
             $payload['boost_score'] = (int) ($this->boost_score ?? 0);
             $payload['boost_expires_at'] = $this->boost_expires_at?->toISOString();
             $payload['boost_days_left'] = $boostDaysLeft;

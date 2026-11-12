@@ -2,12 +2,15 @@
 
 namespace App\Services\Industry;
 
+use App\Enums\AdCampaignStatus;
 use App\Models\Industry;
 use App\Models\IndustryProduct;
 use App\Models\User;
+use App\Notifications\ProductRejectedNotification;
 use App\Services\Advertising\BoostSettingService;
 use App\Services\Media\OptimizedImageUploadService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -94,6 +97,9 @@ class IndustryProductService
                 $product->slug = Str::slug($data['product_name']).'-'.Str::lower(Str::random(6));
             }
 
+            if (isset($data['industry_id'])) {
+                $product->industry_id = $data['industry_id'];
+            }
             if (isset($data['network_type'])) {
                 $product->network_type = $data['network_type'];
             }
@@ -129,6 +135,9 @@ class IndustryProductService
             }
             if (isset($data['status'])) {
                 $product->status = $data['status'];
+                if ($data['status'] !== 'rejected') {
+                    $this->clearRejectionMetadata($product);
+                }
             }
 
             $product->save();
@@ -147,6 +156,55 @@ class IndustryProductService
         }
 
         return $product->load(['creator', 'industry', 'section', 'category']);
+    }
+
+    /**
+     * Reject an illegal or non-compliant product, hide it platform-wide,
+     * cancel any running boost campaigns, and notify the industry owner with the reason.
+     */
+    public function rejectProduct(IndustryProduct $product, string $reason, ?User $admin = null): IndustryProduct
+    {
+        $cleanReason = trim($reason);
+
+        $product = DB::transaction(function () use ($product, $cleanReason, $admin): IndustryProduct {
+            $product->status = 'rejected';
+            $product->rejection_reason = $cleanReason;
+            $product->rejected_at = now();
+            $product->rejected_by = $admin?->id;
+            $product->is_boosted = false;
+            $product->boost_expires_at = null;
+            $product->is_new_release = false;
+            $product->new_release_expires_at = null;
+            $product->save();
+
+            $product->campaigns()
+                ->whereIn('status', [
+                    AdCampaignStatus::ACTIVE->value,
+                    AdCampaignStatus::PAUSED->value,
+                    AdCampaignStatus::PENDING->value,
+                ])
+                ->update(['status' => AdCampaignStatus::CANCELLED->value]);
+
+            return $product->load(['creator', 'industry.creator', 'section', 'category', 'activeCampaign', 'latestCampaign']);
+        });
+
+        $recipients = collect([$product->industry?->creator, $product->creator])
+            ->filter(fn ($recipient): bool => $recipient instanceof User)
+            ->unique('id')
+            ->values();
+
+        foreach ($recipients as $recipient) {
+            $recipient->notify(new ProductRejectedNotification($product, $cleanReason, $admin));
+        }
+
+        return $product;
+    }
+
+    public function clearRejectionMetadata(IndustryProduct $product): void
+    {
+        $product->rejection_reason = null;
+        $product->rejected_at = null;
+        $product->rejected_by = null;
     }
 
     /**

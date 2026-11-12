@@ -70,6 +70,10 @@ class ProductBoostController extends Controller
             return $authError;
         }
 
+        if (($rejectedError = $this->ensureProductNotRejected($product)) instanceof JsonResponse) {
+            return $rejectedError;
+        }
+
         $validated = $request->validate([
             'boost_package_id' => ['nullable', 'integer', 'exists:boost_packages,id'],
             'custom_days' => ['nullable', 'integer', 'min:1', 'max:365'],
@@ -126,6 +130,10 @@ class ProductBoostController extends Controller
             return $authError;
         }
 
+        if (($rejectedError = $this->ensureProductNotRejected($product)) instanceof JsonResponse) {
+            return $rejectedError;
+        }
+
         $orderSummary = null;
         if (! empty($validated['boost_package_id']) || ! empty($validated['custom_days'])) {
             try {
@@ -177,6 +185,10 @@ class ProductBoostController extends Controller
 
         if (($authError = $this->authorizeProductAction($user, $product)) instanceof JsonResponse) {
             return $authError;
+        }
+
+        if (($rejectedError = $this->ensureProductNotRejected($product)) instanceof JsonResponse) {
+            return $rejectedError;
         }
 
         try {
@@ -260,6 +272,10 @@ class ProductBoostController extends Controller
 
         if (($authError = $this->authorizeProductAction($user, $product)) instanceof JsonResponse) {
             return $authError;
+        }
+
+        if (($rejectedError = $this->ensureProductNotRejected($product)) instanceof JsonResponse) {
+            return $rejectedError;
         }
 
         try {
@@ -599,6 +615,21 @@ class ProductBoostController extends Controller
             'success' => false,
             'message' => 'You are not authorized to boost this product.',
         ], 403);
+    }
+
+    private function ensureProductNotRejected(IndustryProduct $product): ?JsonResponse
+    {
+        if (! $product->isRejected()) {
+            return null;
+        }
+
+        $reasonSuffix = $product->rejection_reason ? " Reason: {$product->rejection_reason}" : '';
+
+        return response()->json([
+            'success' => false,
+            'message' => "This product was rejected by Admin and cannot be boosted.{$reasonSuffix}",
+            'rejection_reason' => $product->rejection_reason,
+        ], 422);
     }
 
     /**

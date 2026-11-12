@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -52,6 +53,22 @@ class Industry extends Model
     public function scopePaused($query)
     {
         return $query->where('status', 'paused');
+    }
+
+    /**
+     * Scope to active, authorized industries owned by verified, non-suspended users.
+     */
+    public function scopeVerifiedActive(Builder $query): Builder
+    {
+        return $query
+            ->where(function (Builder $q): void {
+                $q->where('status', 'active')->orWhereNull('status');
+            })
+            ->where('authorization_confirmed', true)
+            ->whereHas('creator', function (Builder $creatorQuery): void {
+                $creatorQuery->where('is_verified', true)
+                    ->where('is_suspended', false);
+            });
     }
 
     protected function logo(): Attribute
