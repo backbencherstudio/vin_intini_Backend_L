@@ -171,8 +171,14 @@ class IndustryProductController extends Controller
             ->where('new_release_expires_at', '<=', now())
             ->update(['is_new_release' => false]);
 
-        // 1. Tab filter / Search / Section show-all / Explicit flat pagination view
-        if ($request->filled('section_id') || $request->filled('category_id') || $request->filled('search') || $request->boolean('flat') || $request->input('view') === 'all' || $request->filled('cursor')) {
+        $isOverviewRequest = $request->input('view') === 'overview'
+            && ! $request->filled('section_id')
+            && ! $request->filled('category_id')
+            && ! $request->boolean('flat')
+            && ! $request->filled('cursor');
+
+        // 1. Tab filter / Search (non-overview) / Section show-all / Explicit flat pagination view
+        if ($request->filled('section_id') || $request->filled('category_id') || ($request->filled('search') && ! $isOverviewRequest) || $request->boolean('flat') || $request->input('view') === 'all' || $request->filled('cursor')) {
             $query = IndustryProduct::query()
                 ->where('status', 'active')
                 ->where('network_type', $request->input('network_type'))
@@ -301,6 +307,7 @@ class IndustryProductController extends Controller
             ->orderBy('id')
             ->get();
 
+        $search = trim((string) $request->input('search', ''));
         $sectionIds = $sections->pluck('id')->all();
         $rawLimit = $request->input('limit_per_section');
         $limitPerSection = ($request->filled('limit_per_section') && is_numeric($rawLimit) && (int) $rawLimit > 0)
@@ -313,53 +320,88 @@ class IndustryProductController extends Controller
 
         if (! empty($sectionIds)) {
             // High-performance aggregate count per section without loading models into memory
-            $productCounts = IndustryProduct::query()
+            $countQuery = IndustryProduct::query()
                 ->where('network_type', $networkType)
                 ->where('industry_type', $industryType)
                 ->where('status', 'active')
-                ->whereIn('section_id', $sectionIds)
+                ->whereIn('section_id', $sectionIds);
+
+            if ($search !== '') {
+                $this->applyProductSearch($countQuery, $search);
+            }
+
+            $productCounts = $countQuery
                 ->groupBy('section_id')
                 ->selectRaw('section_id, count(*) as total')
                 ->pluck('total', 'section_id');
 
-            // Fetch only top N product IDs per section using window function (O(1) memory at million-row scale)
-            $placeholders = implode(',', array_fill(0, count($sectionIds), '?'));
-            $rankedSql = "
-                SELECT id FROM (
-                    SELECT id, section_id, ROW_NUMBER() OVER (
-                        PARTITION BY section_id 
-                        ORDER BY 
-                            CASE 
-                                WHEN is_boosted = 1 AND (boost_expires_at IS NULL OR boost_expires_at > NOW()) THEN 2
-                                WHEN is_new_release = 1 AND (new_release_expires_at IS NULL OR new_release_expires_at > NOW()) THEN 1
-                                ELSE 0
-                            END DESC,
-                            boost_score DESC,
-                            id DESC
-                    ) as rn
-                    FROM industry_products
-                    WHERE network_type = ?
-                      AND industry_type = ?
-                      AND status = 'active'
-                      AND section_id IN ({$placeholders})
-                      AND deleted_at IS NULL
-                ) as ranked
-                WHERE rn <= ?
-            ";
-            $bindings = array_merge([$networkType, $industryType], $sectionIds, [$limitPerSection]);
-            $rankedRows = DB::select($rankedSql, $bindings);
-            $topProductIds = array_column($rankedRows, 'id');
+            $products = collect();
 
-            if ($topProductIds !== []) {
-                $products = IndustryProduct::query()
-                    ->whereIn('id', $topProductIds)
-                    ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
-                    ->feedOrder()
-                    ->get();
+            if ($search !== '') {
+                $matchingSectionIds = array_values(array_filter(
+                    $sectionIds,
+                    fn ($sid): bool => (int) $productCounts->get($sid, 0) > 0
+                ));
 
+                foreach ($matchingSectionIds as $sid) {
+                    $sectionQuery = IndustryProduct::query()
+                        ->where('network_type', $networkType)
+                        ->where('industry_type', $industryType)
+                        ->where('status', 'active')
+                        ->where('section_id', $sid);
+                    $this->applyProductSearch($sectionQuery, $search);
+
+                    $sectionItems = $sectionQuery
+                        ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
+                        ->feedOrder()
+                        ->limit($limitPerSection)
+                        ->get();
+
+                    $products = $products->concat($sectionItems);
+                }
+            } else {
+                // Fetch only top N product IDs per section using window function (O(1) memory at million-row scale)
+                $placeholders = implode(',', array_fill(0, count($sectionIds), '?'));
+                $rankedSql = "
+                    SELECT id FROM (
+                        SELECT id, section_id, ROW_NUMBER() OVER (
+                            PARTITION BY section_id 
+                            ORDER BY 
+                                CASE 
+                                    WHEN is_boosted = 1 AND (boost_expires_at IS NULL OR boost_expires_at > NOW()) THEN 2
+                                    WHEN is_new_release = 1 AND (new_release_expires_at IS NULL OR new_release_expires_at > NOW()) THEN 1
+                                    ELSE 0
+                                END DESC,
+                                boost_score DESC,
+                                id DESC
+                        ) as rn
+                        FROM industry_products
+                        WHERE network_type = ?
+                          AND industry_type = ?
+                          AND status = 'active'
+                          AND section_id IN ({$placeholders})
+                          AND deleted_at IS NULL
+                    ) as ranked
+                    WHERE rn <= ?
+                ";
+                $bindings = array_merge([$networkType, $industryType], $sectionIds, [$limitPerSection]);
+                $rankedRows = DB::select($rankedSql, $bindings);
+                $topProductIds = array_column($rankedRows, 'id');
+
+                if ($topProductIds !== []) {
+                    $products = IndustryProduct::query()
+                        ->whereIn('id', $topProductIds)
+                        ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
+                        ->feedOrder()
+                        ->get();
+                }
+            }
+
+            if ($products->isNotEmpty()) {
                 if ($currentUser) {
+                    $productIds = $products->pluck('id')->all();
                     $likedProductIds = IndustryProductLike::where('user_id', $currentUser->id)
-                        ->whereIn('industry_product_id', $topProductIds)
+                        ->whereIn('industry_product_id', $productIds)
                         ->pluck('industry_product_id')
                         ->flip()
                         ->all();
@@ -367,6 +409,12 @@ class IndustryProductController extends Controller
 
                 $groupedProducts = $products->groupBy(fn ($item): int => (int) $item->section_id);
             }
+        }
+
+        if ($search !== '') {
+            $sections = $sections
+                ->filter(fn ($section): bool => (int) $productCounts->get($section->id, 0) > 0)
+                ->values();
         }
 
         $data = $sections->map(function ($section) use ($groupedProducts, $likedProductIds, $productCounts, $limitPerSection, $request): array {
@@ -941,12 +989,16 @@ class IndustryProductController extends Controller
         }
 
         $sanitized = addcslashes($search, '%_');
+        $pidSearch = ltrim($search, '#');
+        $pidSanitized = addcslashes($pidSearch, '%_');
         $isMysql = DB::connection()->getDriverName() === 'mysql';
 
-        $query->where(function (Builder $q) use ($search, $sanitized, $isMysql): void {
-            // 1. Direct or Prefix Match on indexed Unique product_id (Ultra-fast B-Tree O(1)/O(log N))
-            $q->where('product_id', $search)
-                ->orWhere('product_id', 'LIKE', "{$sanitized}%");
+        $query->where(function (Builder $q) use ($search, $sanitized, $pidSearch, $pidSanitized, $isMysql): void {
+            // 1. Direct or Prefix Match on indexed Unique product_id (supports optional leading #)
+            if ($pidSearch !== '') {
+                $q->where('product_id', $pidSearch)
+                    ->orWhere('product_id', 'LIKE', "{$pidSanitized}%");
+            }
 
             // 2. High-Performance Product Name Search
             // If MySQL and search string has >= 3 chars, combine FULLTEXT with LIKE for maximum speed & accuracy
