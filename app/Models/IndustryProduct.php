@@ -40,6 +40,9 @@ class IndustryProduct extends Model
         'poc_phone',
         'information_confirmed',
         'status',
+        'rejection_reason',
+        'rejected_at',
+        'rejected_by',
         'is_new_release',
         'new_release_expires_at',
         'is_boosted',
@@ -86,6 +89,7 @@ class IndustryProduct extends Model
     protected $casts = [
         'tags' => 'array',
         'information_confirmed' => 'boolean',
+        'rejected_at' => 'datetime',
         'is_new_release' => 'boolean',
         'new_release_expires_at' => 'datetime',
         'is_boosted' => 'boolean',
@@ -136,6 +140,16 @@ class IndustryProduct extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(IndustryCategory::class, 'category_id');
+    }
+
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
     }
 
     public function views(): HasMany

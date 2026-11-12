@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\Api\PageController;
 use App\Http\Controllers\Admin\Api\PartnerManagementController;
 use App\Http\Controllers\Admin\Api\PlanController;
 use App\Http\Controllers\Admin\Api\PostBaccalaureateController;
+use App\Http\Controllers\Admin\Api\ProductManagementController;
 use App\Http\Controllers\Admin\Api\PublicationManagementController;
 use App\Http\Controllers\Admin\Api\SubscriptionManagementController;
 use App\Http\Controllers\Admin\Api\TransactionController;
@@ -154,6 +155,18 @@ Route::prefix('admin')->group(function (): void {
         Route::post('sub-cateroy/create', [IndustryCategoryController::class, 'storeSubCategory']);
         Route::put('sub-cateroy/update/{id}', [IndustryCategoryController::class, 'updateSubCategory']);
         Route::delete('sub-cateroy/delete/{id}', [IndustryCategoryController::class, 'destroySubCategory']);
+    });
+
+    // Products Management (Psychology & Neuroscience: Biotechnology & Psychotropics)
+    Route::prefix('products')->group(function (): void {
+        Route::get('/', [ProductManagementController::class, 'index']);
+        Route::get('/verified-industries', [ProductManagementController::class, 'verifiedIndustries']);
+        Route::post('/create', [ProductManagementController::class, 'store']);
+        Route::get('/{id}', [ProductManagementController::class, 'show']);
+        Route::match(['put', 'post'], '/{id}/update', [ProductManagementController::class, 'update']);
+        Route::patch('/{id}/status', [ProductManagementController::class, 'updateStatus']);
+        Route::post('/{id}/reject', [ProductManagementController::class, 'reject']);
+        Route::delete('/{id}/delete', [ProductManagementController::class, 'destroy']);
     });
 
     // Pages
