@@ -312,9 +312,7 @@ class AdminDashboardController extends Controller
             ->whereNotNull('ad_campaign_id')
             ->sum('amount');
 
-        $totalTransactionRevenue = (float) Transaction::where('status', 'succeeded')->sum('amount');
-        $sponsorsRevenue = max(0, $totalTransactionRevenue - ($subscriptionRevenue + $advertisementRevenue));
-        $total = $totalTransactionRevenue > 0 ? $totalTransactionRevenue : 0.0;
+        $total = $subscriptionRevenue + $advertisementRevenue;
 
         $items = [
             [
@@ -328,12 +326,6 @@ class AdminDashboardController extends Controller
                 'amount' => $advertisementRevenue,
                 'value' => $advertisementRevenue,
                 'percentage' => $total > 0 ? round(($advertisementRevenue / $total) * 100, 2) : 0,
-            ],
-            [
-                'name' => 'Sponsors',
-                'amount' => $sponsorsRevenue,
-                'value' => $sponsorsRevenue,
-                'percentage' => $total > 0 ? round(($sponsorsRevenue / $total) * 100, 2) : 0,
             ],
         ];
 

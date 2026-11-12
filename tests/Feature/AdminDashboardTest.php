@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Models\AdCampaign;
 use App\Models\ContactUs;
+use App\Models\Plan;
 use App\Models\Post;
 use App\Models\Publication;
 use App\Models\Transaction;
@@ -64,9 +66,35 @@ test('admin can retrieve dashboard composite metrics', function (): void {
         'message' => 'Hello team, interested in partnering.',
     ]);
 
+    $plan = Plan::create([
+        'name' => 'Pro Monthly',
+        'billing_rate' => 300.00,
+        'billing_cycle' => 'monthly',
+        'features' => ['Feature A'],
+    ]);
+
+    $adCampaign = AdCampaign::create([
+        'boostable_type' => Post::class,
+        'boostable_id' => 1,
+        'user_id' => $this->adminUser->id,
+        'ad_type' => 'post',
+        'amount_paid' => 100.00,
+        'duration_days' => 7,
+    ]);
+
     Transaction::create([
         'user_id' => $this->adminUser->id,
-        'amount' => 99.00,
+        'plan_id' => $plan->id,
+        'amount' => 300.00,
+        'currency' => 'usd',
+        'status' => 'succeeded',
+        'paid_at' => now(),
+    ]);
+
+    Transaction::create([
+        'user_id' => $this->adminUser->id,
+        'ad_campaign_id' => $adCampaign->id,
+        'amount' => 100.00,
         'currency' => 'usd',
         'status' => 'succeeded',
         'paid_at' => now(),
@@ -106,4 +134,10 @@ test('admin can retrieve dashboard composite metrics', function (): void {
     expect($data['status_cards'])->toHaveCount(5);
     expect($data['pending_approvals'])->toHaveCount(4);
     expect($data['recent_activities'])->not->toBeEmpty();
+    expect($data['total_revenue_breakdown']['total'])->toBe(400);
+    expect($data['total_revenue_breakdown']['items'])->toHaveCount(2);
+    expect(collect($data['total_revenue_breakdown']['items'])->pluck('name')->all())
+        ->toBe(['Subscriptions', 'Advertisements']);
+    expect($data['total_revenue_breakdown']['items'][0]['percentage'])->toBe(75);
+    expect($data['total_revenue_breakdown']['items'][1]['percentage'])->toBe(25);
 });
