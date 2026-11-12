@@ -7,9 +7,11 @@ use App\Models\Industry;
 use App\Models\IndustryProduct;
 use App\Models\User;
 use App\Notifications\ProductRejectedNotification;
+use App\Notifications\ProductStatusUpdatedNotification;
 use App\Services\Advertising\BoostSettingService;
 use App\Services\Media\OptimizedImageUploadService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -78,8 +80,13 @@ class IndustryProductService
      *
      * @param  array<string, mixed>  $data
      */
-    public function updateProduct(IndustryProduct $product, array $data, ?UploadedFile $newImageFile = null): IndustryProduct
-    {
+    public function updateProduct(
+        IndustryProduct $product,
+        array $data,
+        ?UploadedFile $newImageFile = null,
+        ?User $admin = null
+    ): IndustryProduct {
+        $previousStatus = (string) $product->status;
         $newImagePath = null;
         $oldImagePath = $product->image;
 
@@ -155,7 +162,31 @@ class IndustryProductService
             throw $e;
         }
 
-        return $product->load(['creator', 'industry', 'section', 'category']);
+        $product->load(['creator', 'industry.creator', 'section', 'category']);
+
+        $this->notifyStatusRestoredIfNeeded($product, $previousStatus, (string) $product->status, $admin);
+
+        return $product;
+    }
+
+    /**
+     * Update product status as Admin and notify the industry owner when restoring from rejected.
+     */
+    public function updateProductStatus(IndustryProduct $product, string $status, ?User $admin = null): IndustryProduct
+    {
+        $previousStatus = (string) $product->status;
+
+        $product->status = $status;
+        if ($status !== 'rejected') {
+            $this->clearRejectionMetadata($product);
+        }
+        $product->save();
+
+        $product->load(['creator', 'industry.creator', 'section', 'category', 'activeCampaign', 'latestCampaign']);
+
+        $this->notifyStatusRestoredIfNeeded($product, $previousStatus, (string) $product->status, $admin);
+
+        return $product;
     }
 
     /**
@@ -188,16 +219,39 @@ class IndustryProductService
             return $product->load(['creator', 'industry.creator', 'section', 'category', 'activeCampaign', 'latestCampaign']);
         });
 
+        $this->notifyProductRecipients($product, new ProductRejectedNotification($product, $cleanReason, $admin));
+
+        return $product;
+    }
+
+    protected function notifyStatusRestoredIfNeeded(
+        IndustryProduct $product,
+        string $previousStatus,
+        string $newStatus,
+        ?User $admin = null
+    ): void {
+        if ($previousStatus !== 'rejected' || $newStatus === 'rejected') {
+            return;
+        }
+
+        $this->notifyProductRecipients(
+            $product,
+            new ProductStatusUpdatedNotification($product, $previousStatus, $newStatus, $admin)
+        );
+    }
+
+    protected function notifyProductRecipients(IndustryProduct $product, Notification $notification): void
+    {
+        $product->loadMissing(['creator', 'industry.creator']);
+
         $recipients = collect([$product->industry?->creator, $product->creator])
             ->filter(fn ($recipient): bool => $recipient instanceof User)
             ->unique('id')
             ->values();
 
         foreach ($recipients as $recipient) {
-            $recipient->notify(new ProductRejectedNotification($product, $cleanReason, $admin));
+            $recipient->notify($notification);
         }
-
-        return $product;
     }
 
     public function clearRejectionMetadata(IndustryProduct $product): void
