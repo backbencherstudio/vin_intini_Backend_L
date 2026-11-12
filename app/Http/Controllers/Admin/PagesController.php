@@ -364,7 +364,10 @@ class PagesController extends Controller
             $responseData['leading_institutions'] = collect($page->leading_institutions ?? [])
                 ->where('is_active', true)
                 ->map(fn ($item): array => [
-                    'name' => $item['name'],
+                    'name' => $item['name'] ?? '',
+                    'description' => $item['description'] ?? '',
+                    'website' => $item['website'] ?? '',
+                    'logo' => $item['logo'] ?? null,
                     'logo_url' => ! empty($item['logo']) ? asset('storage/'.$item['logo']) : null,
                 ])->values();
         }

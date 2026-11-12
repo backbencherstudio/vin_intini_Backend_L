@@ -91,10 +91,13 @@ class PageController extends Controller
         // 7. Leading Institutions
         if ($sections === [] || in_array('leading_institutions', $sections)) {
             $responseData['leading_institutions'] = collect($page->leading_institutions ?? [])
-                ->where('is_active', true)
                 ->map(fn ($item): array => [
-                    'name' => $item['name'],
+                    'name' => $item['name'] ?? '',
+                    'description' => $item['description'] ?? '',
+                    'website' => $item['website'] ?? '',
+                    'logo' => $item['logo'] ?? null,
                     'logo_url' => ! empty($item['logo']) ? asset('storage/'.$item['logo']) : null,
+                    'is_active' => isset($item['is_active']) ? (bool) $item['is_active'] : true,
                 ])->values();
         }
 
@@ -108,14 +111,67 @@ class PageController extends Controller
     {
         $page = Page::where('slug', $slug)->firstOrFail();
 
-        $request->validate([
+        $rules = [
             'title' => 'sometimes|string|max:255',
             'founder_photo' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'team.*.photo' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'videos.*.file' => 'sometimes|nullable|mimes:mp4,mov,avi,wmv|max:102400',
-            'videos.*.thumbnail' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'leading_institutions.*.logo' => 'sometimes|nullable|file|mimes:jpeg,png,jpg,webp,svg|max:2048',
-        ]);
+            'team.*.photo' => 'sometimes|nullable',
+            'videos.*.file' => 'sometimes|nullable',
+            'videos.*.thumbnail' => 'sometimes|nullable',
+            'leading_institutions.*.logo' => 'sometimes|nullable',
+        ];
+
+        $request->validate($rules);
+
+        if ($request->has('team')) {
+            foreach ($request->team as $index => $item) {
+                if ($request->hasFile("team.$index.photo")) {
+                    $fileValidator = validator(
+                        ['photo' => $request->file("team.$index.photo")],
+                        ['photo' => 'image|mimes:jpeg,png,jpg,webp|max:5120']
+                    );
+                    if ($fileValidator->fails()) {
+                        throw new \Illuminate\Validation\ValidationException($fileValidator);
+                    }
+                }
+            }
+        }
+
+        if ($request->has('videos')) {
+            foreach ($request->videos as $index => $item) {
+                if ($request->hasFile("videos.$index.file")) {
+                    $fileValidator = validator(
+                        ['file' => $request->file("videos.$index.file")],
+                        ['file' => 'mimes:mp4,mov,avi,wmv|max:102400']
+                    );
+                    if ($fileValidator->fails()) {
+                        throw new \Illuminate\Validation\ValidationException($fileValidator);
+                    }
+                }
+                if ($request->hasFile("videos.$index.thumbnail")) {
+                    $fileValidator = validator(
+                        ['thumbnail' => $request->file("videos.$index.thumbnail")],
+                        ['thumbnail' => 'image|mimes:jpeg,png,jpg,webp|max:5120']
+                    );
+                    if ($fileValidator->fails()) {
+                        throw new \Illuminate\Validation\ValidationException($fileValidator);
+                    }
+                }
+            }
+        }
+
+        if ($request->has('leading_institutions')) {
+            foreach ($request->leading_institutions as $index => $item) {
+                if ($request->hasFile("leading_institutions.$index.logo")) {
+                    $fileValidator = validator(
+                        ['logo' => $request->file("leading_institutions.$index.logo")],
+                        ['logo' => 'file|mimes:jpeg,png,jpg,webp,svg|max:5120']
+                    );
+                    if ($fileValidator->fails()) {
+                        throw new \Illuminate\Validation\ValidationException($fileValidator);
+                    }
+                }
+            }
+        }
 
         $page->fill(
             $request->only([
@@ -297,50 +353,34 @@ class PageController extends Controller
         // Leading Institutions JSON
 
         if ($request->has('leading_institutions')) {
+            $institutions = $page->leading_institutions ?? [];
+            $newInstitutions = [];
 
-            $institutions =
-                $page->leading_institutions ?? [];
+            foreach ($request->leading_institutions as $index => $item) {
+                $old = $institutions[$index] ?? [];
+                $logoPath = $item['logo'] ?? ($old['logo'] ?? null);
 
-            foreach (
-                $request->leading_institutions as $index => $item
-            ) {
-
-                $old =
-                    $institutions[$index] ?? [];
-
-                $old['name'] =
-                    $item['name'] ??
-                    ($old['name'] ?? null);
-
-                if (
-                    $request->hasFile(
-                        "leading_institutions.$index.logo"
-                    )
-                ) {
-
-                    if (! empty($old['logo'])) {
-
-                        Storage::disk('public')
-                            ->delete($old['logo']);
+                if ($request->hasFile("leading_institutions.$index.logo")) {
+                    if (! empty($old['logo']) && Storage::disk('public')->exists($old['logo'])) {
+                        Storage::disk('public')->delete($old['logo']);
                     }
 
-                    $old['logo'] =
-                        $imageUploadService->store(
-                            $request->file("leading_institutions.$index.logo"),
-                            'pages/institutions'
-                        );
+                    $logoPath = $imageUploadService->store(
+                        $request->file("leading_institutions.$index.logo"),
+                        'pages/institutions'
+                    );
                 }
 
-                if (isset($item['is_active'])) {
-                    $old['is_active'] = (bool) $item['is_active'];
-                }
-
-                $institutions[$index] =
-                    $old;
+                $newInstitutions[] = [
+                    'name' => $item['name'] ?? ($old['name'] ?? ''),
+                    'description' => $item['description'] ?? ($old['description'] ?? ''),
+                    'website' => $item['website'] ?? ($old['website'] ?? ''),
+                    'logo' => $logoPath,
+                    'is_active' => isset($item['is_active']) ? (bool) $item['is_active'] : ($old['is_active'] ?? true),
+                ];
             }
 
-            $page->leading_institutions =
-                array_values($institutions);
+            $page->leading_institutions = array_values($newInstitutions);
         }
 
         $page->save();
