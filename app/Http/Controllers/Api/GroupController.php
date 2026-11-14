@@ -206,15 +206,31 @@ class GroupController extends Controller
 
         if ($group->type === 'private' && ! $isMember && ! $isAdmin) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'This is a private group. You must be a member to see details.',
+                'status' => 'success',
+                'message' => 'This is a private group. You must be a member to see full details.',
                 'data' => [
                     'group' => [
                         'id' => $group->id,
                         'name' => $group->name,
                         'slug' => $group->slug,
+                        'description' => $group->description,
+                        'rules' => $group->rules,
+                        'location' => $group->location,
+                        'created_at' => $group->created_at,
+                        'logo' => $group->logo,
+                        'logo_url' => $group->logo_url,
+                        'cover_photo' => $group->cover_photo,
+                        'cover_photo_url' => $group->cover_photo_url,
+                        'industry' => $group->industry,
                         'type' => $group->type,
                         'members_count' => $group->members_count,
+                        'creator' => $group->creator ? [
+                            'id' => $group->creator->id,
+                            'first_name' => $group->creator->first_name,
+                            'last_name' => $group->creator->last_name,
+                            'title' => $group->creator->title,
+                            'profile_image_url' => $group->creator->profile_image_url,
+                        ] : null,
                     ],
                     'is_current_user_member' => false,
                     'is_current_user_admin' => $isAdmin,
@@ -223,7 +239,7 @@ class GroupController extends Controller
                     'mutual_members_count' => $mutualMembersCount,
                     'mutual_members' => $mutualMembers,
                 ],
-            ], 403);
+            ], 200);
         }
 
         return response()->json([
@@ -680,6 +696,19 @@ class GroupController extends Controller
                 'status' => 'error',
                 'message' => 'You are already a member of this group',
             ], 400);
+        }
+
+        if ($group->type === 'private') {
+            $hasInvitation = GroupInvitation::where('group_id', $group->id)
+                ->where('invited_user_id', $userId)
+                ->exists();
+
+            if (! $hasInvitation) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'This is a private group. You can only join via invitation.',
+                ], 403);
+            }
         }
 
         $group->members()->attach($userId, [
