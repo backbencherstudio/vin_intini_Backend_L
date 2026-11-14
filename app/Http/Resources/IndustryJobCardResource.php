@@ -61,6 +61,8 @@ class IndustryJobCardResource extends JsonResource
             'location' => $locationString,
             'views_count' => (int) ($this->views_count ?? 0),
             'applications_count' => (int) ($this->applications_count ?? 0),
+            'rejection_reason' => $this->rejection_reason,
+            'reviewed_at' => optional($this->reviewed_at)?->toDateTimeString(),
         ];
     }
 }

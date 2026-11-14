@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
 use App\Http\Controllers\Admin\Api\InstitutionReportController;
 use App\Http\Controllers\Admin\Api\IntegrationSettingController;
+use App\Http\Controllers\Admin\Api\JobManagementController;
 use App\Http\Controllers\Admin\Api\PageController;
 use App\Http\Controllers\Admin\Api\PartnerManagementController;
 use App\Http\Controllers\Admin\Api\PlanController;
@@ -167,6 +168,20 @@ Route::prefix('admin')->group(function (): void {
         Route::patch('/{id}/status', [ProductManagementController::class, 'updateStatus']);
         Route::post('/{id}/reject', [ProductManagementController::class, 'reject']);
         Route::delete('/{id}/delete', [ProductManagementController::class, 'destroy']);
+    });
+
+    // Job Management (Psychology & Neuroscience)
+    Route::prefix('jobs')->group(function (): void {
+        Route::get('/', [JobManagementController::class, 'index']);
+        Route::get('/verified-industries', [JobManagementController::class, 'verifiedIndustries']);
+        Route::post('/create', [JobManagementController::class, 'store']);
+        Route::get('/{id}', [JobManagementController::class, 'show']);
+        Route::match(['put', 'post'], '/{id}/update', [JobManagementController::class, 'update']);
+        Route::patch('/{id}/status', [JobManagementController::class, 'updateStatus']);
+        Route::post('/{id}/reject', [JobManagementController::class, 'reject']);
+        Route::delete('/{id}/delete', [JobManagementController::class, 'destroy']);
+        Route::get('/{id}/applicants', [JobManagementController::class, 'applicants']);
+        Route::patch('/{jobId}/applicants/{applicationId}/status', [JobManagementController::class, 'updateApplicantStatus']);
     });
 
     // Pages

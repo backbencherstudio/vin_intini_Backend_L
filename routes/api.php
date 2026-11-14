@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\IndustryApiController;
 use App\Http\Controllers\Admin\PagesController;
+use App\Http\Controllers\Api\AcademiaController;
 use App\Http\Controllers\Api\ContactUsController;
 use App\Http\Controllers\Api\ProductBoostController;
 use App\Http\Controllers\Api\RevenueCatWebhookController;
@@ -23,6 +24,11 @@ Route::post('/webhooks/revenuecat', [RevenueCatWebhookController::class, 'handle
 // Universal Ad Tracking (Client-side verified IAB impressions & clicks)
 Route::post('/advertisements/impressions', [ProductBoostController::class, 'recordImpressions']);
 Route::post('/advertisements/{id}/click', [ProductBoostController::class, 'recordClick']);
+
+// Public Geography Lookup (States & Cities for registration, filters, job creation, admin)
+Route::get('/states', [AcademiaController::class, 'getStates']);
+Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
+Route::get('/states/{code}/cities', [AcademiaController::class, 'getCities']);
 
 // Authentication Routes (Public & Authenticated 2FA/Session Lifecycle)
 require __DIR__.'/api/auth.php';

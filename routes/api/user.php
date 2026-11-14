@@ -117,10 +117,7 @@ Route::middleware('profile_completed')->group(function (): void {
     Route::delete('/notifications/{notificationId}', [NotificationController::class, 'delete']);
     Route::delete('/notifications', [NotificationController::class, 'deleteAll']);
 
-    // academia routes
-    Route::get('/states', [AcademiaController::class, 'getStates']);
-    Route::get('/states/{code}', [AcademiaController::class, 'getStateDetails']);
-    Route::get('/states/{code}/cities', [AcademiaController::class, 'getCities']);
+    // academia routes (states & cities are registered publicly in api.php)
     Route::get('/states/{code}/universities', [AcademiaController::class, 'getUniversities']);
     Route::get('/states/{code}/residencies', [AcademiaController::class, 'getResidencies']);
     Route::get('/states/{code}/post-baccalaureate-programs', [AcademiaController::class, 'getPostBaccalaureatePrograms']);

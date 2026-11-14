@@ -496,7 +496,9 @@ class IndustryJobPostController extends Controller
         }
 
         $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
-        $isCreator = (int) $jobPost->created_by === (int) $user->id;
+        $isCreator = ((int) $jobPost->created_by === (int) $user->id)
+            || ($jobPost->industry && (int) $jobPost->industry->created_by === (int) $user->id)
+            || ($user->industry && (int) $jobPost->industry_id === (int) $user->industry->id);
 
         if (! $isAdmin && ! $isCreator) {
             return response()->json([
@@ -506,10 +508,10 @@ class IndustryJobPostController extends Controller
         }
 
         $currentStatus = $jobPost->status instanceof \BackedEnum ? $jobPost->status->value : (string) $jobPost->status;
-        if ($isCreator && ! $isAdmin && $currentStatus === IndustryJobPostStatus::REJECTED->value) {
+        if (! $isAdmin && $currentStatus === IndustryJobPostStatus::REJECTED->value) {
             return response()->json([
                 'success' => false,
-                'message' => 'This job post has been rejected. Creators cannot update its status.',
+                'message' => 'This job post has been rejected by an administrator. Industry partners cannot change its status.',
             ], 403);
         }
 
