@@ -721,6 +721,13 @@ class JobsFeedController extends Controller
             $query->where('industry_job_posts.id', '!=', (int) $request->query('exclude_id'));
         }
 
+        // Exclude jobs already applied by the current user
+        if ($currentUser) {
+            $query->whereDoesntHave('applications', function ($q) use ($currentUser): void {
+                $q->where('applicant_id', $currentUser->id);
+            });
+        }
+
         // Scoring based on user preferences
         if ($hasPreference) {
             $scoreExpressions = [];
