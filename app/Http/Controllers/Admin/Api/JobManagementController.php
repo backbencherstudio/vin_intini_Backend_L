@@ -570,12 +570,25 @@ class JobManagementController extends Controller
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
             $sanitized = addcslashes($search, '%_');
+            $cleanSearch = ltrim($search, '#');
+            $cleanSanitized = addcslashes($cleanSearch, '%_');
+            $numericIdOnly = trim((string) preg_replace('/^#?APP-?/i', '', $search));
 
-            $query->where(function (Builder $q) use ($search, $sanitized): void {
+            $query->where(function (Builder $q) use ($search, $sanitized, $cleanSearch, $cleanSanitized, $numericIdOnly): void {
                 $q->where('full_name', 'LIKE', "%{$sanitized}%")
                     ->orWhere('email', 'LIKE', "%{$sanitized}%")
                     ->orWhere('current_position', 'LIKE', "%{$sanitized}%")
-                    ->orWhere('application_id', $search);
+                    ->orWhere('application_id', 'LIKE', "%{$sanitized}%")
+                    ->orWhere('application_id', 'LIKE', "%{$cleanSanitized}%");
+
+                if ($numericIdOnly !== '') {
+                    $numSanitized = addcslashes($numericIdOnly, '%_');
+                    $q->orWhere('application_id', 'LIKE', "%{$numSanitized}%");
+                }
+
+                if (is_numeric($cleanSearch)) {
+                    $q->orWhere('id', (int) $cleanSearch);
+                }
             });
         }
 
