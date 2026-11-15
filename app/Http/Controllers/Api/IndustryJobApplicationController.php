@@ -185,11 +185,15 @@ class IndustryJobApplicationController extends Controller
 
         // Must be published to accept applications
         $statusValue = $jobPost->status instanceof \BackedEnum ? $jobPost->status->value : (string) $jobPost->status;
-        if ($statusValue !== IndustryJobPostStatus::PUBLISHED->value) {
+        $isScheduled = $jobPost->announcement_start_date && \Carbon\Carbon::parse($jobPost->announcement_start_date)->startOfDay()->isFuture();
+
+        if ($statusValue !== IndustryJobPostStatus::PUBLISHED->value || $isScheduled) {
             $message = match ($statusValue) {
                 IndustryJobPostStatus::ARCHIVE->value => 'This job post has been archived by the employer and is no longer accepting applications.',
                 IndustryJobPostStatus::EXPIRED->value => 'The application deadline for this job post has expired.',
-                default => 'This job post is not currently accepting applications.',
+                IndustryJobPostStatus::PAUSED->value => 'This job post is currently paused and not accepting new applications.',
+                IndustryJobPostStatus::CLOSED->value => 'This job post has been closed by the employer.',
+                default => $isScheduled ? 'This job post is scheduled and has not opened for applications yet.' : 'This job post is not currently accepting applications.',
             };
 
             return response()->json([

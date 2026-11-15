@@ -111,7 +111,21 @@ class JobManagementController extends Controller
         // Status Filter
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $status = strtolower(trim((string) $request->input('status')));
-            $query->where('status', $status);
+            if ($status === 'archive' || $status === 'archived') {
+                $query->whereIn('status', ['archive', 'archived']);
+            } elseif ($status === 'scheduled') {
+                $query->where('status', IndustryJobPostStatus::PUBLISHED->value)
+                    ->whereNotNull('announcement_start_date')
+                    ->whereDate('announcement_start_date', '>', today());
+            } elseif ($status === 'published' || $status === 'active') {
+                $query->where('status', IndustryJobPostStatus::PUBLISHED->value)
+                    ->where(function (Builder $q): void {
+                        $q->whereNull('announcement_start_date')
+                            ->orWhereDate('announcement_start_date', '<=', today());
+                    });
+            } else {
+                $query->where('status', $status);
+            }
         }
 
         // Network Type Filter
@@ -267,6 +281,19 @@ class JobManagementController extends Controller
         $tags = $this->formatTags($validated['tags'] ?? null);
         $status = $validated['status'] ?? 'published';
 
+        if ($status === 'published' && ! empty($validated['announcement_end_date'])) {
+            $endDate = \Carbon\Carbon::parse($validated['announcement_end_date'])->endOfDay();
+            if ($endDate->isPast()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The announcement end date must be today or a future date to publish this job.',
+                    'errors' => [
+                        'announcement_end_date' => ['The application deadline has passed. Please select a future date to publish this job.'],
+                    ],
+                ], 422);
+            }
+        }
+
         $job = IndustryJobPost::create([
             'job_id' => $uniqueJobId,
             'industry_id' => $industry->id,
@@ -356,6 +383,30 @@ class JobManagementController extends Controller
             $validated['slug'] = Str::slug($validated['job_title']).'-'.$job->job_id;
         }
 
+        $targetStatus = $validated['status'] ?? ($job->status instanceof \BackedEnum ? $job->status->value : (string) $job->status);
+        if ($targetStatus === 'published') {
+            $endDateVal = array_key_exists('announcement_end_date', $validated)
+                ? $validated['announcement_end_date']
+                : $job->announcement_end_date;
+            $endDate = $endDateVal ? \Carbon\Carbon::parse($endDateVal)->endOfDay() : null;
+            if ($endDate && $endDate->isPast()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot publish an expired job without extending the deadline. Please update the announcement end date to a future date.',
+                    'errors' => [
+                        'announcement_end_date' => ['The application deadline has passed. Please update the end date to a future date to publish this job.'],
+                    ],
+                ], 422);
+            }
+        }
+
+        if (isset($validated['status'])) {
+            $validated['reviewed_at'] = now();
+            if ($validated['status'] !== 'rejected') {
+                $validated['rejection_reason'] = null;
+            }
+        }
+
         $job->update($validated);
         $job->load(['industry', 'creator', 'state:id,name', 'city:id,name']);
 
@@ -374,12 +425,40 @@ class JobManagementController extends Controller
         $job = IndustryJobPost::findOrFail($id);
 
         $validated = $request->validate([
-            'status' => ['required', 'string', 'in:published,pending,draft,rejected,archive,expired'],
+            'status' => ['required', 'string', 'in:published,pending,draft,rejected,archive,expired,paused,closed'],
+            'announcement_start_date' => ['nullable', 'date'],
+            'announcement_end_date' => ['nullable', 'date'],
         ]);
 
         $admin = $request->user();
         $previousStatus = (string) ($job->status->value ?? $job->status);
         $newStatus = $validated['status'];
+
+        if (array_key_exists('announcement_start_date', $validated)) {
+            $job->announcement_start_date = $validated['announcement_start_date'];
+        }
+        if (array_key_exists('announcement_end_date', $validated)) {
+            $job->announcement_end_date = $validated['announcement_end_date'];
+        }
+
+        if ($newStatus === 'published') {
+            $endDate = $job->announcement_end_date ? \Carbon\Carbon::parse($job->announcement_end_date)->endOfDay() : null;
+            if ($endDate && $endDate->isPast()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This job deadline has passed. To republish or activate it, please update the application end date to a future date.',
+                    'errors' => [
+                        'announcement_end_date' => ['The application deadline has passed. Please update the end date to a future date to publish this job.'],
+                    ],
+                ], 422);
+            }
+
+            // If the job had a future start date (was scheduled) and is now manually published, make it live today
+            $startDate = $job->announcement_start_date ? \Carbon\Carbon::parse($job->announcement_start_date)->startOfDay() : null;
+            if ($startDate && $startDate->isFuture() && ! array_key_exists('announcement_start_date', $validated)) {
+                $job->announcement_start_date = now()->toDateString();
+            }
+        }
 
         $job->status = $newStatus;
         $job->reviewed_at = now();
@@ -583,13 +662,25 @@ class JobManagementController extends Controller
             ->pluck('total', 'status')
             ->toArray();
 
+        $scheduledCount = IndustryJobPost::query()
+            ->where('status', IndustryJobPostStatus::PUBLISHED->value)
+            ->whereNotNull('announcement_start_date')
+            ->whereDate('announcement_start_date', '>', today())
+            ->count();
+
+        $livePublishedCount = max(0, ((int) ($counts['published'] ?? 0)) - $scheduledCount);
+
         return [
             'total' => (int) array_sum($counts),
-            'published' => (int) ($counts['published'] ?? 0),
+            'published' => $livePublishedCount,
+            'scheduled' => $scheduledCount,
+            'paused' => (int) ($counts['paused'] ?? 0),
+            'closed' => (int) ($counts['closed'] ?? 0),
             'pending' => (int) ($counts['pending'] ?? 0),
             'rejected' => (int) ($counts['rejected'] ?? 0),
             'expired' => (int) ($counts['expired'] ?? 0),
             'draft' => (int) ($counts['draft'] ?? 0),
+            'archive' => (int) (($counts['archive'] ?? 0) + ($counts['archived'] ?? 0)),
         ];
     }
 

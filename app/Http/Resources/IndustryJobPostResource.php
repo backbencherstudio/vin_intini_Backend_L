@@ -76,6 +76,17 @@ class IndustryJobPostResource extends JsonResource
             ($this->industry_id && $currentUser->industry && (int) $this->industry_id === (int) $currentUser->industry->id)
         );
 
+        $rawStatus = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
+        $resolvedStatus = $rawStatus;
+        if ($rawStatus === IndustryJobPostStatus::PUBLISHED->value) {
+            $startDate = $this->announcement_start_date ? \Carbon\Carbon::parse($this->announcement_start_date)->startOfDay() : null;
+            if ($startDate && $startDate->isFuture()) {
+                $resolvedStatus = 'scheduled';
+            } elseif ($this->isExpired()) {
+                $resolvedStatus = IndustryJobPostStatus::EXPIRED->value;
+            }
+        }
+
         return [
             'id' => $this->id,
             'job_id' => $this->job_id,
@@ -99,9 +110,8 @@ class IndustryJobPostResource extends JsonResource
             'salary_type' => $this->salary_type,
             'location_url' => $this->location_url,
             'tags' => $this->tags ?? [],
-            'status' => ($this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status) === IndustryJobPostStatus::PUBLISHED->value && $this->isExpired()
-                ? IndustryJobPostStatus::EXPIRED->value
-                : ($this->status instanceof \BackedEnum ? $this->status->value : $this->status),
+            'status' => $resolvedStatus,
+            'raw_status' => $rawStatus,
             'information_confirmed' => (bool) $this->information_confirmed,
 
             'views_count' => (int) ($this->views_count ?? 0),

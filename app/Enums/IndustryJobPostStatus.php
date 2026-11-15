@@ -12,4 +12,6 @@ enum IndustryJobPostStatus: string
     case REJECTED = 'rejected';
     case ARCHIVE = 'archive';
     case EXPIRED = 'expired';
+    case PAUSED = 'paused';
+    case CLOSED = 'closed';
 }

@@ -32,8 +32,13 @@ class IndustryJobCardResource extends JsonResource
         $locationString = $location !== [] ? implode(', ', $location) : 'N/A';
 
         $status = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
-        if ($status === IndustryJobPostStatus::PUBLISHED->value && $this->isExpired()) {
-            $status = IndustryJobPostStatus::EXPIRED->value;
+        if ($status === IndustryJobPostStatus::PUBLISHED->value) {
+            $startDate = $this->announcement_start_date ? \Carbon\Carbon::parse($this->announcement_start_date)->startOfDay() : null;
+            if ($startDate && $startDate->isFuture()) {
+                $status = 'scheduled';
+            } elseif ($this->isExpired()) {
+                $status = IndustryJobPostStatus::EXPIRED->value;
+            }
         }
 
         $currentUser = auth('api')->user();
@@ -51,6 +56,8 @@ class IndustryJobCardResource extends JsonResource
             'industry_name' => $this->industry?->name,
             'industry_logo' => $logo,
             'status' => $status,
+            'announcement_start_date' => optional($this->announcement_start_date)?->toDateString(),
+            'announcement_end_date' => optional($this->announcement_end_date)?->toDateString(),
             'is_own_industry' => $isOwnIndustry,
             'badges' => array_values(array_filter([
                 $this->employment_type,

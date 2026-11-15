@@ -9,3 +9,4 @@ Artisan::command('inspire', function (): void {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('boost:clean-expired')->hourly();
+Schedule::command('jobs:evaluate-deadlines')->hourly();

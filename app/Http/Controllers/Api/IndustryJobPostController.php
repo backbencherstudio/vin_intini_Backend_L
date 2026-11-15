@@ -64,14 +64,22 @@ class IndustryJobPostController extends Controller
         $page = max($request->integer('current_page', 1), 1);
         $limit = min(max($request->integer('limit', 10), 1), 100);
 
+        $userIndustryId = $currentUser->industry?->id;
+        $scopeOwnership = function (Builder $q) use ($currentUser, $userIndustryId): void {
+            $q->where('created_by', $currentUser->id);
+            if ($userIndustryId) {
+                $q->orWhere('industry_id', $userIndustryId);
+            }
+        };
+
         // JIT auto-sync: Automatically update past-deadline published jobs to expired in DB
-        IndustryJobPost::where('created_by', $currentUser->id)
+        IndustryJobPost::where($scopeOwnership)
             ->where('status', IndustryJobPostStatus::PUBLISHED->value)
             ->whereNotNull('announcement_end_date')
             ->whereDate('announcement_end_date', '<', today())
             ->update(['status' => IndustryJobPostStatus::EXPIRED]);
 
-        $baseQuery = IndustryJobPost::query()->where('created_by', $currentUser->id);
+        $baseQuery = IndustryJobPost::query()->where($scopeOwnership);
 
         if ($isArchived) {
             $baseQuery->where('status', IndustryJobPostStatus::ARCHIVE->value);
@@ -103,7 +111,38 @@ class IndustryJobPostController extends Controller
                 : array_filter(array_map(trim(...), explode(',', (string) $rawStatus)));
 
             if ($statuses !== []) {
-                $baseQuery->whereIn('status', $statuses);
+                $baseQuery->where(function (Builder $q) use ($statuses): void {
+                    $hasScheduled = in_array('scheduled', $statuses, true);
+                    $hasPublished = in_array('published', $statuses, true) || in_array('active', $statuses, true);
+                    $otherStatuses = array_diff($statuses, ['scheduled', 'published', 'active']);
+
+                    $first = true;
+                    if ($hasScheduled) {
+                        $q->where(function (Builder $sq): void {
+                            $sq->where('status', IndustryJobPostStatus::PUBLISHED->value)
+                                ->whereNotNull('announcement_start_date')
+                                ->whereDate('announcement_start_date', '>', today());
+                        });
+                        $first = false;
+                    }
+
+                    if ($hasPublished) {
+                        $method = $first ? 'where' : 'orWhere';
+                        $q->{$method}(function (Builder $sq): void {
+                            $sq->where('status', IndustryJobPostStatus::PUBLISHED->value)
+                                ->where(function (Builder $dateQ): void {
+                                    $dateQ->whereNull('announcement_start_date')
+                                        ->orWhereDate('announcement_start_date', '<=', today());
+                                });
+                        });
+                        $first = false;
+                    }
+
+                    if ($otherStatuses !== []) {
+                        $method = $first ? 'whereIn' : 'orWhereIn';
+                        $q->{$method}('status', array_values($otherStatuses));
+                    }
+                });
             }
         }
 
@@ -215,7 +254,11 @@ class IndustryJobPostController extends Controller
         }
 
         $currentUser = auth('api')->user();
-        $isCreator = $currentUser && ((int) $jobPost->created_by === (int) $currentUser->id);
+        $isCreator = $currentUser && (
+            ((int) $jobPost->created_by === (int) $currentUser->id)
+            || ($jobPost->industry && (int) $jobPost->industry->created_by === (int) $currentUser->id)
+            || ($currentUser->industry && (int) $jobPost->industry_id === (int) $currentUser->industry->id)
+        );
         $isAdmin = $currentUser && method_exists($currentUser, 'hasRole') && ($currentUser->hasRole('admin') || $currentUser->hasRole('super-admin'));
 
         // JIT auto-sync: If deadline has passed, update DB status to expired
@@ -230,11 +273,13 @@ class IndustryJobPostController extends Controller
         $currentStatus = $jobPost->status instanceof \BackedEnum ? $jobPost->status->value : (string) $jobPost->status;
 
         // Security check: Only creators and admins can view private/draft/rejected jobs.
-        // Published, Expired, and Archived jobs can be viewed (e.g. by users who saved or applied).
+        // Published, Expired, Archived, Paused, and Closed jobs can be viewed (e.g. by users who saved or applied).
         $allowedPublicStatuses = [
             IndustryJobPostStatus::PUBLISHED->value,
             IndustryJobPostStatus::EXPIRED->value,
             IndustryJobPostStatus::ARCHIVE->value,
+            IndustryJobPostStatus::PAUSED->value,
+            IndustryJobPostStatus::CLOSED->value,
         ];
 
         if (! $isCreator && ! $isAdmin && ! in_array($currentStatus, $allowedPublicStatuses, true)) {
@@ -301,6 +346,20 @@ class IndustryJobPostController extends Controller
         $startDate = $validated['announcement_start_date'] ?? $validated['start_date'] ?? null;
         $endDate = $validated['announcement_end_date'] ?? $validated['end_date'] ?? null;
 
+        if (! $isDraft && ! empty($endDate)) {
+            $parsedEnd = \Carbon\Carbon::parse($endDate)->endOfDay();
+            if ($parsedEnd->isPast()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The announcement end date must be today or a future date to publish this job.',
+                    'errors' => [
+                        'end_date' => ['The application deadline has passed. Please select a future date to publish this job.'],
+                        'announcement_end_date' => ['The application deadline has passed. Please select a future date to publish this job.'],
+                    ],
+                ], 422);
+            }
+        }
+
         $jobPost = IndustryJobPost::create([
             'job_id' => $uniqueJobId,
             'industry_id' => $industry->id,
@@ -360,7 +419,12 @@ class IndustryJobPostController extends Controller
             return response()->json(['success' => false, 'message' => 'Job post not found.'], 404);
         }
 
-        if ((int) $jobPost->created_by !== (int) $user->id) {
+        $isCreator = ((int) $jobPost->created_by === (int) $user->id)
+            || ($jobPost->industry && (int) $jobPost->industry->created_by === (int) $user->id)
+            || ($user->industry && (int) $jobPost->industry_id === (int) $user->industry->id);
+        $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
+
+        if (! $isCreator && ! $isAdmin) {
             return response()->json([
                 'success' => false,
                 'message' => 'You are not authorized to update this job post.',
@@ -389,10 +453,41 @@ class IndustryJobPostController extends Controller
             ? Str::slug($validated['job_title']).'-'.$jobPost->job_id
             : $jobPost->slug;
 
-        $startDate = $validated['announcement_start_date'] ?? $validated['start_date'] ?? $jobPost->announcement_start_date;
-        $endDate = $validated['announcement_end_date'] ?? $validated['end_date'] ?? $jobPost->announcement_end_date;
+        $startDate = array_key_exists('announcement_start_date', $validated)
+            ? $validated['announcement_start_date']
+            : (array_key_exists('start_date', $validated) ? $validated['start_date'] : $jobPost->announcement_start_date);
+
+        $endDate = array_key_exists('announcement_end_date', $validated)
+            ? $validated['announcement_end_date']
+            : (array_key_exists('end_date', $validated) ? $validated['end_date'] : $jobPost->announcement_end_date);
 
         $currentStatusEnum = $jobPost->status instanceof \BackedEnum ? $jobPost->status : IndustryJobPostStatus::tryFrom((string) $jobPost->status);
+
+        $isDeadlinePast = false;
+        if (! empty($endDate)) {
+            $parsedEnd = \Carbon\Carbon::parse($endDate)->endOfDay();
+            $isDeadlinePast = $parsedEnd->isPast();
+        }
+
+        if ($isDraft) {
+            $newStatus = IndustryJobPostStatus::DRAFT;
+        } elseif ($isDeadlinePast) {
+            // Deadline has passed: allow updating job info, but DO NOT PUBLISH.
+            // If it was already archive, keep archive; otherwise mark as expired.
+            $newStatus = ($currentStatusEnum === IndustryJobPostStatus::ARCHIVE)
+                ? IndustryJobPostStatus::ARCHIVE
+                : IndustryJobPostStatus::EXPIRED;
+        } else {
+            // Deadline is valid (today or in future, or not specified):
+            // If the job was expired, extending the deadline to a future date publishes it!
+            if ($currentStatusEnum === IndustryJobPostStatus::ARCHIVE && ! $request->has('status')) {
+                $newStatus = IndustryJobPostStatus::ARCHIVE;
+            } else {
+                $newStatus = IndustryJobPostStatus::PUBLISHED;
+            }
+        }
+
+        $isNowPublished = $newStatus === IndustryJobPostStatus::PUBLISHED;
 
         $jobPost->update([
             'slug' => $slug,
@@ -420,15 +515,23 @@ class IndustryJobPostController extends Controller
             'announcement_start_date' => $startDate,
             'announcement_end_date' => $endDate,
             'information_confirmed' => ! $isDraft,
-            'status' => $isDraft ? IndustryJobPostStatus::DRAFT : IndustryJobPostStatus::PUBLISHED,
-            'submitted_at' => ($currentStatusEnum === IndustryJobPostStatus::DRAFT && ! $isDraft) ? now() : $jobPost->submitted_at,
+            'status' => $newStatus,
+            'submitted_at' => ($currentStatusEnum === IndustryJobPostStatus::DRAFT && $isNowPublished) ? now() : $jobPost->submitted_at,
+            'reviewed_at' => $isNowPublished ? now() : $jobPost->reviewed_at,
         ]);
 
         $jobPost->load(['state:id,name', 'city:id,name', 'industry', 'creator:id,first_name,last_name,username,profile_image']);
 
+        $message = 'Job post updated successfully.';
+        if ($newStatus === IndustryJobPostStatus::EXPIRED) {
+            $message = 'Job details updated successfully. The job post remains expired because the application deadline has passed.';
+        } elseif ($newStatus === IndustryJobPostStatus::PUBLISHED && $currentStatusEnum === IndustryJobPostStatus::EXPIRED) {
+            $message = 'Job details updated and published successfully with the extended deadline.';
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Job post updated successfully.',
+            'message' => $message,
             'data' => (new IndustryJobPostResource($jobPost, currentUser: $user))->resolve(),
         ]);
     }
@@ -451,7 +554,9 @@ class IndustryJobPostController extends Controller
         }
 
         $isAdmin = method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super-admin'));
-        $isCreator = (int) $jobPost->created_by === (int) $user->id;
+        $isCreator = ((int) $jobPost->created_by === (int) $user->id)
+            || ($jobPost->industry && (int) $jobPost->industry->created_by === (int) $user->id)
+            || ($user->industry && (int) $jobPost->industry_id === (int) $user->industry->id);
 
         if (! $isCreator && ! $isAdmin) {
             return response()->json([
@@ -516,11 +621,13 @@ class IndustryJobPostController extends Controller
         }
 
         $allowedStatuses = $isAdmin
-            ? ['draft', 'published', 'rejected', 'archive', 'expired']
-            : ['draft', 'published', 'archive', 'expired'];
+            ? ['draft', 'published', 'rejected', 'archive', 'expired', 'paused', 'closed']
+            : ['draft', 'published', 'archive', 'expired', 'paused', 'closed'];
 
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in($allowedStatuses)],
+            'announcement_start_date' => ['nullable', 'date'],
+            'announcement_end_date' => ['nullable', 'date'],
             'rejection_reason' => [
                 'required_if:status,rejected',
                 'nullable',
@@ -544,12 +651,38 @@ class IndustryJobPostController extends Controller
             'status' => $newStatus,
         ];
 
+        if (array_key_exists('announcement_start_date', $validated)) {
+            $updateData['announcement_start_date'] = $validated['announcement_start_date'];
+            $jobPost->announcement_start_date = $validated['announcement_start_date'];
+        }
+        if (array_key_exists('announcement_end_date', $validated)) {
+            $updateData['announcement_end_date'] = $validated['announcement_end_date'];
+            $jobPost->announcement_end_date = $validated['announcement_end_date'];
+        }
+
         if ($newStatus === IndustryJobPostStatus::REJECTED->value) {
             $updateData['rejection_reason'] = $validated['rejection_reason'];
             $updateData['reviewed_at'] = now();
         } elseif ($newStatus === IndustryJobPostStatus::PUBLISHED->value) {
+            $endDate = $jobPost->announcement_end_date ? \Carbon\Carbon::parse($jobPost->announcement_end_date)->endOfDay() : null;
+            if ($endDate && $endDate->isPast()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This job deadline has passed. To republish or activate it, please update the application end date to a future date.',
+                    'errors' => [
+                        'announcement_end_date' => ['The application deadline has passed. Please update the end date to a future date to publish this job.'],
+                    ],
+                ], 422);
+            }
+
             $updateData['rejection_reason'] = null;
             $updateData['reviewed_at'] = now();
+
+            // If the job had a future start date (was scheduled) and is now manually published, make it live today
+            $startDate = $jobPost->announcement_start_date ? \Carbon\Carbon::parse($jobPost->announcement_start_date)->startOfDay() : null;
+            if ($startDate && $startDate->isFuture() && ! array_key_exists('announcement_start_date', $validated)) {
+                $updateData['announcement_start_date'] = now()->toDateString();
+            }
 
             $currentStatusEnum = $jobPost->status instanceof \BackedEnum ? $jobPost->status : IndustryJobPostStatus::tryFrom((string) $jobPost->status);
             if ($currentStatusEnum === IndustryJobPostStatus::DRAFT) {
