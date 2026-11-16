@@ -313,9 +313,9 @@ class JobManagementController extends Controller
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
             'website' => $validated['website'] ?? null,
-            'salary_min' => $validated['salary_min'] ?? null,
-            'salary_max' => $validated['salary_max'] ?? null,
-            'salary_type' => $validated['salary_type'] ?? null,
+            'salary_min' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? null : ($validated['salary_min'] ?? null),
+            'salary_max' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? null : ($validated['salary_max'] ?? null),
+            'salary_type' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? 'Negotiable' : ($validated['salary_type'] ?? null),
             'location_url' => $validated['location_url'] ?? null,
             'network_type' => $validated['network_type'] ?? null,
             'employment_offering' => $validated['employment_offering'] ?? null,
@@ -377,6 +377,12 @@ class JobManagementController extends Controller
 
         if (isset($validated['tags'])) {
             $validated['tags'] = $this->formatTags($validated['tags']);
+        }
+
+        if (isset($validated['salary_type']) && strtolower((string) $validated['salary_type']) === 'negotiable') {
+            $validated['salary_min'] = null;
+            $validated['salary_max'] = null;
+            $validated['salary_type'] = 'Negotiable';
         }
 
         if (isset($validated['job_title']) && $validated['job_title'] !== $job->job_title) {
