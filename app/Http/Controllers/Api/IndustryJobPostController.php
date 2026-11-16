@@ -369,16 +369,16 @@ class IndustryJobPostController extends Controller
             'position' => $validated['position'] ?? null,
             'category' => $validated['category'] ?? null,
             'sub_category' => $validated['sub_category'] ?? null,
-            'job_description' => $validated['job_description'],
+            'job_description' => $validated['job_description'] ?? null,
             'network_type' => $validated['network_type'] ?? null,
             'employment_offering' => $validated['employment_offering'] ?? null,
-            'work_mode' => $validated['work_mode'],
-            'employment_type' => $validated['employment_type'],
+            'work_mode' => $validated['work_mode'] ?? null,
+            'employment_type' => $validated['employment_type'] ?? null,
             'level' => $validated['level'] ?? null,
             'experience' => $validated['experience'] ?? null,
             'state_id' => $validated['state_id'] ?? null,
             'city_id' => $validated['city_id'] ?? null,
-            'email' => $validated['email'],
+            'email' => $validated['email'] ?? null,
             'phone_number' => $validated['phone_number'] ?? null,
             'website' => $validated['website'] ?? null,
             'salary_min' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? null : ($validated['salary_min'] ?? null),
@@ -491,27 +491,27 @@ class IndustryJobPostController extends Controller
 
         $jobPost->update([
             'slug' => $slug,
-            'job_title' => $validated['job_title'],
-            'position' => $validated['position'] ?? null,
-            'category' => $validated['category'] ?? null,
-            'sub_category' => $validated['sub_category'] ?? null,
-            'job_description' => $validated['job_description'],
-            'work_mode' => $validated['work_mode'],
-            'employment_type' => $validated['employment_type'],
-            'level' => $validated['level'] ?? null,
-            'experience' => $validated['experience'] ?? null,
-            'state_id' => $validated['state_id'] ?? null,
-            'city_id' => $validated['city_id'] ?? null,
-            'email' => $validated['email'],
-            'phone_number' => $validated['phone_number'] ?? null,
-            'website' => $validated['website'] ?? null,
-            'salary_min' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? null : ($validated['salary_min'] ?? null),
-            'salary_max' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? null : ($validated['salary_max'] ?? null),
-            'salary_type' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? 'Negotiable' : ($validated['salary_type'] ?? null),
-            'location_url' => $validated['location_url'] ?? null,
-            'employment_offering' => $validated['employment_offering'] ?? null,
-            'network_type' => $validated['network_type'] ?? null,
-            'tags' => $tags,
+            'job_title' => $validated['job_title'] ?? $jobPost->job_title,
+            'position' => array_key_exists('position', $validated) ? $validated['position'] : $jobPost->position,
+            'category' => array_key_exists('category', $validated) ? $validated['category'] : $jobPost->category,
+            'sub_category' => array_key_exists('sub_category', $validated) ? $validated['sub_category'] : $jobPost->sub_category,
+            'job_description' => array_key_exists('job_description', $validated) ? $validated['job_description'] : $jobPost->job_description,
+            'work_mode' => array_key_exists('work_mode', $validated) ? $validated['work_mode'] : $jobPost->work_mode,
+            'employment_type' => array_key_exists('employment_type', $validated) ? $validated['employment_type'] : $jobPost->employment_type,
+            'level' => array_key_exists('level', $validated) ? $validated['level'] : $jobPost->level,
+            'experience' => array_key_exists('experience', $validated) ? $validated['experience'] : $jobPost->experience,
+            'state_id' => array_key_exists('state_id', $validated) ? $validated['state_id'] : $jobPost->state_id,
+            'city_id' => array_key_exists('city_id', $validated) ? $validated['city_id'] : $jobPost->city_id,
+            'email' => array_key_exists('email', $validated) ? $validated['email'] : $jobPost->email,
+            'phone_number' => array_key_exists('phone_number', $validated) ? $validated['phone_number'] : $jobPost->phone_number,
+            'website' => array_key_exists('website', $validated) ? $validated['website'] : $jobPost->website,
+            'salary_min' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? null : (array_key_exists('salary_min', $validated) ? $validated['salary_min'] : $jobPost->salary_min),
+            'salary_max' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? null : (array_key_exists('salary_max', $validated) ? $validated['salary_max'] : $jobPost->salary_max),
+            'salary_type' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? 'Negotiable' : (array_key_exists('salary_type', $validated) ? $validated['salary_type'] : $jobPost->salary_type),
+            'location_url' => array_key_exists('location_url', $validated) ? $validated['location_url'] : $jobPost->location_url,
+            'employment_offering' => array_key_exists('employment_offering', $validated) ? $validated['employment_offering'] : $jobPost->employment_offering,
+            'network_type' => array_key_exists('network_type', $validated) ? $validated['network_type'] : $jobPost->network_type,
+            'tags' => array_key_exists('tags', $validated) ? $tags : $jobPost->tags,
             'announcement_start_date' => $startDate,
             'announcement_end_date' => $endDate,
             'information_confirmed' => ! $isDraft,
@@ -639,6 +639,21 @@ class IndustryJobPostController extends Controller
         ]);
 
         $newStatus = $validated['status'];
+
+        // Prevent publishing or altering incomplete drafts directly from status update
+        if ($currentStatus === IndustryJobPostStatus::DRAFT->value && $newStatus === IndustryJobPostStatus::PUBLISHED->value) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Draft jobs cannot be activated directly. Please edit the job to complete all required steps and publish.',
+            ], 422);
+        }
+
+        if ($currentStatus === IndustryJobPostStatus::DRAFT->value && in_array($newStatus, ['paused', 'closed', 'expired'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Draft jobs cannot be set to {$newStatus}. Only published jobs can be {$newStatus}.",
+            ], 422);
+        }
 
         // Enforce subscription & company profile check if a creator attempts to publish
         if (! $isAdmin && $newStatus === IndustryJobPostStatus::PUBLISHED->value) {

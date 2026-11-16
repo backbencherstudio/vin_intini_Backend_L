@@ -244,20 +244,23 @@ class JobManagementController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $isDraft = ($request->input('status') === 'draft');
+        $isRequired = $isDraft ? 'nullable' : 'required';
+
         $validated = $request->validate([
             'industry_id' => ['required', 'integer', 'exists:industries,id'],
             'job_title' => ['required', 'string', 'max:255'],
             'position' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
             'sub_category' => ['nullable', 'string', 'max:255'],
-            'job_description' => ['required', 'string'],
-            'work_mode' => ['required', 'string', 'in:remote,on_site,onsite,hybrid'],
-            'employment_type' => ['required', 'string'],
+            'job_description' => [$isRequired, 'string'],
+            'work_mode' => [$isRequired, 'string'],
+            'employment_type' => [$isRequired, 'string'],
             'level' => ['nullable', 'string'],
             'experience' => ['nullable', 'string'],
             'state_id' => ['nullable', 'integer', 'exists:states,id'],
             'city_id' => ['nullable', 'integer', 'exists:cities,id'],
-            'email' => ['required', 'email'],
+            'email' => [$isRequired, $isDraft ? 'nullable' : 'email'],
             'phone_number' => ['nullable', 'string'],
             'website' => ['nullable', 'string'],
             'salary_min' => ['nullable', 'numeric', 'min:0'],
@@ -303,14 +306,14 @@ class JobManagementController extends Controller
             'position' => $validated['position'] ?? null,
             'category' => $validated['category'] ?? null,
             'sub_category' => $validated['sub_category'] ?? null,
-            'job_description' => $validated['job_description'],
-            'work_mode' => $validated['work_mode'],
-            'employment_type' => $validated['employment_type'],
+            'job_description' => $validated['job_description'] ?? null,
+            'work_mode' => $validated['work_mode'] ?? null,
+            'employment_type' => $validated['employment_type'] ?? null,
             'level' => $validated['level'] ?? null,
             'experience' => $validated['experience'] ?? null,
             'state_id' => $validated['state_id'] ?? null,
             'city_id' => $validated['city_id'] ?? null,
-            'email' => $validated['email'],
+            'email' => $validated['email'] ?? null,
             'phone_number' => $validated['phone_number'] ?? null,
             'website' => $validated['website'] ?? null,
             'salary_min' => (strtolower((string) ($validated['salary_type'] ?? '')) === 'negotiable') ? null : ($validated['salary_min'] ?? null),
@@ -323,19 +326,21 @@ class JobManagementController extends Controller
             'announcement_start_date' => $validated['announcement_start_date'] ?? null,
             'announcement_end_date' => $validated['announcement_end_date'] ?? null,
             'status' => $status,
-            'information_confirmed' => true,
-            'submitted_at' => now(),
-            'reviewed_at' => now(),
+            'information_confirmed' => ! $isDraft,
+            'submitted_at' => $isDraft ? null : now(),
+            'reviewed_at' => $isDraft ? null : now(),
         ]);
 
         $job->load(['industry', 'creator', 'state:id,name', 'city:id,name']);
 
-        // Notify industry owner
-        $this->notifyIndustry($job, new AdminCreatedJobNotification($job, $admin));
+        // Notify industry owner only when published
+        if (! $isDraft) {
+            $this->notifyIndustry($job, new AdminCreatedJobNotification($job, $admin));
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Job posted successfully on behalf of '.$industry->name.'. Industry owner has been notified.',
+            'message' => $isDraft ? 'Job saved as draft successfully.' : 'Job posted successfully on behalf of '.$industry->name.'. Industry owner has been notified.',
             'data' => $job,
         ], 201);
     }
@@ -346,6 +351,9 @@ class JobManagementController extends Controller
     public function update(Request $request, int|string $id): JsonResponse
     {
         $job = IndustryJobPost::findOrFail($id);
+        $targetStatus = $request->input('status', $job->status instanceof \BackedEnum ? $job->status->value : (string) $job->status);
+        $isDraft = ($targetStatus === 'draft');
+        $isRequired = $isDraft ? 'nullable' : 'required';
 
         $validated = $request->validate([
             'industry_id' => ['nullable', 'integer', 'exists:industries,id'],
@@ -354,14 +362,14 @@ class JobManagementController extends Controller
             'position' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
             'sub_category' => ['nullable', 'string', 'max:255'],
-            'job_description' => ['sometimes', 'required', 'string'],
-            'work_mode' => ['sometimes', 'required', 'string', 'in:remote,on_site,onsite,hybrid'],
-            'employment_type' => ['sometimes', 'required', 'string'],
+            'job_description' => ['sometimes', $isRequired, 'string'],
+            'work_mode' => ['sometimes', $isRequired, 'string'],
+            'employment_type' => ['sometimes', $isRequired, 'string'],
             'level' => ['nullable', 'string'],
             'experience' => ['nullable', 'string'],
             'state_id' => ['nullable', 'integer', 'exists:states,id'],
             'city_id' => ['nullable', 'integer', 'exists:cities,id'],
-            'email' => ['sometimes', 'required', 'email'],
+            'email' => ['sometimes', $isRequired, $isDraft ? 'nullable' : 'email'],
             'phone_number' => ['nullable', 'string'],
             'website' => ['nullable', 'string'],
             'salary_min' => ['nullable', 'numeric', 'min:0'],
@@ -391,6 +399,34 @@ class JobManagementController extends Controller
 
         $targetStatus = $validated['status'] ?? ($job->status instanceof \BackedEnum ? $job->status->value : (string) $job->status);
         if ($targetStatus === 'published') {
+            // Check if required fields exist either in the incoming request or already in the database
+            $mergedDescription = array_key_exists('job_description', $validated) ? $validated['job_description'] : $job->job_description;
+            $mergedWorkMode = array_key_exists('work_mode', $validated) ? $validated['work_mode'] : $job->work_mode;
+            $mergedEmploymentType = array_key_exists('employment_type', $validated) ? $validated['employment_type'] : $job->employment_type;
+            $mergedEmail = array_key_exists('email', $validated) ? $validated['email'] : $job->email;
+
+            $missingFields = [];
+            if (empty($mergedDescription)) {
+                $missingFields['job_description'] = ['Job description is required to publish this job.'];
+            }
+            if (empty($mergedWorkMode)) {
+                $missingFields['work_mode'] = ['Work mode is required to publish this job.'];
+            }
+            if (empty($mergedEmploymentType)) {
+                $missingFields['employment_type'] = ['Employment type is required to publish this job.'];
+            }
+            if (empty($mergedEmail)) {
+                $missingFields['email'] = ['Contact email is required to publish this job.'];
+            }
+
+            if (! empty($missingFields)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please complete all required fields across all steps before publishing this job.',
+                    'errors' => $missingFields,
+                ], 422);
+            }
+
             $endDateVal = array_key_exists('announcement_end_date', $validated)
                 ? $validated['announcement_end_date']
                 : $job->announcement_end_date;
