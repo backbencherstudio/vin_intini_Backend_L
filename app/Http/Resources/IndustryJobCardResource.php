@@ -28,7 +28,7 @@ class IndustryJobCardResource extends JsonResource
             }
         }
 
-        $location = array_filter([$this->state?->name, $this->city?->name]);
+        $location = array_filter([$this->city?->name, $this->state?->name]);
         $locationString = $location !== [] ? implode(', ', $location) : 'N/A';
 
         $status = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
@@ -60,9 +60,9 @@ class IndustryJobCardResource extends JsonResource
             'announcement_end_date' => optional($this->announcement_end_date)?->toDateString(),
             'is_own_industry' => $isOwnIndustry,
             'badges' => array_values(array_filter([
-                $this->employment_type,
-                $this->work_mode,
-                $this->network_type,
+                $this->formatBadge($this->employment_type),
+                $this->formatBadge($this->work_mode),
+                $this->formatBadge($this->network_type),
             ])),
             'short_description' => Str::limit(strip_tags((string) $this->job_description), 110),
             'location' => $locationString,
@@ -71,5 +71,28 @@ class IndustryJobCardResource extends JsonResource
             'rejection_reason' => $this->rejection_reason,
             'reviewed_at' => optional($this->reviewed_at)?->toDateTimeString(),
         ];
+    }
+
+    private function formatBadge(?string $value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        $cleaned = trim($value);
+
+        return match (strtolower($cleaned)) {
+            'full_time', 'full time', 'full-time' => 'Full-time',
+            'part_time', 'part time', 'part-time' => 'Part-time',
+            'short_term', 'short term', 'short-term' => 'Short-term',
+            'on_site', 'on site', 'on-site', 'onsite' => 'On-site',
+            'remote' => 'Remote',
+            'hybrid' => 'Hybrid',
+            'contract' => 'Contract',
+            'internship' => 'Internship',
+            'psychology' => 'Psychology',
+            'neuroscience' => 'Neuroscience',
+            default => ucwords(str_replace(['_', '-'], ' ', $cleaned)),
+        };
     }
 }

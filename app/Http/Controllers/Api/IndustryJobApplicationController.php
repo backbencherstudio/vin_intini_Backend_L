@@ -384,7 +384,7 @@ class IndustryJobApplicationController extends Controller
             }
         }
 
-        $locationParts = array_filter([$jobPost->state?->name, $jobPost->city?->name]);
+        $locationParts = array_filter([$jobPost->city?->name, $jobPost->state?->name]);
         $locationStr = $locationParts !== [] ? implode(', ', $locationParts) : 'Remote';
 
         $jobSummary = [
