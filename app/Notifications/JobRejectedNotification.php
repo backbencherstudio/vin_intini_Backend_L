@@ -38,7 +38,7 @@ class JobRejectedNotification extends Notification
             'status' => 'rejected',
             'rejection_reason' => $this->reason,
             'rejected_by' => $this->admin?->id,
-            'sender_name' => 'MindUnite Admin',
+            'sender_name' => 'Mind Unite Team',
             'sender_username' => null,
             'sender_profile_image_url' => null,
             'action_url' => '/mu/recruiter-dashboard',

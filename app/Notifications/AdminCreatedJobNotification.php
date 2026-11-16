@@ -35,12 +35,12 @@ class AdminCreatedJobNotification extends Notification
             'industry_name' => $industry?->name,
             'industry_slug' => $industry?->slug,
             'status' => (string) ($this->job->status->value ?? $this->job->status),
-            'sender_name' => 'MindUnite Admin',
+            'sender_name' => 'Mind Unite Team',
             'sender_username' => null,
             'sender_profile_image_url' => null,
             'action_url' => '/mu/recruiter-dashboard',
             'message' => "posted a new job listing \"{$this->job->job_title}\" on behalf of your company.",
-            'description' => "Position: {$this->job->position} ({$this->job->work_mode})",
+            'description' => "Position: {$this->job->position}" . ($this->job->work_mode ? " (" . ucwords(str_replace('_', ' ', (string) $this->job->work_mode)) . ")" : ""),
             'type' => class_basename(self::class),
             'created_at' => ($this->job->created_at ?? now())->toIso8601String(),
             'unread_count' => $this->unreadNotificationCount($notifiable) + 1,
@@ -53,7 +53,7 @@ class AdminCreatedJobNotification extends Notification
             ->notification(
                 FcmNotification::create()
                     ->title('New Job Posted by Admin')
-                    ->body("MindUnite Admin created a new job \"{$this->job->job_title}\" for your company.")
+                    ->body("Mind Unite Team created a new job \"{$this->job->job_title}\" for your company.")
             )
             ->data([
                 'job_id' => (string) $this->job->id,

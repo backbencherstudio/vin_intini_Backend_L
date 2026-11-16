@@ -30,10 +30,13 @@ class JobStatusUpdatedNotification extends Notification
         $industry = $this->resolveIndustry();
 
         $actionText = match ($this->newStatus) {
-            'published' => "approved and published your job posting \"{$this->job->job_title}\".",
+            'published' => "approved and activated your job posting \"{$this->job->job_title}\".",
             'rejected' => "rejected your job posting \"{$this->job->job_title}\".",
             default => "updated the status of your job \"{$this->job->job_title}\" to {$this->newStatus}.",
         };
+
+        $displayNew = $this->newStatus === 'published' ? 'Active' : ucfirst($this->newStatus);
+        $displayPrev = $this->previousStatus === 'published' ? 'Active' : ucfirst($this->previousStatus);
 
         return [
             'job_id' => $this->job->id,
@@ -44,12 +47,12 @@ class JobStatusUpdatedNotification extends Notification
             'industry_slug' => $industry?->slug,
             'status' => $this->newStatus,
             'previous_status' => $this->previousStatus,
-            'sender_name' => 'MindUnite Admin',
+            'sender_name' => 'Mind Unite Team',
             'sender_username' => null,
             'sender_profile_image_url' => null,
             'action_url' => '/mu/recruiter-dashboard',
             'message' => $actionText,
-            'description' => "Status changed from {$this->previousStatus} to {$this->newStatus}",
+            'description' => "Status changed from {$displayPrev} to {$displayNew}",
             'type' => class_basename(self::class),
             'updated_at' => now()->toIso8601String(),
             'unread_count' => $this->unreadNotificationCount($notifiable) + 1,

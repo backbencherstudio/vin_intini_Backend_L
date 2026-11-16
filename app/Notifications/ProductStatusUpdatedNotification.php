@@ -45,7 +45,7 @@ class ProductStatusUpdatedNotification extends Notification
             'previous_status' => $this->previousStatus,
             'status' => $this->newStatus,
             'updated_by' => $this->admin?->id,
-            'sender_name' => 'MindUnite Admin',
+            'sender_name' => 'Mind Unite Team',
             'sender_username' => null,
             'sender_profile_image_url' => null,
             'action_url' => '/mu/products',
