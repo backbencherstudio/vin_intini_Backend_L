@@ -38,7 +38,7 @@ class AdminCreatedJobNotification extends Notification
             'sender_name' => 'Mind Unite Team',
             'sender_username' => null,
             'sender_profile_image_url' => null,
-            'action_url' => '/mu/recruiter-dashboard',
+            'action_url' => '/mu/job-listing/'.$this->job->id.'/job-details',
             'message' => "posted a new job listing \"{$this->job->job_title}\" on behalf of your company.",
             'description' => "Position: {$this->job->position}" . ($this->job->work_mode ? " (" . ucwords(str_replace('_', ' ', (string) $this->job->work_mode)) . ")" : ""),
             'type' => class_basename(self::class),
@@ -59,7 +59,7 @@ class AdminCreatedJobNotification extends Notification
                 'job_id' => (string) $this->job->id,
                 'job_unique_id' => (string) ($this->job->job_id ?? ''),
                 'industry_id' => (string) ($this->job->industry_id ?? ''),
-                'action_url' => '/mu/recruiter-dashboard',
+                'action_url' => '/mu/job-listing/'.$this->job->id.'/job-details',
                 'type' => class_basename(self::class),
             ]);
     }

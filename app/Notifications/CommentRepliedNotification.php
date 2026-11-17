@@ -24,6 +24,9 @@ class CommentRepliedNotification extends Notification implements ShouldQueue
             ->unreadNotifications()
             ->count();
 
+        $replyId = $this->comment->id;
+        $parentCommentId = $this->comment->comment_id ?? null;
+
         return [
             'sender_id' => $this->sender->id,
             'sender_username' => $this->sender->username,
@@ -33,7 +36,9 @@ class CommentRepliedNotification extends Notification implements ShouldQueue
             ),
             'sender_profile_image_url' => $this->sender->profile_image_url,
             'post_id' => $this->post->id,
-            'comment_id' => $this->comment->id,
+            'comment_id' => $parentCommentId,
+            'reply_id' => $replyId,
+            'action_url' => '/mu/post/'.$this->post->id.'?comment_id='.$parentCommentId.'&reply_id='.$replyId,
             'message' => 'replied to your comment',
             'type' => class_basename(self::class),
             'unread_count' => $unreadCount + 1,

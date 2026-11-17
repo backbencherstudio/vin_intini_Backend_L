@@ -75,6 +75,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
             'application_id' => $this->application->id,
             'application_unique_id' => $this->application->application_id,
             'status' => $this->newStatus,
+            'action_url' => '/mu/jobs/my-applications?status='.$this->newStatus,
 
             // Standard sender fields for frontend compatibility
             'sender_id' => $this->jobPost->industry_id,
@@ -142,6 +143,7 @@ class JobApplicationStatusUpdatedNotification extends Notification implements Sh
                 'application_id' => (string) $this->application->id,
                 'application_unique_id' => (string) $this->application->application_id,
                 'status' => $this->newStatus,
+                'action_url' => '/mu/jobs/my-applications?status='.$this->newStatus,
                 'type' => class_basename(self::class),
                 'updated_at' => now()->toIso8601String(),
             ]);

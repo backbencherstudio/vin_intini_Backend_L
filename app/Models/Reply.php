@@ -16,6 +16,8 @@ class Reply extends Model
         'post_id',
         'comment_id',
         'user_id',
+        'reply_to_user_id',
+        'reply_to_reply_id',
         'industry_id',
         'reply',
         'like_count',
@@ -40,6 +42,16 @@ class Reply extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function replyToUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reply_to_user_id');
+    }
+
+    public function replyToReply(): BelongsTo
+    {
+        return $this->belongsTo(Reply::class, 'reply_to_reply_id');
     }
 
     public function industry(): BelongsTo

@@ -63,6 +63,7 @@ class GroupInvitationNotification extends Notification implements ShouldQueue
             'inviter_id' => $this->inviter->id,
             'inviter_username' => $this->inviter->username,
             'inviter_name' => $inviterName,
+            'action_url' => '/mu/my-network/group/'.($this->group->slug ?: $this->group->id),
             'message' => 'invited you to join '.$this->group->name,
             'type' => class_basename(self::class),
             'sent_at' => now()->toIso8601String(),

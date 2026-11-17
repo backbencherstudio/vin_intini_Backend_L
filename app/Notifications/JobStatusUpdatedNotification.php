@@ -50,7 +50,7 @@ class JobStatusUpdatedNotification extends Notification
             'sender_name' => 'Mind Unite Team',
             'sender_username' => null,
             'sender_profile_image_url' => null,
-            'action_url' => '/mu/recruiter-dashboard',
+            'action_url' => '/mu/job-listing/'.$this->job->id.'/job-details',
             'message' => $actionText,
             'description' => "Status changed from {$displayPrev} to {$displayNew}",
             'type' => class_basename(self::class),
@@ -72,7 +72,7 @@ class JobStatusUpdatedNotification extends Notification
                 'job_unique_id' => (string) ($this->job->job_id ?? ''),
                 'industry_id' => (string) ($this->job->industry_id ?? ''),
                 'status' => $this->newStatus,
-                'action_url' => '/mu/recruiter-dashboard',
+                'action_url' => '/mu/job-listing/'.$this->job->id.'/job-details',
                 'type' => class_basename(self::class),
             ]);
     }

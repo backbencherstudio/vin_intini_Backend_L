@@ -145,9 +145,18 @@ class IndustryController extends Controller
         }
     }
 
+    private function resolveIndustry(string|int $industryId): ?Industry
+    {
+        if (is_numeric($industryId)) {
+            return Industry::find((int) $industryId);
+        }
+
+        return Industry::where('slug', $industryId)->first();
+    }
+
     public function show($industryId)
     {
-        $industry = Industry::find($industryId);
+        $industry = $this->resolveIndustry($industryId);
 
         if (! $industry) {
             return response()->json([
@@ -695,7 +704,7 @@ class IndustryController extends Controller
     {
         $perPage = $this->perPage($request);
 
-        $industry = Industry::find($industryId);
+        $industry = $this->resolveIndustry($industryId);
 
         if (! $industry) {
             return response()->json([
@@ -1466,7 +1475,7 @@ class IndustryController extends Controller
     {
         $userId = auth()->id();
 
-        $industry = Industry::find($industryId);
+        $industry = $this->resolveIndustry($industryId);
 
         if (! $industry) {
             return response()->json([

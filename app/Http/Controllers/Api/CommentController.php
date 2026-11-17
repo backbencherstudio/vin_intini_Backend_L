@@ -22,6 +22,8 @@ class CommentController extends Controller
             'comment' => 'nullable|string|max:1000|required_without:image',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120|required_without:comment',
             'parent_id' => 'nullable|exists:comments,id',
+            'reply_to_user_id' => 'nullable|exists:users,id',
+            'reply_to_reply_id' => 'nullable|exists:replies,id',
         ]);
 
         $user = auth('api')->user();
@@ -99,7 +101,11 @@ class CommentController extends Controller
             $result = $commentService->addComment(
                 $user,
                 $post,
-                ['comment' => $request->comment ?? null],
+                [
+                    'comment' => $request->comment ?? null,
+                    'reply_to_user_id' => $request->reply_to_user_id ?? null,
+                    'reply_to_reply_id' => $request->reply_to_reply_id ?? null,
+                ],
                 $request->file('image'),
                 $parentComment,
                 $actingIndustryId
@@ -128,6 +134,7 @@ class CommentController extends Controller
     public function commentList(Request $request, $postId)
     {
         $perPage = $request->get('per_page', 10);
+        $targetCommentId = $request->query('target_comment_id');
         $user = auth('api')->user();
 
         $post = Post::with(['user' => fn ($q) => $q->withTrashed(), 'industryLink'])->findOrFail($postId);
@@ -139,15 +146,20 @@ class CommentController extends Controller
             ], 403);
         }
 
-        $comments = Comment::with([
+        $query = Comment::with([
             'user:id,username,title,first_name,last_name,profile_image',
             'industry:id,name,slug,tagline,logo',
             'post',
         ])
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->withExists(['likes as liked_by_me' => fn ($q) => $q->where('user_id', $user->id)])
-            ->where('post_id', $postId)
-            ->latest()
+            ->where('post_id', $postId);
+
+        if ($targetCommentId && is_numeric($targetCommentId)) {
+            $query->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [(int) $targetCommentId]);
+        }
+
+        $comments = $query->latest()
             ->paginate($perPage);
 
         $data = collect($comments->items())->map(function ($comment) use ($user): ?array {
@@ -168,12 +180,14 @@ class CommentController extends Controller
                 'user' => $isCompany && $industry ? [
                     'id' => $industry->id,
                     'name' => $industry->name,
+                    'username' => $industry->slug,
                     'title' => $industry->tagline,
                     'profile_image' => $industry->logo,
                     'is_company' => true,
                 ] : [
                     'id' => $comment->user->id,
                     'name' => trim($comment->user->first_name.' '.$comment->user->last_name),
+                    'username' => $comment->user->username,
                     'title' => $comment->user->title,
                     'profile_image' => $comment->user->profile_image_url,
                     'is_company' => false,
@@ -209,24 +223,84 @@ class CommentController extends Controller
     public function replyList(Request $request, $commentId)
     {
         $perPage = $request->get('per_page', 10);
+        $targetReplyId = $request->query('target_reply_id');
         $user = auth('api')->user();
 
-        if (($error = $this->denyWhenParentPostHidden($user, Comment::findOrFail($commentId)->post_id)) instanceof JsonResponse) {
+        $parentComment = Comment::find($commentId);
+        if (! $parentComment) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This comment has been deleted.',
+                'data' => [],
+            ], 404);
+        }
+
+        if (($error = $this->denyWhenParentPostHidden($user, $parentComment->post_id)) instanceof JsonResponse) {
             return $error;
         }
 
-        $replies = Reply::with([
+        $query = Reply::with([
             'user:id,username,title,first_name,last_name,profile_image',
             'industry:id,name,slug,tagline,logo',
             'comment.post',
+            'replyToUser:id,username,first_name,last_name',
         ])
             ->whereHas('user', fn ($q) => $q->whereNull('deleted_at'))
             ->withExists(['likes as liked_by_me' => fn ($q) => $q->where('user_id', $user->id)])
-            ->where('comment_id', $commentId)
-            ->latest()
-            ->paginate($perPage);
+            ->where('comment_id', $commentId);
 
-        $data = collect($replies->items())->map(function ($reply) use ($user): ?array {
+        // Replies within a comment thread are ordered in threaded hierarchy:
+        // root replies are ordered chronologically, each immediately followed by its sub-replies
+        $rawReplies = $query->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $replyMap = $rawReplies->keyBy('id');
+        $rootReplies = collect();
+        $childrenMap = [];
+
+        foreach ($rawReplies as $r) {
+            $parentId = $r->reply_to_reply_id;
+            if ($parentId && $replyMap->has($parentId)) {
+                $curr = $parentId;
+                $visited = [$curr => true];
+                while ($replyMap->has($curr) && $replyMap->get($curr)->reply_to_reply_id && $replyMap->has($replyMap->get($curr)->reply_to_reply_id)) {
+                    $next = $replyMap->get($curr)->reply_to_reply_id;
+                    if (isset($visited[$next])) {
+                        break;
+                    }
+                    $visited[$next] = true;
+                    $curr = $next;
+                }
+                $childrenMap[$curr][] = $r;
+            } else {
+                $rootReplies->push($r);
+            }
+        }
+
+        $orderedReplies = collect();
+        foreach ($rootReplies as $root) {
+            $orderedReplies->push($root);
+            if (! empty($childrenMap[$root->id])) {
+                foreach ($childrenMap[$root->id] as $child) {
+                    $orderedReplies->push($child);
+                }
+            }
+        }
+
+        if ($targetReplyId && is_numeric($targetReplyId)) {
+            $targetIndex = $orderedReplies->search(fn ($item) => (int) $item->id === (int) $targetReplyId);
+            if ($targetIndex !== false && ($targetIndex + 1) > $perPage) {
+                $perPage = max((int) $perPage, $targetIndex + 5);
+            }
+        }
+
+        $total = $orderedReplies->count();
+        $currentPage = max(1, (int) $request->get('page', 1));
+        $lastPage = max(1, (int) ceil($total / max(1, $perPage)));
+        $pagedItems = $orderedReplies->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        $data = $pagedItems->map(function ($reply) use ($user): ?array {
             if (! $reply->user) {
                 return null;
             }
@@ -235,21 +309,35 @@ class CommentController extends Controller
             $isCompany = (bool) $reply->industry_id;
             $industry = $isCompany ? $reply->industry : null;
 
+            $replyToUser = null;
+            if ($reply->replyToUser) {
+                $replyToUser = [
+                    'id' => $reply->replyToUser->id,
+                    'name' => trim($reply->replyToUser->first_name.' '.$reply->replyToUser->last_name),
+                    'username' => $reply->replyToUser->username,
+                ];
+            }
+
             return [
                 'id' => $reply->id,
                 'reply' => $reply->reply ?? null,
                 'image_url' => $reply->image_url ?? null,
                 'industry_id' => $reply->industry_id,
+                'reply_to_user_id' => $reply->reply_to_user_id,
+                'reply_to_reply_id' => $reply->reply_to_reply_id,
+                'reply_to_user' => $replyToUser,
                 'is_company_reply' => $isCompany,
                 'user' => $isCompany && $industry ? [
                     'id' => $industry->id,
                     'name' => $industry->name,
+                    'username' => $industry->slug,
                     'title' => $industry->tagline,
                     'profile_image' => $industry->logo,
                     'is_company' => true,
                 ] : [
                     'id' => $reply->user->id,
                     'name' => trim($reply->user->first_name.' '.$reply->user->last_name),
+                    'username' => $reply->user->username,
                     'title' => $reply->user->title,
                     'profile_image' => $reply->user->profile_image_url,
                     'is_company' => false,
@@ -273,10 +361,10 @@ class CommentController extends Controller
             'message' => 'Reply list',
             'data' => $data,
             'pagination' => [
-                'current_page' => $replies->currentPage(),
-                'per_page' => $replies->perPage(),
-                'total' => $replies->total(),
-                'last_page' => $replies->lastPage(),
+                'current_page' => $currentPage,
+                'per_page' => (int) $perPage,
+                'total' => $total,
+                'last_page' => $lastPage,
             ],
         ]);
     }
@@ -396,6 +484,97 @@ class CommentController extends Controller
                 'total' => $comments->total(),
                 'last_page' => $comments->lastPage(),
             ],
+        ]);
+    }
+
+    /**
+     * Locate and check whether a targeted comment or reply exists or has been deleted.
+     */
+    public function checkTarget(Request $request): JsonResponse
+    {
+        $postId = $request->query('post_id');
+        $commentId = $request->query('comment_id');
+        $replyId = $request->query('reply_id');
+
+        // Check reply if reply_id provided
+        if ($replyId && is_numeric($replyId)) {
+            $reply = Reply::with(['comment', 'user'])->find((int) $replyId);
+            if (! $reply || ($reply->user && $reply->user->trashed())) {
+                return response()->json([
+                    'success' => true,
+                    'exists' => false,
+                    'type' => 'reply',
+                    'message' => 'This reply has been deleted.',
+                ]);
+            }
+
+            if (! $reply->comment) {
+                return response()->json([
+                    'success' => true,
+                    'exists' => false,
+                    'type' => 'comment',
+                    'message' => 'The parent comment for this reply has been deleted.',
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'exists' => true,
+                'type' => 'reply',
+                'reply_id' => $reply->id,
+                'comment_id' => $reply->comment_id,
+                'post_id' => $reply->post_id ?? $reply->comment?->post_id,
+            ]);
+        }
+
+        // Check comment if comment_id provided
+        if ($commentId && is_numeric($commentId)) {
+            $commentQuery = Comment::with(['user'])->where('id', (int) $commentId);
+            if ($postId && is_numeric($postId)) {
+                $commentQuery->where('post_id', (int) $postId);
+            }
+            $comment = $commentQuery->first();
+            if ($comment && (! $comment->user || ! $comment->user->trashed())) {
+                return response()->json([
+                    'success' => true,
+                    'exists' => true,
+                    'type' => 'comment',
+                    'comment_id' => $comment->id,
+                    'post_id' => $comment->post_id,
+                ]);
+            }
+
+            // Check if commentId was actually a replyId from legacy notification
+            $replyQuery = Reply::with(['comment', 'user'])->where('id', (int) $commentId);
+            if ($postId && is_numeric($postId)) {
+                $replyQuery->where(function ($q) use ($postId): void {
+                    $q->where('post_id', (int) $postId)
+                        ->orWhereHas('comment', fn ($cq) => $cq->where('post_id', (int) $postId));
+                });
+            }
+            $legacyReply = $replyQuery->first();
+            if ($legacyReply && $legacyReply->comment && (! $legacyReply->user || ! $legacyReply->user->trashed())) {
+                return response()->json([
+                    'success' => true,
+                    'exists' => true,
+                    'type' => 'reply',
+                    'reply_id' => $legacyReply->id,
+                    'comment_id' => $legacyReply->comment_id,
+                    'post_id' => $legacyReply->post_id ?? $legacyReply->comment?->post_id,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'exists' => false,
+                'type' => 'comment',
+                'message' => 'This comment has been deleted.',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'exists' => true,
         ]);
     }
 

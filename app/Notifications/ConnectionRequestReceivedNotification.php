@@ -53,6 +53,7 @@ class ConnectionRequestReceivedNotification extends Notification implements Shou
             ),
             'sender_profile_image' => $this->sender->profile_image,
             'sender_profile_image_url' => $this->sender->profile_image_url,
+            'action_url' => '/mu/my-network/connection-requests',
             'message' => 'sent you a connection request',
             'type' => class_basename(self::class),
             'requested_at' => $this->connectionRequest->created_at?->toIso8601String(),

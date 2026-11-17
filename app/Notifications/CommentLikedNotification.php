@@ -34,6 +34,7 @@ class CommentLikedNotification extends Notification implements ShouldQueue
             'sender_profile_image_url' => $this->sender->profile_image_url,
             'comment_id' => $this->comment->id,
             'post_id' => $this->comment->post_id,
+            'action_url' => '/mu/post/'.$this->comment->post_id.'?comment_id='.$this->comment->id,
             'message' => 'liked your comment',
             'type' => class_basename(self::class),
             'unread_count' => $unreadCount + 1,

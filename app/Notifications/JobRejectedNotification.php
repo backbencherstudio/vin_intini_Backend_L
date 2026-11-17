@@ -41,7 +41,7 @@ class JobRejectedNotification extends Notification
             'sender_name' => 'Mind Unite Team',
             'sender_username' => null,
             'sender_profile_image_url' => null,
-            'action_url' => '/mu/recruiter-dashboard',
+            'action_url' => '/mu/job-listing/'.$this->job->id.'/job-details',
             'message' => "rejected your job posting \"{$this->job->job_title}\".",
             'description' => "Reason: {$this->reason}",
             'type' => class_basename(self::class),
@@ -64,7 +64,7 @@ class JobRejectedNotification extends Notification
                 'industry_id' => (string) ($this->job->industry_id ?? ''),
                 'status' => 'rejected',
                 'rejection_reason' => $this->reason,
-                'action_url' => '/mu/recruiter-dashboard',
+                'action_url' => '/mu/job-listing/'.$this->job->id.'/job-details',
                 'type' => class_basename(self::class),
             ]);
     }

@@ -59,6 +59,7 @@ class ConnectionRequestAcceptedNotification extends Notification implements Shou
             'acceptor_name' => $acceptorName,
             'acceptor_profile_image' => $this->acceptor->profile_image,
             'acceptor_profile_image_url' => $this->acceptor->profile_image_url,
+            'action_url' => '/mu/profile/'.($this->acceptor->username ?: $this->acceptor->id),
             'message' => 'accepted your connection request',
             'type' => class_basename(self::class),
             'responded_at' => $this->connectionRequest->responded_at?->toIso8601String(),

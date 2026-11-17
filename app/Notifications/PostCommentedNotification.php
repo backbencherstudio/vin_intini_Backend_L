@@ -31,6 +31,7 @@ class PostCommentedNotification extends Notification implements ShouldQueue
             'sender_profile_image_url' => $this->sender->profile_image_url,
             'post_id' => $this->post->id,
             'comment_id' => $this->comment->id,
+            'action_url' => '/mu/post/'.$this->post->id.'?comment_id='.$this->comment->id,
             'type' => class_basename(self::class),
             'message' => 'commented on your post',
             'unread_count' => $unreadCount + 1,

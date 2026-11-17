@@ -62,6 +62,7 @@ class GroupInvitationAcceptedNotification extends Notification implements Should
             'acceptor_username' => $this->acceptor->username,
             'acceptor_name' => $acceptorName,
             'acceptor_profile_image_url' => $this->acceptor->profile_image_url,
+            'action_url' => '/mu/my-network/group/'.($this->group->slug ?: $this->group->id),
             'message' => 'accepted your invitation to join '.$this->group->name,
             'type' => class_basename(self::class),
             'responded_at' => now()->toIso8601String(),

@@ -70,11 +70,34 @@ class CommentService
                 ];
             }
 
-            $reply = DB::transaction(function () use ($post, $parentComment, $user, $actingIndustryId, $data, $imagePath) {
+            $replyToReplyId = ! empty($data['reply_to_reply_id']) ? (int) $data['reply_to_reply_id'] : null;
+            $replyToUserId = ! empty($data['reply_to_user_id']) ? (int) $data['reply_to_user_id'] : null;
+            if (! $replyToUserId && $replyToReplyId) {
+                $targetReply = Reply::find($replyToReplyId);
+                if ($targetReply) {
+                    $replyToUserId = (int) $targetReply->user_id;
+                }
+            }
+
+            // Fallback for notification: If no explicit reply_to_user_id was passed, but the replier is the parent comment owner ($parentComment->user_id === $user->id)
+            // notify the other person who participated in this reply thread
+            if (! $replyToUserId && (int) $parentComment->user_id === (int) $user->id) {
+                $lastOtherReply = Reply::where('comment_id', $parentComment->id)
+                    ->where('user_id', '!=', $user->id)
+                    ->latest()
+                    ->first();
+                if ($lastOtherReply) {
+                    $replyToUserId = (int) $lastOtherReply->user_id;
+                }
+            }
+
+            $reply = DB::transaction(function () use ($post, $parentComment, $user, $actingIndustryId, $data, $imagePath, $replyToUserId, $replyToReplyId) {
                 $newReply = Reply::create([
                     'post_id' => $post->id,
                     'comment_id' => $parentComment->id,
                     'user_id' => $user->id,
+                    'reply_to_user_id' => $replyToUserId,
+                    'reply_to_reply_id' => $replyToReplyId,
                     'industry_id' => $actingIndustryId,
                     'reply' => $data['comment'] ?? null,
                     'image' => $imagePath,
@@ -86,8 +109,31 @@ class CommentService
                 return $newReply;
             });
 
-            if ($parentComment->user_id !== $user->id && $parentComment->user && ! $parentComment->user->trashed()) {
-                $parentComment->user->notify(new CommentRepliedNotification($user, $post, $reply));
+            $notifiedUserIds = [];
+
+            // 1. Specific reply author being replied to
+            if ($replyToUserId && (int) $replyToUserId !== (int) $user->id) {
+                $targetUser = User::find($replyToUserId);
+                if ($targetUser && ! $targetUser->trashed()) {
+                    $targetUser->notify(new CommentRepliedNotification($user, $post, $reply));
+                    $notifiedUserIds[] = (int) $targetUser->id;
+                }
+            }
+
+            // 2. Parent comment owner (if not already notified and not the replier)
+            if ($parentComment->user_id && (int) $parentComment->user_id !== (int) $user->id && ! in_array((int) $parentComment->user_id, $notifiedUserIds, true)) {
+                if ($parentComment->user && ! $parentComment->user->trashed()) {
+                    $parentComment->user->notify(new CommentRepliedNotification($user, $post, $reply));
+                    $notifiedUserIds[] = (int) $parentComment->user_id;
+                }
+            }
+
+            // 3. Post owner (if post owner is different from replier, and not yet notified)
+            if ($post->user_id && (int) $post->user_id !== (int) $user->id && ! in_array((int) $post->user_id, $notifiedUserIds, true)) {
+                if ($post->user && ! $post->user->trashed()) {
+                    $post->user->notify(new CommentRepliedNotification($user, $post, $reply));
+                    $notifiedUserIds[] = (int) $post->user_id;
+                }
             }
 
             return [

@@ -76,6 +76,7 @@ class JobApplicationReceivedNotification extends Notification implements ShouldQ
 
             // Notification meta
             'message' => "applied for your job position: {$this->jobPost->job_title}",
+            'action_url' => '/mu/job-listing/'.$this->jobPost->id.'/applicants',
             'type' => class_basename(self::class),
             'applied_at' => $this->application->created_at?->toIso8601String(),
             'unread_count' => $unreadCount + 1,
@@ -137,6 +138,7 @@ class JobApplicationReceivedNotification extends Notification implements ShouldQ
                 'sender_id' => (string) $this->applicant->id,
                 'sender_name' => (string) $applicantName,
                 'sender_profile_image_url' => (string) ($this->applicant->profile_image_url ?? ''),
+                'action_url' => '/mu/job-listing/'.$this->jobPost->id.'/applicants',
                 'type' => class_basename(self::class),
                 'applied_at' => $this->application->created_at?->toIso8601String(),
             ]);

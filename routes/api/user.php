@@ -283,6 +283,7 @@ Route::middleware('profile_completed')->group(function (): void {
 
     Route::get('/comment-list/{post}', [CommentController::class, 'commentList']);
     Route::get('/reply-list/{comment}', [CommentController::class, 'replyList']);
+    Route::get('/comment-target-status', [CommentController::class, 'checkTarget']);
     Route::post('/comment/{post}', [CommentController::class, 'comment']);
 
     Route::delete('/comment/{id}', [CommentController::class, 'deleteComment']);
