@@ -484,6 +484,18 @@ class JobManagementController extends Controller
         }
 
         if ($newStatus === 'published') {
+            // Guard: Incomplete drafts or jobs missing required publishing fields cannot be directly activated
+            $strippedDesc = trim(strip_tags((string) $job->job_description));
+            if (empty($strippedDesc) || empty($job->work_mode) || empty($job->employment_type) || empty($job->email)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot publish an incomplete draft job. Please complete all required details (description, work mode, employment type, and contact email) before publishing.',
+                    'errors' => [
+                        'status' => ['Incomplete job draft cannot be published directly. Please edit and complete the job posting.'],
+                    ],
+                ], 422);
+            }
+
             $endDate = $job->announcement_end_date ? \Carbon\Carbon::parse($job->announcement_end_date)->endOfDay() : null;
             if ($endDate && $endDate->isPast()) {
                 return response()->json([
