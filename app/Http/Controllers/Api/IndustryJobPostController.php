@@ -1024,7 +1024,7 @@ class IndustryJobPostController extends Controller
 
             'email' => [$isRequired, 'email', 'max:255'],
             'phone_number' => [$isRequired, 'string', 'max:50'],
-            'website' => ['nullable', 'url', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255', 'not_regex:/^(javascript|vbscript|data):/i'],
 
             'salary_type' => [$isRequired, 'string', 'in:Monthly,Yearly,Hourly,Negotiable,monthly,yearly,hourly,negotiable'],
             'salary_min' => [
@@ -1038,7 +1038,7 @@ class IndustryJobPostController extends Controller
                 ($request->filled('salary_min') && strtolower((string) $request->input('salary_type')) !== 'negotiable') ? 'gte:salary_min' : 'min:0',
             ],
 
-            'location_url' => ['nullable', 'string', 'max:1000'],
+            'location_url' => ['nullable', 'string', 'max:1000', 'not_regex:/^(javascript|vbscript|data):/i'],
             'tags' => ['nullable'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
