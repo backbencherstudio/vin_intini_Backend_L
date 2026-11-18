@@ -13,6 +13,7 @@ use App\Models\BoostPackage;
 use App\Services\Advertising\BoostSettingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BoostPackageAdminController extends Controller
 {
@@ -65,7 +66,8 @@ class BoostPackageAdminController extends Controller
                 });
             })
             ->withCount(['campaigns', 'activeCampaigns'])
-            ->orderByDesc('priority_weight')
+            ->orderBy('sort_order')
+            ->orderBy('duration_days')
             ->orderBy('id')
             ->get();
 
@@ -124,7 +126,14 @@ class BoostPackageAdminController extends Controller
      */
     public function store(StoreBoostPackageRequest $request): JsonResponse
     {
-        $package = BoostPackage::create($request->validated());
+        $data = $request->validated();
+        $data['placements'] = BoostPackage::normalizePlacements($data['placements'] ?? null);
+        $data['features'] = BoostPackage::buildFeaturesForPlacements($data['placements']);
+        if (! isset($data['sort_order'])) {
+            $data['sort_order'] = ((int) BoostPackage::max('sort_order')) + 1;
+        }
+
+        $package = BoostPackage::create($data);
 
         return response()->json([
             'success' => true,
@@ -138,7 +147,13 @@ class BoostPackageAdminController extends Controller
      */
     public function update(UpdateBoostPackageRequest $request, BoostPackage $boostPackage): JsonResponse
     {
-        $boostPackage->update($request->validated());
+        $data = $request->validated();
+        if (array_key_exists('placements', $data)) {
+            $data['placements'] = BoostPackage::normalizePlacements($data['placements']);
+            $data['features'] = BoostPackage::buildFeaturesForPlacements($data['placements']);
+        }
+
+        $boostPackage->update($data);
 
         return response()->json([
             'success' => true,
@@ -174,11 +189,52 @@ class BoostPackageAdminController extends Controller
             ], 422);
         }
 
+        if ($boostPackage->campaigns()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This package has existing purchase history and cannot be deleted. Please deactivate it instead to preserve invoices and analytics.',
+            ], 422);
+        }
+
         $boostPackage->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Boost package deleted successfully.',
+        ], 200);
+    }
+
+    /**
+     * Reorder boost packages by updating their sequential sort_order.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'package_ids' => ['required', 'array', 'min:1'],
+            'package_ids.*' => ['required', 'integer', 'distinct', 'exists:boost_packages,id'],
+        ]);
+
+        $orderedIds = array_values(array_map(intval(...), $validated['package_ids']));
+
+        DB::transaction(function () use ($orderedIds): void {
+            foreach ($orderedIds as $index => $packageId) {
+                BoostPackage::where('id', $packageId)->update([
+                    'sort_order' => $index + 1,
+                ]);
+            }
+        });
+
+        $packages = BoostPackage::query()
+            ->withCount(['campaigns', 'activeCampaigns'])
+            ->orderBy('sort_order')
+            ->orderBy('duration_days')
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Boost package order updated successfully.',
+            'data' => BoostPackageResource::collection($packages),
         ], 200);
     }
 }

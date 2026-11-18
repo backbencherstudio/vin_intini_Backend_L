@@ -63,8 +63,8 @@ return [
         'enabled' => (bool) env('BOOST_NEWSFEED_ADS_ENABLED', true),
         'min_posts_before_ad' => (int) env('BOOST_NEWSFEED_MIN_POSTS', 4),
         'first_ad_slot' => (int) env('BOOST_NEWSFEED_FIRST_SLOT', 4),
-        'ad_interval' => (int) env('BOOST_NEWSFEED_INTERVAL', 8),
+        'ad_interval' => (int) env('BOOST_NEWSFEED_INTERVAL', 5),
         'max_ads_per_page' => (int) env('BOOST_NEWSFEED_MAX_ADS_PER_PAGE', 2),
-        'max_daily_impressions_per_user' => (int) env('BOOST_MAX_USER_DAILY_IMPRESSIONS', 5),
+        'max_daily_impressions_per_user' => (int) env('BOOST_MAX_USER_DAILY_IMPRESSIONS', 3),
     ],
 ];

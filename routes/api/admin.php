@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\Api\AcademiaController;
+use App\Http\Controllers\Admin\Api\AdCampaignAdminController;
 use App\Http\Controllers\Admin\Api\AdminDashboardController;
 use App\Http\Controllers\Admin\Api\BoostPackageAdminController;
 use App\Http\Controllers\Admin\Api\ContactUsController;
@@ -43,6 +44,7 @@ Route::prefix('admin')->group(function (): void {
 
     // Boost package routes
     Route::get('/boost-packages', [BoostPackageAdminController::class, 'index']);
+    Route::post('/boost-packages/reorder', [BoostPackageAdminController::class, 'reorder']);
     Route::get('/boost-packages/{boost_package}/show', [BoostPackageAdminController::class, 'show']);
     Route::post('/boost-packages/store', [BoostPackageAdminController::class, 'store']);
     Route::patch('/boost-packages/{boost_package}/update', [BoostPackageAdminController::class, 'update']);
@@ -52,6 +54,13 @@ Route::prefix('admin')->group(function (): void {
     // Boost system settings (custom slider, new release, pause policy)
     Route::get('/boost-settings', [BoostPackageAdminController::class, 'getSettings']);
     Route::match(['patch', 'put'], '/boost-settings', [BoostPackageAdminController::class, 'updateSettings']);
+
+    // Boost campaigns management (Overview + Pause / Resume / Cancel)
+    Route::get('/boost-campaigns', [AdCampaignAdminController::class, 'index']);
+    Route::get('/boost-campaigns/{id}', [AdCampaignAdminController::class, 'show'])->whereNumber('id');
+    Route::post('/boost-campaigns/{id}/pause', [AdCampaignAdminController::class, 'pause'])->whereNumber('id');
+    Route::post('/boost-campaigns/{id}/resume', [AdCampaignAdminController::class, 'resume'])->whereNumber('id');
+    Route::post('/boost-campaigns/{id}/cancel', [AdCampaignAdminController::class, 'cancel'])->whereNumber('id');
 
     // Transaction routes
     Route::get('/transactions', [TransactionController::class, 'index']);

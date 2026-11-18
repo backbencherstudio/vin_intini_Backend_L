@@ -42,7 +42,8 @@ class ProductBoostController extends Controller
         $packages = BoostPackage::query()
             ->where('status', 'active')
             ->whereIn('target_entity', [$target, BoostTargetEntity::ALL->value])
-            ->orderByDesc('priority_weight')
+            ->orderBy('sort_order')
+            ->orderBy('duration_days')
             ->orderBy('price')
             ->get();
 
@@ -121,6 +122,16 @@ class ProductBoostController extends Controller
                 'success' => false,
                 'message' => 'This boost package is purchased in the app store via RevenueCat. Complete the purchase in the app and your boost will activate automatically.',
             ], 422);
+        }
+
+        if (! empty($validated['custom_days']) && empty($validated['boost_package_id'])) {
+            $sliderConfig = $this->boostSettings->getSliderConfig();
+            if (! ($sliderConfig['enabled'] ?? true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Custom duration boosting is currently disabled. Please select a preset boost package.',
+                ], 422);
+            }
         }
 
         $product = IndustryProduct::findOrFail($id);

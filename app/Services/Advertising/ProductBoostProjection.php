@@ -28,7 +28,18 @@ class ProductBoostProjection
             ->with('boostPackage')
             ->get();
 
-        if ($activeCampaigns->isEmpty()) {
+        // Only campaigns whose placements include product feed (or legacy empty/marketplace placements)
+        // promote the product in the Product Feed listing.
+        $productFeedCampaigns = $activeCampaigns->filter(function (AdCampaign $campaign): bool {
+            $placements = $campaign->placements;
+            if (! is_array($placements) || $placements === []) {
+                return true;
+            }
+
+            return count(array_intersect($placements, ['product_feed', 'industry_product_feed', 'marketplace'])) > 0;
+        });
+
+        if ($productFeedCampaigns->isEmpty()) {
             $product->update([
                 'is_boosted' => false,
                 'boost_expires_at' => null,
@@ -38,8 +49,8 @@ class ProductBoostProjection
             return;
         }
 
-        $maxEndsAt = $activeCampaigns->max('ends_at');
-        $maxScore = $activeCampaigns->map(fn ($campaign) => $campaign->boostPackage?->priority_weight ?? 1)->max();
+        $maxEndsAt = $productFeedCampaigns->max('ends_at');
+        $maxScore = $productFeedCampaigns->map(fn ($campaign) => $campaign->boostPackage?->priority_weight ?? 1)->max();
 
         $product->update([
             'is_boosted' => true,

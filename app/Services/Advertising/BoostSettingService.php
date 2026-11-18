@@ -97,13 +97,13 @@ class BoostSettingService
                         : (int) ($newsfeedConfig['first_ad_slot'] ?? 4),
                     'ad_interval' => isset($dbSettings['boost_newsfeed_interval'])
                         ? (int) $dbSettings['boost_newsfeed_interval']
-                        : (int) ($newsfeedConfig['ad_interval'] ?? 8),
+                        : (int) ($newsfeedConfig['ad_interval'] ?? 5),
                     'max_ads_per_page' => isset($dbSettings['boost_newsfeed_max_ads_per_page'])
                         ? (int) $dbSettings['boost_newsfeed_max_ads_per_page']
                         : (int) ($newsfeedConfig['max_ads_per_page'] ?? 2),
                     'max_daily_impressions_per_user' => isset($dbSettings['boost_max_user_daily_impressions'])
                         ? (int) $dbSettings['boost_max_user_daily_impressions']
-                        : (int) ($newsfeedConfig['max_daily_impressions_per_user'] ?? 5),
+                        : (int) ($newsfeedConfig['max_daily_impressions_per_user'] ?? 3),
                 ],
             ];
         });

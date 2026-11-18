@@ -49,7 +49,7 @@ class ProductBoostPaymentService
         [$package, $durationDays, $amount, $priorityWeight] = $this->resolvePricingAndDuration($params);
 
         $networkType = $product->network_type;
-        $placements = $params['placements'] ?? ['newsfeed', 'product_feed'];
+        $placements = $params['placements'] ?? ($package ? $package->resolvedPlacements() : BoostPackage::DEFAULT_PLACEMENTS);
         $paymentMethodId = $params['payment_method'];
         $idempotencyKey = $params['idempotency_key'] ?? null;
 
@@ -402,7 +402,7 @@ class ProductBoostPaymentService
         }
 
         $networkType = $product->network_type;
-        $placements = $params['placements'] ?? ['newsfeed', 'product_feed'];
+        $placements = $params['placements'] ?? $package->resolvedPlacements();
         $durationDays = $package->duration_days;
         $amount = (float) $package->price;
 
@@ -492,6 +492,12 @@ class ProductBoostPaymentService
         if (! empty($params['custom_days'])) {
             $customDays = (int) $params['custom_days'];
             $sliderConfig = $this->boostSettings->getSliderConfig();
+
+            if (! ($sliderConfig['enabled'] ?? true)) {
+                throw ValidationException::withMessages([
+                    'custom_days' => ['Custom duration boosting is currently disabled. Please select a preset boost package.'],
+                ]);
+            }
 
             $minDays = (int) ($sliderConfig['min_days'] ?? 3);
             $maxDays = (int) ($sliderConfig['max_days'] ?? 60);

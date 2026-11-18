@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Enums\BoostTargetEntity;
+use App\Models\BoostPackage;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -28,6 +29,8 @@ class StoreBoostPackageRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'target_entity' => ['required', Rule::enum(BoostTargetEntity::class)],
+            'placements' => ['sometimes', 'nullable', 'array', 'min:1'],
+            'placements.*' => ['string', Rule::in(BoostPackage::ALLOWED_PLACEMENTS)],
             'duration_days' => ['required', 'integer', 'min:1', 'max:365'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'estimated_impressions' => ['nullable', 'string', 'max:255'],
@@ -37,6 +40,7 @@ class StoreBoostPackageRequest extends FormRequest
             'features' => ['nullable', 'array'],
             'features.*' => ['string', 'max:255'],
             'priority_weight' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
             'revenuecat_store_identifier_ios' => ['nullable', 'string', 'max:255'],
             'revenuecat_store_identifier_android' => ['nullable', 'string', 'max:255'],
