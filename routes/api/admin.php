@@ -56,6 +56,8 @@ Route::prefix('admin')->group(function (): void {
     // Transaction routes
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::get('/transactions/overview', [TransactionController::class, 'overview']);
+    Route::get('/transactions/export', [TransactionController::class, 'export']);
+    Route::get('/transactions/{id}', [TransactionController::class, 'show'])->whereNumber('id');
 
     // Subscription management routes
     Route::get('/subscriptions', [SubscriptionManagementController::class, 'index']);
