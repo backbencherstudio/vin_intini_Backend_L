@@ -69,6 +69,11 @@ class UserManagementTest extends TestCase
             'is_verified' => true,
         ]);
         $basicUser->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $basicUser->id]);
+
+        // Un-onboarded user (no profile) should not appear
+        $incompleteUser = User::factory()->create(['email' => 'incomplete@test.com']);
+        $incompleteUser->assignRole($this->userRole);
 
         // Premium user should not appear in basic users
         $premiumPlan = Plan::create([
@@ -81,6 +86,7 @@ class UserManagementTest extends TestCase
         ]);
         $premiumUser = User::factory()->create(['first_name' => 'Premium', 'last_name' => 'User', 'email' => 'premium@test.com']);
         $premiumUser->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $premiumUser->id]);
         Subscription::create([
             'user_id' => $premiumUser->id,
             'plan_id' => $premiumPlan->id,
@@ -118,6 +124,7 @@ class UserManagementTest extends TestCase
             'is_verified' => true,
         ]);
         $premiumUser->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $premiumUser->id]);
 
         Subscription::create([
             'user_id' => $premiumUser->id,
@@ -128,6 +135,7 @@ class UserManagementTest extends TestCase
 
         $basicUser = User::factory()->create(['email' => 'basic@test.com']);
         $basicUser->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $basicUser->id]);
 
         $response = $this->actingAs($this->admin, 'api')
             ->getJson('/api/admin/user-manage/users?type=premium');
@@ -159,6 +167,7 @@ class UserManagementTest extends TestCase
             'is_verified' => true,
         ]);
         $industryOwner->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $industryOwner->id]);
 
         Subscription::create([
             'user_id' => $industryOwner->id,
@@ -206,6 +215,7 @@ class UserManagementTest extends TestCase
             'is_suspended' => false,
         ]);
         $user1->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $user1->id]);
 
         $user2 = User::factory()->create([
             'first_name' => 'Diana',
@@ -214,6 +224,7 @@ class UserManagementTest extends TestCase
             'is_suspended' => true,
         ]);
         $user2->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $user2->id]);
 
         // Search test
         $responseSearch = $this->actingAs($this->admin, 'api')

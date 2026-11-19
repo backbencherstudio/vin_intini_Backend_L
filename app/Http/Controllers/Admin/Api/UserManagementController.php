@@ -505,13 +505,14 @@ class UserManagementController extends Controller
     }
 
     /**
-     * Build base query excluding admins.
+     * Build base query excluding admins and un-onboarded users (must have user_profile).
      */
     protected function buildBaseUserQuery(): Builder
     {
         return User::query()
             ->whereDoesntHave('roles', fn (Builder $q) => $q->where('name', 'admin'))
-            ->where('email', '!=', 'admin@gmail.com');
+            ->where('email', '!=', 'admin@gmail.com')
+            ->has('profile');
     }
 
     /**
