@@ -56,7 +56,7 @@ class IndustryProductController extends Controller
             'industry_type' => ['nullable', 'string', 'in:biotechnology,psychotropics'],
         ]);
 
-        $query = IndustrySections::query();
+        $query = IndustrySections::query()->where('is_active', true)->ordered();
 
         if ($request->filled('network_type')) {
             $query->where('network_type', $request->input('network_type'));
@@ -66,7 +66,7 @@ class IndustryProductController extends Controller
             $query->where('industry_type', $request->input('industry_type'));
         }
 
-        $sections = $query->orderBy('name')->get(['id', 'name', 'network_type', 'industry_type']);
+        $sections = $query->get(['id', 'name', 'network_type', 'industry_type', 'sort_order', 'is_active']);
 
         return response()->json([
             'success' => true,
@@ -82,9 +82,11 @@ class IndustryProductController extends Controller
     {
         $section = IndustrySections::with([
             'IndustryCategory' => function ($q): void {
-                $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
+                $q->select('id', 'section_id', 'category_name', 'is_active', 'sort_order')
+                    ->where('is_active', true)
+                    ->ordered();
             },
-        ])->find($id);
+        ])->where('is_active', true)->find($id);
 
         if (! $section) {
             return response()->json([
@@ -183,6 +185,18 @@ class IndustryProductController extends Controller
                 ->where('status', 'active')
                 ->where('network_type', $request->input('network_type'))
                 ->where('industry_type', $request->input('industry_type'))
+                ->where(function ($q): void {
+                    $q->whereNull('section_id')
+                        ->orWhereHas('section', function ($sq): void {
+                            $sq->where('is_active', true);
+                        });
+                })
+                ->where(function ($q): void {
+                    $q->whereNull('category_id')
+                        ->orWhereHas('category', function ($cq): void {
+                            $cq->where('is_active', true);
+                        });
+                })
                 ->with(['creator', 'industry', 'section', 'category', 'activeCampaign'])
                 ->feedOrder();
 
@@ -214,9 +228,11 @@ class IndustryProductController extends Controller
             if ($targetSectionId) {
                 $sectionObj = IndustrySections::with([
                     'IndustryCategory' => function ($q): void {
-                        $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
+                        $q->select('id', 'section_id', 'category_name', 'is_active', 'sort_order')
+                            ->where('is_active', true)
+                            ->ordered();
                     },
-                ])->find($targetSectionId);
+                ])->where('is_active', true)->find($targetSectionId);
 
                 if ($sectionObj) {
                     $sectionCategories = $sectionObj->IndustryCategory->map(fn ($cat): array => [
@@ -299,12 +315,15 @@ class IndustryProductController extends Controller
         $sections = IndustrySections::query()
             ->where('network_type', $networkType)
             ->where('industry_type', $industryType)
+            ->where('is_active', true)
+            ->ordered()
             ->with([
                 'IndustryCategory' => function ($q): void {
-                    $q->select('id', 'section_id', 'category_name')->orderBy('category_name');
+                    $q->select('id', 'section_id', 'category_name', 'is_active', 'sort_order')
+                        ->where('is_active', true)
+                        ->ordered();
                 },
             ])
-            ->orderBy('id')
             ->get();
 
         $search = trim((string) $request->input('search', ''));
@@ -324,7 +343,13 @@ class IndustryProductController extends Controller
                 ->where('network_type', $networkType)
                 ->where('industry_type', $industryType)
                 ->where('status', 'active')
-                ->whereIn('section_id', $sectionIds);
+                ->whereIn('section_id', $sectionIds)
+                ->where(function ($q): void {
+                    $q->whereNull('category_id')
+                        ->orWhereHas('category', function ($cq): void {
+                            $cq->where('is_active', true);
+                        });
+                });
 
             if ($search !== '') {
                 $this->applyProductSearch($countQuery, $search);
@@ -348,7 +373,13 @@ class IndustryProductController extends Controller
                         ->where('network_type', $networkType)
                         ->where('industry_type', $industryType)
                         ->where('status', 'active')
-                        ->where('section_id', $sid);
+                        ->where('section_id', $sid)
+                        ->where(function ($q): void {
+                            $q->whereNull('category_id')
+                                ->orWhereHas('category', function ($cq): void {
+                                    $cq->where('is_active', true);
+                                });
+                        });
                     $this->applyProductSearch($sectionQuery, $search);
 
                     $sectionItems = $sectionQuery
@@ -380,6 +411,7 @@ class IndustryProductController extends Controller
                           AND industry_type = ?
                           AND status = 'active'
                           AND section_id IN ({$placeholders})
+                          AND (category_id IS NULL OR category_id IN (SELECT id FROM industry_categories WHERE is_active = 1))
                           AND deleted_at IS NULL
                     ) as ranked
                     WHERE rn <= ?
@@ -458,7 +490,9 @@ class IndustryProductController extends Controller
         }
 
         $isAdmin = $currentUser && method_exists($currentUser, 'hasRole') && ($currentUser->hasRole('admin') || $currentUser->hasRole('super-admin'));
-        if ($product->status !== 'active' && ! $product->isOwnedBy($currentUser) && ! $isAdmin) {
+        $isSectionActive = ! $product->section_id || ($product->section && $product->section->is_active);
+        $isCategoryActive = ! $product->category_id || ($product->category && $product->category->is_active);
+        if (($product->status !== 'active' || ! $isSectionActive || ! $isCategoryActive) && ! $product->isOwnedBy($currentUser) && ! $isAdmin) {
             return response()->json([
                 'success' => false,
                 'message' => 'Product not found.',

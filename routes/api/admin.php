@@ -164,8 +164,12 @@ Route::prefix('admin')->group(function (): void {
 
         // Remove section
         Route::delete('section/delete/{id}', [IndustryCategoryController::class, 'destroySection']);
+        Route::post('section/reorder', [IndustryCategoryController::class, 'reorderSections']);
+        Route::patch('section/toggle-status/{id}', [IndustryCategoryController::class, 'toggleSectionStatus']);
 
         // Sub Tabs / Categories
+        Route::post('sub-category/reorder', [IndustryCategoryController::class, 'reorderSubcategories']);
+        Route::patch('sub-category/toggle-status/{id}', [IndustryCategoryController::class, 'toggleSubcategoryStatus']);
         Route::post('sub-category/create', [IndustryCategoryController::class, 'storeSubCategory']);
         Route::put('sub-category/update/{id}', [IndustryCategoryController::class, 'updateSubCategory']);
         Route::delete('sub-category/delete/{id}', [IndustryCategoryController::class, 'destroySubCategory']);
