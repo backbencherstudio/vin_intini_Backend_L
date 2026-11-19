@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\Api\AcademiaController;
 use App\Http\Controllers\Admin\Api\AdCampaignAdminController;
 use App\Http\Controllers\Admin\Api\AdminDashboardController;
 use App\Http\Controllers\Admin\Api\BoostPackageAdminController;
+use App\Http\Controllers\Admin\Api\CityAdminController;
 use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
 use App\Http\Controllers\Admin\Api\InstitutionReportController;
@@ -198,4 +199,14 @@ Route::prefix('admin')->group(function (): void {
     // Pages
     Route::get('/pages/{slug}', [PageController::class, 'getPageData']);
     Route::put('/pages/{slug}', [PageController::class, 'update']);
+
+    // Locations / Cities Management
+    Route::prefix('cities')->group(function (): void {
+        Route::get('/', [CityAdminController::class, 'index']);
+        Route::get('/states', [CityAdminController::class, 'states']);
+        Route::post('/', [CityAdminController::class, 'store']);
+        Route::get('/{city}', [CityAdminController::class, 'show'])->whereNumber('city');
+        Route::match(['put', 'patch'], '/{city}', [CityAdminController::class, 'update'])->whereNumber('city');
+        Route::delete('/{city}', [CityAdminController::class, 'destroy'])->whereNumber('city');
+    });
 });
