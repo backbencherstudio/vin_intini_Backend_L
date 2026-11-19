@@ -75,6 +75,7 @@ Route::prefix('admin')->group(function (): void {
 
     // User Management
     Route::prefix('user-manage')->group(function (): void {
+        Route::get('overview', [UserManagementController::class, 'overview']);
         Route::get('users', [UserManagementController::class, 'index']);
         Route::get('users/{id}', [UserManagementController::class, 'show']);
         Route::post('users/{id}/toggle-suspend', [UserManagementController::class, 'toggleSuspend']);

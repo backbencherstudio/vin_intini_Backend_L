@@ -491,6 +491,7 @@ class UserManagementController extends Controller
         return response()->json([
             'success' => true,
             'tier' => $tier,
+            'summary' => $this->getSummaryMetrics(),
             'total_users' => $paginated->total(),
             'data' => $rows,
             'pagination' => [
@@ -502,6 +503,95 @@ class UserManagementController extends Controller
                 'to' => $paginated->lastItem(),
             ],
         ], 200);
+    }
+
+    /**
+     * Get aggregate overview statistics and recent onboarded users.
+     */
+    public function overview(Request $request): JsonResponse
+    {
+        $summary = $this->getSummaryMetrics();
+        $base = $this->buildBaseUserQuery();
+
+        $recentUsers = (clone $base)
+            ->with(['profile.state', 'industry', 'subscriptions.plan'])
+            ->latest('id')
+            ->take(5)
+            ->get()
+            ->map(fn (User $user, int $i): array => $this->formatUserListRow($user, $i + 1, 'all'));
+
+        return response()->json([
+            'success' => true,
+            'summary' => $summary,
+            'recent_users' => $recentUsers,
+        ], 200);
+    }
+
+    /**
+     * Compute summary metrics for all user tiers.
+     */
+    public function getSummaryMetrics(): array
+    {
+        $base = $this->buildBaseUserQuery();
+
+        $totalUsers = (clone $base)->count();
+
+        $proIndustryCount = (clone $base)->where(function (Builder $q): void {
+            $q->whereHas('industry')
+                ->orWhereHas('subscriptions', function (Builder $sub): void {
+                    $sub->whereIn('status', ['active', 'trialing'])
+                        ->where(function (Builder $period): void {
+                            $period->whereNull('current_period_end')
+                                ->orWhere('current_period_end', '>', now());
+                        })
+                        ->whereHas('plan', fn (Builder $p) => $p->where('plan_type', PlanType::INDUSTRY->value));
+                });
+        })->count();
+
+        $premiumCount = (clone $base)
+            ->whereDoesntHave('industry')
+            ->whereDoesntHave('subscriptions', function (Builder $sub): void {
+                $sub->whereIn('status', ['active', 'trialing'])
+                    ->where(function (Builder $period): void {
+                        $period->whereNull('current_period_end')
+                            ->orWhere('current_period_end', '>', now());
+                    })
+                    ->whereHas('plan', fn (Builder $p) => $p->where('plan_type', PlanType::INDUSTRY->value));
+            })
+            ->whereHas('subscriptions', function (Builder $sub): void {
+                $sub->whereIn('status', ['active', 'trialing'])
+                    ->where(function (Builder $period): void {
+                        $period->whereNull('current_period_end')
+                            ->orWhere('current_period_end', '>', now());
+                    })
+                    ->whereHas('plan', fn (Builder $p) => $p->where('plan_type', PlanType::PREMIUM->value));
+            })->count();
+
+        $basicCount = (clone $base)
+            ->whereDoesntHave('industry')
+            ->whereDoesntHave('subscriptions', function (Builder $sub): void {
+                $sub->whereIn('status', ['active', 'trialing'])
+                    ->where(function (Builder $period): void {
+                        $period->whereNull('current_period_end')
+                            ->orWhere('current_period_end', '>', now());
+                    });
+            })->count();
+
+        $suspendedCount = (clone $base)->where('is_suspended', true)->count();
+        $activeCount = (clone $base)->where('is_suspended', false)->count();
+        $pendingLeavesCount = DeletedAccountLog::count();
+        $newThisMonth = (clone $base)->where('created_at', '>=', now()->startOfMonth())->count();
+
+        return [
+            'total_users' => $totalUsers,
+            'basic_users' => $basicCount,
+            'premium_users' => $premiumCount,
+            'pro_industry_users' => $proIndustryCount,
+            'active_users' => $activeCount,
+            'suspended_users' => $suspendedCount,
+            'pending_leaves' => $pendingLeavesCount,
+            'new_this_month' => $newThisMonth,
+        ];
     }
 
     /**

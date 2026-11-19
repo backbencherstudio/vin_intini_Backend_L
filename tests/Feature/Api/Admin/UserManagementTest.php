@@ -406,6 +406,27 @@ class UserManagementTest extends TestCase
             ->assertJsonPath('message', 'Admin accounts cannot be suspended.');
     }
 
+    public function test_admin_can_fetch_user_management_overview(): void
+    {
+        $basicUser = User::factory()->create(['email' => 'basic1@test.com', 'is_verified' => true]);
+        $basicUser->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $basicUser->id]);
+
+        $suspendedUser = User::factory()->create(['email' => 'suspended1@test.com', 'is_suspended' => true]);
+        $suspendedUser->assignRole($this->userRole);
+        UserProfile::create(['user_id' => $suspendedUser->id]);
+
+        $response = $this->actingAs($this->admin, 'api')
+            ->getJson('/api/admin/user-manage/overview');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('summary.total_users', 2)
+            ->assertJsonPath('summary.basic_users', 2)
+            ->assertJsonPath('summary.suspended_users', 1)
+            ->assertJsonCount(2, 'recent_users');
+    }
+
     public function test_suspended_user_cannot_login(): void
     {
         $user = User::factory()->create([
