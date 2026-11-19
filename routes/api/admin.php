@@ -142,7 +142,13 @@ Route::prefix('admin')->group(function (): void {
     Route::get('institution-report/students/{id}', [InstitutionReportController::class, 'showStudents']);
 
     // Contact Us
-    Route::get('contact-us', [ContactUsController::class, 'getContactUs']);
+    Route::prefix('contact-us')->group(function (): void {
+        Route::get('/', [ContactUsController::class, 'getContactUs']);
+        Route::get('/{id}', [ContactUsController::class, 'show'])->whereNumber('id');
+        Route::patch('/{id}/status', [ContactUsController::class, 'markStatus'])->whereNumber('id');
+        Route::patch('/{id}/note', [ContactUsController::class, 'updateAdminNote'])->whereNumber('id');
+        Route::delete('/{id}', [ContactUsController::class, 'destroy'])->whereNumber('id');
+    });
 
     // Categories & Sections
     Route::prefix('categories')->group(function (): void {
