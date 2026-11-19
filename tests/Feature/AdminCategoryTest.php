@@ -28,6 +28,7 @@ test('admin can fetch psychology sections with search and type filter', function
         'name' => 'Mood Psychotropics',
         'industry_type' => 'psychotropics',
         'network_type' => 'psychology',
+        'is_active' => false,
     ]);
 
     IndustryCategory::create([
@@ -48,6 +49,15 @@ test('admin can fetch psychology sections with search and type filter', function
     expect(count($data))->toBe(1);
     expect($data[0]['name'])->toBe('Diagnostic Brain Imaging');
     expect($data[0]['categories_count'])->toBe(1);
+    expect($response->json('summary.inactive_sections'))->toBe(1);
+
+    // Test Hidden / Inactive filter
+    $hiddenResponse = $this->actingAs($this->adminUser, 'api')
+        ->getJson('/api/admin/categories/psychology?type=hidden');
+    $hiddenResponse->assertStatus(200);
+    $hiddenData = $hiddenResponse->json('data.sections');
+    expect(count($hiddenData))->toBe(1);
+    expect($hiddenData[0]['name'])->toBe('Mood Psychotropics');
 
     // Test Search filter
     $searchResponse = $this->actingAs($this->adminUser, 'api')

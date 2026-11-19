@@ -14,7 +14,7 @@ class IndustryCategoryController extends Controller
     public function psychology(Request $request)
     {
         $request->validate([
-            'type' => 'nullable|in:biotechnology,psychotropics',
+            'type' => 'nullable|in:biotechnology,psychotropics,hidden,inactive',
             'search' => 'nullable|string|max:100',
         ]);
 
@@ -29,6 +29,9 @@ class IndustryCategoryController extends Controller
                 ->where('industry_type', 'biotechnology')->count(),
             'psychotropics_sections' => IndustrySections::where('network_type', 'psychology')
                 ->where('industry_type', 'psychotropics')->count(),
+            'inactive_sections' => IndustrySections::where('network_type', 'psychology')
+                ->where('industry_type', '!=', 'publications')
+                ->where('is_active', false)->count(),
             'total_subcategories' => IndustryCategory::whereHas('IndustrySection', function ($q): void {
                 $q->where('network_type', 'psychology')
                     ->where('industry_type', '!=', 'publications');
@@ -52,7 +55,11 @@ class IndustryCategoryController extends Controller
             ->ordered();
 
         if ($request->filled('type')) {
-            $query->where('industry_type', $request->type);
+            if ($request->type === 'hidden' || $request->type === 'inactive') {
+                $query->where('is_active', false);
+            } else {
+                $query->where('industry_type', $request->type);
+            }
         }
 
         if ($search !== '') {
@@ -209,7 +216,7 @@ class IndustryCategoryController extends Controller
     public function neuroscience(Request $request)
     {
         $request->validate([
-            'type' => 'nullable|in:biotechnology,psychotropics',
+            'type' => 'nullable|in:biotechnology,psychotropics,hidden,inactive',
             'search' => 'nullable|string|max:100',
         ]);
 
@@ -224,6 +231,9 @@ class IndustryCategoryController extends Controller
                 ->where('industry_type', 'biotechnology')->count(),
             'psychotropics_sections' => IndustrySections::where('network_type', 'neuroscience')
                 ->where('industry_type', 'psychotropics')->count(),
+            'inactive_sections' => IndustrySections::where('network_type', 'neuroscience')
+                ->where('industry_type', '!=', 'publications')
+                ->where('is_active', false)->count(),
             'total_subcategories' => IndustryCategory::whereHas('IndustrySection', function ($q): void {
                 $q->where('network_type', 'neuroscience')
                     ->where('industry_type', '!=', 'publications');
@@ -247,7 +257,11 @@ class IndustryCategoryController extends Controller
             ->ordered();
 
         if ($request->filled('type')) {
-            $query->where('industry_type', $request->type);
+            if ($request->type === 'hidden' || $request->type === 'inactive') {
+                $query->where('is_active', false);
+            } else {
+                $query->where('industry_type', $request->type);
+            }
         }
 
         if ($search !== '') {
