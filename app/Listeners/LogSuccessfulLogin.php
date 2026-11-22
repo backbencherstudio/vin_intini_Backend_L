@@ -15,7 +15,7 @@ class LogSuccessfulLogin
             $event->guard === 'web' ? session()->getId() : null
         );
 
-        LogLoginJob::dispatch(
+        LogLoginJob::dispatchSync(
             $event->user->id,
             request()->ip(),
             request()->userAgent(),

@@ -42,12 +42,11 @@ class CheckActiveSession
                 }
             }
 
-            $isActive = LoginActivity::where('token_id', $tokenId)
+            $activity = LoginActivity::where('token_id', $tokenId)
                 ->where('user_id', $user->id)
-                ->where('is_active', true)
-                ->exists();
+                ->first();
 
-            if (! $isActive) {
+            if ($activity && ! $activity->is_active) {
                 if (auth('api')->check()) {
                     return response()->json(['message' => 'Your session has been revoked.'], 401);
                 }
@@ -55,6 +54,29 @@ class CheckActiveSession
                 auth()->logout();
 
                 return redirect('/admin/login')->withErrors(['email' => 'Session revoked by admin.']);
+            }
+
+            if (! $activity) {
+                if (auth('api')->check()) {
+                    // If JWT is valid but activity record is missing (e.g. queue delay),
+                    // register active session so valid users are never rejected.
+                    LoginActivity::create([
+                        'user_id' => $user->id,
+                        'token_id' => $tokenId,
+                        'device' => 'Web Browser',
+                        'browser' => 'Web',
+                        'ip_address' => $request->ip(),
+                        'location' => 'Unknown',
+                        'login_at' => now(),
+                        'status' => 'Successful',
+                        'is_active' => true,
+                        'is_trusted' => true,
+                        'is_resolved' => true,
+                    ]);
+                } else {
+                    auth()->logout();
+                    return redirect('/admin/login')->withErrors(['email' => 'Session revoked by admin.']);
+                }
             }
         }
 

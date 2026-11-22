@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'paths' => ['api/*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
@@ -19,13 +19,15 @@ return [
         'https://cleared-month-virgin-murphy.trycloudflare.com',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https?://.*\.softvenceomegaforce\.cloud$#',
+    ],
 
-    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With'],
+    'allowed_headers' => ['*'],
 
     'exposed_headers' => ['Content-Disposition'],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
     'supports_credentials' => true,
 ];
