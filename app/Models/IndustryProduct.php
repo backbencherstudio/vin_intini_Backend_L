@@ -264,8 +264,8 @@ class IndustryProduct extends Model
     public function scopeFeedOrder(Builder $query): Builder
     {
         return $query->orderByDesc('is_boosted')
-            ->orderBy('impressions_count', 'asc')
             ->orderByDesc('is_new_release')
+            ->orderBy('impressions_count', 'asc')
             ->orderByDesc('id');
     }
 

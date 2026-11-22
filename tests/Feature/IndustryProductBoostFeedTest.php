@@ -118,6 +118,7 @@ test('marketplace feed places boosted products first, new releases second, organ
         'status' => 'active',
         'is_boosted' => false,
         'is_new_release' => false,
+        'impressions_count' => 10,
         'created_at' => now()->subDays(5),
     ]);
 
@@ -136,6 +137,7 @@ test('marketplace feed places boosted products first, new releases second, organ
         'is_boosted' => false,
         'is_new_release' => true,
         'new_release_expires_at' => now()->addHours(24),
+        'impressions_count' => 300,
         'created_at' => now()->subHour(),
     ]);
 
