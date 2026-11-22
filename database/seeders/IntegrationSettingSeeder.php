@@ -49,6 +49,12 @@ class IntegrationSettingSeeder extends Seeder
             'mail_encryption' => 'Mail',
             'mail_from_address' => 'Mail',
             'mail_from_name' => 'Mail',
+
+            // Pusher
+            'pusher_app_id' => 'Pusher',
+            'pusher_app_key' => 'Pusher',
+            'pusher_app_secret' => 'Pusher',
+            'pusher_app_cluster' => 'Pusher',
         ];
 
         foreach ($settings as $key => $section) {

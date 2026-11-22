@@ -39,6 +39,10 @@ class IntegrationSettingsService
         'mail_encryption' => 'mail.mailers.smtp.encryption',
         'mail_from_address' => 'mail.from.address',
         'mail_from_name' => 'mail.from.name',
+        'pusher_app_id' => 'broadcasting.connections.pusher.app_id',
+        'pusher_app_key' => 'broadcasting.connections.pusher.key',
+        'pusher_app_secret' => 'broadcasting.connections.pusher.secret',
+        'pusher_app_cluster' => 'broadcasting.connections.pusher.options.cluster',
     ];
 
     /**
@@ -52,6 +56,14 @@ class IntegrationSettingsService
         'revenuecat_api_key',
         'revenuecat_webhook_secret',
         'mail_password',
+        'pusher_app_secret',
+    ];
+
+    private const ENV_MAP = [
+        'pusher_app_id' => 'PUSHER_APP_ID',
+        'pusher_app_key' => 'PUSHER_APP_KEY',
+        'pusher_app_secret' => 'PUSHER_APP_SECRET',
+        'pusher_app_cluster' => 'PUSHER_APP_CLUSTER',
     ];
 
     private const CACHE_KEY = 'integration_settings';
@@ -95,11 +107,12 @@ class IntegrationSettingsService
 
         Cache::forget(self::CACHE_KEY);
         $this->applyOverrides();
+        $this->syncToEnv($key, $value);
     }
 
     /**
      * Apply all stored settings on top of the loaded config values.
-     * This is called at application boot so Stripe, Socialite and Mail
+     * This is called at application boot so Stripe, Socialite, Mail and Pusher
      * pick up the admin-configured credentials automatically. Empty or
      * null values are skipped so the config-file / .env defaults remain
      * in effect as a fallback.
@@ -128,6 +141,14 @@ class IntegrationSettingsService
             // back to the config file defaults (and thus .env) instead.
             config()->set(self::CONFIG_MAP[$key], $this->normalizeSecretValue($key, $value));
         }
+
+        if (! empty($settings['pusher_app_cluster'])) {
+            config()->set('broadcasting.connections.pusher.options.host', 'api-'.$settings['pusher_app_cluster'].'.pusher.com');
+        }
+
+        if (! empty($settings['pusher_app_key'])) {
+            config()->set('broadcasting.default', 'pusher');
+        }
     }
 
     /**
@@ -136,7 +157,8 @@ class IntegrationSettingsService
     public function maskedBySection(): array
     {
         return IntegrationSetting::query()
-            ->orderBy('key')
+            ->orderBy('section')
+            ->orderBy('id')
             ->get()
             ->groupBy('section')
             ->map(fn ($settings) => $settings->map(fn (IntegrationSetting $setting): array => [
@@ -196,6 +218,64 @@ class IntegrationSettingsService
             return Schema::hasTable('integration_settings');
         } catch (\Throwable) {
             return false;
+        }
+    }
+
+    private function syncToEnv(string $key, string $value): void
+    {
+        $envKey = self::ENV_MAP[$key] ?? null;
+        if (! $envKey) {
+            return;
+        }
+
+        $paths = [
+            base_path('.env'),
+            base_path('../vin_intini_web_frontend/.env'),
+            base_path('../vin_intini_frontend/.env'),
+            '/var/www/vin_intini_frontend/.env',
+        ];
+
+        foreach ($paths as $path) {
+            if (! file_exists($path) || ! is_writable($path)) {
+                continue;
+            }
+
+            $content = file_get_contents($path);
+            if ($content === false) {
+                continue;
+            }
+
+            $isFrontend = str_contains($path, 'frontend');
+            if ($isFrontend && ! in_array($envKey, ['PUSHER_APP_KEY', 'PUSHER_APP_CLUSTER'], true)) {
+                continue;
+            }
+
+            $targetKey = $isFrontend ? ('NEXT_PUBLIC_'.$envKey) : $envKey;
+
+            $pattern = "/^{$targetKey}=(.*)$/m";
+            if (preg_match($pattern, $content)) {
+                $content = preg_replace($pattern, "{$targetKey}={$value}", $content);
+            } else {
+                $content = rtrim($content)."\n{$targetKey}={$value}\n";
+            }
+
+            file_put_contents($path, $content, LOCK_EX);
+        }
+
+        if (str_starts_with($key, 'pusher_') && $value !== '') {
+            $backendEnv = base_path('.env');
+            if (file_exists($backendEnv) && is_writable($backendEnv)) {
+                $content = file_get_contents($backendEnv);
+                if ($content !== false && ! preg_match('/^BROADCAST_CONNECTION=pusher$/m', $content)) {
+                    $pattern = '/^BROADCAST_CONNECTION=(.*)$/m';
+                    if (preg_match($pattern, $content)) {
+                        $content = preg_replace($pattern, 'BROADCAST_CONNECTION=pusher', $content);
+                    } else {
+                        $content = rtrim($content)."\nBROADCAST_CONNECTION=pusher\n";
+                    }
+                    file_put_contents($backendEnv, $content, LOCK_EX);
+                }
+            }
         }
     }
 }

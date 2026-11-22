@@ -184,4 +184,45 @@ class IntegrationSettingTest extends TestCase
         $this->assertStringEndsWith("-----END PRIVATE KEY-----\n", $key);
         $this->assertNotFalse(openssl_pkey_get_private($key));
     }
+
+    public function test_admin_can_view_and_update_pusher_integration_settings(): void
+    {
+        IntegrationSetting::create(['key' => 'pusher_app_id', 'value' => '2076168', 'section' => 'Pusher']);
+        IntegrationSetting::create(['key' => 'pusher_app_key', 'value' => 'b317efddf3bcedbd0d81', 'section' => 'Pusher']);
+        IntegrationSetting::create(['key' => 'pusher_app_secret', 'value' => 'a782b1febb8c9c9448d7', 'section' => 'Pusher']);
+        IntegrationSetting::create(['key' => 'pusher_app_cluster', 'value' => 'mt1', 'section' => 'Pusher']);
+
+        $response = $this->actingAs($this->admin, 'api')
+            ->getJson('/api/admin/integrations')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Secret should be masked
+        $this->assertEquals('a782••••••••48d7', $response->json('data.Pusher.2.value'));
+
+        // Admin updates credentials
+        $this->actingAs($this->admin, 'api')
+            ->postJson('/api/admin/integrations', [
+                'settings' => [
+                    'pusher_app_id' => '9999999',
+                    'pusher_app_key' => 'new_key',
+                    'pusher_app_secret' => '', // blank means keep existing
+                    'pusher_app_cluster' => 'eu',
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('integration_settings', ['key' => 'pusher_app_id', 'value' => '9999999']);
+        $this->assertDatabaseHas('integration_settings', ['key' => 'pusher_app_key', 'value' => 'new_key']);
+        $this->assertDatabaseHas('integration_settings', ['key' => 'pusher_app_secret', 'value' => 'a782b1febb8c9c9448d7']);
+        $this->assertDatabaseHas('integration_settings', ['key' => 'pusher_app_cluster', 'value' => 'eu']);
+
+        // Check overrides
+        Cache::forget('integration_settings');
+        app(IntegrationSettingsService::class)->applyOverrides();
+        $this->assertEquals('9999999', config('broadcasting.connections.pusher.app_id'));
+        $this->assertEquals('new_key', config('broadcasting.connections.pusher.key'));
+        $this->assertEquals('eu', config('broadcasting.connections.pusher.options.cluster'));
+        $this->assertEquals('pusher', config('broadcasting.default'));
+    }
 }
