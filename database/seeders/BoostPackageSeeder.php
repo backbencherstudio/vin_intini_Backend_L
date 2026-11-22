@@ -13,6 +13,7 @@ class BoostPackageSeeder extends Seeder
      */
     public function run(): void
     {
+        $defaultPlacements = BoostPackage::DEFAULT_PLACEMENTS;
         $defaultFeatures = [
             'Dual Placement: Marketplace Feed + Main Newsfeed',
             'Featured "Sponsored" Badge Ribbon',
@@ -25,6 +26,7 @@ class BoostPackageSeeder extends Seeder
                 'id' => 1,
                 'name' => 'Starter Boost',
                 'target_entity' => BoostTargetEntity::PRODUCT->value,
+                'placements' => $defaultPlacements,
                 'duration_days' => 7,
                 'price' => 19.99,
                 'estimated_impressions' => '5,000 – 10,000 Impressions',
@@ -33,6 +35,7 @@ class BoostPackageSeeder extends Seeder
                 'description' => 'Essential front-row visibility to jumpstart product discovery.',
                 'features' => $defaultFeatures,
                 'priority_weight' => 1,
+                'sort_order' => 1,
                 'status' => 'active',
                 'revenuecat_store_identifier_ios' => 'boost_product_7d',
                 'revenuecat_store_identifier_android' => 'boost_product_7d_gp',
@@ -42,14 +45,16 @@ class BoostPackageSeeder extends Seeder
                 'id' => 2,
                 'name' => 'Growth Boost',
                 'target_entity' => BoostTargetEntity::PRODUCT->value,
+                'placements' => $defaultPlacements,
                 'duration_days' => 14,
                 'price' => 34.99,
                 'estimated_impressions' => '15,000 – 25,000 Impressions',
-                'badge' => 'Most Popular Plan',
+                'badge' => 'Most Popular Plan (Save 12.48%)',
                 'promotion_highlight' => '14 Days Extended Multi-Channel Reach',
                 'description' => 'Multi-channel promotion across marketplace & main newsfeed.',
                 'features' => $defaultFeatures,
                 'priority_weight' => 2,
+                'sort_order' => 2,
                 'status' => 'active',
                 'revenuecat_store_identifier_ios' => 'boost_product_14d',
                 'revenuecat_store_identifier_android' => 'boost_product_14d_gp',
@@ -59,6 +64,7 @@ class BoostPackageSeeder extends Seeder
                 'id' => 3,
                 'name' => 'Best Value Boost',
                 'target_entity' => BoostTargetEntity::PRODUCT->value,
+                'placements' => $defaultPlacements,
                 'duration_days' => 30,
                 'price' => 69.99,
                 'estimated_impressions' => '40,000 – 60,000+ Impressions',
@@ -67,6 +73,7 @@ class BoostPackageSeeder extends Seeder
                 'description' => 'Full-month omnipresent promotion for top vendors & brands.',
                 'features' => $defaultFeatures,
                 'priority_weight' => 3,
+                'sort_order' => 3,
                 'status' => 'active',
                 'revenuecat_store_identifier_ios' => 'boost_product_30d',
                 'revenuecat_store_identifier_android' => 'boost_product_30d_gp',
@@ -80,7 +87,5 @@ class BoostPackageSeeder extends Seeder
                 $package
             );
         }
-
-        BoostPackage::whereNotIn('id', [1, 2, 3])->delete();
     }
 }

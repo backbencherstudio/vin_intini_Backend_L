@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
         $this->call(RolePermissionSeeder::class);
         $this->call(PlanSeeder::class);
+        $this->call(BoostPackageSeeder::class);
         $this->call(IntegrationSettingSeeder::class);
         $this->call(TransactionSeeder::class);
         $this->call(CitySeeder::class);
