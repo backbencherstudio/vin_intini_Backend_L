@@ -247,7 +247,13 @@ class FollowController extends Controller
 
         $user = User::where('username', $identifier)
             ->orWhere('id', $identifier)
-            ->firstOrFail();
+            ->first();
+
+        if (! $user || $user->isShieldedFrom($currentUser)) {
+            throw ValidationException::withMessages([
+                'user_id' => ['User not found.'],
+            ]);
+        }
 
         if ($currentUser->id === $user->id) {
             throw ValidationException::withMessages([

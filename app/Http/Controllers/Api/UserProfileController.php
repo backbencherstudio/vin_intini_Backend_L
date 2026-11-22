@@ -139,7 +139,7 @@ class UserProfileController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
-        if (! $user) {
+        if (! $user || $user->isShieldedFrom($currentUser)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'User profile not found',

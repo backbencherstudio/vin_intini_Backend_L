@@ -73,7 +73,7 @@ class UserExperienceController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
-        if (! $targetUser) {
+        if (! $targetUser || $targetUser->isShieldedFrom($viewer)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'User not found',

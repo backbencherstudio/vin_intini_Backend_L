@@ -300,6 +300,7 @@ class ConnectionController extends Controller
             ->values();
 
         $suggestionsQuery = User::query()
+            ->excludeAdmins()
             ->select(['users.id', 'users.username', 'users.first_name', 'users.last_name', 'users.title', 'users.profile_image', 'users.cover_image'])
             ->join('user_profiles', 'users.id', '=', 'user_profiles.user_id')
             ->where('user_profiles.privacy_profile_visibility', 'everyone')
@@ -447,6 +448,12 @@ class ConnectionController extends Controller
         }
 
         $targetUser = User::query()->findOrFail($validated['user_id']);
+
+        if ($targetUser->isShieldedFrom($currentUser)) {
+            throw ValidationException::withMessages([
+                'user_id' => ['Unable to send connection request to this user.'],
+            ]);
+        }
 
         $result = DB::transaction(function () use ($currentUser, $targetUser): array {
             $alreadyConnected = Connection::query()

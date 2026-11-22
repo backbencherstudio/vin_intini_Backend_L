@@ -91,6 +91,31 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
+    /**
+     * Scope a query to exclude users with the administrative role.
+     * Prevents administrative accounts from appearing in public member searches,
+     * suggestions, directories, or community listings.
+     */
+    public function scopeExcludeAdmins($query)
+    {
+        return $query->whereDoesntHave('roles', function ($q): void {
+            $q->where('name', 'admin');
+        });
+    }
+
+    /**
+     * Determine if this user account should be completely shielded/invisible from the given viewer.
+     * Administrative accounts are shielded from any viewer who does not possess admin privileges.
+     */
+    public function isShieldedFrom(?User $viewer = null): bool
+    {
+        if ($this->hasRole('admin')) {
+            return ! $viewer || ! $viewer->hasRole('admin');
+        }
+
+        return false;
+    }
+
     public function groups()
     {
         return $this->belongsToMany(Group::class, 'group_users', 'user_id', 'group_id')

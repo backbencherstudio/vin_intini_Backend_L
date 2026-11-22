@@ -55,6 +55,14 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Strict isolation: Administrative accounts are strictly blocked from user portal sign-in
+        if ($user->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Administrative accounts are not permitted to log in via the user portal. Please sign in through the Admin Portal.',
+            ], 403);
+        }
+
         if (($statusResponse = $this->sessionService->checkAccountStatus($user)) instanceof JsonResponse) {
             return $statusResponse;
         }

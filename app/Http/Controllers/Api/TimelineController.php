@@ -22,7 +22,7 @@ class TimelineController extends Controller
             ->orWhere('id', $userId)
             ->first();
 
-        if (! $targetUser) {
+        if (! $targetUser || $targetUser->isShieldedFrom($authUser)) {
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 

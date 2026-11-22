@@ -297,6 +297,7 @@ class IndustryConversationController extends Controller
         }
 
         $users = User::query()
+            ->excludeAdmins()
             ->where('id', '!=', $currentUser->id)
             ->whereNull('deleted_at')
             ->where(function ($q) use ($search): void {

@@ -185,4 +185,92 @@ class AdminAuthTest extends TestCase
         ]);
         $newLogin->assertStatus(200)->assertJsonPath('success', true);
     }
+
+    public function test_admin_cannot_login_via_standard_user_login_endpoint(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'email' => 'adminblock@example.com',
+            'password' => bcrypt('password123'),
+            'is_verified' => true,
+        ]);
+        $admin->assignRole('admin');
+
+        $response = $this->postJson('/api/login', [
+            'email' => 'adminblock@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Administrative accounts are not permitted to log in via the user portal. Please sign in through the Admin Portal.');
+    }
+
+    public function test_regular_user_cannot_view_admin_profile_or_data_by_id(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'email' => 'adminshielded@example.com',
+            'username' => 'adminshielded',
+            'password' => bcrypt('password123'),
+            'is_verified' => true,
+        ]);
+        $admin->assignRole('admin');
+        \App\Models\UserProfile::create([
+            'user_id' => $admin->id,
+            'privacy_profile_visibility' => 'everyone',
+        ]);
+
+        /** @var User $user */
+        $user = User::factory()->create([
+            'email' => 'studentviewer@example.com',
+            'username' => 'studentviewer',
+            'password' => bcrypt('password123'),
+            'is_verified' => true,
+        ]);
+        $user->assignRole('user');
+        \App\Models\UserProfile::create([
+            'user_id' => $user->id,
+            'privacy_profile_visibility' => 'everyone',
+        ]);
+
+        // 1. Regular user trying to view admin profile by ID
+        $profileById = $this->actingAs($user, 'api')->getJson("/api/profile/{$admin->id}");
+        $profileById->assertStatus(404)
+            ->assertJsonPath('message', 'User profile not found');
+
+        // 2. Regular user trying to view admin profile by username
+        $profileByUsername = $this->actingAs($user, 'api')->getJson("/api/profile/{$admin->username}");
+        $profileByUsername->assertStatus(404)
+            ->assertJsonPath('message', 'User profile not found');
+
+        // 3. Regular user trying to view admin experiences
+        $expResponse = $this->actingAs($user, 'api')->getJson("/api/user-experiences/{$admin->id}");
+        $expResponse->assertStatus(404);
+
+        // 4. Regular user trying to view admin educations
+        $eduResponse = $this->actingAs($user, 'api')->getJson("/api/user-educations/{$admin->id}");
+        $eduResponse->assertStatus(404);
+
+        // 5. Admin is excluded from user connection suggestions
+        $suggestionsResponse = $this->actingAs($user, 'api')->getJson('/api/connections/suggestions');
+        $suggestionsResponse->assertStatus(200);
+        $suggestedIds = collect($suggestionsResponse->json('data'))->pluck('id')->all();
+        $this->assertNotContains($admin->id, $suggestedIds);
+
+        // 6. Regular user cannot send connection request to admin
+        $connectResponse = $this->actingAs($user, 'api')->postJson('/api/connections/request', [
+            'user_id' => $admin->id,
+        ]);
+        $connectResponse->assertStatus(422);
+
+        // 7. Regular user cannot follow admin
+        $followResponse = $this->actingAs($user, 'api')->postJson("/api/connections/{$admin->id}/follow");
+        $followResponse->assertStatus(422);
+
+        // 8. Regular user cannot initiate direct conversation with admin
+        $conversationResponse = $this->actingAs($user, 'api')->postJson("/api/conversations/with/{$admin->id}");
+        $conversationResponse->assertStatus(403)
+            ->assertJsonPath('message', 'Direct messaging with administrative accounts is not permitted.');
+    }
 }

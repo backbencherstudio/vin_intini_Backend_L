@@ -287,6 +287,7 @@ class GroupController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $query = User::query()
+            ->excludeAdmins()
             ->whereIn('id', $inviteableUserIds)
             ->whereNull('deleted_at')
             ->select(['id', 'username', 'first_name', 'last_name', 'title', 'profile_image'])

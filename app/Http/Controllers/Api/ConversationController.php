@@ -188,6 +188,14 @@ class ConversationController extends Controller
     {
         $currentUser = $request->user();
 
+        if ($user->isShieldedFrom($currentUser)) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Direct messaging with administrative accounts is not permitted.',
+            ], 403);
+        }
+
         if ($currentUser->id === $user->id) {
             return response()->json(['success' => false, 'message' => 'Cannot start conversation with yourself.'], 422);
         }
