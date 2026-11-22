@@ -105,6 +105,82 @@ class AuthController extends Controller
         return $this->sessionService->respondWithSession($user, $token);
     }
 
+    /**
+     * Dedicated admin authentication with strict RBAC gating.
+     */
+    public function adminLogin(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string',
+            'fcm_token' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $credentials = $validator->validated();
+
+        $user = User::withTrashed()->where('email', $credentials['email'])->first();
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials',
+            ], 401);
+        }
+
+        // Strict RBAC gate: Only users with the admin role can log into the admin portal
+        if (! $user->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. You do not have administrative privileges.',
+            ], 403);
+        }
+
+        if (($statusResponse = $this->sessionService->checkAccountStatus($user)) instanceof JsonResponse) {
+            return $statusResponse;
+        }
+
+        if (! empty($credentials['fcm_token'])) {
+            FcmToken::assignTo($user, $credentials['fcm_token']);
+        }
+
+        // Check if 2FA is enabled and confirmed
+        if ($user->two_factor_confirmed_at) {
+            $challengeToken = $this->challengeService->createChallenge($user, '2fa', 5);
+
+            return response()->json([
+                'status' => '2fa_required',
+                'two_factor_enabled' => true,
+                'email' => $user->email,
+                'challenge_token' => $challengeToken,
+                'message' => 'Two-factor authentication is required. Please provide your code.',
+            ], 200);
+        }
+
+        /** @var string|false $token */
+        $token = auth('api')->attempt([
+            'email' => $credentials['email'],
+            'password' => $credentials['password'],
+        ]);
+
+        if (! $token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials',
+            ], 401);
+        }
+
+        $user = auth('api')->user();
+
+        return $this->sessionService->respondWithSession($user, $token);
+    }
+
     public function me()
     {
         $user = auth('api')->user();

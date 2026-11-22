@@ -16,6 +16,7 @@ Route::get('/login', fn () => response()->json([
 ], 401))->name('login');
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/admin/login', [AuthController::class, 'adminLogin'])->middleware('throttle:5,1');
 Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp'])->middleware('throttle:5,1');
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->middleware('throttle:5,1');
 Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:5,1');

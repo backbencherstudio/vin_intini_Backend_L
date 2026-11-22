@@ -85,7 +85,10 @@ class User extends Authenticatable implements JWTSubject
 
     public function getJWTCustomClaims()
     {
-        return [];
+        return [
+            'role' => $this->getRoleNames()->first() ?? 'user',
+            'is_verified' => (bool) $this->is_verified,
+        ];
     }
 
     public function groups()
