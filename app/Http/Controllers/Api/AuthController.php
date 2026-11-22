@@ -87,8 +87,32 @@ class AuthController extends Controller
         }
 
         if ($user->hasRole('user') && ! $user->is_verified) {
+            $otpRecord = Otp::where('user_id', $user->id)
+                ->where('type', OtpType::REGISTRATION->value)
+                ->first();
+
+            $sendNewOtp = false;
+            if (! $otpRecord || ! $otpRecord->expires_at || now()->gte($otpRecord->expires_at)) {
+                $sendNewOtp = true;
+            }
+
+            if ($sendNewOtp) {
+                try {
+                    $otp = random_int(1000, 9999);
+                    Otp::updateOrCreate(
+                        ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
+                        ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
+                    );
+                    $user->notify(new RegisterOtpNotification($otp));
+                } catch (\Exception) {
+                    // Silently fail to avoid breaking auth flow if mail driver is down
+                }
+            }
+
             return response()->json([
                 'success' => false,
+                'status' => 'unverified_email',
+                'email' => $user->email,
                 'message' => 'Please verify your email with OTP before login.',
             ], 403);
         }

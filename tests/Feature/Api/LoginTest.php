@@ -2,10 +2,14 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\OtpType;
 use App\Models\FcmToken;
+use App\Models\Otp;
 use App\Models\User;
+use App\Notifications\RegisterOtpNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -125,6 +129,39 @@ class LoginTest extends TestCase
         $this->actingAs($user, 'api')->postJson('/api/logout')->assertOk();
 
         $this->assertSame(1, FcmToken::where('user_id', $user->id)->count());
+    }
+
+    public function test_login_for_unverified_user_returns_unverified_email_status_and_auto_resends_otp(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'email' => 'unverified@example.com',
+            'password' => 'password123',
+            'is_verified' => false,
+        ]);
+        $user->assignRole('user');
+
+        $response = $this->postJson('/api/login', [
+            'email' => 'unverified@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'success' => false,
+                'status' => 'unverified_email',
+                'email' => 'unverified@example.com',
+                'message' => 'Please verify your email with OTP before login.',
+            ]);
+
+        $user->refresh();
+        Notification::assertSentTo($user, RegisterOtpNotification::class);
+
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', OtpType::REGISTRATION->value)
+            ->first();
+        $this->assertNotNull($otpRecord);
     }
 
     private function makeVerifiedUser(): User
