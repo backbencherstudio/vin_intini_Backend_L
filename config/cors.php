@@ -13,6 +13,8 @@ return [
         'https://mindunit.netlify.app',
         'https://vin-intini-web-frontend.vercel.app',
         'https://mindunite.pixelstack.cloud',
+        'https://mindunite.softvenceomegaforce.cloud',
+        'https://vini.softvenceomegaforce.cloud',
         'http://localhost:3000',
         'https://cleared-month-virgin-murphy.trycloudflare.com',
     ],
