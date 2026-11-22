@@ -15,16 +15,16 @@ Route::get('/login', fn () => response()->json([
     'message' => 'Please login to continue',
 ], 401))->name('login');
 
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
-Route::post('/admin/login', [AuthController::class, 'adminLogin'])->middleware('throttle:5,1');
-Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp'])->middleware('throttle:5,1');
-Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:api-login');
+Route::post('/admin/login', [AuthController::class, 'adminLogin'])->middleware('throttle:api-login');
+Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp'])->middleware('throttle:api-send-otp');
+Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->middleware('throttle:api-verify-otp');
 Route::post('/password-reset', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:5,1');
 Route::post('/account/restore', [SecuritySettingsController::class, 'restore'])->middleware('throttle:5,1');
 
-Route::post('/register', [AuthController::class, 'register'])->name('api.register')->middleware('throttle:5,1');
-Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->middleware('throttle:5,1');
-Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])->middleware('throttle:3,1');
+Route::post('/register', [AuthController::class, 'register'])->name('api.register')->middleware('throttle:api-register');
+Route::post('/register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->middleware('throttle:api-verify-otp');
+Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp'])->middleware('throttle:api-resend-otp');
 
 // Social Authentication Routes
 Route::get('/auth/{provider}', [SocialController::class, 'redirect']);

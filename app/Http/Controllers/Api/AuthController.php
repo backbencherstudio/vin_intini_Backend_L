@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Exceptions\TokenBlacklistedException;
@@ -453,24 +454,66 @@ class AuthController extends Controller
             ], 422);
         }
 
-        DB::beginTransaction();
+        $email = strtolower(trim((string) $request->email));
+
+        $existingUser = User::where('email', $email)->first();
+        if ($existingUser && $existingUser->is_verified) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This email is already registered.',
+            ], 409);
+        }
 
         try {
             $otp = random_int(1000, 9999);
-            $role = Role::where('name', 'user')->first();
+            $role = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'api']);
 
-            $user = User::where('email', $request->email)->first();
+            $result = DB::transaction(function () use ($email, $request, $otp, $role) {
+                $user = User::where('email', $email)->lockForUpdate()->first();
 
-            if ($user) {
+                if ($user) {
+                    if ($user->is_verified) {
+                        return [
+                            'code' => 409,
+                            'payload' => [
+                                'status' => false,
+                                'message' => 'This email is already registered.',
+                            ],
+                        ];
+                    }
 
-                if ($user->is_verified) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'This email is already registered.',
-                    ], 409);
+                    $user->update([
+                        'password' => Hash::make($request->password),
+                        'is_verified' => false,
+                        'terms_accepted_at' => now(),
+                    ]);
+
+                    Otp::updateOrCreate(
+                        ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
+                        [
+                            'otp' => $otp,
+                            'expires_at' => now()->addMinutes(3),
+                            'verified_at' => null,
+                        ],
+                    );
+
+                    if (! $user->hasRole('user')) {
+                        $user->assignRole($role);
+                    }
+
+                    $user->notify(new RegisterOtpNotification($otp));
+
+                    return [
+                        'code' => 200,
+                        'payload' => [
+                            'status' => true,
+                            'message' => 'OTP resent to your email.',
+                        ],
+                    ];
                 }
 
-                $user->update([
+                $user = User::create([
+                    'email' => $email,
                     'password' => Hash::make($request->password),
                     'is_verified' => false,
                     'terms_accepted_at' => now(),
@@ -478,54 +521,36 @@ class AuthController extends Controller
 
                 Otp::updateOrCreate(
                     ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
-                    ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
+                    [
+                        'otp' => $otp,
+                        'expires_at' => now()->addMinutes(3),
+                        'verified_at' => null,
+                    ],
                 );
 
-                if ($role && ! $user->hasRole('user')) {
-                    $user->assignRole($role);
-                }
+                $user->assignRole($role);
 
                 $user->notify(new RegisterOtpNotification($otp));
 
-                DB::commit();
+                return [
+                    'code' => 201,
+                    'payload' => [
+                        'status' => true,
+                        'message' => 'Registration successful. OTP sent to your email.',
+                    ],
+                ];
+            }, 3);
 
-                return response()->json([
-                    'status' => true,
-                    'message' => 'OTP resent to your email.',
-                ], 200);
-            }
-
-            $user = User::create([
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'is_verified' => false,
-                'terms_accepted_at' => now(),
+            return response()->json($result['payload'], $result['code']);
+        } catch (\Throwable $e) {
+            Log::error('Registration failed: '.$e->getMessage(), [
+                'exception' => $e,
+                'email' => $email,
             ]);
-
-            Otp::updateOrCreate(
-                ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
-                ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
-            );
-
-            if ($role) {
-                $user->assignRole($role);
-            }
-
-            $user->notify(new RegisterOtpNotification($otp));
-
-            DB::commit();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Registration successful. OTP sent to your email.',
-            ], 201);
-        } catch (\Exception) {
-            DB::rollBack();
 
             return response()->json([
                 'status' => false,
                 'message' => 'Registration failed.',
-
             ], 500);
         }
     }
@@ -545,7 +570,15 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $email = strtolower(trim((string) $request->email));
+        $user = User::where('email', $email)->first();
+
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
 
         if (($statusResponse = $this->sessionService->checkAccountStatus($user)) instanceof JsonResponse) {
             return $statusResponse;
@@ -613,7 +646,8 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $email = strtolower(trim((string) $request->email));
+        $user = User::where('email', $email)->first();
         if (! $user) {
             return response()->json([
                 'status' => false,
@@ -632,14 +666,15 @@ class AuthController extends Controller
             ->where('type', OtpType::REGISTRATION->value)
             ->first();
 
-        if ($otpRecord?->expires_at && now()->lt($otpRecord->expires_at)) {
-
-            $remainingSeconds = (int) ceil(now()->diffInSeconds($otpRecord->expires_at, false));
-
-            return response()->json([
-                'status' => false,
-                'message' => "Please wait {$remainingSeconds} seconds before requesting a new OTP.",
-            ], 429);
+        // 60-second cooldown between resend requests (not the full 3 minute validity!)
+        if ($otpRecord?->updated_at && $otpRecord->updated_at->gt(now()->subSeconds(60))) {
+            $remainingSeconds = 60 - (int) now()->diffInSeconds($otpRecord->updated_at);
+            if ($remainingSeconds > 0) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Please wait {$remainingSeconds} seconds before requesting a new OTP.",
+                ], 429);
+            }
         }
 
         try {
@@ -647,7 +682,11 @@ class AuthController extends Controller
 
             Otp::updateOrCreate(
                 ['user_id' => $user->id, 'type' => OtpType::REGISTRATION->value],
-                ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
+                [
+                    'otp' => $otp,
+                    'expires_at' => now()->addMinutes(3),
+                    'verified_at' => null,
+                ],
             );
 
             $user->notify(new RegisterOtpNotification($otp));
@@ -656,7 +695,12 @@ class AuthController extends Controller
                 'status' => true,
                 'message' => 'OTP resent to your email.',
             ], 200);
-        } catch (\Exception) {
+        } catch (\Throwable $e) {
+            Log::error('Resend OTP failed: '.$e->getMessage(), [
+                'exception' => $e,
+                'email' => $email,
+            ]);
+
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to resend OTP.',

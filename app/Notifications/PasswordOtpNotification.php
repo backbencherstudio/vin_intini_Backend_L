@@ -12,9 +12,17 @@ class PasswordOtpNotification extends Notification implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    public int $tries = 3;
+
+    public int $timeout = 30;
+
+    public int $backoff = 3;
+
     public function __construct(
         public int|string $otp,
-    ) {}
+    ) {
+        $this->afterCommit();
+    }
 
     public function via(object $notifiable): array
     {
