@@ -64,6 +64,7 @@ class IntegrationSettingsService
         'pusher_app_key' => 'PUSHER_APP_KEY',
         'pusher_app_secret' => 'PUSHER_APP_SECRET',
         'pusher_app_cluster' => 'PUSHER_APP_CLUSTER',
+        'stripe_public_key' => 'STRIPE_KEY',
     ];
 
     private const CACHE_KEY = 'integration_settings';
@@ -246,7 +247,7 @@ class IntegrationSettingsService
             }
 
             $isFrontend = str_contains($path, 'frontend');
-            if ($isFrontend && ! in_array($envKey, ['PUSHER_APP_KEY', 'PUSHER_APP_CLUSTER'], true)) {
+            if ($isFrontend && ! in_array($envKey, ['PUSHER_APP_KEY', 'PUSHER_APP_CLUSTER', 'STRIPE_KEY'], true)) {
                 continue;
             }
 

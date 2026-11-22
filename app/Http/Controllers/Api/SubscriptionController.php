@@ -43,10 +43,12 @@ class SubscriptionController extends Controller
 
         $plan->setAttribute('checkout_type', $plan->isRevenueCat() ? 'revenuecat' : 'stripe');
         $plan->setAttribute('features', $this->featureList($plan->features ?? []));
+        $plan->setAttribute('stripe_public_key', config('services.stripe.key'));
 
         return response()->json([
             'success' => true,
             'data' => [
+                'stripe_public_key' => config('services.stripe.key'),
                 'plan' => $plan,
             ],
         ], 200);
