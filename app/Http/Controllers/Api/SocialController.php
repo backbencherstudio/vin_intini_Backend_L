@@ -77,12 +77,31 @@ class SocialController extends Controller
             }
 
             $stateKey = request('state');
+            $frontendUrl = rtrim(config('app.frontend_url'), '/');
+
             if (! $stateKey) {
+                if (request()->acceptsHtml() && ! request()->expectsJson()) {
+                    return redirect("{$frontendUrl}/login?error=" . urlencode('Missing OAuth state parameter. Please try again.'));
+                }
                 return response()->json(['success' => false, 'message' => 'Missing OAuth state parameter.'], 422);
             }
 
             $stateData = Cache::pull("socialite_state:{$stateKey}");
+            if (! $stateData && is_string($stateKey)) {
+                parse_str($stateKey, $parsedState);
+                if (! empty($parsedState) && isset($parsedState['platform'])) {
+                    $stateData = [
+                        'platform' => $parsedState['platform'],
+                        'provider' => $parsedState['provider'] ?? $provider,
+                        'fcm_token' => $parsedState['fcm_token'] ?? null,
+                    ];
+                }
+            }
+
             if (! $stateData || ! is_array($stateData) || ($stateData['provider'] ?? null) !== $provider) {
+                if (request()->acceptsHtml() && ! request()->expectsJson()) {
+                    return redirect("{$frontendUrl}/login?error=" . urlencode('Login session expired or invalid. Please try again.'));
+                }
                 return response()->json(['success' => false, 'message' => 'Invalid or expired OAuth state.'], 422);
             }
 
@@ -101,6 +120,10 @@ class SocialController extends Controller
 
             return $response;
         } catch (\Exception $e) {
+            if (request()->acceptsHtml() && ! request()->expectsJson()) {
+                $frontendUrl = rtrim(config('app.frontend_url'), '/');
+                return redirect("{$frontendUrl}/login?error=" . urlencode('Social login failed. Please try again.'));
+            }
             return response()->json([
                 'success' => false,
                 'message' => 'Social login failed',
@@ -224,9 +247,11 @@ class SocialController extends Controller
                 ]);
             }
 
-            $role = Role::where('name', 'user')->where('guard_name', 'api')->first();
-            if ($role && ! $user->hasRole('user')) {
-                $user->assignRole($role);
+            if (! $user->hasRole('admin')) {
+                $role = Role::where('name', 'user')->where('guard_name', 'api')->first();
+                if ($role && ! $user->hasRole('user')) {
+                    $user->assignRole($role);
+                }
             }
 
             SocialAccount::updateOrCreate(
@@ -237,7 +262,28 @@ class SocialController extends Controller
             return $user;
         });
 
+        $frontendUrl = rtrim(config('app.frontend_url'), '/');
+
+        // Strict isolation: Administrative accounts are strictly blocked from user portal sign-in
+        if ($user->hasRole('admin')) {
+            $msg = 'Administrative accounts are not permitted to log in via the user portal. Please sign in through the Admin Portal.';
+            if ($platform === 'web') {
+                return redirect("{$frontendUrl}/login?error=" . urlencode($msg));
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $msg,
+            ], 403);
+        }
+
         if (($statusResponse = $this->sessionService->checkAccountStatus($user)) instanceof JsonResponse) {
+            if ($platform === 'web') {
+                $responseData = $statusResponse->getData(true);
+                $msg = $responseData['message'] ?? 'Account access is restricted.';
+                return redirect("{$frontendUrl}/login?error=" . urlencode($msg));
+            }
+
             return $statusResponse;
         }
 
@@ -258,7 +304,6 @@ class SocialController extends Controller
         $token = $session['token'];
 
         if ($platform === 'web') {
-            $frontendUrl = rtrim(config('app.frontend_url'), '/');
             $payload = [
                 'token' => $token,
                 'id' => $user->id,
@@ -270,7 +315,9 @@ class SocialController extends Controller
             ];
             $encodedAuth = base64_encode(json_encode($payload));
 
-            return redirect("{$frontendUrl}/mu/home?auth={$encodedAuth}");
+            $targetPath = $session['is_onboarding'] ? '/mu/home' : '/onboarding';
+
+            return redirect("{$frontendUrl}{$targetPath}?auth={$encodedAuth}");
         }
 
         return response()->json([

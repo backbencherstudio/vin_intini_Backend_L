@@ -29,6 +29,7 @@ class SocialLoginTest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         Role::firstOrCreate(['name' => 'user', 'guard_name' => 'api']);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
     }
 
     public function test_callback_registers_fcm_token_passed_in_the_state_for_a_new_account(): void
@@ -161,5 +162,68 @@ class SocialLoginTest extends TestCase
 
         $this->assertSoftDeleted('users', ['id' => $user->id]);
         $this->assertDatabaseHas('deleted_account_logs', ['user_id' => $user->id]);
+    }
+
+    public function test_admin_account_is_blocked_from_social_login(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'admin@example.com',
+            'is_verified' => true,
+        ]);
+        $admin->assignRole('admin');
+
+        Socialite::fake('google', SocialiteUser::fake([
+            'id' => 'google-admin-1',
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'avatar' => '',
+        ]));
+
+        $this->getJson('/api/auth/google/callback?state='.urlencode('platform=app'))
+            ->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Administrative accounts are not permitted to log in via the user portal. Please sign in through the Admin Portal.');
+
+        // Test web platform redirect with error parameter
+        $this->get('/api/auth/google/callback?state='.urlencode('platform=web'))
+            ->assertRedirectContains('/login?error=');
+    }
+
+    public function test_web_callback_redirects_unonboarded_user_to_onboarding(): void
+    {
+        Socialite::fake('google', SocialiteUser::fake([
+            'id' => 'google-new-user-1',
+            'name' => 'New User',
+            'email' => 'newuser@example.com',
+            'avatar' => '',
+        ]));
+
+        $response = $this->get('/api/auth/google/callback?state='.urlencode('platform=web'));
+
+        $response->assertRedirectContains('/onboarding?auth=');
+    }
+
+    public function test_web_callback_redirects_onboarded_user_to_home(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'onboarded@example.com',
+            'is_verified' => true,
+        ]);
+        $user->assignRole('user');
+        \App\Models\UserProfile::create([
+            'user_id' => $user->id,
+            'country' => 'United States',
+        ]);
+
+        Socialite::fake('google', SocialiteUser::fake([
+            'id' => 'google-onboarded-1',
+            'name' => 'Onboarded User',
+            'email' => 'onboarded@example.com',
+            'avatar' => '',
+        ]));
+
+        $response = $this->get('/api/auth/google/callback?state='.urlencode('platform=web'));
+
+        $response->assertRedirectContains('/mu/home?auth=');
     }
 }
