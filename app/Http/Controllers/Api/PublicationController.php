@@ -43,11 +43,22 @@ class PublicationController extends Controller
             'cursor' => ['nullable', 'string'],
         ]);
 
+        // Auto-expire publications whose boost or new release expired
+        Publication::where('is_boosted', true)
+            ->whereNotNull('boost_expires_at')
+            ->where('boost_expires_at', '<=', now())
+            ->update(['is_boosted' => false]);
+
+        Publication::where('is_new_release', true)
+            ->whereNotNull('new_release_expires_at')
+            ->where('new_release_expires_at', '<=', now())
+            ->update(['is_new_release' => false]);
+
         $query = Publication::query()
             ->where('status', 'active')
             ->where('network_type', $request->input('network_type'))
-            ->with(['creator', 'industry'])
-            ->latest('id');
+            ->with(['creator', 'industry', 'activeCampaign'])
+            ->feedOrder();
 
         // Filter by the 4 UI tabs: professional, university, freelance, other
         if ($request->filled('publication_type')) {
@@ -85,7 +96,7 @@ class PublicationController extends Controller
      */
     public function show(Request $request, int|string $id): JsonResponse
     {
-        $publication = $this->findPublication($id, ['creator', 'industry']);
+        $publication = $this->findPublication($id, ['creator', 'industry', 'activeCampaign']);
 
         $user = auth('api')->user();
         $this->recordView($publication, $user, $request->ip());
@@ -93,7 +104,7 @@ class PublicationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Publication details retrieved successfully.',
-            'data' => (new PublicationResource($publication->fresh(['creator', 'industry'])))->resolve(),
+            'data' => (new PublicationResource($publication->fresh(['creator', 'industry', 'activeCampaign'])))->resolve(),
         ]);
     }
 
@@ -184,6 +195,10 @@ class PublicationController extends Controller
         $baseSlug = Str::slug($validated['title']);
         $uniqueSlug = $baseSlug.'-'.Str::lower(Str::random(6));
 
+        $newReleaseHours = app(\App\Services\Advertising\BoostSettingService::class)->getNewReleaseHours();
+        $isNewRelease = ($validated['status'] ?? 'active') === 'active' && $newReleaseHours > 0;
+        $newReleaseExpiresAt = $isNewRelease ? now()->addHours($newReleaseHours) : null;
+
         $publication = Publication::create([
             'creator_id' => $user->id,
             'industry_id' => $industryId,
@@ -197,6 +212,8 @@ class PublicationController extends Controller
             'attachment' => $attachmentPath,
             'information_confirmed' => (bool) $request->boolean('information_confirmed', true),
             'status' => $validated['status'] ?? 'active',
+            'is_new_release' => $isNewRelease,
+            'new_release_expires_at' => $newReleaseExpiresAt,
             'views_count' => 0,
             'likes_count' => 0,
         ]);
@@ -221,7 +238,7 @@ class PublicationController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        $query = Publication::query()->with(['creator', 'industry'])->latest('id');
+        $query = Publication::query()->with(['creator', 'industry', 'activeCampaign'])->latest('id');
 
         // If user belongs to an Industry, load industry publications
         if ($user->industry && $user->hasActiveSubscription(PlanType::INDUSTRY)) {
@@ -609,6 +626,20 @@ class PublicationController extends Controller
             'is_positive' => $likesGrowth >= 0,
         ];
 
+        $totalImpressions = (int) (clone $publicationScope)->sum('impressions_count');
+        $totalClicks = (int) (clone $publicationScope)->sum('clicks_count');
+        $boostedCount = (clone $publicationScope)->where('is_boosted', true)->count();
+
+        $impressionsCard = [
+            'title' => 'Boost Impressions',
+            'total' => (int) $totalImpressions,
+            'growth' => sprintf('%d Boosted', $boostedCount),
+            'growth_text' => sprintf('%d active boosted', $boostedCount),
+            'growth_percentage' => 0,
+            'badge' => sprintf('%d Boosted', $boostedCount),
+            'is_positive' => true,
+        ];
+
         return [
             'all_publications' => $allPubCard,
             'total_publications' => $allPubCard,
@@ -616,6 +647,9 @@ class PublicationController extends Controller
             'publication_views' => $viewsCard,
             'publications_views' => $viewsCard,
             'total_likes' => $likesCard,
+            'boost_impressions' => $impressionsCard,
+            'total_impressions' => $impressionsCard,
+            'total_clicks' => $totalClicks,
         ];
     }
 

@@ -100,7 +100,14 @@
         <!-- Content Section -->
         <div class="content">
             <h2>Confirm Your Boost Campaign</h2>
-            <p>We received a request to boost your product on Mind Unite. Please use the following One-Time Password (OTP) to confirm and complete your payment.</p>
+            <p>
+                @if(!empty($targetTitle))
+                    We received a request to boost your {{ $targetType ?? 'publication' }} <strong>"{{ $targetTitle }}"</strong> on Mind Unite.
+                @else
+                    We received a request to boost your {{ $targetType ?? 'item' }} on Mind Unite.
+                @endif
+                Please use the following One-Time Password (OTP) to confirm and complete your payment.
+            </p>
 
             <div class="otp-box">
                 {{ $otp }}

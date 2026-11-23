@@ -65,7 +65,7 @@ class NewsfeedAdInjector
             $effectiveExcludes = array_values(array_reverse(array_unique(array_reverse($mergedExcludes))));
 
             $adCampaign = $this->rotationService->resolveAdForFeed(
-                adType: 'product',
+                adType: ['product', 'publication'],
                 networkType: $networkType,
                 placement: 'newsfeed',
                 excludeCampaignIds: $effectiveExcludes,
@@ -105,15 +105,19 @@ class NewsfeedAdInjector
 
         if ($boostable instanceof IndustryProduct) {
             $boostable->loadMissing(['section', 'category', 'industry']);
+        } elseif ($boostable instanceof \App\Models\Publication) {
+            $boostable->loadMissing(['industry', 'creator']);
         }
+
+        $isPublication = $boostable instanceof \App\Models\Publication || $campaign->ad_type === 'publication';
 
         $title = method_exists($boostable, 'getAdTitle')
             ? $boostable->getAdTitle()
-            : ($boostable->product_name ?? '');
+            : ($boostable->product_name ?? $boostable->title ?? '');
 
         $rawDescription = method_exists($boostable, 'getAdDescription')
             ? $boostable->getAdDescription()
-            : ($boostable->description ?? null);
+            : ($boostable->description ?? $boostable->abstract ?? null);
 
         // Plain text for social feed ad card: strip HTML tags and decode entities
         $captionDescription = $rawDescription
@@ -122,11 +126,11 @@ class NewsfeedAdInjector
 
         $image = method_exists($boostable, 'getAdImageUrl')
             ? $boostable->getAdImageUrl()
-            : ($boostable->image_url ?? null);
+            : ($boostable->image_url ?? $boostable->attachment_url ?? null);
 
         $destinationUrl = method_exists($boostable, 'getAdDestinationUrl')
             ? $boostable->getAdDestinationUrl()
-            : ($boostable->product_url ?? null);
+            : ($boostable->product_url ?? $boostable->website_url ?? ($boostable->attachment_url ?? null));
 
         $domain = null;
         if (! empty($destinationUrl)) {
@@ -141,17 +145,22 @@ class NewsfeedAdInjector
                 : (is_string($boostable->tags) ? (json_decode($boostable->tags, true) ?: []) : []);
         }
 
-        $productName = $boostable?->product_name ?? $title;
-        $productCode = $boostable?->product_id ?? null;
-        $sectionName = $boostable?->section?->name ?? null;
-        $categoryName = $boostable?->category?->category_name ?? null;
+        $productName = $isPublication ? ($boostable?->title ?? $title) : ($boostable?->product_name ?? $title);
+        $productCode = $isPublication ? ($boostable?->publication_id ?? null) : ($boostable?->product_id ?? null);
+        $sectionName = $isPublication ? 'Publication' : ($boostable?->section?->name ?? null);
+        $categoryName = $isPublication ? ucfirst((string) ($boostable?->publication_type ?? 'Research')) : ($boostable?->category?->category_name ?? null);
+        $ctaText = $isPublication ? 'View Publication' : 'View Product';
 
         $likesCount = (int) ($boostable?->likes_count ?? 0);
         $viewsCount = (int) ($boostable?->views_count ?? 0);
         $uniqueViewsCount = (int) ($boostable?->unique_views_count ?? 0);
         $isLiked = false;
-        if ($user instanceof User && $boostable instanceof IndustryProduct) {
-            $isLiked = $boostable->likes()->where('user_id', $user->id)->exists();
+        if ($user instanceof User) {
+            if ($boostable instanceof IndustryProduct) {
+                $isLiked = $boostable->likes()->where('user_id', $user->id)->exists();
+            } elseif ($boostable instanceof \App\Models\Publication) {
+                $isLiked = $boostable->isLikedBy($user);
+            }
         }
 
         $isFollowingIndustry = false;
@@ -178,16 +187,18 @@ class NewsfeedAdInjector
             'ad_type' => $campaign->ad_type,
             'badge' => 'Sponsored',
             'product_id' => $boostable?->id,
+            'publication_id' => $isPublication ? ($boostable?->publication_id ?? $boostable?->id) : null,
             'product_code' => $productCode,
             'product_name' => $productName,
             'title' => $title,
             'description' => $captionDescription,
             'image' => $image,
             'image_url' => $image,
+            'attachment_url' => $boostable?->attachment_url ?? null,
             'price' => $boostable?->price ?? null,
             'destination_url' => $destinationUrl,
             'destination_domain' => $domain,
-            'cta_text' => 'View Product',
+            'cta_text' => $ctaText,
             'likes_count' => $likesCount,
             'views_count' => $viewsCount,
             'is_liked' => $isLiked,
@@ -252,6 +263,7 @@ class NewsfeedAdInjector
                 || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
                 || ($user->industry && (int) $user->industry->id === (int) $campaign->industry_id)
                 || ($campaign->boostable instanceof IndustryProduct && $campaign->boostable->isOwnedBy($user))
+                || ($campaign->boostable instanceof \App\Models\Publication && (int) $campaign->boostable->creator_id === (int) $user->id)
             );
 
             if ($isOwner) {

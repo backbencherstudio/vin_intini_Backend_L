@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\NewsfeedController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProductBoostController;
+use App\Http\Controllers\Api\PublicationBoostController;
 use App\Http\Controllers\Api\PublicationController;
 use App\Http\Controllers\Api\SecuritySettingsController;
 use App\Http\Controllers\Api\SubscriptionController;
@@ -350,6 +351,14 @@ Route::middleware('profile_completed')->group(function (): void {
         Route::match(['put', 'post'], '{id}/update', [PublicationController::class, 'update']);
         Route::match(['patch', 'post'], '{id}/status', [PublicationController::class, 'updateStatus']);
         Route::delete('{id}/delete', [PublicationController::class, 'destroy']);
+
+        // Publication Boosting Routes (Matching Industry Product boost flow)
+        Route::get('{id}/boost/order-summary', [PublicationBoostController::class, 'orderSummary']);
+        Route::post('{id}/boost/send-otp', [PublicationBoostController::class, 'sendOtp']);
+        Route::post('{id}/boost/resend-otp', [PublicationBoostController::class, 'resendOtp']);
+        Route::post('{id}/boost/purchase', [PublicationBoostController::class, 'purchase']);
+        Route::post('{id}/boost/confirm', [PublicationBoostController::class, 'confirmPayment']);
+        Route::get('{id}/boost/campaigns', [PublicationBoostController::class, 'campaigns']);
     });
 
 });

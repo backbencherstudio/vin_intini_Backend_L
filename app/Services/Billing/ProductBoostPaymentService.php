@@ -7,6 +7,7 @@ use App\Enums\BoostTargetEntity;
 use App\Models\AdCampaign;
 use App\Models\BoostPackage;
 use App\Models\IndustryProduct;
+use App\Models\Publication;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\CampaignActivatedNotification;
@@ -44,12 +45,12 @@ class ProductBoostPaymentService
      *
      * @throws ValidationException|ApiErrorException
      */
-    public function chargeStripeBoost(User $user, IndustryProduct $product, array $params): array
+    public function chargeStripeBoost(User $user, IndustryProduct|Publication $product, array $params): array
     {
         [$package, $durationDays, $amount, $priorityWeight] = $this->resolvePricingAndDuration($params);
 
         $networkType = $product->network_type;
-        $placements = $params['placements'] ?? ($package ? $package->resolvedPlacements() : BoostPackage::DEFAULT_PLACEMENTS);
+        $placements = $params['placements'] ?? ($package ? $package->resolvedPlacements() : ($product instanceof Publication ? ['publication_feed', 'newsfeed'] : BoostPackage::DEFAULT_PLACEMENTS));
         $paymentMethodId = $params['payment_method'];
         $idempotencyKey = $params['idempotency_key'] ?? null;
 
@@ -64,8 +65,9 @@ class ProductBoostPaymentService
             'metadata' => [
                 'flow' => 'product_boost',
                 'user_id' => (string) $user->id,
-                'industry_id' => (string) $product->industry_id,
+                'industry_id' => (string) ($product->industry_id ?? $user->industry?->id),
                 'product_id' => (string) $product->id,
+                'boostable_type' => get_class($product),
                 'boost_package_id' => $package ? (string) $package->id : 'custom',
                 'duration_days' => (string) $durationDays,
             ],
@@ -81,12 +83,12 @@ class ProductBoostPaymentService
         if ($paymentIntent->status === 'requires_action') {
             return DB::transaction(function () use ($user, $product, $package, $durationDays, $amount, $networkType, $placements, $paymentIntent): array {
                 $campaign = AdCampaign::create([
-                    'boostable_type' => IndustryProduct::class,
+                    'boostable_type' => get_class($product),
                     'boostable_id' => $product->id,
                     'user_id' => $user->id,
-                    'industry_id' => $product->industry_id,
+                    'industry_id' => $product->industry_id ?? $user->industry?->id,
                     'boost_package_id' => $package?->id,
-                    'ad_type' => 'product',
+                    'ad_type' => ($product instanceof Publication) ? 'publication' : 'product',
                     'network_type' => $networkType,
                     'placements' => $placements,
                     'amount_paid' => $amount,
@@ -130,12 +132,12 @@ class ProductBoostPaymentService
             $endsAt = $baseDate->copy()->addDays($durationDays);
 
             $campaign = AdCampaign::create([
-                'boostable_type' => IndustryProduct::class,
+                'boostable_type' => get_class($product),
                 'boostable_id' => $product->id,
                 'user_id' => $user->id,
-                'industry_id' => $product->industry_id,
+                'industry_id' => $product->industry_id ?? $user->industry?->id,
                 'boost_package_id' => $package?->id,
-                'ad_type' => 'product',
+                'ad_type' => ($product instanceof Publication) ? 'publication' : 'product',
                 'network_type' => $networkType,
                 'placements' => $placements,
                 'amount_paid' => $amount,
@@ -148,7 +150,11 @@ class ProductBoostPaymentService
                 'payment_platform' => 'stripe',
             ]);
 
-            ProductBoostProjection::projectFor($product);
+            if ($product instanceof IndustryProduct) {
+                ProductBoostProjection::projectFor($product);
+            } elseif ($product instanceof Publication) {
+                ProductBoostProjection::projectForPublication($product);
+            }
 
             Transaction::create([
                 'provider_transaction_id' => $paymentIntent->id,
@@ -167,7 +173,7 @@ class ProductBoostPaymentService
                 'client_secret' => null,
                 'payment_status' => 'succeeded',
                 'campaign' => $campaign->withoutRelations(),
-                'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
+                'product' => $this->reloadProduct($product),
             ];
         });
 
@@ -205,7 +211,7 @@ class ProductBoostPaymentService
                 'success' => true,
                 'message' => 'Campaign is already active.',
                 'campaign' => $campaign,
-                'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
+                'product' => $this->reloadProduct($product),
             ];
         }
 
@@ -274,7 +280,7 @@ class ProductBoostPaymentService
             }
 
             $product = $lockedCampaign->boostable;
-            if (! $product instanceof IndustryProduct) {
+            if (! $product instanceof IndustryProduct && ! $product instanceof Publication) {
                 return [
                     'success' => false,
                     'message' => 'Campaign boostable target is invalid.',
@@ -294,7 +300,11 @@ class ProductBoostPaymentService
                 'ends_at' => $endsAt,
             ]);
 
-            ProductBoostProjection::projectFor($product);
+            if ($product instanceof IndustryProduct) {
+                ProductBoostProjection::projectFor($product);
+            } elseif ($product instanceof Publication) {
+                ProductBoostProjection::projectForPublication($product);
+            }
 
             $intentId = is_object($paymentIntent) ? $paymentIntent->id : ($paymentIntent['id'] ?? null);
             $cardBrand = data_get($paymentIntent, 'payment_method.card.brand');
@@ -322,7 +332,7 @@ class ProductBoostPaymentService
                 'success' => true,
                 'message' => 'Payment confirmed and boost campaign activated successfully.',
                 'campaign' => $lockedCampaign->withoutRelations(),
-                'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
+                'product' => $this->reloadProduct($product),
             ];
         });
     }
@@ -384,7 +394,7 @@ class ProductBoostPaymentService
                 'success' => true,
                 'message' => 'This purchase has already been activated.',
                 'campaign' => $existing,
-                'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
+                'product' => $this->reloadProduct($product),
             ];
         }
 
@@ -449,7 +459,7 @@ class ProductBoostPaymentService
                 'success' => true,
                 'message' => 'Boost campaign activated successfully via mobile store purchase.',
                 'campaign' => $campaign->withoutRelations(),
-                'product' => $product->fresh(['creator', 'industry', 'section', 'category']),
+                'product' => $this->reloadProduct($product),
             ];
         });
 
@@ -529,7 +539,7 @@ class ProductBoostPaymentService
      *
      * @return array<string, mixed>
      */
-    public function buildOrderSummary(IndustryProduct $product, ?BoostPackage $package, int $durationDays, float $amount): array
+    public function buildOrderSummary(IndustryProduct|Publication $product, ?BoostPackage $package, int $durationDays, float $amount): array
     {
         $planTitle = $package instanceof BoostPackage
             ? ($package->badge ? "{$package->badge} Boosting" : "{$package->name} Boosting")
@@ -551,10 +561,21 @@ class ProductBoostPaymentService
             $estimatedImpressions = "{$minFormatted}k – {$maxFormatted}k Impression";
         }
 
+        $isPublication = $product instanceof Publication;
+        $id = $isPublication
+            ? ($product->publication_id ?: 'PB'.$product->id)
+            : ($product->product_id ?: 'PR'.$product->id);
+        $name = $isPublication ? $product->title : $product->product_name;
+        $image = $isPublication ? $product->attachment_url : $product->image_url;
+
         return [
-            'product_id' => $product->product_id,
-            'product_name' => $product->product_name,
-            'product_image' => $product->image_url,
+            'product_id' => $id,
+            'publication_id' => $id,
+            'product_name' => $name,
+            'title' => $name,
+            'product_image' => $image,
+            'target_type' => $isPublication ? 'publication' : 'product',
+            'identifier_label' => $isPublication ? 'Publication ID' : 'Product ID',
             'plan_title' => $planTitle,
             'duration_days' => $durationDays,
             'duration_text' => "{$durationDays} Days",
@@ -567,5 +588,17 @@ class ProductBoostPaymentService
             'total_formatted' => '$'.number_format($amount, 2),
             'currency' => 'USD',
         ];
+    }
+
+    /**
+     * Safely reload relations without querying undefined product-only relations on publications.
+     */
+    protected function reloadProduct(IndustryProduct|Publication $product): IndustryProduct|Publication
+    {
+        if ($product instanceof Publication) {
+            return $product->fresh(['creator', 'industry']);
+        }
+
+        return $product->fresh(['creator', 'industry', 'section', 'category']);
     }
 }

@@ -91,8 +91,11 @@ Route::prefix('admin')->group(function (): void {
     // Publications Management
     Route::prefix('publications')->group(function (): void {
         Route::get('/', [PublicationManagementController::class, 'index']);
+        Route::post('/', [PublicationManagementController::class, 'store']);
         Route::get('{id}', [PublicationManagementController::class, 'show']);
+        Route::match(['put', 'post'], '{id}/update', [PublicationManagementController::class, 'update']);
         Route::post('{id}/toggle-status', [PublicationManagementController::class, 'toggleStatus']);
+        Route::post('{id}/toggle-boost', [PublicationManagementController::class, 'toggleBoost']);
         Route::delete('{id}', [PublicationManagementController::class, 'destroy']);
     });
 

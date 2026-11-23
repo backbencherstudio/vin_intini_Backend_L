@@ -137,6 +137,27 @@ class AdCampaignResource extends JsonResource
                     ];
                 }
 
+                if ($this->boostable instanceof \App\Models\Publication) {
+                    return [
+                        'id' => $this->boostable->id,
+                        'publication_id' => $this->boostable->publication_id,
+                        'product_name' => $this->boostable->title,
+                        'title' => $this->boostable->title,
+                        'slug' => $this->boostable->slug,
+                        'image_url' => $this->boostable->attachment_url,
+                        'attachment_url' => $this->boostable->attachment_url,
+                        'network_type' => $this->boostable->network_type,
+                        'industry_type' => $this->boostable->publication_type,
+                        'publication_type' => $this->boostable->publication_type,
+                        'status' => $this->boostable->status,
+                        'is_boosted' => (bool) $this->boostable->is_boosted,
+                        'boost_status' => $this->boostable->is_boosted ? 'Active' : 'Inactive',
+                        'boost_expires_at' => $this->boostable->boost_expires_at?->toIso8601String(),
+                        'boost_days_left' => $remainingDays,
+                        'boost_remaining_text' => $remainingText,
+                    ];
+                }
+
                 return [
                     'id' => $this->boostable?->id,
                     'name' => $this->boostable?->name ?? $this->boostable?->title ?? null,

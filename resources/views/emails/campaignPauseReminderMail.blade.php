@@ -113,19 +113,31 @@
 
         <!-- Content Section -->
         <div class="content">
+            @php
+                $boostable = $campaign->boostable;
+                $isPublication = $boostable instanceof \App\Models\Publication
+                    || ($campaign->target_entity instanceof \App\Enums\BoostTargetEntity
+                        ? $campaign->target_entity === \App\Enums\BoostTargetEntity::PUBLICATION
+                        : $campaign->target_entity === 'publication');
+
+                $itemName = $boostable?->title
+                    ?? $boostable?->product_name
+                    ?? $boostable?->name
+                    ?? ($isPublication ? 'your publication' : 'your product');
+            @endphp
             <h2>Your Boost Campaign is Paused</h2>
             <div class="alert-box">
                 Action Required: {{ $daysRemaining }} {{ $daysRemaining === 1 ? 'day' : 'days' }} remaining before automatic expiration.
             </div>
             <p>
-                Your advertising boost campaign for <strong>{{ $campaign->boostable->product_name ?? $campaign->boostable->name ?? 'your product' }}</strong> has been paused. Under our {{ $maxPauseDays ?? 30 }}-day pause policy, campaigns remaining paused beyond {{ $maxPauseDays ?? 30 }} consecutive days expire automatically.
+                Your advertising boost campaign for <strong>{{ $itemName }}</strong> has been paused. Under our {{ $maxPauseDays ?? 30 }}-day pause policy, campaigns remaining paused beyond {{ $maxPauseDays ?? 30 }} consecutive days expire automatically.
             </p>
             <p>
-                To utilize your remaining paid boost days, please resume your campaign from your advertiser dashboard.
+                To utilize your remaining paid boost days, please resume your campaign from your {{ $isPublication ? 'publication' : 'advertiser' }} dashboard.
             </p>
 
             <div class="btn-container">
-                <a href="https://mindunite.com" class="btn-action" target="_blank">Resume Campaign</a>
+                <a href="{{ $isPublication ? 'https://mindunite.com/mu/premium/publications' : 'https://mindunite.com' }}" class="btn-action" target="_blank">Resume Campaign</a>
             </div>
 
             <p style="font-size: 13px; color: #94a3b8; margin-top: 25px;">

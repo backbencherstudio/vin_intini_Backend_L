@@ -187,6 +187,8 @@ class AdCampaign extends Model
 
         if ($this->boostable instanceof IndustryProduct) {
             ProductBoostProjection::projectFor($this->boostable);
+        } elseif ($this->boostable instanceof \App\Models\Publication) {
+            ProductBoostProjection::projectForPublication($this->boostable);
         } elseif ($this->boostable && method_exists($this->boostable, 'update')) {
             $this->boostable->update(['is_boosted' => false]);
         }
@@ -215,6 +217,8 @@ class AdCampaign extends Model
 
         if ($this->boostable instanceof IndustryProduct) {
             ProductBoostProjection::projectFor($this->boostable);
+        } elseif ($this->boostable instanceof \App\Models\Publication) {
+            ProductBoostProjection::projectForPublication($this->boostable);
         } elseif ($this->boostable && method_exists($this->boostable, 'update')) {
             $this->boostable->update([
                 'is_boosted' => true,

@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\AdCampaignStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -31,6 +35,14 @@ class Publication extends Model
         'attachment',
         'information_confirmed',
         'status',
+        'is_new_release',
+        'new_release_expires_at',
+        'is_boosted',
+        'boosted_at',
+        'boost_expires_at',
+        'boost_score',
+        'impressions_count',
+        'clicks_count',
         'views_count',
         'likes_count',
     ];
@@ -70,6 +82,14 @@ class Publication extends Model
     protected $casts = [
         'authors' => 'array',
         'information_confirmed' => 'boolean',
+        'is_new_release' => 'boolean',
+        'new_release_expires_at' => 'datetime',
+        'is_boosted' => 'boolean',
+        'boosted_at' => 'datetime',
+        'boost_expires_at' => 'datetime',
+        'boost_score' => 'integer',
+        'impressions_count' => 'integer',
+        'clicks_count' => 'integer',
         'views_count' => 'integer',
         'likes_count' => 'integer',
     ];
@@ -122,6 +142,118 @@ class Publication extends Model
         return $this->hasMany(PublicationLike::class, 'publication_id');
     }
 
+    public function adCampaigns(): MorphMany
+    {
+        return $this->morphMany(AdCampaign::class, 'boostable');
+    }
+
+    public function campaigns(): MorphMany
+    {
+        return $this->morphMany(AdCampaign::class, 'boostable');
+    }
+
+    public function activeCampaign(): MorphOne
+    {
+        return $this->morphOne(AdCampaign::class, 'boostable')
+            ->where('status', AdCampaignStatus::ACTIVE)
+            ->where('ends_at', '>', now());
+    }
+
+    public function latestCampaign(): MorphOne
+    {
+        return $this->morphOne(AdCampaign::class, 'boostable')
+            ->latestOfMany();
+    }
+
+    public function getBoostStatus(): string
+    {
+        if ($this->isBoosted()) {
+            return 'active';
+        }
+
+        $campaign = $this->relationLoaded('latestCampaign')
+            ? $this->latestCampaign
+            : ($this->relationLoaded('activeCampaign') && $this->activeCampaign ? $this->activeCampaign : $this->campaigns()->latest('id')->first());
+
+        if (! $campaign) {
+            return 'inactive';
+        }
+
+        $status = $campaign->status instanceof AdCampaignStatus
+            ? $campaign->status->value
+            : (string) $campaign->status;
+
+        if ($status === 'paused') {
+            return 'paused';
+        }
+
+        if ($status === 'active' && ($campaign->ends_at === null || $campaign->ends_at->isFuture())) {
+            return 'active';
+        }
+
+        if ($status === 'completed' || ($campaign->ends_at && $campaign->ends_at->isPast())) {
+            return 'completed';
+        }
+
+        if ($status === 'cancelled') {
+            return 'cancelled';
+        }
+
+        if ($status === 'pending') {
+            return 'pending';
+        }
+
+        return 'inactive';
+    }
+
+    public function isBoosted(): bool
+    {
+        return (bool) $this->is_boosted && ($this->boost_expires_at === null || $this->boost_expires_at->isFuture());
+    }
+
+    public function isBoostActive(): bool
+    {
+        return $this->isBoosted();
+    }
+
+    public function isNewRelease(): bool
+    {
+        return (bool) $this->is_new_release && ($this->new_release_expires_at === null || $this->new_release_expires_at->isFuture());
+    }
+
+    public function getAdBadge(): ?string
+    {
+        if ($this->isBoosted()) {
+            return 'Sponsored';
+        }
+
+        if ($this->isNewRelease()) {
+            return 'New Release';
+        }
+
+        return null;
+    }
+
+    public function scopeBoosted(Builder $query): Builder
+    {
+        return $query->where('is_boosted', true)
+            ->where('boost_expires_at', '>', now());
+    }
+
+    public function scopeNewRelease(Builder $query): Builder
+    {
+        return $query->where('is_new_release', true)
+            ->where('new_release_expires_at', '>', now());
+    }
+
+    public function scopeFeedOrder(Builder $query): Builder
+    {
+        return $query->orderByDesc('is_boosted')
+            ->orderByDesc('is_new_release')
+            ->orderByDesc('boost_score')
+            ->latest('id');
+    }
+
     public function isLikedBy(?User $user): bool
     {
         if (! $user instanceof User) {
@@ -133,5 +265,33 @@ class Publication extends Model
         }
 
         return $this->likes()->where('user_id', $user->id)->exists();
+    }
+
+    public function getAdTitle(): string
+    {
+        return $this->title ?? 'Publication';
+    }
+
+    public function getAdDescription(): ?string
+    {
+        return $this->abstract ?? null;
+    }
+
+    public function getAdImageUrl(): ?string
+    {
+        return $this->attachment_url;
+    }
+
+    public function getAdDestinationUrl(): ?string
+    {
+        if (! empty($this->website_url)) {
+            return $this->website_url;
+        }
+
+        if (! empty($this->attachment_url)) {
+            return $this->attachment_url;
+        }
+
+        return url("/mu/publications/{$this->id}");
     }
 }

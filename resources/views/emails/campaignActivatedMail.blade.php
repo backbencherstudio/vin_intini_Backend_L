@@ -162,21 +162,37 @@
 
         <!-- Content Section -->
         <div class="content">
+            @php
+                $boostable = $campaign->boostable;
+                $isPublication = $boostable instanceof \App\Models\Publication
+                    || ($campaign->target_entity instanceof \App\Enums\BoostTargetEntity
+                        ? $campaign->target_entity === \App\Enums\BoostTargetEntity::PUBLICATION
+                        : $campaign->target_entity === 'publication');
+
+                $itemName = $boostable?->title
+                    ?? $boostable?->product_name
+                    ?? $boostable?->name
+                    ?? ($isPublication ? 'Publication' : 'Product');
+
+                $entityLabel = $isPublication ? 'Publication' : 'Product';
+                $entityTypeLower = $isPublication ? 'publication' : 'product';
+            @endphp
+
             <h2>Your Boost Campaign is Now Live!</h2>
             <p>
                 Hello <strong>{{ $campaign->user->first_name ?? $campaign->user->name ?? 'Valued Advertiser' }}</strong>,
             </p>
             <p>
-                Great news! Your product advertisement campaign has started successfully. Your product has received top-tier priority placement and is now reaching active users across Mind Unite.
+                Great news! Your {{ $entityTypeLower }} advertisement campaign has started successfully. Your {{ $entityTypeLower }} has received top-tier priority placement and is now reaching active users across Mind Unite.
             </p>
 
             <!-- Campaign Summary Card -->
             <div class="summary-card">
                 <table class="summary-table">
                     <tr>
-                        <td class="label">Product:</td>
+                        <td class="label">{{ $entityLabel }}:</td>
                         <td class="value">
-                            {{ $campaign->boostable->product_name ?? $campaign->boostable->name ?? 'Product' }}
+                            {{ $itemName }}
                         </td>
                     </tr>
                     <tr>
@@ -223,11 +239,13 @@
                                     'marketplace' => 'Product Feed',
                                     'product_feed' => 'Product Feed',
                                     'products' => 'Product Feed',
+                                    'publications' => 'Publication Feed',
+                                    'publication_feed' => 'Publication Feed',
                                     'newsfeed' => 'Newsfeed',
                                 ];
                                 $rawPlacements = is_array($campaign->placements) && count($campaign->placements) > 0
                                     ? $campaign->placements
-                                    : ['newsfeed', 'product_feed'];
+                                    : ($isPublication ? ['newsfeed', 'publication_feed'] : ['newsfeed', 'product_feed']);
                                 $formattedPlacements = array_values(array_unique(array_map(function ($p) use ($placementsMap) {
                                     $key = strtolower(trim((string) $p));
                                     return $placementsMap[$key] ?? ucwords(str_replace('_', ' ', $key));
@@ -241,11 +259,11 @@
 
             <!-- CTA Button -->
             <div class="btn-container">
-                <a href="https://mindunite.com" class="btn-primary" target="_blank">View on Mind Unite</a>
+                <a href="{{ $isPublication ? 'https://mindunite.com/mu/neuroscience-network/industry/publications' : 'https://mindunite.com' }}" class="btn-primary" target="_blank">View on Mind Unite</a>
             </div>
 
             <div class="info-note">
-                <strong>Campaign Control:</strong> You can pause and resume your campaign anytime from your advertising dashboard. Please note that campaigns left paused for {{ $maxPauseDays ?? 30 }} consecutive days will automatically conclude under our pause policy.
+                <strong>Campaign Control:</strong> You can pause and resume your campaign anytime from your {{ $isPublication ? 'publication' : 'advertising' }} dashboard. Please note that campaigns left paused for {{ $maxPauseDays ?? 30 }} consecutive days will automatically conclude under our pause policy.
             </div>
 
             <p style="margin-top: 30px; margin-bottom: 0;">

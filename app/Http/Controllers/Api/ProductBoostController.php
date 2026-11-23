@@ -384,8 +384,12 @@ class ProductBoostController extends Controller
         }
 
         if ($search = $request->query('search')) {
-            $query->whereHasMorph('boostable', [IndustryProduct::class], function ($q) use ($search): void {
-                $q->where('product_name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search): void {
+                $q->whereHasMorph('boostable', [IndustryProduct::class], function ($sq) use ($search): void {
+                    $sq->where('product_name', 'like', "%{$search}%");
+                })->orWhereHasMorph('boostable', [\App\Models\Publication::class], function ($sq) use ($search): void {
+                    $sq->where('title', 'like', "%{$search}%");
+                });
             });
         }
 
@@ -539,7 +543,8 @@ class ProductBoostController extends Controller
             ['otp' => $otp, 'expires_at' => now()->addMinutes(3), 'verified_at' => null],
         );
 
-        $user->notify(new BoostOtpNotification($otp));
+        $productTitle = $product instanceof IndustryProduct ? $product->product_name : null;
+        $user->notify(new BoostOtpNotification($otp, $productTitle, 'product'));
 
         $data = [
             'email' => $user->email,
@@ -676,9 +681,10 @@ class ProductBoostController extends Controller
                 || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
                 || ($user->industry && (int) $user->industry->id === (int) $campaign->industry_id)
                 || ($campaign->boostable instanceof IndustryProduct && $campaign->boostable->isOwnedBy($user))
+                || ($campaign->boostable instanceof \App\Models\Publication && (int) $campaign->boostable->creator_id === (int) $user->id)
             );
 
-            if ($isOwner) {
+            if ($isOwner && ! app()->environment('local')) {
                 // Track owner preview views in cache for daily frequency capping without inflating paid impressions
                 $ownerDateKey = "owner_feed_preview_views_{$campaign->id}_{$user->id}_".today()->toDateString();
                 if (! Cache::has($ownerDateKey)) {
@@ -747,6 +753,19 @@ class ProductBoostController extends Controller
             if ($product) {
                 $campaign = $product->activeCampaign()->with(['boostable', 'industry'])->first()
                     ?? $product->campaigns()->where('status', AdCampaignStatus::ACTIVE)->latest('id')->first();
+            } else {
+                $publication = \App\Models\Publication::with(['creator', 'industry', 'adCampaigns'])
+                    ->where('id', $id)
+                    ->orWhere('publication_id', $id)
+                    ->orWhere('slug', $id)
+                    ->first();
+
+                if ($publication) {
+                    $campaign = $publication->adCampaigns()
+                        ->where('status', AdCampaignStatus::ACTIVE)
+                        ->latest('id')
+                        ->first();
+                }
             }
         }
 
@@ -822,7 +841,7 @@ class ProductBoostController extends Controller
 
         $destinationUrl = ($campaign->boostable && method_exists($campaign->boostable, 'getAdDestinationUrl'))
             ? $campaign->boostable->getAdDestinationUrl()
-            : ($campaign->boostable?->product_url ?? null);
+            : ($campaign->boostable?->product_url ?? $campaign->boostable?->website_url ?? $campaign->boostable?->attachment_url ?? null);
 
         // Anti-fraud self-click guard: Do not count clicks if user is the product creator, industry creator, or campaign owner
         $isOwner = $user && (
@@ -831,9 +850,10 @@ class ProductBoostController extends Controller
             || (int) $user->id === (int) ($campaign->boostable?->creator_id ?? 0)
             || ($user->industry && (int) $user->industry->id === (int) $campaign->industry_id)
             || ($campaign->boostable instanceof IndustryProduct && $campaign->boostable->isOwnedBy($user))
+            || ($campaign->boostable instanceof \App\Models\Publication && (int) $campaign->boostable->creator_id === (int) $user->id)
         );
 
-        if ($isOwner) {
+        if ($isOwner && ! app()->environment('local')) {
             $freshBoostable = $campaign->boostable?->fresh();
 
             return response()->json([

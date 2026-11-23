@@ -30,12 +30,19 @@ class CampaignActivatedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $productName = $this->campaign->boostable?->product_name
-            ?? $this->campaign->boostable?->name
-            ?? 'Product';
+        $boostable = $this->campaign->boostable;
+        $isPublication = $boostable instanceof \App\Models\Publication
+            || ($this->campaign->target_entity instanceof \App\Enums\BoostTargetEntity
+                ? $this->campaign->target_entity === \App\Enums\BoostTargetEntity::PUBLICATION
+                : $this->campaign->target_entity === 'publication');
+
+        $itemName = $boostable?->title
+            ?? $boostable?->product_name
+            ?? $boostable?->name
+            ?? ($isPublication ? 'Publication' : 'Product');
 
         return (new MailMessage)
-            ->subject("Your Boost Campaign is Live: {$productName} - Mind Unite")
+            ->subject("Your Boost Campaign is Live: {$itemName} - Mind Unite")
             ->view('emails.campaignActivatedMail', [
                 'campaign' => $this->campaign,
                 'maxPauseDays' => $this->maxPauseDays,

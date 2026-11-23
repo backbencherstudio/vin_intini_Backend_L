@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin\Api;
 
+use App\Enums\AdCampaignStatus;
 use App\Http\Controllers\Controller;
+use App\Models\AdCampaign;
 use App\Models\Publication;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -33,12 +35,34 @@ class PublicationManagementController extends Controller
             }
         }
 
-        // Global KPI summary cards for admin
+        // Global KPI summary cards for admin scoped by network if specified
+        $baseScope = Publication::query();
+        if ($networkType !== 'all' && in_array($networkType, ['psychology', 'neuroscience'], true)) {
+            $baseScope->where('network_type', $networkType);
+        }
+
         $statistics = [
-            'total_publications' => Publication::count(),
-            'active_publications' => Publication::where('status', 'active')->count(),
-            'inactive_publications' => Publication::where('status', 'inactive')->count(),
-            'draft_publications' => Publication::where('status', 'draft')->count(),
+            'total_publications' => (clone $baseScope)->count(),
+            'active_publications' => (clone $baseScope)->where('status', 'active')->count(),
+            'industry_publications' => (clone $baseScope)->whereNotNull('industry_id')->count(),
+            'premium_user_publications' => (clone $baseScope)->whereNull('industry_id')->where(function ($q) {
+                $q->whereDoesntHave('creator', function ($cq) {
+                    $cq->role('admin');
+                });
+            })->count(),
+            'admin_publications' => (clone $baseScope)->whereNull('industry_id')->where(function ($q) {
+                $q->whereHas('creator', function ($cq) {
+                    $cq->role('admin');
+                })->orWhereNull('creator_id');
+            })->count(),
+            'boosted_publications' => (clone $baseScope)->where(function (Builder $b): void {
+                $b->where('is_boosted', true)
+                  ->orWhere(function (Builder $sub): void {
+                      $sub->whereNotNull('boost_expires_at')->where('boost_expires_at', '>', now());
+                  });
+            })->count(),
+            'inactive_publications' => (clone $baseScope)->where('status', 'inactive')->count(),
+            'draft_publications' => (clone $baseScope)->where('status', 'draft')->count(),
         ];
 
         $query = Publication::query()
@@ -95,6 +119,9 @@ class PublicationManagementController extends Controller
             $creator = $pub->creator;
             $industry = $pub->industry;
 
+            $isAdminCreator = $creator ? ($creator->hasRole('admin') || in_array($creator->email, ['admin@gmail.com'], true)) : false;
+            $isAdminPublication = empty($pub->industry_id) && ($isAdminCreator || empty($pub->creator_id));
+
             return [
                 'sl_no' => $slNo,
                 'id' => $pub->id,
@@ -112,10 +139,16 @@ class PublicationManagementController extends Controller
                 'information_confirmed' => (bool) $pub->information_confirmed,
                 'views_count' => (int) $pub->views_count,
                 'likes_count' => (int) $pub->likes_count,
+                'is_boosted' => (bool) $pub->is_boosted,
+                'is_sponsored' => (bool) ($pub->is_boosted && $pub->boost_expires_at && $pub->boost_expires_at->isFuture()),
+                'boost_expires_at' => $pub->boost_expires_at?->toIso8601String(),
                 'created_at' => $pub->created_at?->format('d M Y'),
                 'created_at_iso' => $pub->created_at?->toIso8601String(),
                 'deleted_at' => $pub->deleted_at?->toIso8601String(),
                 'is_deleted' => (bool) $pub->trashed(),
+                'industry_id' => $pub->industry_id,
+                'creator_id' => $pub->creator_id,
+                'is_admin_publication' => $isAdminPublication,
                 'creator' => $creator ? [
                     'id' => $creator->id,
                     'name' => trim(($creator->first_name ?? '').' '.($creator->last_name ?? '')) ?: ($creator->username ?? 'User'),
@@ -123,6 +156,8 @@ class PublicationManagementController extends Controller
                     'username' => $creator->username,
                     'profile_image_url' => $creator->profile_image_url,
                     'tier' => $creator->tier,
+                    'is_admin' => $isAdminCreator,
+                    'roles' => $creator->getRoleNames()->toArray(),
                 ] : null,
                 'industry' => $industry ? [
                     'id' => $industry->id,
@@ -147,6 +182,203 @@ class PublicationManagementController extends Controller
                 'to' => $paginated->lastItem(),
             ],
         ], 200);
+    }
+
+    /**
+     * Store a new publication directly from Admin Panel.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'network_type' => ['required', 'string', 'in:psychology,neuroscience'],
+            'publication_type' => ['required', 'string', 'in:professional,university,freelance,other'],
+            'abstract' => ['required', 'string', 'max:10000'],
+            'website_url' => ['required', 'string', 'url', 'max:1000'],
+            'authors' => ['nullable'],
+            'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:25600'],
+            'status' => ['nullable', 'string', 'in:active,inactive,draft'],
+            'owner_type' => ['nullable', 'string', 'in:industry,premium_user,official'],
+            'industry_id' => ['nullable', 'integer', 'exists:industries,id'],
+            'creator_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('publications/attachments', 'public');
+        }
+
+        $authors = $this->formatAuthors($request->input('authors'));
+
+        $baseSlug = Str::slug($validated['title']);
+        $uniqueSlug = $baseSlug . '-' . Str::lower(Str::random(6));
+
+        $adminUser = auth('api')->user();
+
+        // Determine owner (Industry vs Premium User vs Official MindUnite)
+        $ownerType = $validated['owner_type'] ?? null;
+        $industryId = null;
+        $creatorId = $adminUser?->id;
+
+        if ($ownerType === 'industry' || (!empty($validated['industry_id']) && $ownerType !== 'premium_user')) {
+            $industryId = (int) $validated['industry_id'];
+            $industry = \App\Models\Industry::find($industryId);
+            $creatorId = $industry?->user_id ?? $adminUser?->id;
+        } elseif ($ownerType === 'premium_user' || (!empty($validated['creator_id']) && empty($validated['industry_id']))) {
+            $creatorId = (int) $validated['creator_id'];
+            $industryId = null;
+        } else {
+            $creatorId = $adminUser?->id;
+            $industryId = null;
+        }
+
+        $newReleaseHours = app(\App\Services\Advertising\BoostSettingService::class)->getNewReleaseHours();
+        $isNewRelease = ($validated['status'] ?? 'active') === 'active' && $newReleaseHours > 0;
+        $newReleaseExpiresAt = $isNewRelease ? now()->addHours($newReleaseHours) : null;
+
+        $publication = Publication::create([
+            'creator_id' => $creatorId,
+            'industry_id' => $industryId,
+            'network_type' => $validated['network_type'],
+            'publication_type' => $validated['publication_type'],
+            'title' => $validated['title'],
+            'slug' => $uniqueSlug,
+            'authors' => $authors,
+            'abstract' => $validated['abstract'],
+            'website_url' => $validated['website_url'],
+            'attachment' => $attachmentPath,
+            'information_confirmed' => true,
+            'status' => $validated['status'] ?? 'active',
+            'is_new_release' => $isNewRelease,
+            'new_release_expires_at' => $newReleaseExpiresAt,
+            'is_boosted' => false,
+            'boosted_at' => null,
+            'boost_expires_at' => null,
+            'boost_score' => 0,
+            'views_count' => 0,
+            'likes_count' => 0,
+        ]);
+
+        $publication->load(['creator', 'industry']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Publication created successfully.',
+            'data' => (new \App\Http\Resources\PublicationResource($publication))->resolve(),
+        ], 201);
+    }
+
+    /**
+     * Update an existing publication from Admin Panel.
+     */
+    public function update(Request $request, int|string $id): JsonResponse
+    {
+        $publication = $this->findPublication($id);
+
+        $validated = $request->validate([
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'network_type' => ['sometimes', 'required', 'string', 'in:psychology,neuroscience'],
+            'publication_type' => ['sometimes', 'required', 'string', 'in:professional,university,freelance,other'],
+            'abstract' => ['sometimes', 'required', 'string', 'max:10000'],
+            'website_url' => ['sometimes', 'required', 'string', 'url', 'max:1000'],
+            'authors' => ['nullable'],
+            'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:25600'],
+            'status' => ['sometimes', 'required', 'string', 'in:active,inactive,draft'],
+            'owner_type' => ['nullable', 'string', 'in:industry,premium_user,official'],
+            'industry_id' => ['nullable', 'integer', 'exists:industries,id'],
+            'creator_id' => ['nullable', 'integer', 'exists:users,id'],
+            'is_boosted' => ['nullable', 'boolean'],
+            'boost_score' => ['nullable', 'integer', 'min:0', 'max:1000'],
+        ]);
+
+        if ($request->hasFile('attachment')) {
+            if ($publication->attachment && Storage::disk('public')->exists($publication->attachment)) {
+                Storage::disk('public')->delete($publication->attachment);
+            }
+            $publication->attachment = $request->file('attachment')->store('publications/attachments', 'public');
+        }
+
+        if (isset($validated['title']) && $validated['title'] !== $publication->title) {
+            $baseSlug = Str::slug($validated['title']);
+            $publication->slug = $baseSlug . '-' . Str::lower(Str::random(6));
+            $publication->title = $validated['title'];
+        }
+
+        if (array_key_exists('authors', $validated)) {
+            $publication->authors = $this->formatAuthors($validated['authors']);
+        }
+
+        foreach (['network_type', 'publication_type', 'abstract', 'website_url', 'status'] as $field) {
+            if (isset($validated[$field])) {
+                $publication->{$field} = $validated[$field];
+            }
+        }
+
+        if (array_key_exists('owner_type', $validated) || array_key_exists('industry_id', $validated) || array_key_exists('creator_id', $validated)) {
+            $ownerType = $validated['owner_type'] ?? null;
+            if ($ownerType === 'industry' || (!empty($validated['industry_id']) && $ownerType !== 'premium_user')) {
+                $publication->industry_id = (int) $validated['industry_id'];
+                $industry = \App\Models\Industry::find($publication->industry_id);
+                if ($industry?->user_id) {
+                    $publication->creator_id = $industry->user_id;
+                }
+            } elseif ($ownerType === 'premium_user' || (!empty($validated['creator_id']) && empty($validated['industry_id']))) {
+                $publication->creator_id = (int) $validated['creator_id'];
+                $publication->industry_id = null;
+            } elseif ($ownerType === 'official') {
+                $adminUser = auth('api')->user();
+                $publication->creator_id = $adminUser?->id;
+                $publication->industry_id = null;
+            }
+        }
+
+        if (array_key_exists('is_boosted', $validated)) {
+            $publication->is_boosted = (bool) $validated['is_boosted'];
+            if ($publication->is_boosted && !$publication->boost_expires_at) {
+                $publication->boosted_at = now();
+                $publication->boost_expires_at = now()->addDays(30);
+            } elseif (!$publication->is_boosted) {
+                $publication->boost_expires_at = null;
+            }
+        }
+
+        if (isset($validated['boost_score'])) {
+            $publication->boost_score = (int) $validated['boost_score'];
+        }
+
+        $publication->save();
+        $publication->load(['creator', 'industry']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Publication updated successfully.',
+            'data' => (new \App\Http\Resources\PublicationResource($publication))->resolve(),
+        ], 200);
+    }
+
+    /**
+     * Format authors array or string.
+     */
+    protected function formatAuthors(mixed $authors): ?array
+    {
+        if (empty($authors)) {
+            return null;
+        }
+
+        if (is_string($authors)) {
+            $decoded = json_decode($authors, true);
+            if (is_array($decoded)) {
+                $authors = $decoded;
+            } else {
+                $authors = explode(',', $authors);
+            }
+        }
+
+        if (is_array($authors)) {
+            return array_values(array_filter(array_map('trim', $authors)));
+        }
+
+        return null;
     }
 
     /**
@@ -239,6 +471,69 @@ class PublicationManagementController extends Controller
                 'publication_id' => $publication->publication_id,
                 'status' => $publication->status,
                 'updated_at' => $publication->updated_at?->toIso8601String(),
+            ],
+        ], 200);
+    }
+
+    /**
+     * Toggle boost status for publication.
+     */
+    public function toggleBoost(Request $request, int|string $id): JsonResponse
+    {
+        $publication = $this->findPublication($id);
+        $days = (int) $request->input('days', 30);
+        if ($days <= 0) {
+            $days = 30;
+        }
+
+        if ($publication->is_boosted) {
+            $publication->is_boosted = false;
+            $publication->boost_expires_at = null;
+            $publication->boost_score = 0;
+
+            AdCampaign::where('boostable_type', Publication::class)
+                ->where('boostable_id', $publication->id)
+                ->whereIn('status', [AdCampaignStatus::ACTIVE, AdCampaignStatus::PAUSED])
+                ->update(['status' => AdCampaignStatus::CANCELLED]);
+        } else {
+            $publication->is_boosted = true;
+            $publication->boosted_at = now();
+            $publication->boost_expires_at = now()->addDays($days);
+            if (! $publication->boost_score) {
+                $publication->boost_score = 100;
+            }
+
+            AdCampaign::create([
+                'boostable_type' => Publication::class,
+                'boostable_id' => $publication->id,
+                'user_id' => $publication->creator_id ?? auth('api')->id(),
+                'industry_id' => $publication->industry_id,
+                'ad_type' => 'publication',
+                'network_type' => $publication->network_type ?? 'psychology',
+                'placements' => ['publication_feed', 'newsfeed'],
+                'amount_paid' => 0.00,
+                'currency' => 'USD',
+                'payment_platform' => 'admin_complimentary',
+                'duration_days' => $days,
+                'starts_at' => now(),
+                'ends_at' => now()->addDays($days),
+                'status' => AdCampaignStatus::ACTIVE,
+                'total_impressions' => 0,
+                'total_clicks' => 0,
+            ]);
+        }
+
+        $publication->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $publication->is_boosted ? "Publication boosted successfully for {$days} days." : 'Publication boost deactivated.',
+            'data' => [
+                'id' => $publication->id,
+                'publication_id' => $publication->publication_id,
+                'is_boosted' => (bool) $publication->is_boosted,
+                'boosted_at' => $publication->boosted_at?->toIso8601String(),
+                'boost_expires_at' => $publication->boost_expires_at?->toIso8601String(),
             ],
         ], 200);
     }

@@ -21,7 +21,7 @@ class FairPlayAdRotationService
      * @param  array<int>  $excludeCampaignIds
      */
     public function resolveAdForFeed(
-        string $adType = 'product',
+        string|array|null $adType = 'product',
         ?string $networkType = null,
         string $placement = 'newsfeed',
         array $excludeCampaignIds = [],
@@ -42,10 +42,17 @@ class FairPlayAdRotationService
         // Fetch active campaigns matching type and validity
         $query = AdCampaign::query()
             ->where('status', AdCampaignStatus::ACTIVE)
-            ->where('ad_type', $adType)
             ->whereNotNull('ends_at')
             ->where('ends_at', '>', now())
             ->with(['boostable', 'boostPackage', 'industry:id,created_by,name,slug,logo,tagline']);
+
+        if (! empty($adType)) {
+            if (is_array($adType)) {
+                $query->whereIn('ad_type', $adType);
+            } else {
+                $query->where('ad_type', $adType);
+            }
+        }
 
         if ($placement !== 'newsfeed' && ! empty($networkType) && $networkType !== 'both') {
             $query->where(function ($q) use ($networkType): void {
@@ -114,7 +121,8 @@ class FairPlayAdRotationService
         $userKey = $userId ? "user_{$userId}" : ($ipAddress ? 'ip_'.md5($ipAddress) : null);
         $cachedRecentIds = [];
         if ($userKey) {
-            $recencyKey = "user_recent_ads_{$placement}_{$adType}_{$userKey}";
+            $typeKey = is_array($adType) ? implode('_', $adType) : ($adType ?? 'all');
+            $recencyKey = "user_recent_ads_{$placement}_{$typeKey}_{$userKey}";
             $cachedRecentIds = Cache::get($recencyKey, []);
             if (! is_array($cachedRecentIds)) {
                 $cachedRecentIds = [];

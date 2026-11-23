@@ -113,19 +113,31 @@
 
         <!-- Content Section -->
         <div class="content">
+            @php
+                $boostable = $campaign->boostable;
+                $isPublication = $boostable instanceof \App\Models\Publication
+                    || ($campaign->target_entity instanceof \App\Enums\BoostTargetEntity
+                        ? $campaign->target_entity === \App\Enums\BoostTargetEntity::PUBLICATION
+                        : $campaign->target_entity === 'publication');
+
+                $itemName = $boostable?->title
+                    ?? $boostable?->product_name
+                    ?? $boostable?->name
+                    ?? ($isPublication ? 'your publication' : 'your product');
+            @endphp
             <h2>Boost Campaign Expired</h2>
             <div class="alert-box">
                 Your campaign has reached the {{ $maxPauseDays ?? 30 }}-day maximum pause limit.
             </div>
             <p>
-                The advertising boost campaign for <strong>{{ $campaign->boostable->product_name ?? $campaign->boostable->name ?? 'your product' }}</strong> remained paused for {{ $maxPauseDays ?? 30 }} consecutive days and has now automatically concluded.
+                The advertising boost campaign for <strong>{{ $itemName }}</strong> remained paused for {{ $maxPauseDays ?? 30 }} consecutive days and has now automatically concluded.
             </p>
             <p>
-                You can start a new boost campaign at any time from your product listing dashboard to regain top-tier visibility.
+                You can start a new boost campaign at any time from your {{ $isPublication ? 'publication' : 'product' }} listing dashboard to regain top-tier visibility.
             </p>
 
             <div class="btn-container">
-                <a href="https://mindunite.com" class="btn-action" target="_blank">Start a New Boost</a>
+                <a href="{{ $isPublication ? 'https://mindunite.com/mu/premium/publications' : 'https://mindunite.com' }}" class="btn-action" target="_blank">Start a New Boost</a>
             </div>
         </div>
 
