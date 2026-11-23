@@ -54,6 +54,32 @@ class Publication extends Model
                 $seedId = (int) ($publication->industry_id ?: ($publication->creator_id ?: 1));
                 $publication->publication_id = static::generateUniquePublicationId($seedId);
             }
+
+            if (! isset($publication->attributes['is_new_release']) || $publication->is_new_release === null) {
+                try {
+                    $newReleaseHours = app(\App\Services\Advertising\BoostSettingService::class)->getNewReleaseHours();
+                } catch (\Throwable) {
+                    $newReleaseHours = (int) config('boosting.new_release_hours', 24);
+                }
+                if (($publication->status ?? 'active') === 'active' && $newReleaseHours > 0) {
+                    $publication->is_new_release = true;
+                    $publication->new_release_expires_at = now()->addHours($newReleaseHours);
+                }
+            }
+        });
+
+        static::updating(function (Publication $publication): void {
+            if ($publication->isDirty('status') && $publication->status === 'active' && empty($publication->new_release_expires_at)) {
+                try {
+                    $newReleaseHours = app(\App\Services\Advertising\BoostSettingService::class)->getNewReleaseHours();
+                } catch (\Throwable) {
+                    $newReleaseHours = (int) config('boosting.new_release_hours', 24);
+                }
+                if ($newReleaseHours > 0) {
+                    $publication->is_new_release = true;
+                    $publication->new_release_expires_at = now()->addHours($newReleaseHours);
+                }
+            }
         });
     }
 
@@ -218,7 +244,19 @@ class Publication extends Model
 
     public function isNewRelease(): bool
     {
-        return (bool) $this->is_new_release && ($this->new_release_expires_at === null || $this->new_release_expires_at->isFuture());
+        if (! $this->is_new_release) {
+            return false;
+        }
+
+        if ($this->new_release_expires_at === null) {
+            return true;
+        }
+
+        $expiresAt = $this->new_release_expires_at instanceof \Carbon\CarbonInterface
+            ? $this->new_release_expires_at
+            : \Illuminate\Support\Carbon::parse($this->new_release_expires_at);
+
+        return $expiresAt->isFuture();
     }
 
     public function getAdBadge(): ?string

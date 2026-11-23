@@ -412,7 +412,10 @@ class PublicationTest extends TestCase
         $this->assertEquals(1, $publication->fresh()->views_count);
 
         // Distinct user B views
-        $this->actingAs($this->premiumUser, 'api')
+        $distinctUser = User::factory()->create();
+        $distinctUser->assignRole('user');
+        UserProfile::create(['user_id' => $distinctUser->id]);
+        $this->actingAs($distinctUser, 'api')
             ->getJson("/api/publications/{$publication->id}/details")
             ->assertStatus(200);
         $this->assertEquals(2, $publication->fresh()->views_count);
