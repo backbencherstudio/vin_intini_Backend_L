@@ -38,6 +38,6 @@ auth.json
 AGENTS.md
 
 **/caddy
-frankenphp
+/frankenphp
 frankenphp-worker.php
 .mcp.json
