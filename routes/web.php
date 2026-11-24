@@ -20,6 +20,29 @@ Route::get('/security/email-resolve/{id}', [SecuritySettingsController::class, '
 Route::post('/security/update-password', [SecuritySettingsController::class, 'updatePasswordFromAlert'])
     ->name('security.update-password')->middleware('signed');
 
+// Media streaming routes with full HTTP 206 Byte-Range support for smooth scrubbing and seeking
+Route::get('/storage/posts/{filename}', function (string $filename) {
+    $path = storage_path('app/public/posts/' . $filename);
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    return response()->file($path, [
+        'Accept-Ranges' => 'bytes',
+        'Cache-Control' => 'public, max-age=604800',
+    ]);
+});
+
+Route::get('/storage/industries/posts/{filename}', function (string $filename) {
+    $path = storage_path('app/public/industries/posts/' . $filename);
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    return response()->file($path, [
+        'Accept-Ranges' => 'bytes',
+        'Cache-Control' => 'public, max-age=604800',
+    ]);
+});
+
 // Sub-route files: Admin Web Panel & Web Auth
 require __DIR__.'/web/admin.php';
 require __DIR__.'/web/auth.php';
