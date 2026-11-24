@@ -79,14 +79,18 @@ class NewsfeedController extends Controller
                     ->orWhere(function ($q) use ($connectionIds, $unfollowedConnectionIds): void {
                         $q->where('visibility', 'public')
                             ->whereNotIn('user_id', $unfollowedConnectionIds)
-                            ->whereHas('user.profile', function ($qProfile) use ($connectionIds): void {
-                                $qProfile->where(function ($qp) use ($connectionIds): void {
-                                    $qp->where('privacy_profile_activity', 'everyone')
-                                        ->orWhere(function ($qp2) use ($connectionIds): void {
-                                            $qp2->where('privacy_profile_activity', 'only_connected')
-                                                ->whereIn('user_profiles.user_id', $connectionIds);
+                            ->where(function ($subQ) use ($connectionIds): void {
+                                $subQ->whereDoesntHave('user.profile')
+                                    ->orWhereHas('user.profile', function ($qProfile) use ($connectionIds): void {
+                                        $qProfile->where(function ($qp) use ($connectionIds): void {
+                                            $qp->where('privacy_profile_activity', 'everyone')
+                                                ->orWhereNull('privacy_profile_activity')
+                                                ->orWhere(function ($qp2) use ($connectionIds): void {
+                                                    $qp2->where('privacy_profile_activity', 'only_connected')
+                                                        ->whereIn('user_profiles.user_id', $connectionIds);
+                                                });
                                         });
-                                });
+                                    });
                             });
                     })
 
@@ -94,8 +98,12 @@ class NewsfeedController extends Controller
                         $q->where('visibility', 'connections')
                             ->whereIn('user_id', $connectionIds)
                             ->whereIn('user_id', $followingIds)
-                            ->whereHas('user.profile', function ($qProfile): void {
-                                $qProfile->where('privacy_profile_activity', '!=', 'nobody');
+                            ->where(function ($subQ): void {
+                                $subQ->whereDoesntHave('user.profile')
+                                    ->orWhereHas('user.profile', function ($qProfile): void {
+                                        $qProfile->where('privacy_profile_activity', '!=', 'nobody')
+                                            ->orWhereNull('privacy_profile_activity');
+                                    });
                             });
                     })
 
