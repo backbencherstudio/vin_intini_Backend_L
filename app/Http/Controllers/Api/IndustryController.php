@@ -445,7 +445,7 @@ class IndustryController extends Controller
             'content' => ['nullable', 'string', 'max:10000'],
             'visibility' => ['required', Rule::in(self::POST_VISIBILITIES)],
             'media' => ['nullable', 'array', 'max:10'],
-            'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:102400'],
+            'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,heic,heif,mp4,mov,m4v,webm', 'max:204800'],
         ]);
 
         if (! $this->mediaCountsAreValid($request)) {
@@ -548,7 +548,7 @@ class IndustryController extends Controller
             'content' => ['nullable', 'string', 'max:10000'],
             'visibility' => ['sometimes', Rule::in(self::POST_VISIBILITIES)],
             'media' => ['nullable', 'array', 'max:10'],
-            'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:102400'],
+            'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,heic,heif,mp4,mov,m4v,webm', 'max:204800'],
         ]);
 
         $hasNewMedia = $request->hasFile('media');
