@@ -59,7 +59,7 @@ class UpdatePublicationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'publication_type.in' => 'The professional publications category is reserved exclusively for Pro Industry subscribers. You can select university, freelance, or other.',
+            'publication_type.in' => 'The professional publications category is reserved exclusively for Industry Pro subscribers. You can select university, freelance, or other.',
         ];
     }
 

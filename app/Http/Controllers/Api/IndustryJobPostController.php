@@ -960,7 +960,7 @@ class IndustryJobPostController extends Controller
         if (! $user->hasActiveSubscription(PlanType::INDUSTRY)) {
             return response()->json([
                 'success' => false,
-                'message' => 'You must have an active Pro Industry subscription plan to create or publish a job post.',
+                'message' => 'You must have an active Industry Pro subscription plan to create or publish a job post.',
             ], 403);
         }
 

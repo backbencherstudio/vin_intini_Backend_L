@@ -177,7 +177,7 @@ class IndustryConversationController extends Controller
         if ((int) $industry->created_by === (int) $currentUser->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'You cannot message your own industry. Manage it via your Pro Industry Dashboard.',
+                'message' => 'You cannot message your own industry. Manage it via your Industry Pro Dashboard.',
             ], 422);
         }
 

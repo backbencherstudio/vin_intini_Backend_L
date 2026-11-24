@@ -940,7 +940,7 @@ class IndustryProductController extends Controller
         if (! $user->hasActiveSubscription(PlanType::INDUSTRY)) {
             return response()->json([
                 'success' => false,
-                'message' => 'You must have an active Pro Industry subscription plan to add or manage product.',
+                'message' => 'You must have an active Industry Pro subscription plan to add or manage product.',
             ], 403);
         }
 

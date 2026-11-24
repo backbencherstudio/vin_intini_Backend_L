@@ -63,7 +63,7 @@ class StorePublicationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'publication_type.in' => 'The professional publications category is reserved exclusively for Pro Industry subscribers. You can select university, freelance, or other.',
+            'publication_type.in' => 'The professional publications category is reserved exclusively for Industry Pro subscribers. You can select university, freelance, or other.',
             'publication_type.required' => 'Please select a publication category (university, freelance, or other).',
         ];
     }
@@ -84,7 +84,7 @@ class StorePublicationRequest extends FormRequest
             $hasPremiumPlan = $user->hasActiveSubscription(PlanType::PREMIUM);
 
             if (! $hasIndustryPlan && ! $hasPremiumPlan) {
-                $validator->errors()->add('subscription', 'You must have an active Pro Industry or Premium subscription plan to submit a publication.');
+                $validator->errors()->add('subscription', 'You must have an active Industry Pro or Premium subscription plan to submit a publication.');
 
                 return;
             }
@@ -93,7 +93,7 @@ class StorePublicationRequest extends FormRequest
 
             if ($pubType === 'professional') {
                 if (! $hasIndustryPlan) {
-                    $validator->errors()->add('publication_type', 'The professional publications category is reserved exclusively for Pro Industry subscribers.');
+                    $validator->errors()->add('publication_type', 'The professional publications category is reserved exclusively for Industry Pro subscribers.');
                 } elseif (! $user->industry) {
                     $validator->errors()->add('industry', 'Your account is not associated with any company profile. Please create a company profile first.');
                 }
