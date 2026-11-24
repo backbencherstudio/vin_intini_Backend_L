@@ -404,6 +404,7 @@ class ConnectionController extends Controller
             $mutualConnectionData = $mutualConnections[$candidate->id] ?? ['count' => 0, 'preview' => []];
 
             return [
+                'id' => $connection->id,
                 'user' => $this->formatUser($candidate),
                 'state' => 'pending_sent',
                 'action_label' => 'Pending',
@@ -628,9 +629,41 @@ class ConnectionController extends Controller
     {
         $currentUser = $request->user();
 
-        $user = User::withTrashed()->where('username', $identifier)
-            ->orWhere('id', $identifier)
-            ->firstOrFail();
+        if (empty($identifier) || $identifier === 'undefined' || $identifier === 'null') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid connection or user identifier provided.',
+            ], 422);
+        }
+
+        // 1. Check if $identifier is a Connection record ID involving currentUser
+        $connection = Connection::query()
+            ->where('id', $identifier)
+            ->where(function ($query) use ($currentUser): void {
+                $query->where('sender_id', $currentUser->id)
+                    ->orWhere('receiver_id', $currentUser->id);
+            })
+            ->first();
+
+        if ($connection) {
+            $targetUserId = $connection->sender_id === $currentUser->id
+                ? $connection->receiver_id
+                : $connection->sender_id;
+            $user = User::withTrashed()->find($targetUserId);
+        } else {
+            // 2. Otherwise look up User by username or ID
+            $user = User::withTrashed()
+                ->where('username', $identifier)
+                ->orWhere('id', $identifier)
+                ->first();
+        }
+
+        if (! $user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Connection or user not found.',
+            ], 404);
+        }
 
         if ($currentUser->id === $user->id) {
             throw ValidationException::withMessages([
