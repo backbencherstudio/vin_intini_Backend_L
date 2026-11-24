@@ -61,9 +61,19 @@ class MediaUploadService
                 Storage::disk('public')->delete($filename);
             }
 
-            throw new \Exception(
-                'Video compression failed: '.implode("\n", $output)
-            );
+            \Illuminate\Support\Facades\Log::warning('Video compression failed or ffmpeg not found, storing original file.', [
+                'error' => implode("\n", $output),
+            ]);
+
+            // Graceful fallback: Store original video directly so post creation never fails
+            $extension = $file->getClientOriginalExtension() ?: 'mp4';
+            $fallbackFilename = Str::uuid().'.'.$extension;
+            $path = $file->storePubliclyAs('posts', $fallbackFilename, 'public');
+
+            return [
+                'file_path' => $path,
+                'type' => 'video',
+            ];
         }
 
         return [
