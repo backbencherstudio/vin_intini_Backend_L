@@ -444,6 +444,7 @@ class IndustryController extends Controller
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
             'visibility' => ['required', Rule::in(self::POST_VISIBILITIES)],
+            'who_can_comment' => ['sometimes', 'nullable', Rule::in(['anyone', 'connections', 'no_one'])],
             'media' => ['nullable', 'array', 'max:10'],
             'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,heic,heif,mp4,mov,m4v,webm', 'max:204800'],
         ]);
@@ -473,6 +474,7 @@ class IndustryController extends Controller
                 'user_id' => $userId,
                 'description' => $content ?: null,
                 'visibility' => $validated['visibility'],
+                'who_can_comment' => $validated['who_can_comment'] ?? 'anyone',
             ]);
 
             PostIndustry::create([
@@ -547,16 +549,23 @@ class IndustryController extends Controller
         $validated = $request->validate([
             'content' => ['nullable', 'string', 'max:10000'],
             'visibility' => ['sometimes', Rule::in(self::POST_VISIBILITIES)],
+            'who_can_comment' => ['sometimes', 'nullable', Rule::in(['anyone', 'connections', 'no_one'])],
             'media' => ['nullable', 'array', 'max:10'],
             'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,heic,heif,mp4,mov,m4v,webm', 'max:204800'],
+            'remove_media_ids' => ['nullable', 'array'],
+            'remove_media_ids.*' => ['integer', 'exists:post_media,id'],
         ]);
 
         $hasNewMedia = $request->hasFile('media');
+        $removeMediaIds = $validated['remove_media_ids'] ?? [];
+        $hasRemovedMedia = $removeMediaIds !== [];
 
         if (
             ! array_key_exists('content', $validated)
             && ! array_key_exists('visibility', $validated)
+            && ! array_key_exists('who_can_comment', $validated)
             && ! $hasNewMedia
+            && ! $hasRemovedMedia
         ) {
             return response()->json([
                 'success' => false,
@@ -571,13 +580,15 @@ class IndustryController extends Controller
             ], 422);
         }
 
-        $existingMediaCount = $post->media()->count();
+        $remainingMediaCount = $post->media()
+            ->when($hasRemovedMedia, fn ($q) => $q->whereNotIn('id', $removeMediaIds))
+            ->count();
 
         $content = array_key_exists('content', $validated)
             ? trim($validated['content'] ?? '')
             : $post->description;
 
-        if (blank($content) && ! $hasNewMedia && $existingMediaCount === 0) {
+        if (blank($content) && ! $hasNewMedia && $remainingMediaCount === 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Post must contain text or media.',
@@ -597,24 +608,37 @@ class IndustryController extends Controller
                 $post->visibility = $validated['visibility'];
             }
 
+            if (array_key_exists('who_can_comment', $validated) && $validated['who_can_comment'] !== null) {
+                $post->who_can_comment = $validated['who_can_comment'];
+            }
+
             if ($post->isDirty()) {
                 $post->save();
             }
 
-            if ($hasNewMedia) {
-                $oldMediaPaths = $post->media()->pluck('file_path')->all();
+            if ($hasRemovedMedia) {
+                $mediaToDelete = $post->media()
+                    ->whereIn('id', $removeMediaIds)
+                    ->get();
 
-                $post->media()->delete();
+                $removedPaths = $mediaToDelete->pluck('file_path')->all();
+
+                if ($mediaToDelete->isNotEmpty()) {
+                    $post->media()->whereIn('id', $mediaToDelete->pluck('id'))->delete();
+                    DB::afterCommit(fn () => $this->deleteFiles($removedPaths));
+                }
+            }
+
+            if ($hasNewMedia) {
+                $existingCount = $post->media()->count();
 
                 foreach ($this->uploadPostMedia($request, $mediaUploadService, $uploadedFiles) as $index => $media) {
                     $post->media()->create([
                         'type' => $media['type'],
                         'file_path' => $media['file_path'],
-                        'order' => $index,
+                        'order' => $existingCount + $index,
                     ]);
                 }
-
-                DB::afterCommit(fn () => $this->deleteFiles($oldMediaPaths));
             }
 
             DB::commit();

@@ -48,26 +48,44 @@ class CommentController extends Controller
             return response()->json(['success' => false, 'message' => 'Comments are disabled for this post'], 403);
         }
 
-        if ($post->who_can_comment === 'connections') {
-            $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
-                ->where(function ($q) use ($user, $post): void {
-                    $q->where(function ($q1) use ($user, $post): void {
-                        $q1->where('sender_id', $user->id)
-                            ->where('receiver_id', $post->user_id);
-                    })->orWhere(function ($q2) use ($user, $post): void {
-                        $q2->where('sender_id', $post->user_id)
-                            ->where('receiver_id', $user->id);
-                    });
-                })->exists();
-
-            if (! $isConnected && $user->id !== $post->user_id) {
-                return response()->json(['success' => false, 'message' => 'Only connections can comment on this post'], 403);
-            }
-        }
-
         $post->loadMissing('industryLink.industry');
         $company = $post->industryLink?->industry;
         $isPostCompanyOwner = $company && (int) $company->created_by === $user->id;
+
+        if ($post->who_can_comment === 'connections') {
+            if ($post->isCompanyPost()) {
+                $isFollower = $company && \App\Models\IndustryFollow::where('industry_id', $company->id)
+                    ->where('user_id', $user->id)
+                    ->exists();
+
+                if (! $isFollower && ! $isPostCompanyOwner && $user->id !== $post->user_id) {
+                    return response()->json(['success' => false, 'message' => 'Only followers can comment on this post'], 403);
+                }
+            } elseif ($post->visibility === 'groups') {
+                $isGroupMember = $post->groups()
+                    ->whereHas('members', fn ($q) => $q->where('users.id', $user->id))
+                    ->exists();
+
+                if (! $isGroupMember && $user->id !== $post->user_id) {
+                    return response()->json(['success' => false, 'message' => 'Only group members can comment on this post'], 403);
+                }
+            } else {
+                $isConnected = Connection::where('status', Connection::STATUS_ACCEPTED)
+                    ->where(function ($q) use ($user, $post): void {
+                        $q->where(function ($q1) use ($user, $post): void {
+                            $q1->where('sender_id', $user->id)
+                                ->where('receiver_id', $post->user_id);
+                        })->orWhere(function ($q2) use ($user, $post): void {
+                            $q2->where('sender_id', $post->user_id)
+                                ->where('receiver_id', $user->id);
+                        });
+                    })->exists();
+
+                if (! $isConnected && $user->id !== $post->user_id) {
+                    return response()->json(['success' => false, 'message' => 'Only connections can comment on this post'], 403);
+                }
+            }
+        }
 
         $actingIndustryId = null;
         if ($request->boolean('as_company')) {

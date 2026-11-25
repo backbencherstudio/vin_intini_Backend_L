@@ -31,6 +31,13 @@ class PostController extends Controller
             'media.*' => 'file|max:204800|mimes:jpg,jpeg,png,heic,heif,mp4,mov,m4v,webm',
         ]);
 
+        if (blank(trim((string) ($validated['description'] ?? ''))) && ! $request->hasFile('media')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post must contain text or media.',
+            ], 422);
+        }
+
         if ($request->visibility === 'groups') {
             $userGroupIds = $user->groups()->pluck('groups.id')->toArray();
 
@@ -150,6 +157,18 @@ class PostController extends Controller
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'exists:post_media,id',
         ]);
+
+        $removeMediaIds = $request->input('remove_media_ids', []);
+        $remainingMediaCount = $post->media()
+            ->when(! empty($removeMediaIds), fn ($q) => $q->whereNotIn('id', $removeMediaIds))
+            ->count();
+
+        if (blank(trim((string) ($request->description ?? ''))) && ! $request->hasFile('media') && $remainingMediaCount === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post must contain text or media.',
+            ], 422);
+        }
 
         DB::beginTransaction();
 
@@ -386,6 +405,18 @@ class PostController extends Controller
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'exists:post_media,id',
         ]);
+
+        $removeMediaIds = $request->input('remove_media_ids', []);
+        $remainingMediaCount = $post->media()
+            ->when(! empty($removeMediaIds), fn ($q) => $q->whereNotIn('id', $removeMediaIds))
+            ->count();
+
+        if (blank(trim((string) ($request->description ?? ''))) && ! $request->hasFile('media') && $remainingMediaCount === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post must contain text or media.',
+            ], 422);
+        }
 
         DB::beginTransaction();
 
