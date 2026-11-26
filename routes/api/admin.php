@@ -37,11 +37,13 @@ Route::prefix('admin')->group(function (): void {
 
     // Plan routes
     Route::get('/plans', [PlanController::class, 'index']);
+    Route::post('/plans/reorder', [PlanController::class, 'reorder']);
     Route::get('/plans/{plan}', [PlanController::class, 'show']);
     Route::get('/plan-features', [PlanController::class, 'features']);
     Route::post('/plans/create', [PlanController::class, 'store']);
     Route::patch('/plans/{plan}', [PlanController::class, 'update']);
     Route::patch('/plans/{plan}/status', [PlanController::class, 'toggleStatus']);
+    Route::delete('/plans/{plan}', [PlanController::class, 'destroy']);
 
     // Boost package routes
     Route::get('/boost-packages', [BoostPackageAdminController::class, 'index']);

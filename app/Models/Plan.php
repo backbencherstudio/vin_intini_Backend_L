@@ -18,6 +18,7 @@ class Plan extends Model
         'discount_duration',
         'badge_color',
         'status',
+        'sort_order',
         'features',
         'stripe_product_id',
         'stripe_price_id',

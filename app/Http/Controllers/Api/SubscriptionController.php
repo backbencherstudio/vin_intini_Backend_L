@@ -68,6 +68,7 @@ class SubscriptionController extends Controller
                     ->orWhereNotNull('revenuecat_store_identifier_ios')
                     ->orWhereNotNull('revenuecat_store_identifier_android');
             })
+            ->orderBy('sort_order')
             ->orderBy('billing_rate')
             ->get(['id', 'name', 'short_description', 'billing_cycle', 'plan_type', 'billing_rate', 'badge_color', 'features', 'stripe_price_id', 'revenuecat_store_identifier_ios', 'revenuecat_store_identifier_android']);
 

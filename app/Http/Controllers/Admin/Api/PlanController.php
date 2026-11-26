@@ -33,7 +33,8 @@ class PlanController extends Controller
                 $query->where('plan_type', strtolower(trim((string) $planType)));
             })
             ->withCount('subscriptions')
-            ->latest()
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
 
         return response()->json(['success' => true, 'data' => PlanResource::collection($plans)], 200);
@@ -85,6 +86,7 @@ class PlanController extends Controller
             'discount_duration' => $validated['discount_duration'] ?? null,
             'badge_color' => $validated['badge_color'] ?? null,
             'status' => $validated['status'],
+            'sort_order' => ((int) Plan::max('sort_order')) + 1,
             'plan_type' => $validated['plan_type'],
             'features' => $validated['features'],
             'revenuecat_store_identifier_ios' => $validated['revenuecat_store_identifier_ios'] ?? null,
@@ -173,5 +175,47 @@ class PlanController extends Controller
         ]);
 
         return response()->json(['success' => true, 'data' => $plan], 200);
+    }
+
+    public function destroy(Plan $plan): JsonResponse
+    {
+        if ($plan->subscriptions()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This plan has existing subscriber history and cannot be deleted. Please deactivate it instead to preserve invoices and analytics.',
+            ], 422);
+        }
+
+        if ($plan->stripe_product_id) {
+            $this->stripe->updateProduct($plan->stripe_product_id, [
+                'active' => false,
+            ]);
+        }
+
+        $plan->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Plan deleted successfully.',
+        ], 200);
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer', 'exists:plans,id'],
+        ]);
+
+        DB::transaction(function () use ($validated): void {
+            foreach (array_values($validated['ids']) as $index => $planId) {
+                Plan::whereKey($planId)->update(['sort_order' => $index + 1]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Plan order updated successfully.',
+        ], 200);
     }
 }

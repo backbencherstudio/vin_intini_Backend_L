@@ -30,6 +30,7 @@ class PlanResource extends JsonResource
             'discount_duration' => $this->discount_duration,
             'badge_color' => $this->badge_color,
             'status' => $this->status,
+            'sort_order' => (int) ($this->sort_order ?? 0),
             'plan_type' => $this->plan_type,
             'features' => $this->features,
             'revenuecat_store_identifier_ios' => $this->revenuecat_store_identifier_ios,
