@@ -41,6 +41,7 @@ class SubscriptionController extends Controller
             ], 404);
         }
 
+        $this->applyEffectivePricing($plan);
         $plan->setAttribute('checkout_type', $plan->isRevenueCat() ? 'revenuecat' : 'stripe');
         $plan->setAttribute('features', $this->featureList($plan->features ?? []));
         $plan->setAttribute('stripe_public_key', config('services.stripe.key'));
@@ -70,9 +71,10 @@ class SubscriptionController extends Controller
             })
             ->orderBy('sort_order')
             ->orderBy('billing_rate')
-            ->get(['id', 'name', 'short_description', 'billing_cycle', 'plan_type', 'billing_rate', 'badge_color', 'features', 'stripe_price_id', 'revenuecat_store_identifier_ios', 'revenuecat_store_identifier_android']);
+            ->get(['id', 'name', 'short_description', 'billing_cycle', 'plan_type', 'billing_rate', 'discount_percent', 'discount_duration', 'badge_color', 'features', 'stripe_price_id', 'revenuecat_store_identifier_ios', 'revenuecat_store_identifier_android']);
 
         $plans->each(function (Plan $plan): void {
+            $this->applyEffectivePricing($plan);
             $plan->setAttribute('checkout_type', $plan->isRevenueCat() ? 'revenuecat' : 'stripe');
             $plan->setAttribute('features', $this->featureList($plan->features ?? []));
         });
@@ -505,6 +507,18 @@ class SubscriptionController extends Controller
                 'total' => $paginated->total(),
             ],
         ], 200);
+    }
+
+    private function applyEffectivePricing(Plan $plan): void
+    {
+        $hasActiveDiscount = $plan->hasActiveDiscount();
+        $originalRate = number_format((float) $plan->billing_rate, 2, '.', '');
+        $effectiveRate = $plan->effectiveBillingRate();
+
+        $plan->setAttribute('original_billing_rate', $originalRate);
+        $plan->setAttribute('has_active_discount', $hasActiveDiscount);
+        $plan->setAttribute('billing_rate', $effectiveRate);
+        $plan->setAttribute('discount_percent', $hasActiveDiscount ? $plan->discount_percent : 0);
     }
 
     private function featureList(array $features): array

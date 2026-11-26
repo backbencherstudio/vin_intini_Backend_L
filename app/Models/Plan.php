@@ -53,4 +53,33 @@ class Plan extends Model
         return ! is_null($this->revenuecat_store_identifier_ios)
             || ! is_null($this->revenuecat_store_identifier_android);
     }
+
+    public function hasActiveDiscount(): bool
+    {
+        $discount = (float) ($this->discount_percent ?? 0);
+
+        if ($discount <= 0 || $discount >= 100) {
+            return false;
+        }
+
+        if ($this->discount_duration && $this->discount_duration->copy()->endOfDay()->isPast()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function effectiveBillingRate(): string
+    {
+        $base = (float) ($this->billing_rate ?? 0);
+
+        if (! $this->hasActiveDiscount()) {
+            return number_format($base, 2, '.', '');
+        }
+
+        $discount = (float) $this->discount_percent;
+        $discounted = max(0, round($base * (1 - ($discount / 100)), 2));
+
+        return number_format($discounted, 2, '.', '');
+    }
 }

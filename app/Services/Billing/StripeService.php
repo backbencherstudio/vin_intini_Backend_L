@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Stripe\Checkout\Session;
+use Stripe\Coupon;
 use Stripe\Customer;
 use Stripe\Event;
 use Stripe\Exception\ApiErrorException;
@@ -93,7 +94,7 @@ class StripeService
         int $userId,
         string $paymentMethodId,
     ): StripeSubscription {
-        return StripeSubscription::create([
+        $params = [
             'customer' => $customerId,
             'items' => [
                 ['price' => $plan->stripe_price_id],
@@ -111,7 +112,39 @@ class StripeService
                 'latest_invoice.payment_intent.payment_method',
                 'latest_invoice.payment_intent.payment_method.card',
             ],
+        ];
+
+        if ($plan->hasActiveDiscount()) {
+            $couponId = $this->getOrCreateOneTimeCoupon((float) $plan->discount_percent);
+            $params['discounts'] = [['coupon' => $couponId]];
+        }
+
+        return StripeSubscription::create($params);
+    }
+
+    public function getOrCreateOneTimeCoupon(float $percentOff): string
+    {
+        $normalized = round($percentOff, 2);
+        $couponId = 'plan_once_'.str_replace('.', '_', number_format($normalized, 2, '.', ''));
+
+        try {
+            $existing = Coupon::retrieve($couponId);
+            if ($existing && $existing->valid) {
+                return $existing->id;
+            }
+        } catch (ApiErrorException) {
+            // Coupon does not exist yet; create it below.
+        }
+
+        $label = rtrim(rtrim(number_format($normalized, 2, '.', ''), '0'), '.');
+        $coupon = Coupon::create([
+            'id' => $couponId,
+            'percent_off' => $normalized,
+            'duration' => 'once',
+            'name' => "{$label}% Off (First Billing Cycle)",
         ]);
+
+        return $coupon->id;
     }
 
     public function cancelSubscription(string $subscriptionId, bool $atPeriodEnd = true): StripeSubscription

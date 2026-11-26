@@ -133,7 +133,7 @@ class PlanController extends Controller
             }
         }
 
-        $recreatePrice = (array_key_exists('billing_rate', $validated) && $validated['billing_rate'] != $plan->billing_rate)
+        $recreatePrice = (array_key_exists('billing_rate', $validated) && (float) $validated['billing_rate'] !== (float) $plan->billing_rate)
             || (array_key_exists('billing_cycle', $validated) && $validated['billing_cycle'] !== $plan->billing_cycle);
 
         $fillableFields = [
