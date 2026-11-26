@@ -50,7 +50,7 @@ enum PlanFeature: string
                 PlanType::INDUSTRY->value,
             ],
             self::JOB_APPLICATIONS => [PlanType::PREMIUM->value],
-            self::JOB_APPLICATIONS_RECEIVED => [PlanType::PREMIUM->value],
+            self::JOB_APPLICATIONS_RECEIVED => [PlanType::INDUSTRY->value],
             self::PROFILE_VIEWS_INSIGHTS => [
                 PlanType::PREMIUM->value,
                 PlanType::INDUSTRY->value,
