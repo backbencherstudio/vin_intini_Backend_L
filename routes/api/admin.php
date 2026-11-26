@@ -145,7 +145,12 @@ Route::prefix('admin')->group(function (): void {
 
     // Institution Report
     Route::get('institution-report', [InstitutionReportController::class, 'institutionReport']);
+    Route::post('institution-report', [InstitutionReportController::class, 'store']);
     Route::get('institution-report/students/{id}', [InstitutionReportController::class, 'showStudents']);
+    Route::patch('institution-report/{id}/status', [InstitutionReportController::class, 'updateStatus'])->whereNumber('id');
+    Route::patch('institution-report/{id}', [InstitutionReportController::class, 'rename'])->whereNumber('id');
+    Route::post('institution-report/{id}/merge', [InstitutionReportController::class, 'merge'])->whereNumber('id');
+    Route::delete('institution-report/{id}', [InstitutionReportController::class, 'destroy'])->whereNumber('id');
 
     // Contact Us
     Route::prefix('contact-us')->group(function (): void {

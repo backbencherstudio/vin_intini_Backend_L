@@ -455,7 +455,7 @@ class UserProfileController extends Controller
         $degree = trim((string) ($validated['highest_degree'] ?? ''));
 
         if ($institutionName !== '' && $degree !== '') {
-            $institution = Institution::query()->firstOrCreate(['name' => $institutionName]);
+            $institution = Institution::findOrCreateFromUserInput($institutionName);
 
             $isCurrent = $request->boolean('is_current');
 

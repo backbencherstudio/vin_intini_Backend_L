@@ -23,6 +23,7 @@ class UserEducationController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
 
         $query = Institution::query()
+            ->where('is_verified', true)
             ->select(['id', 'name', 'logo', 'type', 'state', 'country', 'website']);
 
         if ($search !== '') {
@@ -354,9 +355,7 @@ class UserEducationController extends Controller
         if ($request->filled('institution_id')) {
             $updateData['institution_id'] = $validated['institution_id'];
         } elseif ($request->filled('institution')) {
-            $institution = Institution::firstOrCreate([
-                'name' => trim($validated['institution']),
-            ]);
+            $institution = Institution::findOrCreateFromUserInput($validated['institution']);
             $updateData['institution_id'] = $institution->id;
         }
 
@@ -438,9 +437,7 @@ class UserEducationController extends Controller
             ]);
         }
 
-        return Institution::firstOrCreate([
-            'name' => $institutionName,
-        ]);
+        return Institution::findOrCreateFromUserInput($institutionName);
     }
 
     /**
