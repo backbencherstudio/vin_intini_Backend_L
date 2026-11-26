@@ -28,7 +28,7 @@ class PostController extends Controller
             'group_ids' => 'required_if:visibility,groups|array',
             'group_ids.*' => 'exists:groups,id',
             'media' => 'nullable|array|max:20',
-            'media.*' => 'file|max:204800|mimes:jpg,jpeg,png,heic,heif,mp4,mov,m4v,webm',
+            'media.*' => 'file|max:204800|mimes:jpg,jpeg,png,webp,gif,avif,bmp,heic,heif,mp4,mov,m4v,webm,avi,mkv',
         ]);
 
         if (blank(trim((string) ($validated['description'] ?? ''))) && ! $request->hasFile('media')) {
@@ -153,7 +153,7 @@ class PostController extends Controller
             'visibility' => 'required|in:public,connections',
             'who_can_comment' => 'required|in:anyone,connections,no_one',
             'media' => 'nullable|array|max:20',
-            'media.*' => 'file|max:204800|mimes:jpg,jpeg,png,heic,heif,mp4,mov,m4v,webm',
+            'media.*' => 'file|max:204800|mimes:jpg,jpeg,png,webp,gif,avif,bmp,heic,heif,mp4,mov,m4v,webm,avi,mkv',
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'exists:post_media,id',
         ]);
@@ -401,7 +401,7 @@ class PostController extends Controller
             'description' => 'nullable|string|max:5000',
             'who_can_comment' => 'required|in:anyone,connections,no_one',
             'media' => 'nullable|array|max:20',
-            'media.*' => 'file|mimes:jpg,jpeg,png,heic,heif,mp4,mov,m4v,webm|max:204800',
+            'media.*' => 'file|mimes:jpg,jpeg,png,webp,gif,avif,bmp,heic,heif,mp4,mov,m4v,webm,avi,mkv|max:204800',
             'remove_media_ids' => 'nullable|array',
             'remove_media_ids.*' => 'exists:post_media,id',
         ]);
