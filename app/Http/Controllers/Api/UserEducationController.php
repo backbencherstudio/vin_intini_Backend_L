@@ -449,7 +449,7 @@ class UserEducationController extends Controller
         $skillIds = [];
 
         foreach ($skills as $skillName) {
-            $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+            $skill = Skill::findOrCreateFromUserInput((string) $skillName);
             $skillIds[] = $skill->id;
         }
 

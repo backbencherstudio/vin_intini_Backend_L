@@ -399,7 +399,7 @@ class UserProfileController extends Controller
 
         if ($request->has('skills')) {
             foreach ($request->skills as $skillName) {
-                $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+                $skill = Skill::findOrCreateFromUserInput((string) $skillName);
                 $skillIds[] = $skill->id;
             }
         }
@@ -551,7 +551,7 @@ class UserProfileController extends Controller
         ])->toArray();
 
         if ($request->has('skills')) {
-            $profileData['skills_id'] = collect($request->skills)->map(fn ($skillName) => Skill::firstOrCreate(['name' => trim($skillName)])->id)->toArray();
+            $profileData['skills_id'] = collect($request->skills)->map(fn ($skillName) => Skill::findOrCreateFromUserInput((string) $skillName)->id)->toArray();
         }
 
         if ($request->has('current_institute_id')) {

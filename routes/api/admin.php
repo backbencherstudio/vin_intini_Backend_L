@@ -9,7 +9,9 @@ use App\Http\Controllers\Admin\Api\BoostPackageAdminController;
 use App\Http\Controllers\Admin\Api\CityAdminController;
 use App\Http\Controllers\Admin\Api\ContactUsController;
 use App\Http\Controllers\Admin\Api\IndustryCategoryController;
+use App\Http\Controllers\Admin\Api\CompanyController;
 use App\Http\Controllers\Admin\Api\InstitutionReportController;
+use App\Http\Controllers\Admin\Api\SkillController;
 use App\Http\Controllers\Admin\Api\IntegrationSettingController;
 use App\Http\Controllers\Admin\Api\JobManagementController;
 use App\Http\Controllers\Admin\Api\PageController;
@@ -151,6 +153,22 @@ Route::prefix('admin')->group(function (): void {
     Route::patch('institution-report/{id}', [InstitutionReportController::class, 'rename'])->whereNumber('id');
     Route::post('institution-report/{id}/merge', [InstitutionReportController::class, 'merge'])->whereNumber('id');
     Route::delete('institution-report/{id}', [InstitutionReportController::class, 'destroy'])->whereNumber('id');
+
+    // Experience Organizations
+    Route::get('experience-companies', [CompanyController::class, 'index']);
+    Route::post('experience-companies', [CompanyController::class, 'store']);
+    Route::patch('experience-companies/{id}/status', [CompanyController::class, 'updateStatus'])->whereNumber('id');
+    Route::patch('experience-companies/{id}', [CompanyController::class, 'rename'])->whereNumber('id');
+    Route::post('experience-companies/{id}/merge', [CompanyController::class, 'merge'])->whereNumber('id');
+    Route::delete('experience-companies/{id}', [CompanyController::class, 'destroy'])->whereNumber('id');
+
+    // Master Data: Skills
+    Route::get('skills', [SkillController::class, 'index']);
+    Route::post('skills', [SkillController::class, 'store']);
+    Route::patch('skills/{id}/status', [SkillController::class, 'updateStatus'])->whereNumber('id');
+    Route::patch('skills/{id}', [SkillController::class, 'rename'])->whereNumber('id');
+    Route::post('skills/{id}/merge', [SkillController::class, 'merge'])->whereNumber('id');
+    Route::delete('skills/{id}', [SkillController::class, 'destroy'])->whereNumber('id');
 
     // Contact Us
     Route::prefix('contact-us')->group(function (): void {

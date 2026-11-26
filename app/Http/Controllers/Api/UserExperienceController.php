@@ -237,6 +237,7 @@ class UserExperienceController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
 
         $companies = Company::query()
+            ->where('is_verified', true)
             ->select(['id', 'name'])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%");
@@ -260,6 +261,7 @@ class UserExperienceController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
 
         $skills = Skill::query()
+            ->where('is_verified', true)
             ->select(['id', 'name'])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%");
@@ -350,12 +352,12 @@ class UserExperienceController extends Controller
             }
         }
 
-        $company = Company::firstOrCreate(['name' => trim($request->company_name)]);
+        $company = Company::findOrCreateFromUserInput((string) $request->company_name);
 
         $skillIds = [];
         if ($request->has('skills')) {
             foreach ($request->skills as $skillName) {
-                $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+                $skill = Skill::findOrCreateFromUserInput((string) $skillName);
                 $skillIds[] = $skill->id;
             }
         }
@@ -491,7 +493,7 @@ class UserExperienceController extends Controller
         ];
 
         if (isset($validated['company_name'])) {
-            $company = Company::firstOrCreate(['name' => trim($validated['company_name'])]);
+            $company = Company::findOrCreateFromUserInput((string) $validated['company_name']);
             $updateData['company_id'] = $company->id;
         }
 
@@ -529,7 +531,7 @@ class UserExperienceController extends Controller
         if (isset($validated['skills'])) {
             $skillIds = [];
             foreach ($validated['skills'] as $skillName) {
-                $skill = Skill::firstOrCreate(['name' => trim($skillName)]);
+                $skill = Skill::findOrCreateFromUserInput((string) $skillName);
                 $skillIds[] = $skill->id;
             }
             $updateData['skills_id'] = $skillIds;
