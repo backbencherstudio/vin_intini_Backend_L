@@ -14,7 +14,7 @@ use App\Notifications\ConnectionRequestEmailNotification;
 use App\Notifications\ConnectionRequestReceivedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,9 +26,8 @@ class ConnectionController extends Controller
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
         $sort = strtolower(trim((string) $request->query('sort', 'recent')));
-        $perPage = $request->integer('limit', $request->integer('per_page', 10));
-        $perPage = max(1, min($perPage, 100));
-        $page = max(1, (int) $request->integer('page', 1));
+        $perPage = max(1, min($request->integer('limit', $request->integer('per_page', 10)), 100));
+        [$offset, $page, $cursor] = $this->resolveOffsetCursor($request, $perPage);
 
         $connections = Connection::query()
             ->accepted()
@@ -37,7 +36,9 @@ class ConnectionController extends Controller
             ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->with([
                 'sender:id,username,first_name,last_name,title,profile_image',
+                'sender.profile:user_id,profession',
                 'receiver:id,username,first_name,last_name,title,profile_image',
+                'receiver.profile:user_id,profession',
             ])
             ->orderByDesc('responded_at')
             ->orderByDesc('id')
@@ -58,6 +59,13 @@ class ConnectionController extends Controller
                 'current_page' => $page,
                 'total_page' => 0,
                 'last_page' => 0,
+                'pagination' => [
+                    'per_page' => $perPage,
+                    'next_cursor' => null,
+                    'prev_cursor' => null,
+                    'has_more_pages' => false,
+                    'total' => 0,
+                ],
                 'filters' => [
                     'search' => $search !== '' ? $search : null,
                     'sort' => $sort,
@@ -103,26 +111,27 @@ class ConnectionController extends Controller
             default => $items->sortByDesc('connected_at'),
         })->values();
 
+        $filteredTotal = $items->count();
         $paginatedItems = $items
-            ->slice(($page - 1) * $perPage, $perPage)
+            ->slice($offset, $perPage)
             ->values();
 
-        $paginator = new LengthAwarePaginator(
-            $paginatedItems,
-            $items->count(),
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
-        );
+        $paginationMeta = $this->buildOffsetCursorMeta($offset, $paginatedItems->count(), $perPage, $filteredTotal);
 
-        $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
+        $totalPages = $filteredTotal > 0 ? (int) ceil($filteredTotal / $perPage) : 0;
+        $currentPage = $cursor ? ((int) floor($offset / $perPage) + 1) : $page;
 
-        $premiumUserIds = $this->loadPremiumUserIds($counterpartIds);
+        $pageCounterpartIds = $paginatedItems
+            ->map(fn (array $item) => $item['payload']['user']['id'] ?? null)
+            ->filter()
+            ->unique()
+            ->values();
 
-        $connectionData = $paginator->getCollection()->map(function (array $item) use ($mutualConnections, $followingIds, $premiumUserIds) {
+        $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $pageCounterpartIds);
+
+        $premiumUserIds = $this->loadPremiumUserIds($pageCounterpartIds);
+
+        $connectionData = $paginatedItems->map(function (array $item) use ($mutualConnections, $followingIds, $premiumUserIds) {
             $connection = $item['payload'];
 
             if (! $connection['user']) {
@@ -147,13 +156,14 @@ class ConnectionController extends Controller
             'data' => $connectionData,
             'stats' => [
                 'total_connections' => $connections->count(),
-                'filtered_connections' => $items->count(),
+                'filtered_connections' => $filteredTotal,
             ],
-            'total' => $paginator->total(),
-            'limit' => $paginator->perPage(),
-            'current_page' => $paginator->currentPage(),
-            'total_page' => $paginator->lastPage(),
-            'last_page' => $paginator->lastPage(),
+            'total' => $filteredTotal,
+            'limit' => $perPage,
+            'current_page' => $currentPage,
+            'total_page' => $totalPages,
+            'last_page' => $totalPages,
+            'pagination' => $paginationMeta,
             'filters' => [
                 'search' => $search !== '' ? $search : null,
                 'sort' => $sort,
@@ -166,9 +176,8 @@ class ConnectionController extends Controller
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
 
-        $perPage = $request->integer('limit', $request->integer('per_page', 10));
-        $perPage = max(1, min($perPage, 100));
-        $page = max(1, (int) $request->integer('page', 1));
+        $perPage = max(1, min($request->integer('limit', $request->integer('per_page', 10)), 100));
+        [$offset, $page, $cursor] = $this->resolveOffsetCursor($request, $perPage);
 
         $requests = Connection::query()
             ->pending()
@@ -177,7 +186,9 @@ class ConnectionController extends Controller
             ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->with([
                 'sender:id,username,first_name,last_name,title,profile_image',
+                'sender.profile:user_id,profession',
                 'receiver:id,username,first_name,last_name,title,profile_image',
+                'receiver.profile:user_id,profession',
             ])
             ->orderByDesc('responded_at')
             ->orderByDesc('created_at')
@@ -199,6 +210,7 @@ class ConnectionController extends Controller
                 'current_page' => $page,
                 'total_page' => 0,
                 'last_page' => 0,
+                'pagination' => $this->buildOffsetCursorMeta(0, 0, $perPage, 0),
                 'filters' => [
                     'search' => $search !== '' ? $search : null,
                 ],
@@ -226,7 +238,7 @@ class ConnectionController extends Controller
         }
 
         $totalFiltered = $items->count();
-        $paginatedItems = $items->slice(($page - 1) * $perPage, $perPage)->values();
+        $paginatedItems = $items->slice($offset, $perPage)->values();
 
         $currentPageRequests = $paginatedItems->pluck('request')->values();
 
@@ -237,6 +249,8 @@ class ConnectionController extends Controller
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $counterpartIds);
 
         $lastPage = (int) ceil($totalFiltered / $perPage);
+        $currentPage = $cursor ? ((int) floor($offset / $perPage) + 1) : $page;
+        $paginationMeta = $this->buildOffsetCursorMeta($offset, $currentPageRequests->count(), $perPage, $totalFiltered);
 
         if ($currentPageRequests->isEmpty()) {
             return response()->json([
@@ -250,9 +264,10 @@ class ConnectionController extends Controller
                 ],
                 'total' => $totalFiltered,
                 'limit' => $perPage,
-                'current_page' => $page,
+                'current_page' => $currentPage,
                 'total_page' => $lastPage,
                 'last_page' => $lastPage,
+                'pagination' => $paginationMeta,
                 'filters' => [
                     'search' => $search !== '' ? $search : null,
                 ],
@@ -272,9 +287,10 @@ class ConnectionController extends Controller
             ],
             'total' => $totalFiltered,
             'limit' => $perPage,
-            'current_page' => $page,
+            'current_page' => $currentPage,
             'total_page' => $lastPage,
             'last_page' => $lastPage,
+            'pagination' => $paginationMeta,
             'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
@@ -285,7 +301,7 @@ class ConnectionController extends Controller
     {
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
-        $perPage = max(1, min((int) $request->integer('per_page', 12), 50));
+        $perPage = max(1, min((int) ($request->input('per_page') ?? $request->input('limit') ?? 12), 50));
 
         $excludedUserIds = Connection::query()
             ->where(function ($query) use ($currentUser): void {
@@ -302,6 +318,7 @@ class ConnectionController extends Controller
         $suggestionsQuery = User::query()
             ->excludeAdmins()
             ->select(['users.id', 'users.username', 'users.first_name', 'users.last_name', 'users.title', 'users.profile_image', 'users.cover_image'])
+            ->with('profile:user_id,profession')
             ->join('user_profiles', 'users.id', '=', 'user_profiles.user_id')
             ->where('user_profiles.privacy_profile_visibility', 'everyone')
             ->where('users.id', '!=', $currentUser->id)
@@ -330,7 +347,9 @@ class ConnectionController extends Controller
             })
             ->latest('users.id');
 
-        $paginator = $suggestionsQuery->paginate($perPage);
+        $totalSuggestions = (clone $suggestionsQuery)->count();
+        $paginator = $suggestionsQuery->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
+        $totalPages = $totalSuggestions > 0 ? (int) ceil($totalSuggestions / $perPage) : 0;
 
         $candidateIds = $paginator->getCollection()->pluck('id')->values();
 
@@ -356,13 +375,14 @@ class ConnectionController extends Controller
             'status' => 'success',
             'data' => $data,
             'stats' => [
-                'total_suggestions' => $paginator->total(),
+                'total_suggestions' => $totalSuggestions,
             ],
-            'total' => $paginator->total(),
+            'total' => $totalSuggestions,
             'limit' => $paginator->perPage(),
-            'current_page' => $paginator->currentPage(),
-            'total_page' => $paginator->lastPage(),
-            'last_page' => $paginator->lastPage(),
+            'current_page' => 1,
+            'total_page' => $totalPages,
+            'last_page' => $totalPages,
+            'pagination' => $this->buildEloquentCursorMeta($paginator, $totalSuggestions),
             'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
@@ -373,14 +393,12 @@ class ConnectionController extends Controller
     {
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
-        $perPage = $request->integer('limit', $request->integer('per_page', 10));
-        $perPage = max(1, min($perPage, 100));
+        $perPage = max(1, min($request->integer('limit', $request->integer('per_page', 10)), 100));
 
         $pendingQuery = Connection::query()
             ->pending()
             ->where('sender_id', $currentUser->id)
             ->whereHas('receiver', function ($query) use ($search): void {
-
                 $query->whereHas('profile');
                 $query->whereNull('deleted_at');
                 if ($search !== '') {
@@ -391,10 +409,12 @@ class ConnectionController extends Controller
                     });
                 }
             })
-            ->with(['receiver']) //
+            ->with(['receiver.profile:user_id,profession'])
             ->latest('id');
 
-        $paginator = $pendingQuery->paginate($perPage);
+        $totalPending = (clone $pendingQuery)->count();
+        $paginator = $pendingQuery->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
+        $totalPages = $totalPending > 0 ? (int) ceil($totalPending / $perPage) : 0;
 
         $candidateIds = $paginator->getCollection()->pluck('receiver_id')->values();
         $mutualConnections = $this->buildMutualConnectionsMap($currentUser->id, $candidateIds);
@@ -405,11 +425,14 @@ class ConnectionController extends Controller
 
             return [
                 'id' => $connection->id,
+                'status' => $connection->status,
                 'user' => $this->formatUser($candidate),
                 'state' => 'pending_sent',
                 'action_label' => 'Pending',
                 'pending_request_id' => $connection->id,
                 'is_connectable' => false,
+                'sent_since' => $connection->created_at?->format('d M, Y'),
+                'requested_at' => $connection->created_at?->toDateTimeString(),
                 'mutual_connections_count' => $mutualConnectionData['count'],
                 'mutual_connections' => $mutualConnectionData['preview'],
             ];
@@ -421,17 +444,61 @@ class ConnectionController extends Controller
             'status' => 'success',
             'data' => $data,
             'stats' => [
-                'total_pending' => $paginator->total(),
+                'total_pending' => $totalPending,
             ],
-            'total' => $paginator->total(),
+            'total' => $totalPending,
             'limit' => $paginator->perPage(),
-            'current_page' => $paginator->currentPage(),
-            'total_page' => $paginator->lastPage(),
-            'last_page' => $paginator->lastPage(),
+            'current_page' => 1,
+            'total_page' => $totalPages,
+            'last_page' => $totalPages,
+            'pagination' => $this->buildEloquentCursorMeta($paginator, $totalPending),
             'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
+    }
+
+    private function resolveOffsetCursor(Request $request, int $perPage): array
+    {
+        $cursor = null;
+        if ($request->filled('cursor')) {
+            try {
+                $cursor = Cursor::fromEncoded((string) $request->input('cursor'));
+            } catch (\Throwable) {
+                $cursor = null;
+            }
+        }
+
+        $page = max(1, (int) $request->integer('page', 1));
+        $offset = $cursor
+            ? max(0, (int) ($cursor->parameter('offset') ?? 0))
+            : (($page - 1) * $perPage);
+
+        return [$offset, $page, $cursor];
+    }
+
+    private function buildOffsetCursorMeta(int $offset, int $returnedCount, int $perPage, int $total): array
+    {
+        $hasMorePages = ($offset + $returnedCount) < $total;
+
+        return [
+            'per_page' => $perPage,
+            'next_cursor' => $hasMorePages ? (new Cursor(['offset' => $offset + $returnedCount]))->encode() : null,
+            'prev_cursor' => $offset > 0 ? (new Cursor(['offset' => max(0, $offset - $perPage)]))->encode() : null,
+            'has_more_pages' => $hasMorePages,
+            'total' => $total,
+        ];
+    }
+
+    private function buildEloquentCursorMeta($paginator, int $total): array
+    {
+        return [
+            'per_page' => $paginator->perPage(),
+            'next_cursor' => $paginator->nextCursor()?->encode(),
+            'prev_cursor' => $paginator->previousCursor()?->encode(),
+            'has_more_pages' => $paginator->hasMorePages(),
+            'total' => $total,
+        ];
     }
 
     public function sendRequest(Request $request): JsonResponse
@@ -779,25 +846,28 @@ class ConnectionController extends Controller
 
         $relatedConnections = Connection::query()
             ->accepted()
-            ->where(function ($query) use ($currentConnections): void {
-                $query->whereIn('sender_id', $currentConnections->all())
-                    ->orWhereIn('receiver_id', $currentConnections->all());
+            ->where(function ($query) use ($currentConnections, $counterpartIds): void {
+                $query->where(function ($q) use ($currentConnections, $counterpartIds): void {
+                    $q->whereIn('sender_id', $currentConnections->all())
+                        ->whereIn('receiver_id', $counterpartIds->all());
+                })->orWhere(function ($q) use ($currentConnections, $counterpartIds): void {
+                    $q->whereIn('sender_id', $counterpartIds->all())
+                        ->whereIn('receiver_id', $currentConnections->all());
+                });
             })
             ->whereHas('sender', fn ($q) => $q->whereNull('deleted_at'))
             ->whereHas('receiver', fn ($q) => $q->whereNull('deleted_at'))
             ->get(['sender_id', 'receiver_id']);
 
+        $currentSet = array_flip($currentConnections->all());
         $adjacency = [];
-        foreach ($currentConnections as $connectedUserId) {
-            $adjacency[$connectedUserId] = [];
-        }
 
         foreach ($relatedConnections as $connectionRequest) {
-            if (isset($adjacency[$connectionRequest->sender_id])) {
-                $adjacency[$connectionRequest->sender_id][] = $connectionRequest->receiver_id;
-            }
-            if (isset($adjacency[$connectionRequest->receiver_id])) {
+            if (isset($currentSet[$connectionRequest->sender_id])) {
                 $adjacency[$connectionRequest->receiver_id][] = $connectionRequest->sender_id;
+            }
+            if (isset($currentSet[$connectionRequest->receiver_id])) {
+                $adjacency[$connectionRequest->sender_id][] = $connectionRequest->receiver_id;
             }
         }
 
@@ -860,6 +930,9 @@ class ConnectionController extends Controller
             'connected_since' => $connectionRequest->status === Connection::STATUS_ACCEPTED && $connectionRequest->responded_at
                 ? $connectionRequest->responded_at->format('d M, Y')
                 : null,
+            'sent_since' => $connectionRequest->status === Connection::STATUS_PENDING && $connectionRequest->created_at
+                ? $connectionRequest->created_at->format('d M, Y')
+                : null,
             'user' => $counterpartData,
             'mutual_connections_count' => $mutualConnectionData['count'],
             'mutual_connections' => $mutualConnectionData['preview'],
@@ -900,13 +973,23 @@ class ConnectionController extends Controller
             return [];
         }
 
+        $title = $user->title;
+        if (! filled($title) && $user->relationLoaded('profile')) {
+            $profession = $user->profile?->profession;
+            if (is_array($profession)) {
+                $title = implode(' | ', array_filter(array_map('strval', $profession))) ?: null;
+            } elseif (filled($profession)) {
+                $title = (string) $profession;
+            }
+        }
+
         return [
             'id' => $user->id,
             'username' => $user->username,
             'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
-            'title' => $user->title,
+            'title' => $title,
             'profile_image' => $user->profile_image,
             'profile_image_url' => $user->profile_image_url,
             'cover_image' => $user->cover_image,

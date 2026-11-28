@@ -16,11 +16,7 @@ class FollowController extends Controller
     {
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
-
-        $limit = $request->integer('limit', 10);
-        if ($limit > 100) {
-            $limit = 100;
-        }
+        $limit = max(1, min((int) ($request->input('limit') ?? $request->input('per_page') ?? 10), 100));
 
         $baseQuery = UserFollow::query()->where('following_id', $currentUser->id)
             ->whereHas('follower', fn ($q) => $q->whereNull('deleted_at'));
@@ -35,11 +31,14 @@ class FollowController extends Controller
                         ->orWhere('username', 'LIKE', "%{$search}%");
                 });
             });
+            $filteredFollowersCount = (clone $baseQuery)->count();
+        } else {
+            $filteredFollowersCount = $totalFollowersCount;
         }
 
         $paginated = $baseQuery->with('follower:id,username,first_name,last_name,title,profile_image')
             ->latest('id')
-            ->paginate($limit);
+            ->cursorPaginate(perPage: $limit, cursor: $request->input('cursor'));
 
         $followingIds = UserFollow::query()
             ->where('follower_id', $currentUser->id)
@@ -48,11 +47,10 @@ class FollowController extends Controller
 
         $mutualConnections = $this->buildMutualConnectionsMap(
             $currentUser->id,
-            $paginated->pluck('follower_id')->values()
+            $paginated->getCollection()->pluck('follower_id')->values()
         );
 
         $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followingIds, $mutualConnections): ?array {
-
             if (! $follow->follower) {
                 return null;
             }
@@ -72,6 +70,8 @@ class FollowController extends Controller
             ];
         })->filter()->values();
 
+        $totalPages = $filteredFollowersCount > 0 ? (int) ceil($filteredFollowersCount / $limit) : 0;
+
         if ($paginated->isEmpty()) {
             return response()->json([
                 'success' => true,
@@ -81,13 +81,14 @@ class FollowController extends Controller
                 'data' => [],
                 'stats' => [
                     'total_followers' => $totalFollowersCount,
-                    'filtered_followers' => 0,
+                    'filtered_followers' => $filteredFollowersCount,
                 ],
-                'total' => 0,
+                'total' => $filteredFollowersCount,
                 'limit' => $limit,
-                'current_page' => $paginated->currentPage(),
-                'total_page' => 0,
-                'last_page' => 0,
+                'current_page' => 1,
+                'total_page' => $totalPages,
+                'last_page' => $totalPages,
+                'pagination' => $this->cursorPaginationMeta($paginated, $filteredFollowersCount),
                 'filters' => [
                     'search' => $search !== '' ? $search : null,
                 ],
@@ -102,13 +103,14 @@ class FollowController extends Controller
             'data' => $formattedData,
             'stats' => [
                 'total_followers' => $totalFollowersCount,
-                'filtered_followers' => $paginated->total(),
+                'filtered_followers' => $filteredFollowersCount,
             ],
-            'total' => $paginated->total(),
+            'total' => $filteredFollowersCount,
             'limit' => $paginated->perPage(),
-            'current_page' => $paginated->currentPage(),
-            'total_page' => $paginated->lastPage(),
-            'last_page' => $paginated->lastPage(),
+            'current_page' => 1,
+            'total_page' => $totalPages,
+            'last_page' => $totalPages,
+            'pagination' => $this->cursorPaginationMeta($paginated, $filteredFollowersCount),
             'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
@@ -119,11 +121,7 @@ class FollowController extends Controller
     {
         $currentUser = $request->user();
         $search = trim((string) $request->query('search', ''));
-
-        $limit = $request->integer('limit', 10);
-        if ($limit > 100) {
-            $limit = 100;
-        }
+        $limit = max(1, min((int) ($request->input('limit') ?? $request->input('per_page') ?? 10), 100));
 
         $baseQuery = UserFollow::query()->where('follower_id', $currentUser->id)
             ->whereHas('following', fn ($q) => $q->whereNull('deleted_at'));
@@ -138,11 +136,14 @@ class FollowController extends Controller
                         ->orWhere('username', 'LIKE', "%{$search}%");
                 });
             });
+            $filteredFollowingCount = (clone $baseQuery)->count();
+        } else {
+            $filteredFollowingCount = $totalFollowingCount;
         }
 
         $paginated = $baseQuery->with('following:id,username,first_name,last_name,title,profile_image')
             ->latest('id')
-            ->paginate($limit);
+            ->cursorPaginate(perPage: $limit, cursor: $request->input('cursor'));
 
         $followerIds = UserFollow::query()
             ->where('following_id', $currentUser->id)
@@ -151,11 +152,10 @@ class FollowController extends Controller
 
         $mutualConnections = $this->buildMutualConnectionsMap(
             $currentUser->id,
-            $paginated->pluck('following_id')->values()
+            $paginated->getCollection()->pluck('following_id')->values()
         );
 
         $formattedData = $paginated->getCollection()->map(function (UserFollow $follow) use ($followerIds, $mutualConnections): ?array {
-
             if (! $follow->following) {
                 return null;
             }
@@ -175,6 +175,8 @@ class FollowController extends Controller
             ];
         })->filter()->values();
 
+        $totalPages = $filteredFollowingCount > 0 ? (int) ceil($filteredFollowingCount / $limit) : 0;
+
         if ($paginated->isEmpty()) {
             return response()->json([
                 'success' => true,
@@ -184,13 +186,14 @@ class FollowController extends Controller
                 'data' => [],
                 'stats' => [
                     'total_following' => $totalFollowingCount,
-                    'filtered_following' => 0,
+                    'filtered_following' => $filteredFollowingCount,
                 ],
-                'total' => 0,
+                'total' => $filteredFollowingCount,
                 'limit' => $limit,
-                'current_page' => $paginated->currentPage(),
-                'total_page' => 0,
-                'last_page' => 0,
+                'current_page' => 1,
+                'total_page' => $totalPages,
+                'last_page' => $totalPages,
+                'pagination' => $this->cursorPaginationMeta($paginated, $filteredFollowingCount),
                 'filters' => [
                     'search' => $search !== '' ? $search : null,
                 ],
@@ -205,17 +208,29 @@ class FollowController extends Controller
             'data' => $formattedData,
             'stats' => [
                 'total_following' => $totalFollowingCount,
-                'filtered_following' => $paginated->total(),
+                'filtered_following' => $filteredFollowingCount,
             ],
-            'total' => $paginated->total(),
+            'total' => $filteredFollowingCount,
             'limit' => $paginated->perPage(),
-            'current_page' => $paginated->currentPage(),
-            'total_page' => $paginated->lastPage(),
-            'last_page' => $paginated->lastPage(),
+            'current_page' => 1,
+            'total_page' => $totalPages,
+            'last_page' => $totalPages,
+            'pagination' => $this->cursorPaginationMeta($paginated, $filteredFollowingCount),
             'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
+    }
+
+    private function cursorPaginationMeta($paginated, int $total): array
+    {
+        return [
+            'per_page' => $paginated->perPage(),
+            'next_cursor' => $paginated->nextCursor()?->encode(),
+            'prev_cursor' => $paginated->previousCursor()?->encode(),
+            'has_more_pages' => $paginated->hasMorePages(),
+            'total' => $total,
+        ];
     }
 
     public function unfollow(Request $request, $identifier): JsonResponse

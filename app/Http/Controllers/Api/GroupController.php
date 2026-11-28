@@ -542,39 +542,43 @@ class GroupController extends Controller
     {
         $userId = auth()->id();
 
-        $limit = $request->integer('limit', 10);
-        if ($limit > 100) {
-            $limit = 100;
-        }
+        $limit = max(1, min((int) ($request->input('limit') ?? $request->input('per_page') ?? 10), 100));
+        $search = trim((string) $request->query('search', ''));
 
         $totalCreatedEver = Group::where('creator_id', $userId)->count();
 
         $query = Group::where('creator_id', $userId)->withCount('members');
 
-        if ($request->has('search')) {
-            $search = $request->input('search');
+        if ($search !== '') {
             $query->where('name', 'LIKE', "%{$search}%");
         }
 
-        $groups = $query->latest()->paginate($limit);
+        $filteredTotal = $search !== '' ? (clone $query)->count() : $totalCreatedEver;
+        $totalPages = $filteredTotal > 0 ? (int) ceil($filteredTotal / $limit) : 0;
+
+        $groups = $query
+            ->orderByDesc('groups.created_at')
+            ->orderByDesc('groups.id')
+            ->cursorPaginate(perPage: $limit, cursor: $request->input('cursor'));
 
         if ($groups->isEmpty()) {
             return response()->json([
                 'success' => true,
-                'message' => $request->has('search') ? 'No groups found matching your search.' : 'You haven’t created any groups yet.',
+                'message' => $search !== '' ? 'No groups found matching your search.' : 'You haven’t created any groups yet.',
                 'status' => 'success',
                 'total_created_groups_count' => $totalCreatedEver,
                 'data' => [],
                 'stats' => [
                     'total_created_groups_count' => $totalCreatedEver,
                 ],
-                'total' => 0,
+                'total' => $filteredTotal,
                 'limit' => $limit,
-                'current_page' => $groups->currentPage(),
-                'total_page' => 0,
-                'last_page' => 0,
+                'current_page' => 1,
+                'total_page' => $totalPages,
+                'last_page' => $totalPages,
+                'pagination' => $this->cursorPaginationMeta($groups, $filteredTotal),
                 'filters' => [
-                    'search' => $request->has('search') ? $request->input('search') : null,
+                    'search' => $search !== '' ? $search : null,
                 ],
             ], 200);
         }
@@ -590,13 +594,14 @@ class GroupController extends Controller
             'stats' => [
                 'total_created_groups_count' => $totalCreatedEver,
             ],
-            'total' => $groups->total(),
+            'total' => $filteredTotal,
             'limit' => $groups->perPage(),
-            'current_page' => $groups->currentPage(),
-            'total_page' => $groups->lastPage(),
-            'last_page' => $groups->lastPage(),
+            'current_page' => 1,
+            'total_page' => $totalPages,
+            'last_page' => $totalPages,
+            'pagination' => $this->cursorPaginationMeta($groups, $filteredTotal),
             'filters' => [
-                'search' => $request->has('search') ? $request->input('search') : null,
+                'search' => $search !== '' ? $search : null,
             ],
         ], 200);
     }
@@ -605,7 +610,8 @@ class GroupController extends Controller
     {
         $user = auth('api')->user();
 
-        $limit = $request->integer('limit', 10);
+        $limit = max(1, min((int) ($request->input('limit') ?? $request->input('per_page') ?? 10), 100));
+        $search = trim((string) $request->query('search', ''));
 
         $baseQuery = $user->groups()
             ->wherePivot('status', 'active')
@@ -619,32 +625,37 @@ class GroupController extends Controller
             ->withCount(['members' => function ($query): void {
                 $query->where('group_users.status', 'active');
             }]);
-        // ->withCount('members');
 
-        if ($request->has('search')) {
-            $search = $request->input('search');
+        if ($search !== '') {
             $query->where('name', 'LIKE', "%{$search}%");
         }
 
-        $groups = $query->latest()->paginate($limit);
+        $filteredTotal = $search !== '' ? (clone $query)->count() : $totalJoinedEver;
+        $totalPages = $filteredTotal > 0 ? (int) ceil($filteredTotal / $limit) : 0;
+
+        $groups = $query
+            ->orderByDesc('groups.created_at')
+            ->orderByDesc('groups.id')
+            ->cursorPaginate(perPage: $limit, cursor: $request->input('cursor'));
 
         if ($groups->isEmpty()) {
             return response()->json([
                 'success' => true,
-                'message' => $request->has('search') ? 'No groups match your search.' : 'You haven’t joined any groups yet.',
+                'message' => $search !== '' ? 'No groups match your search.' : 'You haven’t joined any groups yet.',
                 'status' => 'success',
                 'total_joined_count' => $totalJoinedEver,
                 'data' => [],
                 'stats' => [
                     'total_joined_count' => $totalJoinedEver,
                 ],
-                'total' => 0,
+                'total' => $filteredTotal,
                 'limit' => $limit,
-                'current_page' => $groups->currentPage(),
-                'total_page' => 0,
-                'last_page' => 0,
+                'current_page' => 1,
+                'total_page' => $totalPages,
+                'last_page' => $totalPages,
+                'pagination' => $this->cursorPaginationMeta($groups, $filteredTotal),
                 'filters' => [
-                    'search' => $request->has('search') ? $request->input('search') : null,
+                    'search' => $search !== '' ? $search : null,
                 ],
             ], 200);
         }
@@ -660,13 +671,14 @@ class GroupController extends Controller
             'stats' => [
                 'total_joined_count' => $totalJoinedEver,
             ],
-            'total' => $groups->total(),
+            'total' => $filteredTotal,
             'limit' => $groups->perPage(),
-            'current_page' => $groups->currentPage(),
-            'total_page' => $groups->lastPage(),
-            'last_page' => $groups->lastPage(),
+            'current_page' => 1,
+            'total_page' => $totalPages,
+            'last_page' => $totalPages,
+            'pagination' => $this->cursorPaginationMeta($groups, $filteredTotal),
             'filters' => [
-                'search' => $request->has('search') ? $request->input('search') : null,
+                'search' => $search !== '' ? $search : null,
             ],
         ], 200);
     }
@@ -813,11 +825,11 @@ class GroupController extends Controller
     public function invitationRequests(Request $request)
     {
         $search = trim((string) $request->query('search', ''));
-        $perPage = $request->integer('limit', $request->integer('per_page', 10));
-        $perPage = max(1, min($perPage, 100));
+        $perPage = max(1, min((int) ($request->input('limit') ?? $request->input('per_page') ?? 10), 100));
         $page = max(1, (int) $request->integer('page', 1));
+        $useOffsetPage = ! $request->filled('cursor') && $request->has('page') && $page > 1;
 
-        $invitations = GroupInvitation::query()
+        $baseQuery = GroupInvitation::query()
             ->where('invited_user_id', $request->user()->id)
             ->whereHas('inviter', fn ($q) => $q->whereNull('deleted_at'))
             ->whereHas('group.creator', fn ($q) => $q->whereNull('deleted_at'))
@@ -835,8 +847,27 @@ class GroupController extends Controller
                     $groupQuery->where('name', 'like', '%'.$search.'%');
                 });
             })
-            ->latest('id')
-            ->paginate($perPage, page: $page);
+            ->latest('id');
+
+        if ($useOffsetPage) {
+            $invitations = $baseQuery->paginate($perPage, page: $page);
+            $totalInvitations = $invitations->total();
+            $currentPage = $invitations->currentPage();
+            $lastPage = $invitations->lastPage();
+            $paginationMeta = [
+                'per_page' => $invitations->perPage(),
+                'next_cursor' => null,
+                'prev_cursor' => null,
+                'has_more_pages' => $invitations->hasMorePages(),
+                'total' => $totalInvitations,
+            ];
+        } else {
+            $totalInvitations = (clone $baseQuery)->count();
+            $invitations = $baseQuery->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
+            $currentPage = 1;
+            $lastPage = $totalInvitations > 0 ? (int) ceil($totalInvitations / $perPage) : 0;
+            $paginationMeta = $this->cursorPaginationMeta($invitations, $totalInvitations);
+        }
 
         $data = $invitations->getCollection()
             ->map(function (GroupInvitation $invitation): array {
@@ -865,7 +896,7 @@ class GroupController extends Controller
             })
             ->values();
 
-        if ($invitations->total() === 0) {
+        if ($totalInvitations === 0) {
             return response()->json([
                 'success' => true,
                 'message' => 'No pending group invitations found.',
@@ -876,9 +907,10 @@ class GroupController extends Controller
                 ],
                 'total' => 0,
                 'limit' => $perPage,
-                'current_page' => $page,
+                'current_page' => $currentPage,
                 'total_page' => 0,
                 'last_page' => 0,
+                'pagination' => $paginationMeta,
                 'filters' => [
                     'search' => $search !== '' ? $search : null,
                 ],
@@ -891,17 +923,29 @@ class GroupController extends Controller
             'status' => 'success',
             'data' => $data,
             'stats' => [
-                'total_invitations' => $invitations->total(),
+                'total_invitations' => $totalInvitations,
             ],
-            'total' => $invitations->total(),
+            'total' => $totalInvitations,
             'limit' => $invitations->perPage(),
-            'current_page' => $invitations->currentPage(),
-            'total_page' => $invitations->lastPage(),
-            'last_page' => $invitations->lastPage(),
+            'current_page' => $currentPage,
+            'total_page' => $lastPage,
+            'last_page' => $lastPage,
+            'pagination' => $paginationMeta,
             'filters' => [
                 'search' => $search !== '' ? $search : null,
             ],
         ], 200);
+    }
+
+    private function cursorPaginationMeta($paginator, int $total): array
+    {
+        return [
+            'per_page' => $paginator->perPage(),
+            'next_cursor' => $paginator->nextCursor()?->encode(),
+            'prev_cursor' => $paginator->previousCursor()?->encode(),
+            'has_more_pages' => $paginator->hasMorePages(),
+            'total' => $total,
+        ];
     }
 
     private function canInviteToGroup(Group $group, int $userId): bool

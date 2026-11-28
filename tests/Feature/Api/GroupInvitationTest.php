@@ -409,6 +409,91 @@ class GroupInvitationTest extends TestCase
             ->assertJsonPath('filters.search', null);
     }
 
+    public function test_created_joined_and_invitation_groups_support_cursor_pagination(): void
+    {
+        $invitee = $this->makeConnectedUser();
+        $otherCreator = $this->makeConnectedUser();
+        $this->acceptConnection($otherCreator, $invitee);
+        $this->acceptConnection($this->creator, $invitee);
+
+        $createdIds = [];
+        $joinedIds = [];
+        $invitedGroupIds = [];
+
+        for ($i = 1; $i <= 5; $i++) {
+            $created = Group::create([
+                'name' => "Created Group {$i}",
+                'description' => 'Desc',
+                'industry' => ['Technology'],
+                'creator_id' => $invitee->id,
+                'type' => 'public',
+                'discoverability' => 'listed',
+            ]);
+            $created->members()->attach($invitee->id, ['role' => 'admin', 'status' => 'active']);
+            $createdIds[] = $created->id;
+
+            $joined = Group::create([
+                'name' => "Joined Group {$i}",
+                'description' => 'Desc',
+                'industry' => ['Technology'],
+                'creator_id' => $otherCreator->id,
+                'type' => 'public',
+                'discoverability' => 'listed',
+            ]);
+            $joined->members()->attach($otherCreator->id, ['role' => 'admin', 'status' => 'active']);
+            $joined->members()->attach($invitee->id, ['role' => 'member', 'status' => 'active']);
+            $joinedIds[] = $joined->id;
+
+            $invited = Group::create([
+                'name' => "Invited Group {$i}",
+                'description' => 'Desc',
+                'industry' => ['Technology'],
+                'creator_id' => $this->creator->id,
+                'type' => 'public',
+                'discoverability' => 'listed',
+                'allow_member_invites' => true,
+            ]);
+            $invited->members()->attach($this->creator->id, ['role' => 'admin', 'status' => 'active']);
+            $invitedGroupIds[] = $invited->id;
+
+            $this->actingAs($this->creator, 'api')
+                ->postJson('/api/group-invite-users/'.$invited->id, [
+                    'user_ids' => [$invitee->id],
+                ])
+                ->assertOk();
+        }
+
+        // 1. /api/my-created-groups cursor pagination
+        $c1 = $this->actingAs($invitee, 'api')->getJson('/api/my-created-groups?limit=2')->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 5)->assertJsonPath('pagination.has_more_pages', true);
+        $c2 = $this->actingAs($invitee, 'api')->getJson('/api/my-created-groups?limit=2&cursor='.$c1->json('pagination.next_cursor'))->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('pagination.has_more_pages', true);
+        $c3 = $this->actingAs($invitee, 'api')->getJson('/api/my-created-groups?limit=2&cursor='.$c2->json('pagination.next_cursor'))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('pagination.has_more_pages', false)->assertJsonPath('pagination.next_cursor', null);
+        $this->assertSame(array_reverse($createdIds), array_merge(
+            array_column($c1->json('data'), 'id'),
+            array_column($c2->json('data'), 'id'),
+            array_column($c3->json('data'), 'id'),
+        ));
+
+        // 2. /api/my-joined-groups cursor pagination
+        $j1 = $this->actingAs($invitee, 'api')->getJson('/api/my-joined-groups?limit=2')->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 5)->assertJsonPath('pagination.has_more_pages', true);
+        $j2 = $this->actingAs($invitee, 'api')->getJson('/api/my-joined-groups?limit=2&cursor='.$j1->json('pagination.next_cursor'))->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('pagination.has_more_pages', true);
+        $j3 = $this->actingAs($invitee, 'api')->getJson('/api/my-joined-groups?limit=2&cursor='.$j2->json('pagination.next_cursor'))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('pagination.has_more_pages', false)->assertJsonPath('pagination.next_cursor', null);
+        $this->assertSame(array_reverse($joinedIds), array_merge(
+            array_column($j1->json('data'), 'id'),
+            array_column($j2->json('data'), 'id'),
+            array_column($j3->json('data'), 'id'),
+        ));
+
+        // 3. /api/group-invitations/requests cursor pagination
+        $i1 = $this->actingAs($invitee, 'api')->getJson('/api/group-invitations/requests?limit=2')->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 5)->assertJsonPath('pagination.has_more_pages', true);
+        $i2 = $this->actingAs($invitee, 'api')->getJson('/api/group-invitations/requests?limit=2&cursor='.$i1->json('pagination.next_cursor'))->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('pagination.has_more_pages', true);
+        $i3 = $this->actingAs($invitee, 'api')->getJson('/api/group-invitations/requests?limit=2&cursor='.$i2->json('pagination.next_cursor'))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('pagination.has_more_pages', false)->assertJsonPath('pagination.next_cursor', null);
+        $this->assertSame(array_reverse($invitedGroupIds), array_merge(
+            array_column(array_column($i1->json('data'), 'group'), 'id'),
+            array_column(array_column($i2->json('data'), 'group'), 'id'),
+            array_column(array_column($i3->json('data'), 'group'), 'id'),
+        ));
+    }
+
     private function createGroup(string $type = 'public'): Group
     {
         $group = Group::create([

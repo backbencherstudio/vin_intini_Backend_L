@@ -697,6 +697,323 @@ class UserConnectionFlowTest extends TestCase
         $this->assertTrue($newSuggestionItem['is_connectable']);
     }
 
+    public function test_connections_followers_and_following_support_cursor_pagination(): void
+    {
+        $currentUser = $this->makeUser('Current', 'User');
+        $names = [
+            ['Alpha', 'One'],
+            ['Bravo', 'Two'],
+            ['Charlie', 'Three'],
+            ['Delta', 'Four'],
+            ['Echo', 'Five'],
+        ];
+
+        $createdIds = [];
+        foreach ($names as $index => [$first, $last]) {
+            $other = $this->makeUser($first, $last);
+            $createdIds[] = $other->id;
+
+            Connection::create([
+                'sender_id' => $currentUser->id,
+                'receiver_id' => $other->id,
+                'status' => Connection::STATUS_ACCEPTED,
+                'responded_at' => now()->subMinutes(10 - $index),
+            ]);
+
+            UserFollow::create([
+                'follower_id' => $other->id,
+                'following_id' => $currentUser->id,
+            ]);
+
+            UserFollow::create([
+                'follower_id' => $currentUser->id,
+                'following_id' => $other->id,
+            ]);
+        }
+
+        // 1. /api/connections with cursor pagination (sorted A-Z)
+        $connP1 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections?limit=2&sort=az')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('total', 5)
+            ->assertJsonPath('pagination.per_page', 2)
+            ->assertJsonPath('pagination.has_more_pages', true);
+
+        $connCursor1 = $connP1->json('pagination.next_cursor');
+        $this->assertNotEmpty($connCursor1);
+
+        $connP2 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections?limit=2&sort=az&cursor='.$connCursor1)
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.has_more_pages', true);
+
+        $connCursor2 = $connP2->json('pagination.next_cursor');
+        $this->assertNotEmpty($connCursor2);
+
+        $connP3 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections?limit=2&sort=az&cursor='.$connCursor2)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+
+        $connUserIds = array_merge(
+            array_column(array_column($connP1->json('data'), 'user'), 'id'),
+            array_column(array_column($connP2->json('data'), 'user'), 'id'),
+            array_column(array_column($connP3->json('data'), 'user'), 'id'),
+        );
+        $this->assertSame($createdIds, $connUserIds);
+
+        // 2. /api/connections/followers with cursor pagination
+        $folP1 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/followers?limit=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('total', 5)
+            ->assertJsonPath('pagination.has_more_pages', true);
+
+        $folP2 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/followers?limit=2&cursor='.$folP1->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.has_more_pages', true);
+
+        $folP3 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/followers?limit=2&cursor='.$folP2->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+
+        $followerUserIds = array_merge(
+            array_column(array_column($folP1->json('data'), 'user'), 'id'),
+            array_column(array_column($folP2->json('data'), 'user'), 'id'),
+            array_column(array_column($folP3->json('data'), 'user'), 'id'),
+        );
+        $this->assertSame(array_reverse($createdIds), $followerUserIds);
+
+        // 3. /api/connections/following with cursor pagination
+        $ingP1 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/following?limit=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('total', 5)
+            ->assertJsonPath('pagination.has_more_pages', true);
+
+        $ingP2 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/following?limit=2&cursor='.$ingP1->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.has_more_pages', true);
+
+        $ingP3 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/following?limit=2&cursor='.$ingP2->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+
+        $followingUserIds = array_merge(
+            array_column(array_column($ingP1->json('data'), 'user'), 'id'),
+            array_column(array_column($ingP2->json('data'), 'user'), 'id'),
+            array_column(array_column($ingP3->json('data'), 'user'), 'id'),
+        );
+        $this->assertSame(array_reverse($createdIds), $followingUserIds);
+    }
+
+    public function test_requests_sent_requests_and_suggestions_support_cursor_pagination(): void
+    {
+        $currentUser = $this->makeUser('Current', 'User');
+
+        $senderIds = [];
+        $sentIds = [];
+        $suggestionIds = [];
+
+        for ($i = 1; $i <= 5; $i++) {
+            $sender = $this->makeUser("Sender{$i}", 'Test');
+            $senderIds[] = $sender->id;
+            Connection::create([
+                'sender_id' => $sender->id,
+                'receiver_id' => $currentUser->id,
+                'status' => Connection::STATUS_PENDING,
+                'responded_at' => now()->subMinutes(10 - $i),
+            ]);
+
+            $recipient = $this->makeUser("Recipient{$i}", 'Test');
+            $sentIds[] = $recipient->id;
+            Connection::create([
+                'sender_id' => $currentUser->id,
+                'receiver_id' => $recipient->id,
+                'status' => Connection::STATUS_PENDING,
+            ]);
+
+            $candidate = $this->makeUser("Candidate{$i}", 'Suggest');
+            $suggestionIds[] = $candidate->id;
+        }
+
+        // 1. /api/connections/requests with cursor pagination
+        $reqP1 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/requests?limit=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('total', 5)
+            ->assertJsonPath('pagination.has_more_pages', true);
+        $reqP2 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/requests?limit=2&cursor='.$reqP1->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.has_more_pages', true);
+        $reqP3 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/requests?limit=2&cursor='.$reqP2->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+        $returnedReqUserIds = array_merge(
+            array_column(array_column($reqP1->json('data'), 'user'), 'id'),
+            array_column(array_column($reqP2->json('data'), 'user'), 'id'),
+            array_column(array_column($reqP3->json('data'), 'user'), 'id'),
+        );
+        $this->assertSame(array_reverse($senderIds), $returnedReqUserIds);
+
+        // 2. /api/connections/sent-requests with cursor pagination
+        $sentP1 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/sent-requests?limit=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('total', 5)
+            ->assertJsonPath('pagination.has_more_pages', true);
+        $sentP2 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/sent-requests?limit=2&cursor='.$sentP1->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.has_more_pages', true);
+        $sentP3 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/sent-requests?limit=2&cursor='.$sentP2->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+        $returnedSentUserIds = array_merge(
+            array_column(array_column($sentP1->json('data'), 'user'), 'id'),
+            array_column(array_column($sentP2->json('data'), 'user'), 'id'),
+            array_column(array_column($sentP3->json('data'), 'user'), 'id'),
+        );
+        $this->assertSame(array_reverse($sentIds), $returnedSentUserIds);
+
+        // 3. /api/connections/suggestions with cursor pagination
+        $sugP1 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/suggestions?per_page=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('total', 5)
+            ->assertJsonPath('pagination.has_more_pages', true);
+        $sugP2 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/suggestions?per_page=2&cursor='.$sugP1->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.has_more_pages', true);
+        $sugP3 = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/suggestions?per_page=2&cursor='.$sugP2->json('pagination.next_cursor'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+        $returnedSugUserIds = array_merge(
+            array_column(array_column($sugP1->json('data'), 'user'), 'id'),
+            array_column(array_column($sugP2->json('data'), 'user'), 'id'),
+            array_column(array_column($sugP3->json('data'), 'user'), 'id'),
+        );
+        $this->assertSame(array_reverse($suggestionIds), $returnedSugUserIds);
+    }
+
+    public function test_sent_requests_include_mutual_connections_and_sent_since(): void
+    {
+        $currentUser = $this->makeUser('Current', 'User');
+        $mutualFriend = $this->makeUser('Mutual', 'Friend');
+        $recipient = $this->makeUser('Pending', 'Recipient');
+
+        Connection::create([
+            'sender_id' => $currentUser->id,
+            'receiver_id' => $mutualFriend->id,
+            'status' => Connection::STATUS_ACCEPTED,
+            'responded_at' => now()->subDays(5),
+        ]);
+
+        Connection::create([
+            'sender_id' => $mutualFriend->id,
+            'receiver_id' => $recipient->id,
+            'status' => Connection::STATUS_ACCEPTED,
+            'responded_at' => now()->subDays(3),
+        ]);
+
+        $sentConnection = Connection::create([
+            'sender_id' => $currentUser->id,
+            'receiver_id' => $recipient->id,
+            'status' => Connection::STATUS_PENDING,
+        ]);
+
+        $response = $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/sent-requests')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.user.id', $recipient->id)
+            ->assertJsonPath('data.0.sent_since', $sentConnection->created_at->format('d M, Y'))
+            ->assertJsonPath('data.0.mutual_connections_count', 1)
+            ->assertJsonPath('data.0.mutual_connections.0.id', $mutualFriend->id);
+
+        $this->assertNotEmpty($response->json('data.0.requested_at'));
+    }
+
+    public function test_received_requests_include_mutual_connections_and_profession_title_fallback(): void
+    {
+        $currentUser = $this->makeUser('Current', 'User');
+        $mutualFriend = $this->makeUser('Mutual', 'Friend');
+
+        $sender = User::factory()->create([
+            'is_verified' => true,
+            'first_name' => 'Marcus',
+            'last_name' => 'Thorne',
+            'title' => null,
+        ]);
+        UserProfile::create([
+            'user_id' => $sender->id,
+            'profession' => ['Behavioral Health Specialist', 'Academic Lecturer'],
+        ]);
+
+        Connection::create([
+            'sender_id' => $currentUser->id,
+            'receiver_id' => $mutualFriend->id,
+            'status' => Connection::STATUS_ACCEPTED,
+            'responded_at' => now()->subDays(5),
+        ]);
+
+        Connection::create([
+            'sender_id' => $mutualFriend->id,
+            'receiver_id' => $sender->id,
+            'status' => Connection::STATUS_ACCEPTED,
+            'responded_at' => now()->subDays(3),
+        ]);
+
+        $receivedConnection = Connection::create([
+            'sender_id' => $sender->id,
+            'receiver_id' => $currentUser->id,
+            'status' => Connection::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($currentUser, 'api')
+            ->getJson('/api/connections/requests')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.user.id', $sender->id)
+            ->assertJsonPath('data.0.user.title', 'Behavioral Health Specialist | Academic Lecturer')
+            ->assertJsonPath('data.0.sent_since', $receivedConnection->created_at->format('d M, Y'))
+            ->assertJsonPath('data.0.mutual_connections_count', 1)
+            ->assertJsonPath('data.0.mutual_connections.0.id', $mutualFriend->id);
+    }
+
     private function makeUser(?string $firstName = null, ?string $lastName = null): User
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
