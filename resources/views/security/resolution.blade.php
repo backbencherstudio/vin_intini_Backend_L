@@ -191,28 +191,29 @@
 </head>
 
 <body>
+    @php($frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:3000'), '/'))
     <div class="card">
 
         @if ($type === 'expired')
             <div class="icon expired-icon">⌛</div>
             <h1>Link Expired</h1>
             <p>This security link has already been used or has expired for your safety.</p>
-            <a href="https://mindunite.com/login" class="btn">Go to Login</a>
+            <a href="{{ $frontendUrl }}/login" class="btn">Go to Login</a>
         @elseif ($type === 'trust')
             <div class="icon success-icon">✔</div>
             <h1>Device Trusted</h1>
             <p>Thank you! This device has been added to your trusted list. You can now use it safely.</p>
-            <a href="https://mindunite.com" class="btn">Go to Mind Unite</a>
+            <a href="{{ $frontendUrl }}" class="btn">Go to Mind Unite</a>
         @elseif ($type === 'block')
             <div class="header" style="text-align: center; padding: 10px;">
-                <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
+                <a href="{{ $frontendUrl }}" target="_blank" style="text-decoration: none;">
                     <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
                         style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
                 </a>
             </div>
             {{-- <div class="icon alert-icon">⚠</div> --}}
             <h1 style="margin-top: 20px;">Secure Your Account</h1>
-            <p>The suspicious device has been blocked. Set a <strong>strong new password</strong> to restore access.</p>
+            <p>Set a <strong>strong new password</strong> below to block the suspicious device, sign out all active sessions, and secure your account.</p>
 
             @if (isset($errors) && $errors->any())
                 <div class="error-box">
@@ -226,7 +227,6 @@
 
             <form action="{{ $postUrl }}" method="POST">
                 @csrf
-                <input type="hidden" name="user_id" value="{{ $user_id }}">
 
                 <div class="form-group">
                     <div class="password-field">
@@ -269,12 +269,12 @@
 
                 <button type="submit" class="btn">Update & Secure Account</button>
             </form>
-            <a href="https://mindunite.com" class="btn btn-secondary">Cancel</a>
+            <a href="{{ $frontendUrl }}" class="btn btn-secondary">Cancel</a>
         @elseif ($type === 'success_reset')
             <div class="icon success-icon">🔒</div>
             <h1>Account Secured</h1>
             <p>Your password has been updated successfully. All other sessions have been signed out.</p>
-            <a href="https://mindunite.com/login" class="btn">Login to Your Account</a>
+            <a href="{{ $frontendUrl }}/login" class="btn">Login to Your Account</a>
         @endif
 
     </div>

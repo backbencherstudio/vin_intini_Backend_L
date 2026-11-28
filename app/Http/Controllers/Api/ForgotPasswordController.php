@@ -9,12 +9,16 @@ use App\Models\LoginActivity;
 use App\Models\Otp;
 use App\Models\User;
 use App\Notifications\PasswordOtpNotification;
+use App\Services\Auth\RefreshTokenService;
+use App\Services\Security\SecurityAuditService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class ForgotPasswordController extends Controller
 {
@@ -75,7 +79,23 @@ class ForgotPasswordController extends Controller
             ->where('type', OtpType::PASSWORD_RESET->value)
             ->first();
 
+        $attemptKey = "otp_attempts:password_reset:{$user->id}";
+
         if (! $otpRecord || (string) $otpRecord->otp !== (string) $request->otp) {
+            if ($otpRecord) {
+                $attempts = (int) Cache::increment($attemptKey);
+                Cache::put($attemptKey, $attempts, now()->addMinutes(5));
+                if ($attempts >= 5) {
+                    $otpRecord->delete();
+                    Cache::forget($attemptKey);
+
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Too many invalid OTP attempts. Please request a new code.',
+                    ], 429);
+                }
+            }
+
             return response()->json([
                 'status' => false,
                 'message' => 'Invalid OTP',
@@ -88,6 +108,8 @@ class ForgotPasswordController extends Controller
                 'message' => 'OTP expired',
             ], 400);
         }
+
+        Cache::forget($attemptKey);
 
         $resetToken = Str::random(64);
 
@@ -114,7 +136,7 @@ class ForgotPasswordController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|exists:users,email',
-            'new_password' => 'required|string|min:6|confirmed',
+            'new_password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->numbers()],
             'reset_token' => 'required_without:otp|string',
             'otp' => 'required_without:reset_token|string|digits:4',
         ]);
@@ -176,10 +198,20 @@ class ForgotPasswordController extends Controller
             $user->has_password = true;
             $user->save();
 
-            // === previous active sessions inactivity ===
-            LoginActivity::where('user_id', $user->id)
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
+            // === previous active sessions inactivity & token revocation ===
+            $activeQuery = LoginActivity::where('user_id', $user->id)->where('is_active', true);
+            $tokenIds = (clone $activeQuery)->pluck('token_id')->all();
+            $activeQuery->update(['is_active' => false]);
+
+            $ttl = now()->addMinutes((int) (config('jwt.rolling_window') ?? 43200));
+            foreach ($tokenIds as $tid) {
+                if (is_string($tid) && $tid !== '') {
+                    Cache::put("revoked_jti:{$tid}", true, $ttl);
+                }
+            }
+
+            app(RefreshTokenService::class)->revokeAllForUser($user->id);
+            app(SecurityAuditService::class)->log($user, 'password_reset', [], 'warning', $request);
             // ===========================================
 
             return response()->json([

@@ -12,14 +12,18 @@ use App\Models\Skill;
 use App\Models\User;
 use App\Notifications\RegisterOtpNotification;
 use App\Services\Auth\ChallengeService;
+use App\Services\Auth\RefreshTokenService;
 use App\Services\Auth\SessionIssuanceService;
+use App\Services\Security\SecurityAuditService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Exceptions\TokenBlacklistedException;
 
@@ -28,6 +32,8 @@ class AuthController extends Controller
     public function __construct(
         protected SessionIssuanceService $sessionService,
         protected ChallengeService $challengeService,
+        protected RefreshTokenService $refreshTokenService,
+        protected SecurityAuditService $auditService,
     ) {}
 
     public function login(Request $request)
@@ -337,27 +343,79 @@ class AuthController extends Controller
             $payload = auth('api')->payload();
             if ($payload) {
                 $tokenId = $payload->get('jti');
-                LoginActivity::where('token_id', $tokenId)
+                $activity = LoginActivity::where('token_id', $tokenId)
                     ->where('user_id', $user->id)
-                    ->update(['is_active' => 0]);
+                    ->first();
+
+                if ($activity) {
+                    $activity->update(['is_active' => 0]);
+                    $this->refreshTokenService->revokeForActivities([$activity->id]);
+                }
+
+                if (is_string($tokenId) && $tokenId !== '') {
+                    Cache::put(
+                        "revoked_jti:{$tokenId}",
+                        true,
+                        now()->addMinutes((int) config('jwt.rolling_window', 43200)),
+                    );
+                }
             }
+
+            $this->refreshTokenService->revokeByPlainToken(
+                request()->cookie(RefreshTokenService::REFRESH_COOKIE_NAME) ?: request()->input('refresh_token')
+            );
+
+            $this->auditService->log($user, 'logout');
 
             auth('api')->logout();
 
-            return response()->json([
+            $response = response()->json([
                 'success' => true,
                 'message' => 'Successfully logged out',
             ]);
+
+            return $this->refreshTokenService->clearRefreshCookie($response, request());
         } catch (\Exception) {
-            return response()->json([
+            $response = response()->json([
                 'success' => true,
                 'message' => 'Successfully logged out',
             ]);
+
+            return $this->refreshTokenService->clearRefreshCookie($response, request());
         }
     }
 
-    public function refresh()
+    public function refresh(Request $request)
     {
+        $opaqueRefresh = $request->cookie(RefreshTokenService::REFRESH_COOKIE_NAME)
+            ?: $request->input('refresh_token');
+
+        if (is_string($opaqueRefresh) && trim($opaqueRefresh) !== '') {
+            $rotated = $this->refreshTokenService->rotate($opaqueRefresh, $request);
+
+            if ($rotated['status'] === 'reused') {
+                $resp = response()->json([
+                    'success' => false,
+                    'message' => 'Session security violation detected. Please login again.',
+                ], 401);
+
+                return $this->refreshTokenService->clearRefreshCookie($resp, $request);
+            }
+
+            if ($rotated['status'] !== 'ok') {
+                $resp = response()->json([
+                    'success' => false,
+                    'message' => 'Session is inactive or expired. Please login again.',
+                ], 401);
+
+                return $this->refreshTokenService->clearRefreshCookie($resp, $request);
+            }
+
+            $response = $this->respondWithToken($rotated['jwt'], $rotated['user']);
+
+            return $this->refreshTokenService->attachRefreshCookie($response, $rotated['plain'], $request);
+        }
+
         $token = auth('api')->getToken();
 
         if (! $token) {
@@ -396,7 +454,10 @@ class AuthController extends Controller
                 'is_active' => true,
             ]);
 
-            return $this->respondWithToken($newToken, $user);
+            $issued = $this->refreshTokenService->issue($user, $loginActivity, is_string($newJti) ? $newJti : null, $request);
+            $response = $this->respondWithToken($newToken, $user);
+
+            return $this->refreshTokenService->attachRefreshCookie($response, $issued['plain'], $request);
         } catch (TokenBlacklistedException) {
             return response()->json(['success' => false, 'message' => 'Session blacklisted. Please login again.'], 401);
         } catch (\Exception) {
@@ -443,7 +504,7 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
-            'password' => 'required|string|min:6',
+            'password' => ['required', 'string', Password::min(8)->letters()->numbers()],
             'terms' => 'required|accepted',
         ]);
 
@@ -595,7 +656,23 @@ class AuthController extends Controller
             ->where('type', OtpType::REGISTRATION->value)
             ->first();
 
+        $attemptKey = "otp_attempts:register:{$user->id}";
+
         if (! $otpRecord || (string) $otpRecord->otp !== (string) $request->otp) {
+            if ($otpRecord) {
+                $attempts = (int) Cache::increment($attemptKey);
+                Cache::put($attemptKey, $attempts, now()->addMinutes(5));
+                if ($attempts >= 5) {
+                    $otpRecord->delete();
+                    Cache::forget($attemptKey);
+
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Too many invalid OTP attempts. Please request a new code.',
+                    ], 429);
+                }
+            }
+
             return response()->json([
                 'status' => false,
                 'message' => 'Invalid OTP',
@@ -609,6 +686,8 @@ class AuthController extends Controller
                 'can_resend_otp' => true,
             ], 400);
         }
+
+        Cache::forget($attemptKey);
 
         return DB::transaction(function () use ($user, $otpRecord) {
             $user->forceFill([

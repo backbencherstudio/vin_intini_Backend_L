@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\LoginActivity;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -243,7 +245,12 @@ class UserController extends Controller
 
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
-            'new_password' => 'required|string|min:6|confirmed',
+            'new_password' => [
+                'required',
+                'string',
+                'confirmed',
+                Password::min(8)->mixedCase()->numbers(),
+            ],
         ]);
 
         if ($validator->fails()) {
@@ -262,7 +269,28 @@ class UserController extends Controller
         }
 
         $user->password = Hash::make($request->new_password);
+        $user->has_password = true;
         $user->save();
+
+        try {
+            $currentTokenId = auth('api')->payload()->get('jti');
+            $otherSessions = LoginActivity::where('user_id', $user->id)
+                ->where(function ($q) use ($currentTokenId): void {
+                    $q->where('token_id', '!=', $currentTokenId)->orWhereNull('token_id');
+                })
+                ->where('is_active', true);
+
+            $tokenIds = (clone $otherSessions)->pluck('token_id')->all();
+            $otherSessions->update(['is_active' => false]);
+
+            $ttl = now()->addMinutes((int) config('jwt.rolling_window', 43200));
+            foreach ($tokenIds as $tid) {
+                if (is_string($tid) && $tid !== '') {
+                    Cache::put("revoked_jti:{$tid}", true, $ttl);
+                }
+            }
+        } catch (\Throwable) {
+        }
 
         return response()->json([
             'status' => true,

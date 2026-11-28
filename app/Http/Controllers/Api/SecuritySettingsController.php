@@ -7,14 +7,20 @@ use App\Http\Controllers\Controller;
 use App\Models\DeletedAccountLog;
 use App\Models\LoginActivity;
 use App\Models\Otp;
+use App\Models\SecurityAuditLog;
 use App\Models\User;
 use App\Notifications\AccountDeletionRequestedNotification;
+use App\Services\Auth\DeviceTrustService;
+use App\Services\Auth\RefreshTokenService;
+use App\Services\Auth\SessionIssuanceService;
+use App\Services\Security\SecurityAuditService;
 use Carbon\Carbon;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\URL;
@@ -82,7 +88,10 @@ class SecuritySettingsController extends Controller
             $canResolveFromHere = true;
         }
 
-        $score = 20;
+        $score = 10;
+        if ($user->has_password) {
+            $score += 10;
+        }
         if ($is2faEnabled) {
             $score += 40;
         }
@@ -124,6 +133,11 @@ class SecuritySettingsController extends Controller
             ->where('updated_at', '>=', now()->subMinutes($rollingMinutes))
             ->count();
 
+        $currentActivity = $currentTokenId
+            ? LoginActivity::where('user_id', $user->id)->where('token_id', $currentTokenId)->first()
+            : null;
+        $isCurrentSessionTrusted = $currentActivity ? (bool) $currentActivity->is_trusted : (! $currentTokenId);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -133,7 +147,7 @@ class SecuritySettingsController extends Controller
                     'last_checked' => now()->toISOString(),
                 ],
                 'has_password' => (bool) $user->has_password,
-                'password_strength' => 'Strong',
+                'password_strength' => $user->has_password ? 'Strong' : 'Not set',
                 'two_factor_auth' => $is2faEnabled ? 'Enabled' : 'Disabled',
                 // 'active_sessions' => LoginActivity::where('user_id', $user->id)->where('is_active', true)->count() . ' active devices',
                 'active_sessions' => $activeCount.' active devices',
@@ -141,7 +155,8 @@ class SecuritySettingsController extends Controller
                 'login_activity' => $suspiciousStatus,
                 // 'suspicious_id' => $suspiciousId,
                 'is_suspicious' => $isSuspicious,
-                'can_resolve_from_here' => $canResolveFromHere,
+                'can_resolve_from_here' => $canResolveFromHere && $isCurrentSessionTrusted,
+                'is_current_session_trusted' => $isCurrentSessionTrusted,
                 'two_factor_enabled' => (bool) $user->two_factor_confirmed_at,
                 'backup_codes_count' => $backupCodesCountText,
                 'recovery_email' => $user->recovery_email,
@@ -416,6 +431,12 @@ class SecuritySettingsController extends Controller
         }
 
         $session->update(['is_active' => false]);
+        app(RefreshTokenService::class)->revokeForActivities([$session->id]);
+        $this->blacklistTokenIds([$session->token_id]);
+        app(SecurityAuditService::class)->log(auth()->id(), 'session_revoked', [
+            'activity_id' => $session->id,
+            'device' => $session->device,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -429,13 +450,21 @@ class SecuritySettingsController extends Controller
             ? auth('api')->payload()->get('jti')
             : session()->getId();
 
-        LoginActivity::where('user_id', auth()->id())
+        $otherSessions = LoginActivity::where('user_id', auth()->id())
             ->where(function ($query) use ($currentTokenId): void {
                 $query->where('token_id', '!=', $currentTokenId)
                     ->orWhereNull('token_id');
             })
-            ->where('is_active', true)
-            ->update(['is_active' => false]);
+            ->where('is_active', true);
+
+        $tokenIds = (clone $otherSessions)->pluck('token_id')->all();
+        $activityIds = (clone $otherSessions)->pluck('id')->all();
+        $otherSessions->update(['is_active' => false]);
+        app(RefreshTokenService::class)->revokeForActivities($activityIds);
+        $this->blacklistTokenIds($tokenIds);
+        app(SecurityAuditService::class)->log(auth()->id(), 'sessions_signed_out_all', [
+            'count' => count($activityIds),
+        ], 'warning');
 
         return response()->json([
             'success' => true,
@@ -466,7 +495,14 @@ class SecuritySettingsController extends Controller
             ], 403);
         }
 
+        app(RefreshTokenService::class)->revokeForActivities([$activity->id]);
+
+        if ($activity->is_active && $activity->token_id) {
+            $this->blacklistTokenIds([$activity->token_id]);
+        }
+
         $activity->delete();
+        app(SecurityAuditService::class)->log($user, 'login_activity_deleted', ['activity_id' => (int) $id]);
 
         return response()->json([
             'success' => true,
@@ -482,16 +518,64 @@ class SecuritySettingsController extends Controller
             ? auth('api')->payload()->get('jti')
             : session()->getId();
 
-        LoginActivity::where('user_id', $user->id)
+        $otherActivities = LoginActivity::where('user_id', $user->id)
             ->where(function ($query) use ($currentTokenId): void {
                 $query->where('token_id', '!=', $currentTokenId)
                     ->orWhereNull('token_id');
-            })
-            ->delete();
+            });
+
+        $activeTokens = (clone $otherActivities)
+            ->where('is_active', true)
+            ->pluck('token_id')
+            ->all();
+        $activityIds = (clone $otherActivities)->pluck('id')->all();
+        app(RefreshTokenService::class)->revokeForActivities($activityIds);
+        $this->blacklistTokenIds($activeTokens);
+
+        $deletedCount = $otherActivities->delete();
+        app(SecurityAuditService::class)->log($user, 'login_activities_cleared', ['deleted_count' => $deletedCount], 'warning');
 
         return response()->json([
             'success' => true,
             'message' => 'All other login activities for your account have been cleared.',
+        ]);
+    }
+
+    public function bulkDeleteLoginActivities(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+        ]);
+
+        $user = auth()->user();
+
+        $currentTokenId = auth('api')->check()
+            ? auth('api')->payload()->get('jti')
+            : session()->getId();
+
+        $targetQuery = LoginActivity::where('user_id', $user->id)
+            ->whereIn('id', $validated['ids'])
+            ->where(function ($query) use ($currentTokenId): void {
+                $query->where('token_id', '!=', $currentTokenId)
+                    ->orWhereNull('token_id');
+            });
+
+        $activeTokens = (clone $targetQuery)
+            ->where('is_active', true)
+            ->pluck('token_id')
+            ->all();
+        $activityIds = (clone $targetQuery)->pluck('id')->all();
+        app(RefreshTokenService::class)->revokeForActivities($activityIds);
+        $this->blacklistTokenIds($activeTokens);
+
+        $deletedCount = $targetQuery->delete();
+        app(SecurityAuditService::class)->log($user, 'login_activities_bulk_deleted', ['deleted_count' => $deletedCount]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$deletedCount} login activity record(s) deleted successfully.",
+            'deleted_count' => $deletedCount,
         ]);
     }
 
@@ -509,6 +593,10 @@ class SecuritySettingsController extends Controller
                 'is_resolved' => true,
                 'is_trusted' => true,
             ]);
+            app(SecurityAuditService::class)->log(auth()->id(), 'device_trusted', [
+                'activity_id' => $activity->id,
+                'device' => $activity->device,
+            ]);
 
             return response()->json(['success' => true, 'message' => 'Device marked as trusted.']);
         }
@@ -521,13 +609,15 @@ class SecuritySettingsController extends Controller
      */
     public function resolveAllActivities(): JsonResponse
     {
-        LoginActivity::where('user_id', auth()->id())
+        $updated = LoginActivity::where('user_id', auth()->id())
             ->where('status', 'Successful')
             ->where('is_resolved', false)
             ->update([
                 'is_resolved' => true,
                 'is_trusted' => true,
             ]);
+
+        app(SecurityAuditService::class)->log(auth()->id(), 'devices_trusted_all', ['count' => $updated]);
 
         return response()->json(['success' => true, 'message' => 'All activities marked as trusted.']);
     }
@@ -564,6 +654,20 @@ class SecuritySettingsController extends Controller
             'is_trusted' => false,
         ]);
 
+        if ($activity->device_token_hash) {
+            LoginActivity::where('user_id', $user->id)
+                ->where('device_token_hash', $activity->device_token_hash)
+                ->update(['is_trusted' => false]);
+        }
+
+        app(RefreshTokenService::class)->revokeForActivities([$activity->id]);
+        $this->blacklistTokenIds([$activity->token_id]);
+        app(SecurityAuditService::class)->log($user, 'suspicious_session_blocked', [
+            'activity_id' => $activity->id,
+            'device' => $activity->device,
+            'ip' => $activity->ip_address,
+        ], 'critical');
+
         return response()->json([
             'success' => true,
             'message' => 'The suspicious session has been blocked successfully. We recommend changing your password as soon as possible.',
@@ -584,14 +688,15 @@ class SecuritySettingsController extends Controller
 
         if ($action === 'trust') {
             $activity->update(['is_resolved' => true, 'is_trusted' => true]);
+            app(SecurityAuditService::class)->log($activity->user_id, 'device_trusted_via_email', [
+                'activity_id' => $activity->id,
+                'device' => $activity->device,
+            ]);
 
             return view('security.resolution', ['type' => 'trust']);
         }
 
         if ($action === 'block') {
-            $activity->update(['is_active' => false]);
-            LoginActivity::where('user_id', $activity->user_id)->update(['is_active' => false]);
-
             $postUrl = URL::temporarySignedRoute(
                 'security.update-password',
                 now()->addMinutes(20),
@@ -608,18 +713,20 @@ class SecuritySettingsController extends Controller
         return null;
     }
 
-    // This method handles the password update after the user clicks "No, it wasn't me" in the email alert.
+    // This method handles the password update after the user confirms securing their account from the email alert.
     public function updatePasswordFromAlert(Request $request): Factory|View
     {
-        $activityId = $request->query('activity_id');
+        $activityId = (int) $request->query('activity_id');
+        $signedUserId = (int) $request->query('user_id');
         $activity = LoginActivity::findOrFail($activityId);
+
+        abort_if((int) $activity->user_id !== $signedUserId, 403, 'Invalid security resolution request.');
 
         if ($activity->is_resolved) {
             return view('security.resolution', ['type' => 'expired']);
         }
 
         $request->validate([
-            'user_id' => 'required|exists:users,id',
             'password' => [
                 'required',
                 'confirmed',
@@ -627,13 +734,38 @@ class SecuritySettingsController extends Controller
             ],
         ]);
 
-        $user = User::find($request->user_id);
+        $user = User::findOrFail($signedUserId);
         $user->update([
             'password' => Hash::make($request->password),
             'has_password' => true,
         ]);
 
-        $activity->update(['is_resolved' => true, 'is_trusted' => false]);
+        $tokenIds = LoginActivity::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->pluck('token_id')
+            ->all();
+        LoginActivity::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->update(['is_active' => false]);
+        app(RefreshTokenService::class)->revokeAllForUser($user->id);
+        $this->blacklistTokenIds($tokenIds);
+
+        $activity->update([
+            'is_active' => false,
+            'is_resolved' => true,
+            'is_trusted' => false,
+        ]);
+
+        if ($activity->device_token_hash) {
+            LoginActivity::where('user_id', $user->id)
+                ->where('device_token_hash', $activity->device_token_hash)
+                ->update(['is_trusted' => false]);
+        }
+
+        app(SecurityAuditService::class)->log($user, 'password_reset_via_alert', [
+            'activity_id' => $activity->id,
+            'revoked_sessions' => count($tokenIds),
+        ], 'critical');
 
         return view('security.resolution', ['type' => 'success_reset']);
     }
@@ -661,14 +793,17 @@ class SecuritySettingsController extends Controller
 
     public function requestDelete(Request $request)
     {
-        $request->validate([
-            'reason' => 'required|string|max:1000',
-            'password' => 'required',
-        ]);
-
         $user = auth('api')->user();
 
-        if (! Hash::check($request->password, $user->password)) {
+        $rules = [
+            'reason' => 'required|string|max:1000',
+        ];
+        if ($user->has_password) {
+            $rules['password'] = 'required';
+        }
+        $request->validate($rules);
+
+        if ($user->has_password && ! Hash::check((string) $request->password, (string) $user->password)) {
             return response()->json(['errors' => ['password' => ['The provided password is incorrect.']]], 422);
         }
 
@@ -686,12 +821,18 @@ class SecuritySettingsController extends Controller
         $user->notify(new AccountDeletionRequestedNotification($user, $permanentDeleteAt));
 
         try {
-            LoginActivity::where('user_id', $user->id)
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
+            $activeQuery = LoginActivity::where('user_id', $user->id)->where('is_active', true);
+            $tokenIds = (clone $activeQuery)->pluck('token_id')->all();
+            $activeQuery->update(['is_active' => false]);
+            $this->blacklistTokenIds($tokenIds);
+            app(RefreshTokenService::class)->revokeAllForUser($user->id);
         } catch (\Exception) {
             //
         }
+
+        app(SecurityAuditService::class)->log($user, 'account_delete_requested', [
+            'permanent_delete_at' => $permanentDeleteAt->toISOString(),
+        ], 'critical');
 
         // remove 2FA and recovery codes before soft deleting the user
         $user->update([
@@ -780,27 +921,25 @@ class SecuritySettingsController extends Controller
 
                 DeletedAccountLog::where('user_id', $user->id)->delete();
 
-                $token = auth('api')->login($user);
+                $session = app(SessionIssuanceService::class)->issueSession($user);
+                app(SecurityAuditService::class)->log($user, 'account_restored', [], 'warning');
 
-                $payload = auth('api')->setToken($token)->getPayload();
-                $tokenId = $payload->get('jti');
-                request()->merge(['current_token_id' => $tokenId]);
-                event(new Login('api', $user, false));
-
-                $roleName = $user->getRoleNames()->first();
-                $user->makeHidden('roles');
-                $user->role = $roleName;
-
-                return response()->json([
+                $response = response()->json([
                     'success' => true,
                     'message' => 'Welcome back! Your account has been successfully reactivated.',
                     'data' => [
-                        'is_onboarding' => $user->profile()->exists(),
-                        'user' => $user,
-                        'token' => $token,
+                        'is_onboarding' => $session['is_onboarding'],
+                        'user' => $session['user'],
+                        'token' => $session['token'],
                         'token_type' => 'bearer',
+                        'expires_in' => auth('api')->factory()->getTTL() * 60,
                     ],
                 ]);
+
+                app(RefreshTokenService::class)->attachRefreshCookie($response, $session['refresh_token'], request());
+                app(DeviceTrustService::class)->attachDeviceCookie($response, $session['device_id'], request());
+
+                return $response;
             });
         } catch (\Exception $e) {
             return response()->json([
@@ -808,6 +947,55 @@ class SecuritySettingsController extends Controller
                 'message' => 'Something went wrong while restoring the account.',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function getSecurityAuditLogs(Request $request): JsonResponse
+    {
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
+
+        $logs = SecurityAuditLog::where('user_id', auth()->id())
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        $formatted = collect($logs->items())->map(function (SecurityAuditLog $log): array {
+            return [
+                'id' => $log->id,
+                'event' => $log->event,
+                'severity' => $log->severity,
+                'ip_address' => $log->ip_address,
+                'user_agent' => $log->user_agent,
+                'metadata' => $log->metadata,
+                'created_at' => $log->created_at?->toISOString(),
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $formatted,
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+                'total' => $logs->total(),
+                'per_page' => $logs->perPage(),
+            ],
+        ]);
+    }
+
+    /**
+     * Blacklist JWT token IDs in cache so deleted/revoked sessions cannot be re-activated.
+     *
+     * @param  array<int, string|null>  $tokenIds
+     */
+    private function blacklistTokenIds(array $tokenIds): void
+    {
+        $ttl = now()->addMinutes((int) config('jwt.rolling_window', 43200));
+
+        foreach ($tokenIds as $tokenId) {
+            if (is_string($tokenId) && $tokenId !== '') {
+                Cache::put("revoked_jti:{$tokenId}", true, $ttl);
+            }
         }
     }
 }

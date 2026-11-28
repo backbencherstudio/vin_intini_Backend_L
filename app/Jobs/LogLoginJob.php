@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\LoginActivity;
 use App\Models\User;
+use App\Services\Security\SecurityAuditService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -15,7 +16,16 @@ class LogLoginJob
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(protected $userId, protected $ip, protected $userAgent, protected $tokenId = null, protected $status = 'Successful', protected $customDevice = null, protected $customPlatform = null) {}
+    public function __construct(
+        protected $userId,
+        protected $ip,
+        protected $userAgent,
+        protected $tokenId = null,
+        protected $status = 'Successful',
+        protected $customDevice = null,
+        protected $customPlatform = null,
+        protected $deviceTokenHash = null,
+    ) {}
 
     public function handle(): void
     {
@@ -45,32 +55,54 @@ class LogLoginJob
             return;
         }
 
-        $isNewUser = $user->created_at->gt(now()->subMinutes(5));
-
-        $isAlreadyTrusted = LoginActivity::where('user_id', $this->userId)
+        $hasPriorSuccessfulLogin = LoginActivity::where('user_id', $this->userId)
             ->where('status', 'Successful')
-            ->where('device', $device)
-            ->where('location', $locationName)
-            ->where('is_trusted', true)
             ->exists();
 
-        $shouldBeTrusted = ($isNewUser || $isAlreadyTrusted);
+        $isFirstLogin = ! $hasPriorSuccessfulLogin;
 
-        // Deactivate previous successful login activities for the same device
-        if ($this->status === 'Successful') {
-            LoginActivity::where('user_id', $this->userId)
+        if (is_string($this->deviceTokenHash) && $this->deviceTokenHash !== '') {
+            $isAlreadyTrusted = LoginActivity::where('user_id', $this->userId)
+                ->where('status', 'Successful')
+                ->where('device_token_hash', $this->deviceTokenHash)
+                ->where('is_trusted', true)
+                ->where('is_resolved', true)
+                ->exists();
+        } else {
+            $isAlreadyTrusted = LoginActivity::where('user_id', $this->userId)
+                ->where('status', 'Successful')
+                ->whereNull('device_token_hash')
                 ->where('device', $device)
                 ->where('browser', $browser)
+                ->where('location', $locationName)
+                ->where('is_trusted', true)
+                ->where('is_resolved', true)
+                ->exists();
+        }
+
+        $shouldBeTrusted = ($isFirstLogin || $isAlreadyTrusted);
+
+        // Deactivate previous active sessions for the exact same recognized device
+        if ($this->status === 'Successful') {
+            $sameDeviceQuery = LoginActivity::where('user_id', $this->userId)
                 ->where('status', 'Successful')
-                ->where('is_active', true)
-                ->update([
-                    'is_active' => false,
-                ]);
+                ->where('is_active', true);
+
+            if (is_string($this->deviceTokenHash) && $this->deviceTokenHash !== '') {
+                $sameDeviceQuery->where('device_token_hash', $this->deviceTokenHash);
+            } else {
+                $sameDeviceQuery->whereNull('device_token_hash')
+                    ->where('device', $device)
+                    ->where('browser', $browser);
+            }
+
+            $sameDeviceQuery->update(['is_active' => false]);
         }
 
         $activity = LoginActivity::create([
             'user_id' => $this->userId,
             'token_id' => $this->tokenId,
+            'device_token_hash' => $this->deviceTokenHash,
             'device' => $device ?: 'Unknown Device',
             'browser' => $browser ?: 'Unknown Browser',
             'ip_address' => $this->ip,
@@ -82,10 +114,20 @@ class LogLoginJob
             'is_resolved' => $shouldBeTrusted,
         ]);
 
-        if ($this->status === 'Successful') {
-            if (! $shouldBeTrusted) {
-                SendLoginAlertEmailJob::dispatch($activity);
-            }
+        app(SecurityAuditService::class)->log(
+            $user,
+            $this->status === 'Successful' ? 'login_success' : 'login_failed',
+            [
+                'device' => $activity->device,
+                'browser' => $activity->browser,
+                'location' => $locationName,
+                'trusted' => $shouldBeTrusted,
+            ],
+            $this->status === 'Successful' ? ($shouldBeTrusted ? 'info' : 'warning') : 'warning',
+        );
+
+        if ($this->status === 'Successful' && ! $shouldBeTrusted) {
+            SendLoginAlertEmailJob::dispatch($activity);
         }
     }
 }

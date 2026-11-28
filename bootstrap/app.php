@@ -2,7 +2,9 @@
 
 use App\Http\Middleware\CheckActiveSession;
 use App\Http\Middleware\EnsureProfileCompleted;
+use App\Http\Middleware\EnsureTrustedSession;
 use App\Http\Middleware\EnsureVerifiedUser;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\VerifyRevenueCatWebhook;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -31,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->append(SecurityHeaders::class);
         $middleware->append(HandleCors::class);
         $middleware->validateCsrfTokens(except: [
             'preview/*',
@@ -44,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'profile_completed' => EnsureProfileCompleted::class,
             'verified_user' => EnsureVerifiedUser::class,
             'active_session' => CheckActiveSession::class,
+            'trusted_session' => EnsureTrustedSession::class,
             'verify_revenuecat_webhook' => VerifyRevenueCatWebhook::class,
         ]);
         // for admin login redirection--------

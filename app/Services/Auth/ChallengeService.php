@@ -20,6 +20,34 @@ class ChallengeService
     }
 
     /**
+     * Verify a purpose-bound challenge token without consuming it yet.
+     */
+    public function verifyChallenge(string $token, User $user, string $purpose = '2fa'): bool
+    {
+        $challengeUserId = Cache::get("challenge:{$purpose}:{$token}");
+        if (! $challengeUserId && $purpose === '2fa') {
+            $challengeUserId = Cache::get("2fa_challenge:{$token}");
+        }
+
+        if (! $challengeUserId) {
+            return false;
+        }
+
+        return (int) $challengeUserId === (int) $user->id;
+    }
+
+    /**
+     * Consume (invalidate) a purpose-bound challenge token.
+     */
+    public function consumeChallenge(string $token, string $purpose = '2fa'): void
+    {
+        Cache::forget("challenge:{$purpose}:{$token}");
+        if ($purpose === '2fa') {
+            Cache::forget("2fa_challenge:{$token}");
+        }
+    }
+
+    /**
      * Verify and consume a purpose-bound challenge token.
      */
     public function verifyAndConsumeChallenge(string $token, User $user, string $purpose = '2fa'): bool

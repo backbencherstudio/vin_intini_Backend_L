@@ -144,10 +144,11 @@
 </head>
 
 <body>
+    @php($frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:3000'), '/'))
     <div class="container">
         <!-- Header -->
         <div class="header" style="text-align: center; padding: 20px;">
-            <a href="https://mindunite.com" target="_blank" style="text-decoration: none;">
+            <a href="{{ $frontendUrl }}" target="_blank" style="text-decoration: none;">
                 <img src="{{ asset('assets/img/logo.png') }}" alt="Mind Unite Logo" class="responsive-logo"
                     style="width: 500px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;">
             </a>
@@ -198,7 +199,7 @@
 
         <!-- Footer -->
         <div class="footer">
-            &copy; {{ date('Y') }} <a href="https://mindunite.com" target="_blank"
+            &copy; {{ date('Y') }} <a href="{{ $frontendUrl }}" target="_blank"
                 style="text-decoration: none; color: #00c2cb; font-weight: bold;">Mind Unite</a>. All rights reserved.<br>
             Psychology and Neuroscience Community.
         </div>

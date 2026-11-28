@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\LoginActivity;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class CheckActiveSession
 {
@@ -26,6 +27,9 @@ class CheckActiveSession
             if (auth('api')->check()) {
                 if (auth('api')->parser()->hasToken()) {
                     $tokenId = auth('api')->getPayload()->get('jti');
+                    if ($tokenId && Cache::has("revoked_jti:{$tokenId}")) {
+                        return response()->json(['message' => 'Your session has been revoked.'], 401);
+                    }
                 } elseif (app()->environment('testing')) {
                     return $next($request);
                 } else {
@@ -58,11 +62,13 @@ class CheckActiveSession
 
             if (! $activity) {
                 if (auth('api')->check()) {
-                    // If JWT is valid but activity record is missing (e.g. queue delay),
-                    // register active session so valid users are never rejected.
+                    // Fail closed: if a valid JWT lacks a LoginActivity row (e.g. deleted or missed),
+                    // register it as untrusted & unresolved until verified rather than auto-trusting.
+                    $deviceHash = app(\App\Services\Auth\DeviceTrustService::class)->extractDeviceHash($request);
                     LoginActivity::create([
                         'user_id' => $user->id,
                         'token_id' => $tokenId,
+                        'device_token_hash' => $deviceHash,
                         'device' => 'Web Browser',
                         'browser' => 'Web',
                         'ip_address' => $request->ip(),
@@ -70,8 +76,8 @@ class CheckActiveSession
                         'login_at' => now(),
                         'status' => 'Successful',
                         'is_active' => true,
-                        'is_trusted' => true,
-                        'is_resolved' => true,
+                        'is_trusted' => false,
+                        'is_resolved' => false,
                     ]);
                 } else {
                     auth()->logout();

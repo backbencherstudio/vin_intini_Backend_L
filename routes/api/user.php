@@ -76,7 +76,7 @@ Route::middleware('profile_completed')->group(function (): void {
     Route::get('/profile', [UserProfileController::class, 'show']); // current user profile
     Route::put('/profile/update', [UserProfileController::class, 'update']);
     Route::post('/profile/images', [UserProfileController::class, 'updateImages']);
-    Route::post('/profile/change-password', [UserProfileController::class, 'changePassword']);
+    Route::post('/profile/change-password', [UserProfileController::class, 'changePassword'])->middleware('trusted_session');
 
     // user experience routes
     Route::get('/experience/list', [UserExperienceController::class, 'index']); // list of user experience (auth user)
@@ -150,10 +150,10 @@ Route::middleware('profile_completed')->group(function (): void {
     });
 
     // account privacy settings route
-    Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'updatePrivacySettings']);
+    Route::patch('/user/privacy-settings', [SecuritySettingsController::class, 'updatePrivacySettings'])->middleware('trusted_session');
 
     // account deletion request route
-    Route::post('/account/delete-request', [SecuritySettingsController::class, 'requestDelete']);
+    Route::post('/account/delete-request', [SecuritySettingsController::class, 'requestDelete'])->middleware('trusted_session');
 
     // user job preference routes
     Route::get('/user/job-preference', [UserJobPreferenceController::class, 'getPreference']);

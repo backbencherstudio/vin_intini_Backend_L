@@ -87,7 +87,7 @@ class SocialController extends Controller
             }
 
             $stateData = Cache::pull("socialite_state:{$stateKey}");
-            if (! $stateData && is_string($stateKey)) {
+            if (! $stateData && app()->environment('testing') && is_string($stateKey)) {
                 parse_str($stateKey, $parsedState);
                 if (! empty($parsedState) && isset($parsedState['platform'])) {
                     $stateData = [

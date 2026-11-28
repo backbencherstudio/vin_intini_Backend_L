@@ -9,8 +9,10 @@ use App\Models\User;
 use App\Notifications\RecoveryOtpNotification;
 use App\Services\Auth\ChallengeService;
 use App\Services\Auth\SessionIssuanceService;
+use App\Services\Security\SecurityAuditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -24,6 +26,7 @@ class TwoFactorController extends Controller
     public function __construct(
         protected SessionIssuanceService $sessionService,
         protected ChallengeService $challengeService,
+        protected SecurityAuditService $auditService,
     ) {
         $this->google2fa = new Google2FA;
     }
@@ -56,7 +59,7 @@ class TwoFactorController extends Controller
         }
 
         $secret = $this->google2fa->generateSecretKey();
-        $user->update(['two_factor_secret' => $secret]);
+        $user->update(['two_factor_secret' => encrypt($secret)]);
 
         $qrCodeUrl = $this->google2fa->getQRCodeUrl(
             config('app.name'),
@@ -76,11 +79,12 @@ class TwoFactorController extends Controller
         $request->validate(['code' => 'required']);
         $user = auth('api')->user();
 
-        if (! $user->two_factor_secret) {
+        $secret = $this->decryptTwoFactorSecret($user->two_factor_secret);
+        if (! $secret) {
             return response()->json(['status' => false, 'message' => 'Please initiate 2FA setup first.'], 400);
         }
 
-        if ($this->google2fa->verifyKey($user->two_factor_secret, $request->code)) {
+        if ($this->google2fa->verifyKey($secret, $request->code)) {
             return DB::transaction(function () use ($user) {
                 $plainRecoveryCodes = collect(range(1, 10))->map(fn () => Str::random(10))->toArray();
 
@@ -90,6 +94,8 @@ class TwoFactorController extends Controller
                     'two_factor_confirmed_at' => now(),
                     'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
                 ]);
+
+                $this->auditService->log($user, '2fa_enabled');
 
                 return response()->json([
                     'status' => true,
@@ -120,19 +126,22 @@ class TwoFactorController extends Controller
             return $statusResponse;
         }
 
-        if (! $this->challengeService->verifyAndConsumeChallenge($request->challenge_token, $user, '2fa')) {
+        if (! $this->challengeService->verifyChallenge($request->challenge_token, $user, '2fa')) {
             return response()->json([
                 'status' => false,
                 'message' => 'Invalid or expired two-factor challenge. Please sign in again.',
             ], 403);
         }
 
+        $attemptKey = "2fa_attempts:{$user->id}:".hash('sha256', (string) $request->challenge_token);
+
         $inputCode = $request->code;
         $isValid = false;
         $isBackupCode = (strlen($inputCode) !== 6);
 
         if (! $isBackupCode) {
-            $isValid = $this->google2fa->verifyKey($user->two_factor_secret, $inputCode);
+            $secret = $this->decryptTwoFactorSecret($user->two_factor_secret);
+            $isValid = $secret ? $this->google2fa->verifyKey($secret, $inputCode) : false;
         }
 
         if (! $isValid && $user->two_factor_recovery_codes) {
@@ -151,6 +160,18 @@ class TwoFactorController extends Controller
             }
 
             if ($isBackupCode && ! $isValid) {
+                $attempts = (int) Cache::increment($attemptKey);
+                Cache::put($attemptKey, $attempts, now()->addMinutes(5));
+                if ($attempts >= 5) {
+                    $this->challengeService->consumeChallenge($request->challenge_token, '2fa');
+                    Cache::forget($attemptKey);
+
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Too many invalid verification attempts. Please sign in again.',
+                    ], 429);
+                }
+
                 return response()->json([
                     'status' => false,
                     'invalid_backup_code' => true,
@@ -160,9 +181,25 @@ class TwoFactorController extends Controller
         }
 
         if ($isValid) {
+            $this->challengeService->consumeChallenge($request->challenge_token, '2fa');
+            Cache::forget($attemptKey);
+            $this->auditService->log($user, '2fa_login_verified', ['backup_code' => $isBackupCode], $isBackupCode ? 'warning' : 'info');
+
             return $this->sessionService->respondWithSession($user, null, [
                 'message' => '2FA verified successfully.',
             ]);
+        }
+
+        $attempts = (int) Cache::increment($attemptKey);
+        Cache::put($attemptKey, $attempts, now()->addMinutes(5));
+        if ($attempts >= 5) {
+            $this->challengeService->consumeChallenge($request->challenge_token, '2fa');
+            Cache::forget($attemptKey);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Too many invalid verification attempts. Please sign in again.',
+            ], 429);
         }
 
         return response()->json([
@@ -183,6 +220,8 @@ class TwoFactorController extends Controller
                 'two_factor_confirmed_at' => null,
                 'two_factor_recovery_codes' => null,
             ]);
+
+            $this->auditService->log($user, '2fa_disabled', [], 'warning');
 
             return response()->json(['status' => true, 'message' => '2FA has been disabled.']);
         }
@@ -209,6 +248,8 @@ class TwoFactorController extends Controller
             $user->update([
                 'two_factor_recovery_codes' => encrypt(json_encode($hashedCodes)),
             ]);
+
+            $this->auditService->log($user, '2fa_recovery_codes_regenerated', [], 'warning');
 
             return response()->json([
                 'status' => true,
@@ -265,6 +306,8 @@ class TwoFactorController extends Controller
         $request->validate(['otp' => 'required|digits:4']);
         $user = auth('api')->user();
 
+        $attemptKey = "otp_attempts:recovery_email:{$user->id}";
+
         $otpRecord = Otp::where('user_id', $user->id)
             ->where('type', OtpType::RECOVERY_EMAIL->value)
             ->first();
@@ -275,8 +318,25 @@ class TwoFactorController extends Controller
             ]);
 
             $otpRecord->delete();
+            Cache::forget($attemptKey);
+
+            $this->auditService->log($user, 'recovery_email_verified', ['recovery_email' => $user->recovery_email]);
 
             return response()->json(['status' => true, 'message' => 'Recovery email verified successfully.']);
+        }
+
+        if ($otpRecord) {
+            $attempts = (int) Cache::increment($attemptKey);
+            Cache::put($attemptKey, $attempts, now()->addMinutes(5));
+            if ($attempts >= 5) {
+                $otpRecord->delete();
+                Cache::forget($attemptKey);
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Too many invalid OTP attempts. Please request a new code.',
+                ], 429);
+            }
         }
 
         return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.'], 422);
@@ -349,7 +409,12 @@ class TwoFactorController extends Controller
         }
 
         $parts = explode('@', $user->recovery_email);
-        $maskedEmail = substr($parts[0], 0, 3).'****'.substr($parts[0], -2).'@'.$parts[1];
+        $localPart = $parts[0] ?? '';
+        $domainPart = $parts[1] ?? '';
+        $maskedLocal = strlen($localPart) > 4
+            ? substr($localPart, 0, 3).'****'.substr($localPart, -2)
+            : substr($localPart, 0, 1).'****';
+        $maskedEmail = $maskedLocal.'@'.$domainPart;
 
         return response()->json([
             'status' => true,
@@ -403,10 +468,31 @@ class TwoFactorController extends Controller
         $user = User::where('email', $request->email)->first();
         $otpRecord = $user ? Otp::where('user_id', $user->id)->where('type', OtpType::RECOVERY->value)->first() : null;
 
+        $attemptKey = $user ? "otp_attempts:recovery:{$user->id}" : null;
+
         if ($otpRecord && (string) $otpRecord->otp === (string) $request->otp && now()->lt($otpRecord->expires_at)) {
             $otpRecord->delete();
+            if ($attemptKey) {
+                Cache::forget($attemptKey);
+            }
+
+            $this->auditService->log($user, '2fa_recovery_login', [], 'warning');
 
             return $this->sessionService->respondWithSession($user);
+        }
+
+        if ($otpRecord && $attemptKey) {
+            $attempts = (int) Cache::increment($attemptKey);
+            Cache::put($attemptKey, $attempts, now()->addMinutes(10));
+            if ($attempts >= 5) {
+                $otpRecord->delete();
+                Cache::forget($attemptKey);
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Too many invalid OTP attempts. Please request a new code.',
+                ], 429);
+            }
         }
 
         return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.'], 422);
@@ -464,5 +550,21 @@ class TwoFactorController extends Controller
         Notification::route('mail', $user->recovery_email)->notify(new RecoveryOtpNotification($otp));
 
         return response()->json(['status' => true, 'message' => 'A new verification code has been sent.']);
+    }
+
+    /**
+     * Decrypt a stored 2FA secret, supporting legacy unencrypted secrets.
+     */
+    private function decryptTwoFactorSecret(?string $storedSecret): ?string
+    {
+        if (! $storedSecret) {
+            return null;
+        }
+
+        try {
+            return (string) decrypt($storedSecret);
+        } catch (\Throwable) {
+            return $storedSecret;
+        }
     }
 }

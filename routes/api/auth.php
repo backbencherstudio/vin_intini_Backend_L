@@ -30,7 +30,7 @@ Route::post('/register/resend-otp', [AuthController::class, 'resendRegisterOtp']
 Route::get('/auth/{provider}', [SocialController::class, 'redirect']);
 Route::match(['get', 'post'], '/auth/{provider}/callback', [SocialController::class, 'callback']);
 Route::post('/auth/social-login', [SocialController::class, 'socialLogin']);
-Route::post('/refresh', [AuthController::class, 'refresh']);
+Route::post('/refresh', [AuthController::class, 'refresh'])->middleware('throttle:20,1');
 
 // Public 2FA challenge & recovery routes
 Route::prefix('2fa')->group(function (): void {
@@ -52,23 +52,28 @@ Route::middleware(['auth:api', 'active_session'])->group(function (): void {
         Route::get('/active-sessions', [SecuritySettingsController::class, 'getActiveSessions']);
         Route::get('/login-activities', [SecuritySettingsController::class, 'getLoginActivities']);
         Route::get('/login-activity/{id}', [SecuritySettingsController::class, 'getLoginActivityDetails']);
-        Route::post('/sessions/revoke/{id}', [SecuritySettingsController::class, 'revokeSession']);
-        Route::post('/sessions/sign-out-all', [SecuritySettingsController::class, 'signOutAllSessions']);
         Route::get('/suspicious-activities-list', [SecuritySettingsController::class, 'getSuspiciousActivitiesList']);
-        Route::post('/resolve-all', [SecuritySettingsController::class, 'resolveAllActivities']);
-        Route::post('/resolve/{id}', [SecuritySettingsController::class, 'resolveSuspiciousLogin']);
-        Route::post('/secure-account/{id}', [SecuritySettingsController::class, 'secureAccount']);
-        Route::delete('/login-activities/clear-all', [SecuritySettingsController::class, 'deleteAllLoginActivities']);
-        Route::delete('/login-activities/{id}', [SecuritySettingsController::class, 'deleteLoginActivity']);
+        Route::get('/audit-logs', [SecuritySettingsController::class, 'getSecurityAuditLogs']);
+
+        Route::middleware('trusted_session')->group(function (): void {
+            Route::post('/sessions/revoke/{id}', [SecuritySettingsController::class, 'revokeSession']);
+            Route::post('/sessions/sign-out-all', [SecuritySettingsController::class, 'signOutAllSessions']);
+            Route::post('/resolve-all', [SecuritySettingsController::class, 'resolveAllActivities']);
+            Route::post('/resolve/{id}', [SecuritySettingsController::class, 'resolveSuspiciousLogin']);
+            Route::post('/secure-account/{id}', [SecuritySettingsController::class, 'secureAccount']);
+            Route::delete('/login-activities/clear-all', [SecuritySettingsController::class, 'deleteAllLoginActivities']);
+            Route::post('/login-activities/bulk-delete', [SecuritySettingsController::class, 'bulkDeleteLoginActivities']);
+            Route::delete('/login-activities/{id}', [SecuritySettingsController::class, 'deleteLoginActivity']);
+        });
     });
 
-    Route::prefix('2fa')->group(function (): void {
-        Route::post('/setup', [TwoFactorController::class, 'setup']);
-        Route::post('/confirm', [TwoFactorController::class, 'confirm']);
-        Route::post('/disable', [TwoFactorController::class, 'disable']);
-        Route::post('/regenerate-codes', [TwoFactorController::class, 'regenerateRecoveryCodes']);
-        Route::post('/recovery-email/update', [TwoFactorController::class, 'updateRecoveryEmail']);
-        Route::post('/recovery-email/confirm', [TwoFactorController::class, 'confirmRecoveryEmail']);
+    Route::prefix('2fa')->middleware('trusted_session')->group(function (): void {
+        Route::post('/setup', [TwoFactorController::class, 'setup'])->middleware('throttle:5,1');
+        Route::post('/confirm', [TwoFactorController::class, 'confirm'])->middleware('throttle:5,1');
+        Route::post('/disable', [TwoFactorController::class, 'disable'])->middleware('throttle:5,1');
+        Route::post('/regenerate-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:5,1');
+        Route::post('/recovery-email/update', [TwoFactorController::class, 'updateRecoveryEmail'])->middleware('throttle:5,1');
+        Route::post('/recovery-email/confirm', [TwoFactorController::class, 'confirmRecoveryEmail'])->middleware('throttle:5,1');
         Route::post('/recovery-email/resend-otp', [TwoFactorController::class, 'resendRecoveryEmailOtp'])->middleware('throttle:3,1');
     });
 });

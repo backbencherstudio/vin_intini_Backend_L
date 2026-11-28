@@ -31,7 +31,7 @@ Route::prefix('admin')->group(function (): void {
     Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
     // Admin password update
-    Route::post('/update-password', [UserController::class, 'updatePass']);
+    Route::post('/update-password', [UserController::class, 'updatePass'])->middleware('trusted_session');
 
     // Integration settings routes
     Route::get('/integrations', [IntegrationSettingController::class, 'index']);

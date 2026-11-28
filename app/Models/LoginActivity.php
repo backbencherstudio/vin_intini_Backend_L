@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Prunable;
 
 class LoginActivity extends Model
 {
-    use Prunable;
+    use MassPrunable;
 
     protected $fillable = [
         'user_id',
         'token_id',
+        'device_token_hash',
         'device',
         'browser',
         'ip_address',
@@ -21,6 +22,10 @@ class LoginActivity extends Model
         'is_resolved',
         'is_trusted',
         'login_at',
+    ];
+
+    protected $hidden = [
+        'device_token_hash',
     ];
 
     protected $casts = [

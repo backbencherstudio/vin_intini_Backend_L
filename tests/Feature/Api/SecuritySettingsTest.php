@@ -304,4 +304,126 @@ class SecuritySettingsTest extends TestCase
             'is_resolved' => true,
         ]);
     }
+
+    public function test_untrusted_session_cannot_revoke_delete_trust_or_modify_security_settings(): void
+    {
+        $trustedActivity = LoginActivity::where('token_id', $this->jti)->firstOrFail();
+
+        $attackerUser = $this->user;
+        $untrustedToken = auth('api')->login($attackerUser);
+        $untrustedJti = auth('api')->setToken($untrustedToken)->getPayload()->get('jti');
+
+        $untrustedActivity = LoginActivity::create([
+            'user_id' => $attackerUser->id,
+            'token_id' => $untrustedJti,
+            'device' => 'Unknown Linux',
+            'browser' => 'Firefox',
+            'ip_address' => '9.9.9.9',
+            'location' => 'Unknown',
+            'status' => 'Successful',
+            'is_active' => true,
+            'is_trusted' => false,
+            'is_resolved' => false,
+            'login_at' => now(),
+        ]);
+
+        // Overview indicates session is not trusted yet
+        $this->withToken($untrustedToken)
+            ->getJson('/api/security/overview')
+            ->assertOk()
+            ->assertJsonPath('data.is_current_session_trusted', false);
+
+        // Cannot revoke owner's trusted session
+        $this->withToken($untrustedToken)
+            ->postJson('/api/security/sessions/revoke/'.$trustedActivity->id)
+            ->assertStatus(403)
+            ->assertJsonPath('requires_trusted_session', true);
+
+        // Cannot sign out all sessions
+        $this->withToken($untrustedToken)
+            ->postJson('/api/security/sessions/sign-out-all')
+            ->assertStatus(403);
+
+        // Cannot delete or clear login activities
+        $this->withToken($untrustedToken)
+            ->deleteJson('/api/security/login-activities/'.$trustedActivity->id)
+            ->assertStatus(403);
+
+        $this->withToken($untrustedToken)
+            ->deleteJson('/api/security/login-activities/clear-all')
+            ->assertStatus(403);
+
+        // Cannot mark itself or other suspicious logins as trusted
+        $this->withToken($untrustedToken)
+            ->postJson('/api/security/resolve/'.$untrustedActivity->id)
+            ->assertStatus(403);
+
+        $this->withToken($untrustedToken)
+            ->postJson('/api/security/resolve-all')
+            ->assertStatus(403);
+
+        // Cannot change password, disable 2FA, or delete account
+        $this->withToken($untrustedToken)
+            ->postJson('/api/profile/change-password', [
+                'current_password' => 'password',
+                'new_password' => 'NewStrong123',
+                'new_password_confirmation' => 'NewStrong123',
+            ])
+            ->assertStatus(403);
+
+        $this->withToken($untrustedToken)
+            ->postJson('/api/2fa/disable', ['password' => 'password'])
+            ->assertStatus(403);
+
+        $this->withToken($untrustedToken)
+            ->postJson('/api/account/delete-request', [
+                'reason' => 'Test',
+                'password' => 'password',
+            ])
+            ->assertStatus(403);
+
+        // Owner's trusted session must remain active
+        $this->assertDatabaseHas('login_activities', [
+            'id' => $trustedActivity->id,
+            'is_active' => true,
+            'is_trusted' => true,
+        ]);
+    }
+
+    public function test_can_bulk_delete_selected_login_activities_preserving_current_session(): void
+    {
+        $currentActivity = LoginActivity::where('token_id', $this->jti)->firstOrFail();
+
+        $activity1 = LoginActivity::create([
+            'user_id' => $this->user->id,
+            'token_id' => 'bulk-del-1',
+            'is_active' => true,
+            'login_at' => now()->subHours(2),
+        ]);
+        $activity2 = LoginActivity::create([
+            'user_id' => $this->user->id,
+            'token_id' => 'bulk-del-2',
+            'is_active' => false,
+            'login_at' => now()->subHours(3),
+        ]);
+        $activityKeep = LoginActivity::create([
+            'user_id' => $this->user->id,
+            'token_id' => 'bulk-keep',
+            'is_active' => false,
+            'login_at' => now()->subHours(4),
+        ]);
+
+        $response = $this->withToken($this->token)->postJson('/api/security/login-activities/bulk-delete', [
+            'ids' => [$currentActivity->id, $activity1->id, $activity2->id],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('deleted_count', 2);
+
+        $this->assertDatabaseHas('login_activities', ['id' => $currentActivity->id]);
+        $this->assertDatabaseHas('login_activities', ['id' => $activityKeep->id]);
+        $this->assertDatabaseMissing('login_activities', ['id' => $activity1->id]);
+        $this->assertDatabaseMissing('login_activities', ['id' => $activity2->id]);
+    }
 }

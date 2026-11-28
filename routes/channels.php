@@ -28,7 +28,7 @@ Broadcast::channel('industry-conversation.{id}', function ($user, $id): bool {
 Broadcast::channel('industry.{id}', fn ($user, $id) => Industry::where('id', $id)->where('created_by', $user->id)->exists());
 
 // Schedule::command('model:prune')->daily();
-Schedule::command('model:prune')->dailyAt('02:00')->timezone('America/New_York');
+Schedule::command('model:prune', ['--chunk' => 5000])->dailyAt('02:00')->timezone('America/New_York')->withoutOverlapping();
 
 // added for sending account deletion reminder emails
 Schedule::command('account:send-deletion-reminders')->dailyAt('10:00')->timezone('America/New_York');

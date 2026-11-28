@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Media\ProfileImageService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -700,6 +701,8 @@ class UserProfileController extends Controller
             }
         }
 
+        $hadPassword = (bool) $user->has_password;
+
         $user->update([
             'password' => Hash::make($request->new_password),
             'has_password' => true,
@@ -708,16 +711,38 @@ class UserProfileController extends Controller
         try {
             $currentTokenId = auth('api')->payload()->get('jti');
 
-            LoginActivity::where('user_id', $user->id)
-                ->where('token_id', '!=', $currentTokenId)
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
+            $otherSessions = LoginActivity::where('user_id', $user->id)
+                ->where(function ($q) use ($currentTokenId): void {
+                    $q->where('token_id', '!=', $currentTokenId)->orWhereNull('token_id');
+                })
+                ->where('is_active', true);
+
+            $tokenIds = (clone $otherSessions)->pluck('token_id')->all();
+            $otherActivityIds = (clone $otherSessions)->pluck('id')->all();
+            $otherSessions->update(['is_active' => false]);
+
+            app(\App\Services\Auth\RefreshTokenService::class)->revokeForActivities($otherActivityIds);
+
+            $ttl = now()->addMinutes((int) config('jwt.rolling_window', 43200));
+            foreach ($tokenIds as $tid) {
+                if (is_string($tid) && $tid !== '') {
+                    Cache::put("revoked_jti:{$tid}", true, $ttl);
+                }
+            }
         } catch (\Exception) {
         }
 
+        app(\App\Services\Security\SecurityAuditService::class)->log(
+            $user,
+            'password_changed',
+            ['revoked_other_sessions' => true],
+            'warning',
+            $request,
+        );
+
         return response()->json([
             'status' => true,
-            'message' => $user->has_password ? 'Password changed successfully.' : 'Password set successfully.',
+            'message' => $hadPassword ? 'Password changed successfully.' : 'Password set successfully.',
         ], 200);
     }
 }
