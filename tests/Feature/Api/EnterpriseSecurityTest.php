@@ -424,4 +424,25 @@ class EnterpriseSecurityTest extends TestCase
             'challenge_token' => $challengeToken,
         ])->assertStatus(403);
     }
+
+    public function test_un_onboarded_user_cannot_access_protected_profile_or_industry_endpoints(): void
+    {
+        /** @var User $user */
+        $user = User::factory()->create(['is_verified' => true]);
+        $user->assignRole('user');
+
+        $this->actingAs($user, 'api')
+            ->getJson('/api/profile')
+            ->assertStatus(403)
+            ->assertJsonPath('message', 'Profile setup required.');
+
+        $this->actingAs($user, 'api')
+            ->postJson('/api/industry/create', [
+                'name' => 'Test Lab',
+                'industry' => 'biotechnology',
+                'authorization_confirmed' => true,
+            ])
+            ->assertStatus(403)
+            ->assertJsonPath('message', 'Profile setup required.');
+    }
 }

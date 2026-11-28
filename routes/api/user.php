@@ -361,38 +361,37 @@ Route::middleware('profile_completed')->group(function (): void {
         Route::get('{id}/boost/campaigns', [PublicationBoostController::class, 'campaigns']);
     });
 
-});
+    // Industry Company Management and Interactions
+    Route::prefix('industry')->group(function (): void {
+        Route::post('create', [IndustryController::class, 'store']);
+        Route::get('show/{industryId}', [IndustryController::class, 'show']);
+        Route::post('update', [IndustryController::class, 'update']);
+        Route::delete('delete', [IndustryController::class, 'deleteCompany']);
 
-// Industry Company Management and Interactions
-Route::prefix('industry')->group(function (): void {
-    Route::post('create', [IndustryController::class, 'store']);
-    Route::get('show/{industryId}', [IndustryController::class, 'show']);
-    Route::post('update', [IndustryController::class, 'update']);
-    Route::delete('delete', [IndustryController::class, 'deleteCompany']);
+        Route::post('follow/{industryId}', [IndustryController::class, 'toggleFollow']);
 
-    Route::post('follow/{industryId}', [IndustryController::class, 'toggleFollow']);
+        // Industry post
+        Route::post('post/create', [IndustryController::class, 'storePost']);
+        Route::get('post/view/{industryId}', [IndustryController::class, 'indexPost']);
+        Route::get('post/recent', [IndustryController::class, 'latestPosts']);
+        Route::post('post/update/{postId}', [IndustryController::class, 'updatePost']);
+        Route::delete('post/delete/{postId}', [IndustryController::class, 'deletePost']);
 
-    // Industry post
-    Route::post('post/create', [IndustryController::class, 'storePost']);
-    Route::get('post/view/{industryId}', [IndustryController::class, 'indexPost']);
-    Route::get('post/recent', [IndustryController::class, 'latestPosts']);
-    Route::post('post/update/{postId}', [IndustryController::class, 'updatePost']);
-    Route::delete('post/delete/{postId}', [IndustryController::class, 'deletePost']);
+        Route::post('post/like/{postId}', [IndustryController::class, 'togglePostLike']);
+        Route::get('post/likes/{postId}', [IndustryController::class, 'likeList']);
 
-    Route::post('post/like/{postId}', [IndustryController::class, 'togglePostLike']);
-    Route::get('post/likes/{postId}', [IndustryController::class, 'likeList']);
+        Route::post('post/comment/{postId}', [IndustryController::class, 'storeComment']);
+        Route::get('post/comments/{postId}', [IndustryController::class, 'commentList']);
 
-    Route::post('post/comment/{postId}', [IndustryController::class, 'storeComment']);
-    Route::get('post/comments/{postId}', [IndustryController::class, 'commentList']);
+        Route::post('post/comment/like/{commentId}', [IndustryController::class, 'toggleCommentLike']);
+        Route::get('post/comment/likes/{commentId}', [IndustryController::class, 'commentLikeList']);
 
-    Route::post('post/comment/like/{commentId}', [IndustryController::class, 'toggleCommentLike']);
-    Route::get('post/comment/likes/{commentId}', [IndustryController::class, 'commentLikeList']);
+        Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
+        Route::get('post/comment/replies/{commentId}', [IndustryController::class, 'replyList']);
 
-    Route::post('post/comment/reply/{commentId}', [IndustryController::class, 'replyComment']);
-    Route::get('post/comment/replies/{commentId}', [IndustryController::class, 'replyList']);
+        Route::post('post/comment/reply/like/{replyId}', [IndustryController::class, 'toggleReplyLike']);
+        Route::get('post/comment/reply/likes/{replyId}', [IndustryController::class, 'replyLikeList']);
 
-    Route::post('post/comment/reply/like/{replyId}', [IndustryController::class, 'toggleReplyLike']);
-    Route::get('post/comment/reply/likes/{replyId}', [IndustryController::class, 'replyLikeList']);
-
-    Route::delete('post/comment/{commentId}', [IndustryController::class, 'deleteComment']);
+        Route::delete('post/comment/{commentId}', [IndustryController::class, 'deleteComment']);
+    });
 });
