@@ -1683,6 +1683,59 @@ class IndustryCompanyPostTest extends TestCase
             ->assertJsonPath('data.0.industry.id', $industry->id);
     }
 
+    public function test_company_post_view_supports_cursor_pagination(): void
+    {
+        $owner = $this->makeUser();
+        $industry = $this->makeIndustry($owner);
+        $viewer = $this->makeUser();
+
+        $createdIds = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $createdIds[] = $this->createPost($owner, "Company post {$i}", 'public');
+        }
+
+        $page1 = $this->actingAs($viewer, 'api')
+            ->getJson("/api/industry/post/view/{$industry->id}?per_page=2");
+
+        $page1->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.per_page', 2)
+            ->assertJsonPath('pagination.has_more_pages', true)
+            ->assertJsonPath('pagination.prev_cursor', null);
+
+        $cursor1 = $page1->json('pagination.next_cursor');
+        $this->assertNotEmpty($cursor1);
+
+        $page2 = $this->actingAs($viewer, 'api')
+            ->getJson("/api/industry/post/view/{$industry->id}?per_page=2&cursor={$cursor1}");
+
+        $page2->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.per_page', 2)
+            ->assertJsonPath('pagination.has_more_pages', true);
+
+        $this->assertNotEmpty($page2->json('pagination.prev_cursor'));
+        $cursor2 = $page2->json('pagination.next_cursor');
+        $this->assertNotEmpty($cursor2);
+
+        $page3 = $this->actingAs($viewer, 'api')
+            ->getJson("/api/industry/post/view/{$industry->id}?per_page=2&cursor={$cursor2}");
+
+        $page3->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('pagination.per_page', 2)
+            ->assertJsonPath('pagination.has_more_pages', false)
+            ->assertJsonPath('pagination.next_cursor', null);
+
+        $allReturnedIds = array_merge(
+            array_column($page1->json('data'), 'id'),
+            array_column($page2->json('data'), 'id'),
+            array_column($page3->json('data'), 'id'),
+        );
+
+        $this->assertSame(array_reverse($createdIds), $allReturnedIds);
+    }
+
     private function subscribe(User $user, array $overrides = []): Subscription
     {
         $existing = Subscription::where('user_id', $user->id)->latest('id')->first();

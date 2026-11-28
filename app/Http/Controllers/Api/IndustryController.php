@@ -754,9 +754,10 @@ class IndustryController extends Controller
             ])
             ->orderByDesc('posts.created_at')
             ->orderByDesc('posts.id')
-            ->paginate($perPage);
+            ->cursorPaginate(perPage: $perPage, cursor: $request->input('cursor'));
 
-        $relationshipMap = $this->buildRelationshipMap($userId, $posts->pluck('user_id')->unique()->all());
+        $postItems = collect($posts->items());
+        $relationshipMap = $this->buildRelationshipMap($userId, $postItems->pluck('user_id')->unique()->all());
         $isFollowing = IndustryFollow::where('industry_id', $industry->id)
             ->where('user_id', $userId)
             ->exists();
@@ -764,10 +765,15 @@ class IndustryController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Company posts fetched successfully.',
-            'data' => collect($posts->items())
+            'data' => $postItems
                 ->map(fn ($post): array => $this->postResource($post, true, $userId, $relationshipMap, $isFollowing))
                 ->values(),
-            'pagination' => $this->pagination($posts),
+            'pagination' => [
+                'per_page' => $posts->perPage(),
+                'next_cursor' => $posts->nextCursor()?->encode(),
+                'prev_cursor' => $posts->previousCursor()?->encode(),
+                'has_more_pages' => $posts->hasMorePages(),
+            ],
         ], 200);
     }
 
@@ -1785,7 +1791,7 @@ class IndustryController extends Controller
 
     private function perPage(Request $request): int
     {
-        return max(1, min((int) $request->get('per_page', 10), 100));
+        return max(1, min((int) ($request->get('per_page') ?? $request->get('limit') ?? 10), 100));
     }
 
     private function pagination($paginator): array
